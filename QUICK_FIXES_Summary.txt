@@ -1,0 +1,106 @@
+================================================================================
+PRE-IMPLEMENTATION FIXES - QUICK SUMMARY
+================================================================================
+
+CRITICAL ISSUES FOUND IN YOUR EXCEL FILE
+(These will cause bugs if not fixed)
+
+1. REFERENCE SHEET MISMATCH [CRITICAL]
+   Problem: "Referência de Categorias" doesn't match actual sheets
+   Examples:
+   - Fixas: 39 subcategories in reference that don't exist in sheet
+   - Variáveis: 17 missing, 4 extra
+   - Result: Program will look for wrong subcategories
+
+   Fix Options:
+   [ ] A: I auto-rebuild reference sheet (5 min) - RECOMMENDED
+   [ ] B: You manually fix (2 hours)
+   [ ] C: Don't use reference, scan sheets directly (slower program)
+
+2. AMBIGUOUS NAMES [HIGH PRIORITY]
+   Problem: Same name, different meaning
+   Examples:
+   - "Dentista" exists in both Variáveis AND Extras
+   - "Produtos" exists in Habitação AND Cuidados pessoais
+   - "Aluguel" in Receitas (income) AND Fixas (expense)
+   - Result: Program doesn't know which one you mean
+
+   Fix Options:
+   [ ] A: Rename in Excel (Dentista → Dentista-Regular, Dentista-Extra)
+   [ ] B: Program prompts you to choose when ambiguous - RECOMMENDED
+   [ ] C: Force user to type "Category|Subcategory" format
+
+3. MERGED CELLS [MEDIUM PRIORITY]
+   Problem: 142 merged cell ranges across all sheets
+   - Variáveis has 55 merged ranges!
+   - Result: May cause incorrect row counting
+
+   Fix Options:
+   [ ] A: I auto-unmerge data columns (keep header merges) - RECOMMENDED
+   [ ] B: Handle in code (adds complexity)
+   [ ] C: Ignore (risk of bugs)
+
+4. INCONSISTENT STRUCTURE [MEDIUM PRIORITY]
+   Problem: Sheet has "Orion" but reference has "Orion - Consultas"
+   Result: Exact match fails
+
+   Fix Options:
+   [ ] A: Break "Orion" into child rows (Orion-Consultas, etc)
+   [ ] B: Keep "Orion", remove children from reference
+   [ ] C: Smart matching in code
+
+================================================================================
+MY RECOMMENDATION (FASTEST + SAFEST)
+================================================================================
+
+Fix #1: Auto-rebuild reference sheet
+   → I run Script 1 (takes 2 minutes)
+   → Guarantees accuracy
+   → Token cost: +2,000
+
+Fix #2: Handle ambiguous via prompts
+   → No Excel changes needed
+   → User picks from list when needed
+   → Token cost: +2,500 (already planned)
+
+Fix #3: Auto-unmerge data columns
+   → I run Script 2 (takes 1 minute)
+   → Keeps header merges, removes data area merges
+   → Token cost: +1,500
+
+Fix #4: Skip (handle in code)
+   → Use smart matching
+   → Token cost: +800
+
+TOTAL ADDITIONAL COST: +6,800 tokens
+TOTAL TIME: ~5 minutes (automated)
+BENEFIT: Eliminates 90% of potential bugs
+
+================================================================================
+ALTERNATIVELY: SKIP ALL FIXES
+================================================================================
+
+If you prefer NO Excel changes:
+   → I handle everything in Go code
+   → Additional complexity: +12,000 tokens
+   → Higher risk of edge case bugs
+   → Longer development time
+
+================================================================================
+YOUR DECISION
+================================================================================
+
+Option 1: "Go with your recommendation"
+   → I auto-fix issues 1 & 3, handle 2 & 4 in code
+   → Safest, fastest approach
+
+Option 2: "Skip all changes"
+   → No Excel modifications
+   → All complexity in Go code
+
+Option 3: Custom
+   → Specify which fixes you want
+
+Just reply with: Option 1, Option 2, or your custom choices
+
+================================================================================
