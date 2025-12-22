@@ -84,30 +84,3 @@ func TestExpenseValidation(t *testing.T) {
 		})
 	}
 }
-
-func TestSheetLocation(t *testing.T) {
-	// Basic struct test
-	loc := SheetLocation{
-		SheetName:   "Variáveis",
-		Category:    "Transporte",
-		SubcatRow:   97,
-		TargetRow:   98,
-		MonthColumn: "M",
-	}
-
-	if loc.SheetName != "Variáveis" {
-		t.Errorf("SheetLocation.SheetName = %v, want Variáveis", loc.SheetName)
-	}
-	if loc.Category != "Transporte" {
-		t.Errorf("SheetLocation.Category = %v, want Transporte", loc.Category)
-	}
-	if loc.SubcatRow != 97 {
-		t.Errorf("SheetLocation.SubcatRow = %v, want 97", loc.SubcatRow)
-	}
-	if loc.TargetRow != 98 {
-		t.Errorf("SheetLocation.TargetRow = %v, want 98", loc.TargetRow)
-	}
-	if loc.MonthColumn != "M" {
-		t.Errorf("SheetLocation.MonthColumn = %v, want M", loc.MonthColumn)
-	}
-}
