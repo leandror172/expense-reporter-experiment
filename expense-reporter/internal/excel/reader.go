@@ -122,10 +122,13 @@ func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int
 		if cellValue == "" {
 			// Found empty cell
 			// Check if we've crossed into next subcategory (column B has value)
-			nextSubcatRef := fmt.Sprintf("B%d", row)
-			nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
-			if nextSubcat != "" {
-				return 0, fmt.Errorf("no empty cells available in this subcategory section")
+			// BUT: Skip this check for the first row (i==0), as that's the subcategory header itself
+			if i > 0 {
+				nextSubcatRef := fmt.Sprintf("B%d", row)
+				nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
+				if nextSubcat != "" {
+					return 0, fmt.Errorf("no empty cells available in this subcategory section")
+				}
 			}
 
 			return row, nil
