@@ -45,8 +45,8 @@ READY FOR GO IMPLEMENTATION
 Next: Start Phase 1 (Go project setup)
 
 Decisions needed:
-  1. Date year: [ ] 2025  [ ] Smart  [ ] Full DD/MM/YYYY
-  2. Deploy:    [ ] CLI   [ ] CLI+VBA
+  1. Date year: [X] 2025  [ ] Smart  [ ] Full DD/MM/YYYY
+  2. Deploy:    [X] CLI   [ ] CLI+VBA
   3. Location:  expense-reporter/ (confirm or change)
 
 Reply: "proceed with recommendations" or specify your choices
