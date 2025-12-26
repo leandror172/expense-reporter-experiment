@@ -55,7 +55,7 @@ func InsertExpense(workbookPath, expenseString string) error {
 	}
 
 	// Step 7: Find next empty row in the subcategory section
-	nextEmptyRow, err := excel.FindNextEmptyRow(workbookPath, mapping.SheetName, itemCol, targetRow)
+	nextEmptyRow, err := excel.FindNextEmptyRow(workbookPath, mapping.SheetName, itemCol, targetRow, mapping.Subcategory)
 	if err != nil {
 		return fmt.Errorf("failed to find empty row: %w", err)
 	}

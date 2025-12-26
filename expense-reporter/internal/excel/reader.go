@@ -98,7 +98,8 @@ func FindSubcategoryRow(workbookPath, sheetName, subcategory string) (int, error
 }
 
 // FindNextEmptyRow finds the next empty row in the specified column starting from startRow
-func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int) (int, error) {
+// subcategoryName is used to detect when we've crossed into a different subcategory section
+func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int, subcategoryName string) (int, error) {
 	f, err := excelize.OpenFile(workbookPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open workbook: %w", err)
@@ -121,14 +122,16 @@ func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int
 
 		if cellValue == "" {
 			// Found empty cell
-			// Check if we've crossed into next subcategory (column B has value)
-			// BUT: Skip this check for the first row (i==0), as that's the subcategory header itself
-			if i > 0 {
-				nextSubcatRef := fmt.Sprintf("B%d", row)
-				nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
-				if nextSubcat != "" {
-					return 0, fmt.Errorf("no empty cells available in this subcategory section")
-				}
+			// Check if we've crossed into a DIFFERENT subcategory (column B has different value)
+			// Note: Column B may have merged cells, so all rows in the subcategory section
+			// will return the same subcategory name
+			nextSubcatRef := fmt.Sprintf("B%d", row)
+			nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
+
+			// If column B has a value AND it's different from our current subcategory,
+			// we've crossed into another subcategory section
+			if nextSubcat != "" && nextSubcat != subcategoryName {
+				return 0, fmt.Errorf("no empty cells available in this subcategory section")
 			}
 
 			return row, nil
