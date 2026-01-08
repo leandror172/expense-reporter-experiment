@@ -2,6 +2,7 @@ package excel
 
 import (
 	"expense-reporter/internal/models"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -101,6 +102,156 @@ func TestWriteExpenseRollback(t *testing.T) {
 	err := WriteExpense(invalidPath, expense, location)
 	if err == nil {
 		t.Error("WriteExpense() expected error for invalid path, got nil")
+	}
+}
+
+// TDD RED: Test batch writing expenses
+func TestWriteBatchExpenses(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func() []ExpenseWithLocation
+		wantErr bool
+	}{
+		{
+			name: "empty batch",
+			prepare: func() []ExpenseWithLocation {
+				return []ExpenseWithLocation{}
+			},
+			wantErr: false,
+		},
+		{
+			name: "single expense",
+			prepare: func() []ExpenseWithLocation {
+				return []ExpenseWithLocation{
+					{
+						Expense: &models.Expense{
+							Item:        "Test Single",
+							Date:        time.Date(2025, 4, 15, 0, 0, 0, 0, time.UTC),
+							Value:       50.00,
+							Subcategory: "Uber/Taxi",
+						},
+						Location: &models.SheetLocation{
+							SheetName:   "Variáveis",
+							Category:    "Transporte",
+							SubcatRow:   97,
+							TargetRow:   98,
+							MonthColumn: "M",
+						},
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "multiple expenses same sheet",
+			prepare: func() []ExpenseWithLocation {
+				return []ExpenseWithLocation{
+					{
+						Expense: &models.Expense{
+							Item:        "Uber 1",
+							Date:        time.Date(2025, 4, 15, 0, 0, 0, 0, time.UTC),
+							Value:       30.00,
+							Subcategory: "Uber/Taxi",
+						},
+						Location: &models.SheetLocation{
+							SheetName:   "Variáveis",
+							TargetRow:   98,
+							MonthColumn: "M",
+						},
+					},
+					{
+						Expense: &models.Expense{
+							Item:        "Uber 2",
+							Date:        time.Date(2025, 4, 16, 0, 0, 0, 0, time.UTC),
+							Value:       25.00,
+							Subcategory: "Uber/Taxi",
+						},
+						Location: &models.SheetLocation{
+							SheetName:   "Variáveis",
+							TargetRow:   99,
+							MonthColumn: "M",
+						},
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "nil expense",
+			prepare: func() []ExpenseWithLocation {
+				return []ExpenseWithLocation{
+					{
+						Expense:  nil,
+						Location: &models.SheetLocation{},
+					},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "nil location",
+			prepare: func() []ExpenseWithLocation {
+				return []ExpenseWithLocation{
+					{
+						Expense: &models.Expense{
+							Item:        "Test",
+							Date:        time.Date(2025, 4, 15, 0, 0, 0, 0, time.UTC),
+							Value:       10.00,
+							Subcategory: "Test",
+						},
+						Location: nil,
+					},
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test workbook copy
+			originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+			testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_batch_workbook.xlsx"
+
+			if err := copyFile(originalPath, testPath); err != nil {
+				t.Fatalf("Failed to copy test workbook: %v", err)
+			}
+			defer os.Remove(testPath)
+
+			expensesWithLocations := tt.prepare()
+			err := WriteBatchExpenses(testPath, expensesWithLocations)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("WriteBatchExpenses() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if err == nil && len(expensesWithLocations) > 0 {
+				// Verify expenses were written
+				f, err := excelize.OpenFile(testPath)
+				if err != nil {
+					t.Fatalf("Failed to open test workbook: %v", err)
+				}
+				defer f.Close()
+
+				for i, ewl := range expensesWithLocations {
+					if ewl.Expense == nil || ewl.Location == nil {
+						continue
+					}
+
+					itemCol, _, _, _ := GetMonthColumns(ewl.Expense.Date.Month())
+					itemCell := fmt.Sprintf("%s%d", itemCol, ewl.Location.TargetRow)
+
+					itemValue, err := f.GetCellValue(ewl.Location.SheetName, itemCell)
+					if err != nil {
+						t.Errorf("Expense %d: failed to read item cell: %v", i, err)
+					}
+					if itemValue != ewl.Expense.Item {
+						t.Errorf("Expense %d: item = %v, want %v", i, itemValue, ewl.Expense.Item)
+					}
+				}
+			}
+		})
 	}
 }
 

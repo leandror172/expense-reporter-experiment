@@ -8,6 +8,20 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// SubcategoryLookupRequest represents a request to find a subcategory row
+type SubcategoryLookupRequest struct {
+	SheetName   string
+	Subcategory string
+}
+
+// EmptyRowRequest represents a request to find the next empty row
+type EmptyRowRequest struct {
+	SheetName      string
+	ColumnLetter   string
+	StartRow       int
+	SubcategoryName string
+}
+
 // LoadReferenceSheet loads the "Referência de Categorias" sheet and builds subcategory mappings
 func LoadReferenceSheet(workbookPath string) (map[string][]resolver.SubcategoryMapping, error) {
 	f, err := excelize.OpenFile(workbookPath)
@@ -139,4 +153,130 @@ func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int
 	}
 
 	return 0, fmt.Errorf("no empty row found within %d rows", maxScan)
+}
+
+// FindSubcategoryRowBatch finds multiple subcategory rows in a single file open
+// Returns map[sheetName]map[subcategory]rowNumber for fast lookup
+// This eliminates N file opens for N subcategory lookups
+func FindSubcategoryRowBatch(workbookPath string, requests []SubcategoryLookupRequest) (map[string]map[string]int, error) {
+	if len(requests) == 0 {
+		return map[string]map[string]int{}, nil
+	}
+
+	// Open workbook ONCE
+	f, err := excelize.OpenFile(workbookPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open workbook: %w", err)
+	}
+	defer f.Close()
+
+	// Group requests by sheet name
+	requestsBySheet := make(map[string][]string)
+	for _, req := range requests {
+		requestsBySheet[req.SheetName] = append(requestsBySheet[req.SheetName], req.Subcategory)
+	}
+
+	// Process each sheet once
+	results := make(map[string]map[string]int)
+
+	for sheetName, subcategories := range requestsBySheet {
+		sheetResults := make(map[string]int)
+
+		// Read sheet rows once
+		rows, err := f.GetRows(sheetName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read sheet %s: %w", sheetName, err)
+		}
+
+		// Create lookup set
+		needed := make(map[string]bool)
+		for _, subcat := range subcategories {
+			needed[subcat] = true
+		}
+
+		// Scan once, find all
+		for i, row := range rows {
+			if len(row) > 1 {
+				cellValue := strings.TrimSpace(row[1]) // Column B
+				if needed[cellValue] {
+					sheetResults[cellValue] = i + 1 // Excel rows are 1-indexed
+				}
+			}
+		}
+
+		// Verify all found
+		for _, subcat := range subcategories {
+			if _, found := sheetResults[subcat]; !found {
+				return nil, fmt.Errorf("subcategory '%s' not found in sheet '%s'", subcat, sheetName)
+			}
+		}
+
+		results[sheetName] = sheetResults
+	}
+
+	return results, nil
+}
+
+// FindNextEmptyRowBatch finds empty rows for multiple subcategories in one file open
+// Returns map[sheetName]map[startRow]nextEmptyRow
+func FindNextEmptyRowBatch(workbookPath string, requests []EmptyRowRequest) (map[string]map[int]int, error) {
+	if len(requests) == 0 {
+		return map[string]map[int]int{}, nil
+	}
+
+	// Open workbook ONCE
+	f, err := excelize.OpenFile(workbookPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open workbook: %w", err)
+	}
+	defer f.Close()
+
+	// Group by sheet
+	requestsBySheet := make(map[string][]EmptyRowRequest)
+	for _, req := range requests {
+		requestsBySheet[req.SheetName] = append(requestsBySheet[req.SheetName], req)
+	}
+
+	// Process each sheet
+	results := make(map[string]map[int]int)
+
+	for sheetName, sheetRequests := range requestsBySheet {
+		sheetResults := make(map[int]int)
+
+		for _, req := range sheetRequests {
+			maxScan := 100
+			found := false
+
+			for i := 0; i < maxScan; i++ {
+				row := req.StartRow + i
+				cellRef := fmt.Sprintf("%s%d", req.ColumnLetter, row)
+				cellValue, err := f.GetCellValue(sheetName, cellRef)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read cell %s: %w", cellRef, err)
+				}
+
+				if cellValue == "" {
+					// Check subcategory boundary
+					nextSubcatRef := fmt.Sprintf("B%d", row)
+					nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
+
+					if nextSubcat != "" && nextSubcat != req.SubcategoryName {
+						return nil, fmt.Errorf("no empty cells available in subcategory section for %s", req.SubcategoryName)
+					}
+
+					sheetResults[req.StartRow] = row
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				return nil, fmt.Errorf("no empty row found within %d rows for %s", maxScan, req.SubcategoryName)
+			}
+		}
+
+		results[sheetName] = sheetResults
+	}
+
+	return results, nil
 }

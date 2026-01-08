@@ -104,3 +104,92 @@ func TestFindSubcategoryRow(t *testing.T) {
 		})
 	}
 }
+
+// TDD RED: Test batch finding subcategory rows
+func TestFindSubcategoryRowBatch(t *testing.T) {
+	workbookPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+
+	tests := []struct {
+		name     string
+		requests []SubcategoryLookupRequest
+		wantErr  bool
+		validate func(t *testing.T, results map[string]map[string]int)
+	}{
+		{
+			name:     "empty requests",
+			requests: []SubcategoryLookupRequest{},
+			wantErr:  false,
+			validate: func(t *testing.T, results map[string]map[string]int) {
+				if len(results) != 0 {
+					t.Errorf("Expected empty results, got %d entries", len(results))
+				}
+			},
+		},
+		{
+			name: "single request",
+			requests: []SubcategoryLookupRequest{
+				{SheetName: "Variáveis", Subcategory: "Uber/Taxi"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, results map[string]map[string]int) {
+				if row, ok := results["Variáveis"]["Uber/Taxi"]; !ok || row < 3 {
+					t.Errorf("Expected Uber/Taxi row >= 3, got %v", row)
+				}
+			},
+		},
+		{
+			name: "multiple same sheet",
+			requests: []SubcategoryLookupRequest{
+				{SheetName: "Variáveis", Subcategory: "Uber/Taxi"},
+				{SheetName: "Variáveis", Subcategory: "Supermercado"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, results map[string]map[string]int) {
+				if _, ok := results["Variáveis"]["Uber/Taxi"]; !ok {
+					t.Error("Expected Uber/Taxi in results")
+				}
+				if _, ok := results["Variáveis"]["Supermercado"]; !ok {
+					t.Error("Expected Supermercado in results")
+				}
+			},
+		},
+		{
+			name: "multiple different sheets",
+			requests: []SubcategoryLookupRequest{
+				{SheetName: "Variáveis", Subcategory: "Uber/Taxi"},
+				{SheetName: "Fixas", Subcategory: "Diarista"},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, results map[string]map[string]int) {
+				if _, ok := results["Variáveis"]["Uber/Taxi"]; !ok {
+					t.Error("Expected Uber/Taxi in Variáveis")
+				}
+				if _, ok := results["Fixas"]["Diarista"]; !ok {
+					t.Error("Expected Diarista in Fixas")
+				}
+			},
+		},
+		{
+			name: "missing subcategory",
+			requests: []SubcategoryLookupRequest{
+				{SheetName: "Variáveis", Subcategory: "NonExistent"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			results, err := FindSubcategoryRowBatch(workbookPath, tt.requests)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindSubcategoryRowBatch() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if err == nil && tt.validate != nil {
+				tt.validate(t, results)
+			}
+		})
+	}
+}

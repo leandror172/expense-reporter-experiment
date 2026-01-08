@@ -128,3 +128,125 @@ func copyFile(src, dst string) error {
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
+
+// TDD RED: Test batch inserting multiple expenses
+func TestInsertBatchExpenses(t *testing.T) {
+	workbookPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+
+	tests := []struct {
+		name           string
+		expenseStrings []string
+		wantErrCount   int      // How many expenses should fail
+		skipErrCheck   bool     // Skip error content validation
+		errContains    []string // Expected error substrings for failed expenses
+	}{
+		{
+			name:           "empty batch",
+			expenseStrings: []string{},
+			wantErrCount:   0,
+			skipErrCheck:   true,
+		},
+		{
+			name: "single valid expense",
+			expenseStrings: []string{
+				"Test Uber;15/04;35,50;Uber/Taxi",
+			},
+			wantErrCount: 0,
+			skipErrCheck: true,
+		},
+		{
+			name: "multiple valid expenses same subcategory",
+			expenseStrings: []string{
+				"Uber Trip 1;15/04;30,00;Uber/Taxi",
+				"Uber Trip 2;16/04;25,00;Uber/Taxi",
+				"Uber Trip 3;17/04;40,00;Uber/Taxi",
+			},
+			wantErrCount: 0,
+			skipErrCheck: true,
+		},
+		{
+			name: "multiple valid expenses different subcategories",
+			expenseStrings: []string{
+				"Uber;15/04;30,00;Uber/Taxi",
+				"Groceries;16/04;150,00;Supermercado",
+				"Cleaning;17/04;200,00;Diarista",
+			},
+			wantErrCount: 0,
+			skipErrCheck: true,
+		},
+		{
+			name: "mix of valid and invalid expenses",
+			expenseStrings: []string{
+				"Valid;15/04;30,00;Uber/Taxi",
+				"Invalid Parse;invalid;25,00;Uber/Taxi",
+				"Valid;16/04;20,00;Uber/Taxi",
+			},
+			wantErrCount: 1,
+			errContains:  []string{"failed to parse expense"},
+		},
+		{
+			name: "ambiguous subcategory",
+			expenseStrings: []string{
+				"Dentist;15/04;200,00;Dentista",
+			},
+			wantErrCount: 1,
+			errContains:  []string{"ambiguous"},
+		},
+		{
+			name: "nonexistent subcategory",
+			expenseStrings: []string{
+				"Test;15/04;100,00;NonExistentCategory",
+			},
+			wantErrCount: 1,
+			errContains:  []string{"subcategory not found"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test copy of workbook
+			testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_batch_workflow.xlsx"
+			if err := copyFile(workbookPath, testPath); err != nil {
+				t.Fatalf("Failed to copy workbook: %v", err)
+			}
+			defer os.Remove(testPath)
+
+			// Call InsertBatchExpenses
+			errors := InsertBatchExpenses(testPath, tt.expenseStrings)
+
+			// Count non-nil errors
+			errCount := 0
+			for _, err := range errors {
+				if err != nil {
+					errCount++
+				}
+			}
+
+			if errCount != tt.wantErrCount {
+				t.Errorf("InsertBatchExpenses() error count = %d, want %d", errCount, tt.wantErrCount)
+				for i, err := range errors {
+					if err != nil {
+						t.Logf("  Error %d: %v", i, err)
+					}
+				}
+			}
+
+			// Validate error messages if not skipping
+			if !tt.skipErrCheck && len(tt.errContains) > 0 {
+				errIdx := 0
+				for i, err := range errors {
+					if err != nil {
+						if errIdx >= len(tt.errContains) {
+							t.Errorf("More errors than expected error messages")
+							break
+						}
+						if !strings.Contains(err.Error(), tt.errContains[errIdx]) {
+							t.Errorf("Error %d = %v, want to contain '%s'", i, err, tt.errContains[errIdx])
+						}
+						errIdx++
+					}
+				}
+			}
+		})
+	}
+}

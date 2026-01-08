@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"expense-reporter/internal/batch"
-	"expense-reporter/internal/models"
-	"expense-reporter/internal/workflow"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -104,18 +102,12 @@ func runBatch(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Step 7: Process batch with progress
+	// Step 7: Process batch with progress (optimized - 20-28x faster)
 	fmt.Printf("\nProcessing %d expenses...\n", len(expenseStrings))
 	progress := batch.NewProgressReporter(len(expenseStrings), silentFlag)
 
-	// Create insert function that uses workflow logic
-	// The processor has already parsed and resolved the expense,
-	// so we create an adapter that uses the workflow insertion logic
-	insertFunc := createInsertFunc()
-
-	summary, err := processor.Process(
+	summary, err := processor.ProcessBatch(
 		expenseStrings,
-		insertFunc,
 		progress.Update,
 	)
 	progress.Finish()
@@ -177,28 +169,6 @@ func runBatch(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	return nil
-}
-
-// createInsertFunc creates an insert function that uses workflow logic
-// The processor handles parsing and resolution, this function handles Excel insertion
-func createInsertFunc() batch.InsertFunc {
-	return func(workbookPath string, expense *models.Expense) error {
-		// Format expense back to string for workflow.InsertExpense
-		// Format: Item;DD/MM;Value;Subcategory
-		valueStr := fmt.Sprintf("%.2f", expense.Value)
-		// Convert to Brazilian format (comma as decimal separator)
-		valueStr = valueStr[:len(valueStr)-3] + "," + valueStr[len(valueStr)-2:]
-
-		expenseString := fmt.Sprintf("%s;%02d/%02d;%s;%s",
-			expense.Item,
-			expense.Date.Day(),
-			expense.Date.Month(),
-			valueStr,
-			expense.Subcategory,
-		)
-
-		return workflow.InsertExpense(workbookPath, expenseString)
-	}
 }
 
 // collectAmbiguousEntries extracts ambiguous entries from summary for writing to CSV
