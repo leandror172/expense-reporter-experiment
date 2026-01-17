@@ -137,10 +137,11 @@ func (p *Processor) processOne(expenseString string, lineNumber int, insertFunc 
 // Unlike Process(), this opens the file once, processes all expenses, and saves once
 // Maintains same BatchSummary return structure for compatibility
 // Calls progressCallback after each expense (if provided)
+// Also returns rollover expenses that cross year boundary
 func (p *Processor) ProcessBatch(
 	expenseStrings []string,
 	progressCallback func(current, total int),
-) (*BatchSummary, error) {
+) (*BatchSummary, []workflow.RolloverExpense, error) {
 	total := len(expenseStrings)
 	summary := &BatchSummary{
 		TotalLines: total,
@@ -149,12 +150,12 @@ func (p *Processor) ProcessBatch(
 
 	// Handle empty batch
 	if total == 0 {
-		return summary, nil
+		return summary, nil, nil
 	}
 
 	// Step 1: Use workflow.InsertBatchExpenses for optimized batch processing
 	// This function handles all file I/O optimization internally
-	errors := workflow.InsertBatchExpenses(p.workbookPath, expenseStrings)
+	errors, rollovers := workflow.InsertBatchExpenses(p.workbookPath, expenseStrings)
 
 	// Step 2: Convert workflow errors into BatchResult format
 	// Match the structure of Process() for compatibility
@@ -212,5 +213,5 @@ func (p *Processor) ProcessBatch(
 		}
 	}
 
-	return summary, nil
+	return summary, rollovers, nil
 }

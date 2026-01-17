@@ -212,7 +212,7 @@ func TestInsertBatchExpenses(t *testing.T) {
 			defer os.Remove(testPath)
 
 			// Call InsertBatchExpenses
-			errors := InsertBatchExpenses(testPath, tt.expenseStrings)
+			errors, _ := InsertBatchExpenses(testPath, tt.expenseStrings)
 
 			// Count non-nil errors
 			errCount := 0

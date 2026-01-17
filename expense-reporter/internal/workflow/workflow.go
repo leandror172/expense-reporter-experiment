@@ -6,6 +6,7 @@ import (
 	"expense-reporter/internal/parser"
 	"expense-reporter/internal/resolver"
 	"fmt"
+	"time"
 )
 
 // InsertExpense is the main workflow function that parses, resolves, and inserts an expense
@@ -80,25 +81,67 @@ func InsertExpense(workbookPath, expenseString string) error {
 // InsertBatchExpenses inserts multiple expense strings in a single batch operation
 // Returns a slice of BatchErrors (one per expense) - nil for success, error for failure
 // This is dramatically faster than calling InsertExpense repeatedly (20-28x speedup)
-func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models.BatchError {
+// Also returns rollover expenses that cross year boundary
+func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*models.BatchError, []RolloverExpense) {
 	// Initialize results slice (same size as input)
-	errors := make([]*models.BatchError, len(expenseStrings))
+	originalErrors := make([]*models.BatchError, len(expenseStrings))
 
 	// Handle empty batch
 	if len(expenseStrings) == 0 {
-		return errors
+		return originalErrors, nil
 	}
 
 	// Step 1: Parse all expenses first (fail fast before file operations)
-	expenses := make([]*models.Expense, len(expenseStrings))
+	parsedExpenses := make([]*models.Expense, len(expenseStrings))
 	for i, expenseString := range expenseStrings {
 		expense, err := parser.ParseExpenseString(expenseString)
 		if err != nil {
-			errors[i] = models.NewParseError(err.Error(), err)
+			originalErrors[i] = models.NewParseError(err.Error(), err)
 			continue
 		}
-		expenses[i] = expense
+		parsedExpenses[i] = expense
 	}
+
+	// Step 1.5: Expand installments
+	// Track mapping: originalIndex → [expandedIndices]
+	// Track rollover installments for next year
+	expenses := []*models.Expense{}
+	indexMapping := make(map[int][]int) // original → expanded indices
+	allRollovers := []RolloverExpense{}
+
+	for i, parsedExpense := range parsedExpenses {
+		if originalErrors[i] != nil || parsedExpense == nil {
+			// Keep original index mapping for errors
+			indexMapping[i] = []int{len(expenses)}
+			expenses = append(expenses, nil)
+			continue
+		}
+
+		if parsedExpense.IsInstallment() {
+			// Expand into multiple expenses
+			expandedList, rollovers := expandInstallments(parsedExpense, i)
+			startIdx := len(expenses)
+
+			// Add this-year installments to processing queue
+			for j := range expandedList {
+				expenses = append(expenses, expandedList[j])
+				if indexMapping[i] == nil {
+					indexMapping[i] = []int{}
+				}
+				indexMapping[i] = append(indexMapping[i], startIdx+j)
+			}
+
+			// Collect next-year installments for rollover file
+			allRollovers = append(allRollovers, rollovers...)
+		} else {
+			// Regular expense
+			indexMapping[i] = []int{len(expenses)}
+			expenses = append(expenses, parsedExpense)
+		}
+	}
+
+	// Initialize errors array for EXPANDED expenses
+	errors := make([]*models.BatchError, len(expenses))
 
 	// Step 2: Load reference sheet mappings ONCE
 	mappings, err := excel.LoadReferenceSheet(workbookPath)
@@ -109,7 +152,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 				errors[i] = models.NewIOError("load reference sheet", err)
 			}
 		}
-		return errors
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
 	// Step 3: Resolve all subcategories (in-memory, no file I/O)
@@ -145,7 +188,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 
 	// If no valid expenses, return early
 	if len(validIndices) == 0 {
-		return errors
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
 	// Step 4: Build batch lookup requests for subcategory rows
@@ -165,7 +208,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 		for _, i := range validIndices {
 			errors[i] = models.NewIOError("find subcategory rows", err)
 		}
-		return errors
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
 	// Step 5.5: Check capacity for all subcategories (NEW - capacity detection)
@@ -199,7 +242,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 				errors[i] = models.NewIOError("check capacity", err)
 			}
 		}
-		return errors
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
 	// Filter out full subcategories
@@ -228,7 +271,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 
 	// If no valid expenses after capacity check, return early
 	if len(validAfterCapacity) == 0 {
-		return errors
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
 	// Step 6: Build batch requests for empty rows (ONLY for non-full subcategories)
@@ -264,7 +307,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 				errors[i] = models.NewIOError("find empty rows", err)
 			}
 		}
-		return errors
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
 	// Step 8: Build expense-location pairs for batch write
@@ -306,9 +349,128 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models
 			for _, i := range finalValidIndices {
 				errors[i] = models.NewIOError("write expenses", err)
 			}
-			return errors
+			return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 		}
 	}
 
-	return errors
+	return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
+}
+
+// aggregateErrors combines errors from expanded installments back to original indices
+func aggregateErrors(originalErrors []*models.BatchError, expandedErrors []*models.BatchError, indexMapping map[int][]int) []*models.BatchError {
+	// Aggregate errors back to original indices
+	for origIdx, expandedIndices := range indexMapping {
+		// Skip if already has a parse error
+		if originalErrors[origIdx] != nil {
+			continue
+		}
+
+		// Collect errors for this original expense's installments
+		var firstError *models.BatchError
+		failedCount := 0
+		totalCount := len(expandedIndices)
+
+		for _, expIdx := range expandedIndices {
+			if expIdx < len(expandedErrors) && expandedErrors[expIdx] != nil {
+				failedCount++
+				if firstError == nil {
+					firstError = expandedErrors[expIdx]
+				}
+			}
+		}
+
+		// Report combined result
+		if failedCount > 0 {
+			if failedCount == totalCount {
+				// All installments failed - report first error
+				originalErrors[origIdx] = firstError
+			} else {
+				// Partial failure - create informative error
+				originalErrors[origIdx] = &models.BatchError{
+					Category:   models.ErrorCategoryCapacity,
+					Message:    fmt.Sprintf("%d/%d installments failed", failedCount, totalCount),
+					OutputFile: models.OutputFileFailed,
+					GroupLabel: "Partial Installment Failure",
+					Retriable:  true,
+				}
+			}
+		}
+	}
+
+	return originalErrors
+}
+
+// addMonths adds n months to a date, keeping the same day
+// If target month has fewer days, adjusts to last day of month
+func addMonths(t time.Time, months int) time.Time {
+	year := t.Year()
+	month := t.Month()
+	day := t.Day()
+
+	// Add months
+	month += time.Month(months)
+
+	// Handle year overflow
+	for month > 12 {
+		month -= 12
+		year++
+	}
+
+	// Create target date (may overflow if day doesn't exist in target month)
+	target := time.Date(year, month, day, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+
+	// If date overflow (e.g., Jan 31 + 1 month = Mar 3), adjust to last day of target month
+	if target.Month() != month {
+		// Go back to last day of intended month
+		target = time.Date(year, month+1, 0, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+	}
+
+	return target
+}
+
+// RolloverExpense represents an expense that rolls over to next year
+type RolloverExpense struct {
+	Expense       *models.Expense
+	OriginalIndex int
+}
+
+// expandInstallments converts a single installment expense into multiple individual expenses
+// Returns: expanded expenses, rollover expenses (for next year)
+func expandInstallments(expense *models.Expense, originalIndex int) ([]*models.Expense, []RolloverExpense) {
+	if !expense.IsInstallment() {
+		return []*models.Expense{expense}, nil
+	}
+
+	currentYear := expense.Date.Year()
+	expanded := make([]*models.Expense, 0, expense.Installment.Count)
+	rollovers := []RolloverExpense{}
+
+	for i := 0; i < expense.Installment.Count; i++ {
+		installmentDate := addMonths(expense.Date, i)
+
+		newExpense := &models.Expense{
+			Item:        expense.Item, // Will be formatted with (N/M) during write
+			Date:        installmentDate,
+			Value:       expense.Value, // Already divided
+			Subcategory: expense.Subcategory,
+			Installment: &models.Installment{
+				Total:   expense.Installment.Total,
+				Count:   expense.Installment.Count,
+				Current: i + 1, // 1-based
+			},
+		}
+
+		// Track if this installment rolls over to next year
+		if installmentDate.Year() > currentYear {
+			rollovers = append(rollovers, RolloverExpense{
+				Expense:       newExpense,
+				OriginalIndex: originalIndex,
+			})
+		} else {
+			// Normal installment for this year
+			expanded = append(expanded, newExpense)
+		}
+	}
+
+	return expanded, rollovers
 }

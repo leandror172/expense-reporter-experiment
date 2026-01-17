@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -144,6 +145,149 @@ func TestParseExpenseString(t *testing.T) {
 			}
 			if expense.Subcategory != tt.wantSubcat {
 				t.Errorf("ParseExpenseString() Subcategory = %v, want %v", expense.Subcategory, tt.wantSubcat)
+			}
+		})
+	}
+}
+
+func TestParseExpenseString_Installments(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            string
+		wantItem         string
+		wantValue        float64
+		wantInstallment  bool
+		wantInstallCount int
+		wantInstallTotal float64
+		wantErr          bool
+		errContains      string
+	}{
+		{
+			name:            "regular expense",
+			input:           "Compra;20/02;100,00;mercado",
+			wantItem:        "Compra",
+			wantValue:       100.00,
+			wantInstallment: false,
+			wantErr:         false,
+		},
+		{
+			name:             "3 installments",
+			input:            "Compra;20/02;300,00/3;mercado",
+			wantItem:         "Compra",
+			wantValue:        100.00,
+			wantInstallment:  true,
+			wantInstallCount: 3,
+			wantInstallTotal: 300.00,
+			wantErr:          false,
+		},
+		{
+			name:             "12 installments",
+			input:            "Cartão;01/01;1200,00/12;crédito",
+			wantItem:         "Cartão",
+			wantValue:        100.00,
+			wantInstallment:  true,
+			wantInstallCount: 12,
+			wantInstallTotal: 1200.00,
+			wantErr:          false,
+		},
+		{
+			name:             "24 installments",
+			input:            "Financiamento;15/06;2400,00/24;empréstimo",
+			wantItem:         "Financiamento",
+			wantValue:        100.00,
+			wantInstallment:  true,
+			wantInstallCount: 24,
+			wantInstallTotal: 2400.00,
+			wantErr:          false,
+		},
+		{
+			name:        "invalid installment count",
+			input:       "Compra;20/02;300,00/0;mercado",
+			wantErr:     true,
+			errContains: "must be positive",
+		},
+		{
+			name:        "non-numeric installment count",
+			input:       "Compra;20/02;300,00/abc;mercado",
+			wantErr:     true,
+			errContains: "must be a number",
+		},
+		{
+			name:        "too many slashes",
+			input:       "Compra;20/02;300,00/3/2;mercado",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
+		{
+			name:        "invalid total in installment",
+			input:       "Compra;20/02;abc/3;mercado",
+			wantErr:     true,
+			errContains: "invalid",
+		},
+		{
+			name:             "installment with spaces",
+			input:            "Compra;20/02; 300,00 / 3 ;mercado",
+			wantItem:         "Compra",
+			wantValue:        100.00,
+			wantInstallment:  true,
+			wantInstallCount: 3,
+			wantInstallTotal: 300.00,
+			wantErr:          false,
+		},
+		{
+			name:             "division with remainder",
+			input:            "Compra;20/02;100,00/3;mercado",
+			wantItem:         "Compra",
+			wantValue:        33.333333333333336,
+			wantInstallment:  true,
+			wantInstallCount: 3,
+			wantInstallTotal: 100.00,
+			wantErr:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expense, err := ParseExpenseString(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error containing '%s', got nil", tt.errContains)
+				} else if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("expected error containing '%s', got '%s'", tt.errContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if expense.Item != tt.wantItem {
+				t.Errorf("Item = %q, want %q", expense.Item, tt.wantItem)
+			}
+
+			if expense.Value != tt.wantValue {
+				t.Errorf("Value = %v, want %v", expense.Value, tt.wantValue)
+			}
+
+			if tt.wantInstallment {
+				if !expense.IsInstallment() {
+					t.Error("expected installment, got regular expense")
+				}
+				if expense.Installment.Count != tt.wantInstallCount {
+					t.Errorf("InstallmentCount = %v, want %v", expense.Installment.Count, tt.wantInstallCount)
+				}
+				if expense.Installment.Total != tt.wantInstallTotal {
+					t.Errorf("InstallmentTotal = %v, want %v", expense.Installment.Total, tt.wantInstallTotal)
+				}
+				if expense.Installment.Current != 0 {
+					t.Errorf("InstallmentCurrent should be 0 (unexpanded), got %v", expense.Installment.Current)
+				}
+			} else {
+				if expense.IsInstallment() {
+					t.Error("expected regular expense, got installment")
+				}
 			}
 		})
 	}

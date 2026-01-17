@@ -1,0 +1,12 @@
+# Test installments feature
+# Regular expense
+Regular item;15/04;50,00;mercado
+
+# 3 installments - should create Feb, Mar, Apr entries
+Installment 3x;20/02;300,00/3;mercado
+
+# 12 installments - should create Jan-Dec entries
+Installment 12x;01/01;1200,00/12;crédito
+
+# Rollover test - should create Nov, Dec entries + rollover file with Jan entry
+Rollover test;20/11;600,00/3;mercado

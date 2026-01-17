@@ -49,9 +49,9 @@ func WriteExpense(workbookPath string, expense *models.Expense, location *models
 	sheetName := location.SheetName
 	targetRow := location.TargetRow
 
-	// Write Item (description)
+	// Write Item (description) - use FormattedItem() to support installments
 	itemCell := fmt.Sprintf("%s%d", itemCol, targetRow)
-	if err := f.SetCellValue(sheetName, itemCell, expense.Item); err != nil {
+	if err := f.SetCellValue(sheetName, itemCell, expense.FormattedItem()); err != nil {
 		return fmt.Errorf("failed to write item to %s: %w", itemCell, err)
 	}
 
@@ -159,9 +159,9 @@ func WriteBatchExpenses(workbookPath string, expensesWithLocations []ExpenseWith
 		sheetName := location.SheetName
 		targetRow := location.TargetRow
 
-		// Write Item (description)
+		// Write Item (description) - use FormattedItem() to support installments
 		itemCell := fmt.Sprintf("%s%d", itemCol, targetRow)
-		if err := f.SetCellValue(sheetName, itemCell, expense.Item); err != nil {
+		if err := f.SetCellValue(sheetName, itemCell, expense.FormattedItem()); err != nil {
 			return fmt.Errorf("failed to write item for expense %d to %s: %w", i, itemCell, err)
 		}
 

@@ -107,7 +107,7 @@ func runBatch(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\nProcessing %d expenses...\n", len(expenseStrings))
 	progress := batch.NewProgressReporter(len(expenseStrings), silentFlag)
 
-	summary, err := processor.ProcessBatch(
+	summary, rolloverExpenses, err := processor.ProcessBatch(
 		expenseStrings,
 		progress.Update,
 	)
@@ -163,6 +163,18 @@ func runBatch(cmd *cobra.Command, args []string) error {
 	if ambiguousPath != "" {
 		fmt.Printf("\n⚠ Ambiguous expenses saved to: %s\n", ambiguousPath)
 		fmt.Println("  Choose the correct sheet for each entry and re-import.")
+	}
+
+	// Step 9.5: Write rollover file if any
+	if len(rolloverExpenses) > 0 {
+		rolloverWriter := batch.NewRolloverWriter(".")
+		rolloverPath, err := rolloverWriter.Write(rolloverExpenses)
+		if err != nil {
+			fmt.Printf("\n⚠ Warning: Failed to write rollover file: %v\n", err)
+		} else if rolloverPath != "" {
+			fmt.Printf("\n→ Rollover expenses (next year) saved to: %s\n", rolloverPath)
+			fmt.Println("  Import these in January of next year.")
+		}
 	}
 
 	// Step 10: Write report if path specified

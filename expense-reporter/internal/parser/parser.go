@@ -41,8 +41,8 @@ func ParseExpenseString(input string) (*models.Expense, error) {
 		return nil, fmt.Errorf("invalid date: %w", err)
 	}
 
-	// Parse value
-	value, err := utils.ParseCurrency(valueStr)
+	// Parse value with installments
+	value, installmentCount, err := utils.ParseCurrencyWithInstallments(valueStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid value: %w", err)
 	}
@@ -50,8 +50,18 @@ func ParseExpenseString(input string) (*models.Expense, error) {
 	expense := &models.Expense{
 		Item:        item,
 		Date:        date,
-		Value:       value,
+		Value:       value, // Per-installment value if installments > 1
 		Subcategory: subcategory,
+	}
+
+	// Add installment info if applicable
+	if installmentCount > 1 {
+		totalValue := value * float64(installmentCount)
+		expense.Installment = &models.Installment{
+			Total:   totalValue,
+			Count:   installmentCount,
+			Current: 0, // Unexpanded yet
+		}
 	}
 
 	return expense, nil
