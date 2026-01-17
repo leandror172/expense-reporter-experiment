@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"expense-reporter/internal/batch"
+	"expense-reporter/internal/models"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -116,22 +117,55 @@ func runBatch(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("batch processing failed: %w", err)
 	}
 
-	// Step 8: Write ambiguous entries if any
-	if summary.AmbiguousCount > 0 {
-		ambiguousPath := "ambiguous_expenses.csv"
-		ambiguousEntries := collectAmbiguousEntries(summary)
+	// Step 8: Collect error entries by type
+	failedEntries := []batch.FailedEntry{}
+	ambiguousEntries := []batch.AmbiguousEntry{}
 
-		writer := batch.NewAmbiguousWriter(ambiguousPath)
-		err = writer.Write(ambiguousEntries)
-		if err != nil {
-			fmt.Printf("\n⚠ Warning: Failed to write ambiguous entries: %v\n", err)
-		} else {
-			fmt.Printf("\n⚠ Ambiguous expenses saved to: %s\n", ambiguousPath)
-			fmt.Println("  Please review and choose the correct sheet for each entry.")
+	for _, result := range summary.Results {
+		if result.IsAmbiguous {
+			// Collect ambiguous entries (existing logic)
+			sheetNames := make([]string, len(result.AmbiguousOpts))
+			for i, opt := range result.AmbiguousOpts {
+				sheetNames[i] = opt.SheetName
+			}
+			ambiguousEntries = append(ambiguousEntries, batch.AmbiguousEntry{
+				ExpenseString: result.ExpenseString,
+				Subcategory:   result.Expense.Subcategory,
+				SheetOptions:  sheetNames,
+			})
+		} else if !result.Success {
+			// Collect failed entries (new)
+			errorCategory := models.ErrorCategoryIO // default
+			if batchErr, ok := result.Error.(*models.BatchError); ok {
+				errorCategory = batchErr.Category
+			}
+
+			failedEntries = append(failedEntries, batch.FailedEntry{
+				ExpenseString: result.ExpenseString,
+				ErrorMessage:  result.Error.Error(),
+				ErrorCategory: errorCategory,
+			})
 		}
 	}
 
-	// Step 9: Write report if path specified
+	// Step 9: Write failed and ambiguous files
+	failedWriter := batch.NewFailedWriter(".")
+	failedPath, ambiguousPath, err := failedWriter.Write(failedEntries, ambiguousEntries)
+	if err != nil {
+		fmt.Printf("\n⚠ Warning: Failed to write output files: %v\n", err)
+	}
+
+	if failedPath != "" {
+		fmt.Printf("\n✗ Failed expenses saved to: %s\n", failedPath)
+		fmt.Println("  Fix the errors and re-import this file.")
+	}
+
+	if ambiguousPath != "" {
+		fmt.Printf("\n⚠ Ambiguous expenses saved to: %s\n", ambiguousPath)
+		fmt.Println("  Choose the correct sheet for each entry and re-import.")
+	}
+
+	// Step 10: Write report if path specified
 	if reportPath != "" {
 		reportWriter := batch.NewReportWriter(reportPath)
 		err = reportWriter.Write(summary, csvPath)
@@ -142,29 +176,16 @@ func runBatch(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Step 10: Display summary
+	// Step 11: Display summary
 	fmt.Println("\nResults")
 	fmt.Println("-------")
 	fmt.Printf("✓ Successfully inserted: %d\n", summary.SuccessCount)
 	fmt.Printf("✗ Failed: %d\n", summary.ErrorCount)
 	fmt.Printf("⚠ Ambiguous (review required): %d\n", summary.AmbiguousCount)
 
-	// Show first few errors if any
+	// Show grouped errors if any
 	if summary.ErrorCount > 0 {
-		fmt.Println("\nFirst errors:")
-		count := 0
-		for _, result := range summary.Results {
-			if !result.Success && !result.IsAmbiguous {
-				fmt.Printf("  Line %d: %s\n", result.LineNumber, result.Error.Error())
-				count++
-				if count >= 3 {
-					if summary.ErrorCount > 3 {
-						fmt.Printf("  ... and %d more (see report for details)\n", summary.ErrorCount-3)
-					}
-					break
-				}
-			}
-		}
+		displayGroupedErrors(summary)
 	}
 
 	fmt.Println()
@@ -192,4 +213,75 @@ func collectAmbiguousEntries(summary *batch.BatchSummary) []batch.AmbiguousEntry
 	}
 
 	return entries
+}
+
+// displayGroupedErrors shows errors grouped by category with fix instructions
+func displayGroupedErrors(summary *batch.BatchSummary) {
+	// Group errors by category
+	errorGroups := make(map[models.ErrorCategory][]batch.BatchResult)
+
+	for _, result := range summary.Results {
+		if !result.Success && !result.IsAmbiguous {
+			category := models.ErrorCategoryIO // default
+			if batchErr, ok := result.Error.(*models.BatchError); ok {
+				category = batchErr.Category
+			}
+			errorGroups[category] = append(errorGroups[category], result)
+		}
+	}
+
+	// Display each group
+	fmt.Println("\nErrors by Category:")
+	for category, results := range errorGroups {
+		groupLabel := getGroupLabel(category)
+		fmt.Printf("\n%s (%d):\n", groupLabel, len(results))
+
+		// Show first 3 errors
+		for i, result := range results {
+			if i >= 3 {
+				fmt.Printf("  ... and %d more\n", len(results)-3)
+				break
+			}
+			fmt.Printf("  Line %d: %s\n", result.LineNumber, result.Error.Error())
+		}
+
+		// Show fix instructions
+		fmt.Printf("  Fix: %s\n", getFixInstructions(category))
+	}
+}
+
+// getGroupLabel returns human-readable label for error category
+func getGroupLabel(category models.ErrorCategory) string {
+	switch category {
+	case models.ErrorCategoryParse:
+		return "Parse Errors"
+	case models.ErrorCategoryResolution:
+		return "Subcategory Not Found"
+	case models.ErrorCategoryCapacity:
+		return "Capacity Full"
+	case models.ErrorCategoryAmbiguous:
+		return "Ambiguous Subcategories"
+	case models.ErrorCategoryIO:
+		return "File I/O Errors"
+	default:
+		return "Other Errors"
+	}
+}
+
+// getFixInstructions returns fix instructions for each category
+func getFixInstructions(category models.ErrorCategory) string {
+	switch category {
+	case models.ErrorCategoryParse:
+		return "Check CSV format: <item>;<DD/MM>;<value>;<subcategory>"
+	case models.ErrorCategoryResolution:
+		return "Verify subcategory exists in reference sheet"
+	case models.ErrorCategoryCapacity:
+		return "Manually expand subcategory rows in Excel before re-importing"
+	case models.ErrorCategoryAmbiguous:
+		return "Specify sheet in ambiguous CSV file"
+	case models.ErrorCategoryIO:
+		return "Check file permissions and disk space"
+	default:
+		return "See failed CSV for details"
+	}
 }

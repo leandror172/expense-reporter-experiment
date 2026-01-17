@@ -78,11 +78,11 @@ func InsertExpense(workbookPath, expenseString string) error {
 }
 
 // InsertBatchExpenses inserts multiple expense strings in a single batch operation
-// Returns a slice of errors (one per expense) - nil for success, error for failure
+// Returns a slice of BatchErrors (one per expense) - nil for success, error for failure
 // This is dramatically faster than calling InsertExpense repeatedly (20-28x speedup)
-func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
+func InsertBatchExpenses(workbookPath string, expenseStrings []string) []*models.BatchError {
 	// Initialize results slice (same size as input)
-	errors := make([]error, len(expenseStrings))
+	errors := make([]*models.BatchError, len(expenseStrings))
 
 	// Handle empty batch
 	if len(expenseStrings) == 0 {
@@ -94,7 +94,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 	for i, expenseString := range expenseStrings {
 		expense, err := parser.ParseExpenseString(expenseString)
 		if err != nil {
-			errors[i] = fmt.Errorf("failed to parse expense: %w", err)
+			errors[i] = models.NewParseError(err.Error(), err)
 			continue
 		}
 		expenses[i] = expense
@@ -106,7 +106,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 		// If reference sheet fails, all expenses fail
 		for i := range errors {
 			if errors[i] == nil { // Don't overwrite parse errors
-				errors[i] = fmt.Errorf("failed to load reference sheet: %w", err)
+				errors[i] = models.NewIOError("load reference sheet", err)
 			}
 		}
 		return errors
@@ -124,7 +124,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 
 		mapping, isAmbiguous, err := resolver.ResolveSubcategory(mappings, expense.Subcategory)
 		if err != nil {
-			errors[i] = fmt.Errorf("failed to resolve subcategory: %w", err)
+			errors[i] = models.NewResolutionError(expense.Subcategory)
 			continue
 		}
 
@@ -135,8 +135,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 				searchKey = parent
 			}
 			options := resolver.GetAmbiguousOptions(mappings, searchKey)
-			errors[i] = fmt.Errorf("subcategory '%s' is ambiguous, found in %d sheets: please specify which one to use",
-				expense.Subcategory, len(options))
+			errors[i] = models.NewAmbiguousError(expense.Subcategory, len(options))
 			continue
 		}
 
@@ -164,14 +163,77 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 	if err != nil {
 		// If batch lookup fails, mark all remaining valid expenses as failed
 		for _, i := range validIndices {
-			errors[i] = fmt.Errorf("failed to find subcategory rows: %w", err)
+			errors[i] = models.NewIOError("find subcategory rows", err)
 		}
 		return errors
 	}
 
-	// Step 6: Build batch requests for empty rows
-	emptyRowRequests := []excel.EmptyRowRequest{}
+	// Step 5.5: Check capacity for all subcategories (NEW - capacity detection)
+	capacityRequests := []excel.CapacityCheckRequest{}
 	for _, i := range validIndices {
+		expense := expenses[i]
+		mapping := resolvedMappings[i]
+		subcatRow := subcatRows[mapping.SheetName][mapping.Subcategory]
+
+		// Get month column
+		itemCol, _, _, err := excel.GetMonthColumns(expense.Date.Month())
+		if err != nil {
+			errors[i] = models.NewParseError(fmt.Sprintf("invalid month: %v", err), err)
+			continue
+		}
+
+		capacityRequests = append(capacityRequests, excel.CapacityCheckRequest{
+			SheetName:      mapping.SheetName,
+			SubcategoryRow: subcatRow,
+			TotalRow:       mapping.TotalRow,
+			MonthColumn:    itemCol,
+		})
+	}
+
+	// Check capacity for all in ONE file open
+	capacityResults, err := excel.CheckCapacityBatch(workbookPath, capacityRequests)
+	if err != nil {
+		// If capacity check fails, mark all as IO errors
+		for _, i := range validIndices {
+			if errors[i] == nil {
+				errors[i] = models.NewIOError("check capacity", err)
+			}
+		}
+		return errors
+	}
+
+	// Filter out full subcategories
+	validAfterCapacity := []int{}
+	for _, i := range validIndices {
+		if errors[i] != nil {
+			continue // Already failed (e.g., month column error)
+		}
+
+		mapping := resolvedMappings[i]
+		subcatRow := subcatRows[mapping.SheetName][mapping.Subcategory]
+		capacityInfo := capacityResults[mapping.SheetName][subcatRow]
+
+		if capacityInfo.IsFull {
+			// Create capacity error
+			errors[i] = models.NewCapacityError(
+				mapping.Subcategory,
+				mapping.SheetName,
+				capacityInfo.AvailableRows,
+			)
+			continue
+		}
+
+		validAfterCapacity = append(validAfterCapacity, i)
+	}
+
+	// If no valid expenses after capacity check, return early
+	if len(validAfterCapacity) == 0 {
+		return errors
+	}
+
+	// Step 6: Build batch requests for empty rows (ONLY for non-full subcategories)
+	emptyRowRequests := []excel.EmptyRowRequest{}
+	for _, i := range validAfterCapacity {
 		expense := expenses[i]
 		mapping := resolvedMappings[i]
 
@@ -181,7 +243,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 		// Get month column
 		itemCol, _, _, err := excel.GetMonthColumns(expense.Date.Month())
 		if err != nil {
-			errors[i] = fmt.Errorf("failed to get month columns: %w", err)
+			errors[i] = models.NewParseError(fmt.Sprintf("invalid month: %v", err), err)
 			continue
 		}
 
@@ -197,9 +259,9 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 	emptyRows, err := excel.FindNextEmptyRowBatch(workbookPath, emptyRowRequests)
 	if err != nil {
 		// If batch lookup fails, mark all remaining valid expenses as failed
-		for _, i := range validIndices {
+		for _, i := range validAfterCapacity {
 			if errors[i] == nil { // Don't overwrite month column errors
-				errors[i] = fmt.Errorf("failed to find empty rows: %w", err)
+				errors[i] = models.NewIOError("find empty rows", err)
 			}
 		}
 		return errors
@@ -209,7 +271,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 	expensesWithLocations := []excel.ExpenseWithLocation{}
 	finalValidIndices := []int{}
 
-	for _, i := range validIndices {
+	for _, i := range validAfterCapacity {
 		if errors[i] != nil {
 			continue // Skip expenses that failed in month column lookup
 		}
@@ -242,7 +304,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) []error {
 		if err := excel.WriteBatchExpenses(workbookPath, expensesWithLocations); err != nil {
 			// If batch write fails, mark all expenses that were going to be written as failed
 			for _, i := range finalValidIndices {
-				errors[i] = fmt.Errorf("failed to write expenses: %w", err)
+				errors[i] = models.NewIOError("write expenses", err)
 			}
 			return errors
 		}

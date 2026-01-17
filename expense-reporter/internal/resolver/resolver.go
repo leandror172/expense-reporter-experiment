@@ -11,7 +11,8 @@ type SubcategoryMapping struct {
 	Subcategory string
 	SheetName   string
 	Category    string
-	RowNumber   int
+	RowNumber   int // Subcategory header row (from column D)
+	TotalRow    int // TOTAL row number (from column F "Total Linha")
 }
 
 // ResolveSubcategory finds the sheet and location for a subcategory

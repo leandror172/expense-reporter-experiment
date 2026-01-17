@@ -173,27 +173,23 @@ func (p *Processor) ProcessBatch(
 
 		// Check error from batch processing
 		if errors[i] != nil {
-			// Determine error type (ambiguous vs general error)
-			errMsg := errors[i].Error()
+			// Workflow now returns BatchError types
+			batchErr := errors[i]
+			result.Error = batchErr
 
-			// Check if it's an ambiguous error
-			if len(errMsg) > 0 && (result.Expense != nil) {
-				// Try to resolve to detect ambiguity
-				if p.mappings != nil {
-					_, isAmbiguous, _ := resolver.ResolveSubcategory(p.mappings, result.Expense.Subcategory)
-					if isAmbiguous {
-						result.IsAmbiguous = true
-						searchKey := result.Expense.Subcategory
-						parent := resolver.ExtractParentSubcategory(result.Expense.Subcategory)
-						if parent != result.Expense.Subcategory {
-							searchKey = parent
-						}
-						result.AmbiguousOpts = resolver.GetAmbiguousOptions(p.mappings, searchKey)
+			// Set IsAmbiguous based on error category
+			if batchErr.Category == models.ErrorCategoryAmbiguous {
+				result.IsAmbiguous = true
+				// Get ambiguous options
+				if p.mappings != nil && result.Expense != nil {
+					searchKey := result.Expense.Subcategory
+					parent := resolver.ExtractParentSubcategory(result.Expense.Subcategory)
+					if parent != result.Expense.Subcategory {
+						searchKey = parent
 					}
+					result.AmbiguousOpts = resolver.GetAmbiguousOptions(p.mappings, searchKey)
 				}
 			}
-
-			result.Error = errors[i]
 		} else {
 			// Success
 			result.Success = true

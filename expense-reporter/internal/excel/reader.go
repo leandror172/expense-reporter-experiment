@@ -67,11 +67,18 @@ func LoadReferenceSheet(workbookPath string) (map[string][]resolver.SubcategoryM
 			fmt.Sscanf(row[3], "%d", &rowNum)
 		}
 
+		// Get total row from column F if available
+		totalRow := 0
+		if len(row) > 5 && row[5] != "" {
+			fmt.Sscanf(row[5], "%d", &totalRow)
+		}
+
 		mapping := resolver.SubcategoryMapping{
 			Subcategory: subcategory,
 			SheetName:   mainType,
 			Category:    category,
 			RowNumber:   rowNum,
+			TotalRow:    totalRow,
 		}
 
 		mappings[subcategory] = append(mappings[subcategory], mapping)
@@ -272,6 +279,109 @@ func FindNextEmptyRowBatch(workbookPath string, requests []EmptyRowRequest) (map
 
 			if !found {
 				return nil, fmt.Errorf("no empty row found within %d rows for %s", maxScan, req.SubcategoryName)
+			}
+		}
+
+		results[sheetName] = sheetResults
+	}
+
+	return results, nil
+}
+
+// CapacityInfo holds information about subcategory section capacity
+type CapacityInfo struct {
+	SubcategoryRow int
+	TotalRow       int
+	UsedRows       int
+	AvailableRows  int
+	IsFull         bool
+}
+
+// CapacityCheckRequest represents a request to check capacity
+type CapacityCheckRequest struct {
+	SheetName      string
+	SubcategoryRow int
+	TotalRow       int
+	MonthColumn    string
+}
+
+// CheckCapacityBatch checks capacity for multiple subcategories in one file open
+// Returns map[sheetName]map[subcategoryRow]*CapacityInfo
+func CheckCapacityBatch(
+	workbookPath string,
+	requests []CapacityCheckRequest,
+) (map[string]map[int]*CapacityInfo, error) {
+	if len(requests) == 0 {
+		return map[string]map[int]*CapacityInfo{}, nil
+	}
+
+	f, err := excelize.OpenFile(workbookPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open workbook: %w", err)
+	}
+	defer f.Close()
+
+	// Group requests by sheet
+	requestsBySheet := make(map[string][]CapacityCheckRequest)
+	for _, req := range requests {
+		requestsBySheet[req.SheetName] = append(requestsBySheet[req.SheetName], req)
+	}
+
+	results := make(map[string]map[int]*CapacityInfo)
+
+	for sheetName, sheetRequests := range requestsBySheet {
+		sheetResults := make(map[int]*CapacityInfo)
+
+		for _, req := range sheetRequests {
+			// Skip capacity check if no total row info
+			if req.TotalRow == 0 {
+				sheetResults[req.SubcategoryRow] = &CapacityInfo{
+					SubcategoryRow: req.SubcategoryRow,
+					TotalRow:       0,
+					UsedRows:       0,
+					AvailableRows:  999, // Assume unlimited
+					IsFull:         false,
+				}
+				continue
+			}
+
+			// Validate total row is after subcategory row
+			if req.TotalRow <= req.SubcategoryRow {
+				sheetResults[req.SubcategoryRow] = &CapacityInfo{
+					SubcategoryRow: req.SubcategoryRow,
+					TotalRow:       req.TotalRow,
+					UsedRows:       0,
+					AvailableRows:  999, // Invalid config, skip check
+					IsFull:         false,
+				}
+				continue
+			}
+
+			// Count used rows by scanning from subcategoryRow to totalRow
+			usedRows := 0
+			maxCapacity := req.TotalRow - req.SubcategoryRow - 1 // -1 for TOTAL row itself
+
+			for row := req.SubcategoryRow; row < req.TotalRow; row++ {
+				cellRef := fmt.Sprintf("%s%d", req.MonthColumn, row)
+				cellValue, err := f.GetCellValue(sheetName, cellRef)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read cell %s: %w", cellRef, err)
+				}
+
+				if cellValue != "" {
+					usedRows++
+				}
+			}
+
+			availableRows := maxCapacity - usedRows
+			isFull := availableRows <= 0
+
+			sheetResults[req.SubcategoryRow] = &CapacityInfo{
+				SubcategoryRow: req.SubcategoryRow,
+				TotalRow:       req.TotalRow,
+				UsedRows:       usedRows,
+				AvailableRows:  availableRows,
+				IsFull:         isFull,
 			}
 		}
 
