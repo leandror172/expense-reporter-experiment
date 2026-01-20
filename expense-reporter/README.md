@@ -4,9 +4,9 @@ CLI tool for automating expense entry into Excel budget spreadsheet.
 
 ## Status: Production Ready ✅
 
-**Current Version**: 1.0.0 with Batch Import
-**Total Tests**: 179 tests (all passing)
-**Development Phases**: 9 phases complete
+**Current Version**: 2.0.0 with Installment Payments
+**Total Tests**: 179+ tests (all passing)
+**Development Phases**: 10 phases complete
 
 ## Features
 
@@ -21,6 +21,25 @@ Import multiple expenses from a CSV file:
 ```bash
 expense-reporter batch expenses.csv --backup --report=import_report.txt
 ```
+
+### ✅ Installment Payments
+Automatically expand installment payments across multiple months:
+```bash
+# Input: 300,00 divided into 3 monthly installments
+Compra parcelada;20/02;300,00/3;mercado
+
+# Creates 3 expenses automatically:
+# Feb 20: "Compra parcelada (1/3)" - 100,00
+# Mar 20: "Compra parcelada (2/3)" - 100,00
+# Apr 20: "Compra parcelada (3/3)" - 100,00
+```
+
+**Features:**
+- Automatic division of total amount by installment count
+- Monthly date progression (same day, next month)
+- Formatted item descriptions with "(N/M)" suffix
+- Year rollover detection (installments crossing into next year saved to separate file)
+- Partial success handling (some installments succeed, others fail capacity)
 
 ### ✅ Smart Subcategory Matching
 Automatically handles variations:
@@ -95,6 +114,8 @@ expense-reporter batch expenses.csv
 - `item_description`: Free text (no semicolons)
 - `DD/MM`: Day and month (year is always 2025)
 - `value_##,##`: Value with comma as decimal separator (Brazilian format)
+  - **Regular**: `150,00` (single payment)
+  - **Installment**: `300,00/3` (total divided by installment count)
 - `subcategory`: Must match subcategory in Excel reference sheet
 
 **Examples:**
@@ -102,6 +123,10 @@ expense-reporter batch expenses.csv
 Uber para o centro;15/04;35,50;Uber/Taxi
 Compra Pão de Açúcar;03/01;245,67;Supermercado
 Consulta vet;22/03;180,00;Orion - Consultas
+
+# Installment payments
+Cartão de crédito;01/01;1200,00/12;crédito
+Compra parcelada;20/02;300,00/3;mercado
 ```
 
 ### CSV File Format
@@ -187,6 +212,30 @@ expense-reporter batch expenses.csv --backup
 # Creates: workbook_backup_20250415_143022.xlsx
 ```
 
+### Installment Expansion
+Automatically expands installment payments into individual monthly expenses:
+
+**Input CSV:**
+```csv
+Compra parcelada;20/02;300,00/3;mercado
+Cartão anual;01/01;1200,00/12;crédito
+```
+
+**Result:**
+- First expense creates 3 entries (Feb 20, Mar 20, Apr 20), each 100,00
+- Second expense creates 12 entries (Jan-Dec), each 100,00
+- Item descriptions automatically formatted: "Compra parcelada (1/3)", "Compra parcelada (2/3)", etc.
+
+**Year Rollover Handling:**
+If installments extend into next year, they're saved to `expenses_rollover_YYYYMMDD_HHMMSS.csv`:
+```csv
+# Example: November expense with 3 installments
+Compra fim de ano;20/11;600,00/3;mercado
+
+# Nov and Dec installed this year
+# Jan installment saved to rollover file for import next year
+```
+
 ## Project Structure
 
 ```
@@ -210,6 +259,7 @@ expense-reporter/
 │   │   ├── report.go               # Report generation
 │   │   ├── backup.go               # Backup creation
 │   │   ├── ambiguous_writer.go     # Ambiguous CSV writer
+│   │   ├── rollover_writer.go      # Rollover installments writer
 │   │   └── *_test.go               # 23 test functions
 │   ├── cli/                        # CLI interface utilities
 │   ├── excel/                      # Excel operations
@@ -218,7 +268,7 @@ expense-reporter/
 │   │   ├── writer.go               # Excel writing with formatting
 │   │   └── *_test.go               # Excel tests
 │   ├── models/                     # Data models
-│   │   ├── expense.go              # Expense & SheetLocation
+│   │   ├── expense.go              # Expense, SheetLocation, Installment
 │   │   └── expense_test.go         # Model tests
 │   ├── parser/                     # Expense string parser
 │   │   ├── parser.go
@@ -232,7 +282,7 @@ expense-reporter/
 └── pkg/
     └── utils/                      # Utility functions
         ├── date.go                 # Date parsing (DD/MM)
-        ├── currency.go             # Currency parsing (##,##)
+        ├── currency.go             # Currency parsing (##,## and ##,##/N)
         └── *_test.go               # Utility tests
 ```
 
@@ -250,6 +300,16 @@ expense-reporter/
 7. **Batch Phase 3**: Processor + Progress - Core batch logic (166 tests)
 8. **Batch Phase 4**: Report + Backup - Output and safety (175 tests)
 9. **Batch Phase 5**: CLI Integration - Complete feature (179 tests)
+
+### Installment Payment Feature (Phase 10)
+10. **Installment Support**: Automatic payment expansion (179+ tests)
+    - Extended currency parser to handle division syntax (`300,00/3`)
+    - Added `Installment` model with total, count, and current tracking
+    - Implemented installment expansion in workflow (one input → multiple expenses)
+    - Created rollover file writer for next-year installments
+    - Updated Excel writer to use formatted item descriptions
+    - Comprehensive error aggregation for partial failures
+    - Date arithmetic with month overflow handling
 
 ## Dependencies
 
@@ -316,6 +376,7 @@ This project strictly follows Test-Driven Development:
 2. **Brazilian Format**: Uses comma as decimal separator
 3. **Sequential Processing**: Not parallel (Excel file locking)
 4. **Windows Tested**: Primarily tested on Windows
+5. **Installment Syntax**: Only division format supported (`300,00/3`), multiplication format (`100,00x3`) reserved for future
 
 ## Troubleshooting
 
@@ -358,5 +419,6 @@ Built with Test-Driven Development following strict quality standards.
 ---
 
 **Status**: ✅ Production Ready
-**Tests**: 179 passing
+**Tests**: 179+ passing
 **Quality**: High (TDD, comprehensive coverage)
+**Version**: 2.0.0
