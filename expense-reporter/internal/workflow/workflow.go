@@ -6,6 +6,7 @@ import (
 	"expense-reporter/internal/parser"
 	"expense-reporter/internal/resolver"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -17,30 +18,28 @@ func InsertExpense(workbookPath, expenseString string) error {
 		return fmt.Errorf("failed to parse expense: %w", err)
 	}
 
-	// Step 2: Load reference sheet mappings
+	// Step 2: Load reference sheet mappings and build hierarchical index
 	mappings, err := excel.LoadReferenceSheet(workbookPath)
 	if err != nil {
 		return fmt.Errorf("failed to load reference sheet: %w", err)
 	}
+	pathIndex := excel.BuildPathIndex(mappings)
 
-	// Step 3: Resolve subcategory to sheet location
-	mapping, isAmbiguous, err := resolver.ResolveSubcategory(mappings, expense.Subcategory)
+	// Step 3: Resolve subcategory to sheet location using hierarchical path
+	mapping, isAmbiguous, err := resolver.ResolveSubcategoryWithPath(pathIndex, expense.Subcategory)
 	if err != nil {
 		return fmt.Errorf("failed to resolve subcategory: %w", err)
 	}
 
 	// Step 4: Handle ambiguous subcategories
 	if isAmbiguous {
-		// Try with parent if it's a detailed subcategory
-		searchKey := expense.Subcategory
-		parent := resolver.ExtractParentSubcategory(expense.Subcategory)
-		if parent != expense.Subcategory {
-			// Use parent for ambiguous lookup
-			searchKey = parent
+		options := resolver.GetAmbiguousOptions(pathIndex.BySubcategory, expense.Subcategory)
+		sheetNames := make([]string, len(options))
+		for i, opt := range options {
+			sheetNames[i] = opt.SheetName
 		}
-		options := resolver.GetAmbiguousOptions(mappings, searchKey)
-		return fmt.Errorf("subcategory '%s' is ambiguous, found in %d sheets: please specify which one to use",
-			expense.Subcategory, len(options))
+		return fmt.Errorf("ambiguous subcategory '%s' found in sheets: [%s]. Use hierarchical path like 'Sheet,Category,Subcategory' to disambiguate",
+			expense.Subcategory, strings.Join(sheetNames, ", "))
 	}
 
 	// Step 5: Find the target row in the sheet
@@ -143,7 +142,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	// Initialize errors array for EXPANDED expenses
 	errors := make([]*models.BatchError, len(expenses))
 
-	// Step 2: Load reference sheet mappings ONCE
+	// Step 2: Load reference sheet mappings ONCE and build hierarchical index
 	mappings, err := excel.LoadReferenceSheet(workbookPath)
 	if err != nil {
 		// If reference sheet fails, all expenses fail
@@ -154,8 +153,9 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 		}
 		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
+	pathIndex := excel.BuildPathIndex(mappings)
 
-	// Step 3: Resolve all subcategories (in-memory, no file I/O)
+	// Step 3: Resolve all subcategories using hierarchical paths (in-memory, no file I/O)
 	// Track valid expenses for batch processing
 	validIndices := []int{}
 	resolvedMappings := make([]*resolver.SubcategoryMapping, len(expenses))
@@ -165,19 +165,14 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 			continue // Skip already failed expenses
 		}
 
-		mapping, isAmbiguous, err := resolver.ResolveSubcategory(mappings, expense.Subcategory)
+		mapping, isAmbiguous, err := resolver.ResolveSubcategoryWithPath(pathIndex, expense.Subcategory)
 		if err != nil {
 			errors[i] = models.NewResolutionError(expense.Subcategory)
 			continue
 		}
 
 		if isAmbiguous {
-			searchKey := expense.Subcategory
-			parent := resolver.ExtractParentSubcategory(expense.Subcategory)
-			if parent != expense.Subcategory {
-				searchKey = parent
-			}
-			options := resolver.GetAmbiguousOptions(mappings, searchKey)
+			options := resolver.GetAmbiguousOptions(pathIndex.BySubcategory, expense.Subcategory)
 			errors[i] = models.NewAmbiguousError(expense.Subcategory, len(options))
 			continue
 		}

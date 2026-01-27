@@ -390,3 +390,36 @@ func CheckCapacityBatch(
 
 	return results, nil
 }
+
+// BuildPathIndex creates hierarchical index from flat mappings
+// This enables progressive resolution: "Diarista" → "Habitação,Diarista" → "Fixas,Habitação,Diarista"
+func BuildPathIndex(flatMappings map[string][]resolver.SubcategoryMapping) *resolver.PathIndex {
+	index := &resolver.PathIndex{
+		BySubcategory: flatMappings,
+		ByFullPath:    make(map[string]*resolver.SubcategoryMapping),
+		By2Level:      make(map[string][]resolver.SubcategoryMapping),
+		By1Level:      make(map[string][]resolver.SubcategoryMapping),
+	}
+
+	for _, mappings := range flatMappings {
+		for i := range mappings {
+			m := mappings[i]
+
+			// 1-level: subcategory only
+			subKey := resolver.NormalizePath(m.Subcategory)
+			index.By1Level[subKey] = append(index.By1Level[subKey], m)
+
+			// 2-level: category,subcategory
+			if m.Category != "" {
+				twoKey := resolver.NormalizePath(m.Category + "," + m.Subcategory)
+				index.By2Level[twoKey] = append(index.By2Level[twoKey], m)
+			}
+
+			// 3-level: sheet,category,subcategory
+			fullKey := resolver.NormalizePath(m.SheetName + "," + m.Category + "," + m.Subcategory)
+			index.ByFullPath[fullKey] = &m
+		}
+	}
+
+	return index
+}

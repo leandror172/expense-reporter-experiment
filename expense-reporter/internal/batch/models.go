@@ -30,5 +30,6 @@ type BatchSummary struct {
 type AmbiguousEntry struct {
 	ExpenseString string   // Original expense string
 	Subcategory   string   // The ambiguous subcategory name
-	SheetOptions  []string // Available sheet names
+	SheetOptions  []string // Available sheet names (legacy format)
+	PathOptions   []string // Hierarchical paths: "Sheet,Category,Subcategory"
 }
