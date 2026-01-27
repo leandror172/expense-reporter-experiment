@@ -4,9 +4,9 @@ CLI tool for automating expense entry into Excel budget spreadsheet.
 
 ## Status: Production Ready ✅
 
-**Current Version**: 2.0.0 with Installment Payments
-**Total Tests**: 179+ tests (all passing)
-**Development Phases**: 10 phases complete
+**Current Version**: 2.1.0 with Hierarchical Paths
+**Total Tests**: 190+ tests (all passing)
+**Development Phases**: 11 phases complete
 
 ## Features
 
@@ -45,6 +45,55 @@ Compra parcelada;20/02;300,00/3;mercado
 Automatically handles variations:
 - "Orion - Consultas" → "Orion" (parent matching)
 - Detects ambiguous subcategories across multiple sheets
+
+### ✅ Hierarchical Subcategory Paths
+When a subcategory exists in multiple sheets, use hierarchical paths to disambiguate:
+
+**Formats:**
+- Full path: `Fixas,Habitação,Diarista`
+- 2-level: `Habitação,Diarista`
+- 1-level: `Diarista` (may be ambiguous)
+
+**Examples:**
+```csv
+# Ambiguous - will fail with helpful error
+Cleaning service;15/04;150,00;Diarista
+
+# Disambiguated with 2-level path
+Cleaning service;15/04;150,00;Habitação,Diarista
+
+# Disambiguated with 3-level path
+Cleaning service;15/04;150,00;Fixas,Habitação,Diarista
+```
+
+**Features:**
+- **Case-insensitive**: `FIXAS,habitação,Diarista` works
+- **Spaces allowed**: `Fixas , Habitação , Diarista` works
+- **Progressive resolution**: System tries shortest path first
+- **Backward compatible**: Existing single-name subcategories still work
+
+**How It Works:**
+The resolver tries to match from deepest level first:
+1. Try just "Diarista"
+2. If ambiguous, try "Habitação,Diarista"
+3. If still ambiguous, try "Fixas,Habitação,Diarista"
+
+Stops at first unambiguous match.
+
+**Ambiguous Subcategories:**
+When batch import encounters ambiguous subcategories, it creates an `ambiguous_expenses.csv` file with path suggestions:
+```csv
+# Ambiguous expenses - choose correct path and re-import
+# Replace the subcategory with the full hierarchical path
+# Format: Sheet,Category,Subcategory OR Category,Subcategory
+
+Cleaning service;15/04;150,00;Diarista
+# Path options:
+#   Fixas,Habitação,Diarista
+#   Variáveis,Casa,Diarista
+```
+
+Edit the subcategory in the expense line to the correct path and re-import.
 
 ### ✅ Professional CLI
 - Cobra framework (kubectl/docker pattern)

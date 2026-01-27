@@ -17,6 +17,7 @@ type InsertFunc func(workbookPath string, expense *models.Expense) error
 type Processor struct {
 	workbookPath string
 	mappings     map[string][]resolver.SubcategoryMapping
+	pathIndex    *resolver.PathIndex
 }
 
 // NewProcessor creates a new batch processor
@@ -34,12 +35,14 @@ func (p *Processor) LoadMappings() error {
 		return fmt.Errorf("failed to load reference sheet: %w", err)
 	}
 	p.mappings = mappings
+	p.pathIndex = excel.BuildPathIndex(mappings)
 	return nil
 }
 
 // SetMappings sets mappings directly (for testing)
 func (p *Processor) SetMappings(mappings map[string][]resolver.SubcategoryMapping) {
 	p.mappings = mappings
+	p.pathIndex = excel.BuildPathIndex(mappings)
 }
 
 // Process processes a batch of expense strings
@@ -98,8 +101,8 @@ func (p *Processor) processOne(expenseString string, lineNumber int, insertFunc 
 	}
 	result.Expense = expense
 
-	// Step 2: Resolve subcategory
-	mapping, isAmbiguous, err := resolver.ResolveSubcategory(p.mappings, expense.Subcategory)
+	// Step 2: Resolve subcategory using hierarchical path index
+	mapping, isAmbiguous, err := resolver.ResolveSubcategoryWithPath(p.pathIndex, expense.Subcategory)
 	if err != nil {
 		result.Error = err
 		return result
@@ -109,12 +112,7 @@ func (p *Processor) processOne(expenseString string, lineNumber int, insertFunc 
 	if isAmbiguous {
 		result.IsAmbiguous = true
 		// Get all options for this subcategory
-		searchKey := expense.Subcategory
-		parent := resolver.ExtractParentSubcategory(expense.Subcategory)
-		if parent != expense.Subcategory {
-			searchKey = parent
-		}
-		result.AmbiguousOpts = resolver.GetAmbiguousOptions(p.mappings, searchKey)
+		result.AmbiguousOpts = resolver.GetAmbiguousOptions(p.pathIndex.BySubcategory, expense.Subcategory)
 		// Don't insert ambiguous expenses - user must resolve manually
 		return result
 	}

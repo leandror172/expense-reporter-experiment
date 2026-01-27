@@ -228,3 +228,57 @@ func TestGetAmbiguousOptions(t *testing.T) {
 		t.Errorf("GetAmbiguousOptions() missing expected sheet options")
 	}
 }
+
+// Test NormalizePath function
+func TestNormalizePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"lowercase conversion", "Fixas,Habitação,Diarista", "fixas,habitação,diarista"},
+		{"uppercase conversion", "FIXAS,HABITAÇÃO,DIARISTA", "fixas,habitação,diarista"},
+		{"mixed case", "FiXaS,HaBiTaÇãO,DiArIsTa", "fixas,habitação,diarista"},
+		{"trim spaces", "Fixas , Habitação , Diarista", "fixas,habitação,diarista"},
+		{"extra spaces", "  Fixas  ,  Habitação  ", "fixas,habitação"},
+		{"single level", "Diarista", "diarista"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NormalizePath(tt.input)
+			if got != tt.expected {
+				t.Errorf("NormalizePath(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// Test SplitPath function
+func TestSplitPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{"three levels", "Fixas,Habitação,Diarista", []string{"fixas", "habitação", "diarista"}},
+		{"two levels", "Habitação,Diarista", []string{"habitação", "diarista"}},
+		{"one level", "Diarista", []string{"diarista"}},
+		{"empty", "", []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SplitPath(tt.input)
+			if len(got) != len(tt.expected) {
+				t.Errorf("SplitPath(%q) length = %d, want %d", tt.input, len(got), len(tt.expected))
+				return
+			}
+			for i := range got {
+				if got[i] != tt.expected[i] {
+					t.Errorf("SplitPath(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.expected[i])
+				}
+			}
+		})
+	}
+}

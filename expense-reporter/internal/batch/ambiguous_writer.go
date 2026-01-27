@@ -29,15 +29,24 @@ func (w *AmbiguousWriter) Write(entries []AmbiguousEntry) error {
 	var content strings.Builder
 
 	// Write header comments
-	content.WriteString("# Ambiguous expenses - choose the correct sheet and re-import\n")
-	content.WriteString("# Format: <original_expense>,<sheet1>,<sheet2>,...\n")
-	content.WriteString("# Edit this file to keep only the correct sheet, then re-import\n")
+	content.WriteString("# Ambiguous expenses - choose correct path and re-import\n")
+	content.WriteString("# Replace the subcategory with the full hierarchical path\n")
+	content.WriteString("# Format: Sheet,Category,Subcategory OR Category,Subcategory\n")
+	content.WriteString("#\n")
+	content.WriteString("# Example: Change 'Diarista' to 'Habitação,Diarista' or 'Fixas,Habitação,Diarista'\n")
+	content.WriteString("#\n\n")
 
 	// Write each ambiguous entry
 	for _, entry := range entries {
-		// Format: original_expense,sheet1,sheet2,...
-		line := entry.ExpenseString + "," + strings.Join(entry.SheetOptions, ",")
-		content.WriteString(line + "\n")
+		// Original expense string
+		content.WriteString(entry.ExpenseString + "\n")
+
+		// Add path suggestions as comments
+		content.WriteString("# Path options:\n")
+		for _, path := range entry.PathOptions {
+			content.WriteString(fmt.Sprintf("#   %s\n", path))
+		}
+		content.WriteString("#\n")
 	}
 
 	// Write to file

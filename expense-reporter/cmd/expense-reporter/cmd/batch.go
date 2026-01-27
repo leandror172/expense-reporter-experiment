@@ -123,15 +123,18 @@ func runBatch(cmd *cobra.Command, args []string) error {
 
 	for _, result := range summary.Results {
 		if result.IsAmbiguous {
-			// Collect ambiguous entries (existing logic)
+			// Collect ambiguous entries with hierarchical path options
 			sheetNames := make([]string, len(result.AmbiguousOpts))
+			pathOptions := make([]string, len(result.AmbiguousOpts))
 			for i, opt := range result.AmbiguousOpts {
 				sheetNames[i] = opt.SheetName
+				pathOptions[i] = opt.SheetName + "," + opt.Category + "," + opt.Subcategory
 			}
 			ambiguousEntries = append(ambiguousEntries, batch.AmbiguousEntry{
 				ExpenseString: result.ExpenseString,
 				Subcategory:   result.Expense.Subcategory,
 				SheetOptions:  sheetNames,
+				PathOptions:   pathOptions,
 			})
 		} else if !result.Success {
 			// Collect failed entries (new)
@@ -210,16 +213,19 @@ func collectAmbiguousEntries(summary *batch.BatchSummary) []batch.AmbiguousEntry
 
 	for _, result := range summary.Results {
 		if result.IsAmbiguous {
-			// Extract sheet names from mapping options
+			// Extract sheet names and hierarchical paths from mapping options
 			sheetNames := make([]string, len(result.AmbiguousOpts))
+			pathOptions := make([]string, len(result.AmbiguousOpts))
 			for i, opt := range result.AmbiguousOpts {
 				sheetNames[i] = opt.SheetName
+				pathOptions[i] = opt.SheetName + "," + opt.Category + "," + opt.Subcategory
 			}
 
 			entries = append(entries, batch.AmbiguousEntry{
 				ExpenseString: result.ExpenseString,
 				Subcategory:   result.Expense.Subcategory,
 				SheetOptions:  sheetNames,
+				PathOptions:   pathOptions,
 			})
 		}
 	}
