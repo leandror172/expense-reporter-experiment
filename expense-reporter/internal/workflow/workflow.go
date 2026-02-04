@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"expense-reporter/internal/excel"
+	"expense-reporter/internal/logger"
 	"expense-reporter/internal/models"
 	"expense-reporter/internal/parser"
 	"expense-reporter/internal/resolver"
@@ -47,18 +48,21 @@ func InsertExpense(workbookPath, expenseString string) error {
 	if err != nil {
 		return fmt.Errorf("failed to find subcategory row: %w", err)
 	}
+	logger.Debug("single: subcategory row found", "subcategory", mapping.Subcategory, "sheet", mapping.SheetName, "row", targetRow)
 
 	// Step 6: Get month columns for the expense date
 	itemCol, _, _, err := excel.GetMonthColumns(expense.Date.Month())
 	if err != nil {
 		return fmt.Errorf("failed to get month columns: %w", err)
 	}
+	logger.Debug("single: month columns", "month", expense.Date.Month(), "itemCol", itemCol)
 
 	// Step 7: Find next empty row in the subcategory section
 	nextEmptyRow, err := excel.FindNextEmptyRow(workbookPath, mapping.SheetName, itemCol, targetRow, mapping.Subcategory)
 	if err != nil {
 		return fmt.Errorf("failed to find empty row: %w", err)
 	}
+	logger.Debug("single: empty row found", "subcategory", mapping.Subcategory, "targetRow", nextEmptyRow)
 
 	// Step 8: Create sheet location
 	location := &models.SheetLocation{
@@ -206,99 +210,39 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
-	// Step 5.5: Check capacity for all subcategories (NEW - capacity detection)
-	capacityRequests := []excel.CapacityCheckRequest{}
-	for _, i := range validIndices {
-		expense := expenses[i]
-		mapping := resolvedMappings[i]
-		subcatRow := subcatRows[mapping.SheetName][mapping.Subcategory]
-
-		// Get month column
-		itemCol, _, _, err := excel.GetMonthColumns(expense.Date.Month())
-		if err != nil {
-			errors[i] = models.NewParseError(fmt.Sprintf("invalid month: %v", err), err)
-			continue
-		}
-
-		capacityRequests = append(capacityRequests, excel.CapacityCheckRequest{
-			SheetName:      mapping.SheetName,
-			SubcategoryRow: subcatRow,
-			TotalRow:       mapping.TotalRow,
-			MonthColumn:    itemCol,
-		})
-	}
-
-	// Check capacity for all in ONE file open
-	capacityResults, err := excel.CheckCapacityBatch(workbookPath, capacityRequests)
-	if err != nil {
-		// If capacity check fails, mark all as IO errors
-		for _, i := range validIndices {
-			if errors[i] == nil {
-				errors[i] = models.NewIOError("check capacity", err)
-			}
-		}
-		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
-	}
-
-	// Filter out full subcategories
-	validAfterCapacity := []int{}
-	for _, i := range validIndices {
-		if errors[i] != nil {
-			continue // Already failed (e.g., month column error)
-		}
-
-		mapping := resolvedMappings[i]
-		subcatRow := subcatRows[mapping.SheetName][mapping.Subcategory]
-		capacityInfo := capacityResults[mapping.SheetName][subcatRow]
-
-		if capacityInfo.IsFull {
-			// Create capacity error
-			errors[i] = models.NewCapacityError(
-				mapping.Subcategory,
-				mapping.SheetName,
-				capacityInfo.AvailableRows,
-			)
-			continue
-		}
-
-		validAfterCapacity = append(validAfterCapacity, i)
-	}
-
-	// If no valid expenses after capacity check, return early
-	if len(validAfterCapacity) == 0 {
-		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
-	}
-
-	// Step 6: Build batch requests for empty rows (ONLY for non-full subcategories)
+	// Step 6: Find empty rows for all valid expenses in ONE file open.
+	// Each expense gets its own row; multiple expenses targeting the same subcategory
+	// are allocated sequentially (row N, N+1, N+2 …) — exactly what repeated single
+	// inserts would do, but without reopening the file each time.
 	emptyRowRequests := []excel.EmptyRowRequest{}
-	for _, i := range validAfterCapacity {
+	for _, i := range validIndices {
 		expense := expenses[i]
 		mapping := resolvedMappings[i]
-
-		// Get subcategory row from batch results
 		subcatRow := subcatRows[mapping.SheetName][mapping.Subcategory]
 
-		// Get month column
 		itemCol, _, _, err := excel.GetMonthColumns(expense.Date.Month())
 		if err != nil {
 			errors[i] = models.NewParseError(fmt.Sprintf("invalid month: %v", err), err)
 			continue
 		}
+
+		logger.Debug("batch: empty row request", "index", i, "subcategory", mapping.Subcategory,
+			"sheet", mapping.SheetName, "subcatRow", subcatRow, "itemCol", itemCol)
 
 		emptyRowRequests = append(emptyRowRequests, excel.EmptyRowRequest{
-			SheetName:      mapping.SheetName,
-			ColumnLetter:   itemCol,
-			StartRow:       subcatRow,
+			SheetName:       mapping.SheetName,
+			ColumnLetter:    itemCol,
+			StartRow:        subcatRow,
 			SubcategoryName: mapping.Subcategory,
+			ExpenseIndex:    i, // tag so results map back 1:1
 		})
 	}
 
-	// Step 7: Find all empty rows in ONE file open
-	emptyRows, err := excel.FindNextEmptyRowBatch(workbookPath, emptyRowRequests)
+	// Step 7: Allocate rows — one per request, respecting order within each subcategory
+	allocatedRows, err := excel.AllocateEmptyRows(workbookPath, emptyRowRequests)
 	if err != nil {
-		// If batch lookup fails, mark all remaining valid expenses as failed
-		for _, i := range validAfterCapacity {
-			if errors[i] == nil { // Don't overwrite month column errors
+		for _, i := range validIndices {
+			if errors[i] == nil {
 				errors[i] = models.NewIOError("find empty rows", err)
 			}
 		}
@@ -309,24 +253,35 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	expensesWithLocations := []excel.ExpenseWithLocation{}
 	finalValidIndices := []int{}
 
-	for _, i := range validAfterCapacity {
+	for idx, req := range emptyRowRequests {
+		i := req.ExpenseIndex
 		if errors[i] != nil {
-			continue // Skip expenses that failed in month column lookup
+			continue
+		}
+
+		targetRow, ok := allocatedRows[idx]
+		if !ok {
+			// Section was full for this expense's month — record as capacity error
+			errors[i] = models.NewCapacityError(
+				resolvedMappings[i].Subcategory,
+				resolvedMappings[i].SheetName,
+				0,
+			)
+			continue
 		}
 
 		expense := expenses[i]
 		mapping := resolvedMappings[i]
-
-		subcatRow := subcatRows[mapping.SheetName][mapping.Subcategory]
-		emptyRow := emptyRows[mapping.SheetName][subcatRow]
-
 		itemCol, _, _, _ := excel.GetMonthColumns(expense.Date.Month())
+
+		logger.Debug("batch: allocated row", "index", i, "subcategory", mapping.Subcategory,
+			"sheet", mapping.SheetName, "targetRow", targetRow)
 
 		location := &models.SheetLocation{
 			SheetName:   mapping.SheetName,
 			Category:    mapping.Category,
-			SubcatRow:   subcatRow,
-			TargetRow:   emptyRow,
+			SubcatRow:   subcatRows[mapping.SheetName][mapping.Subcategory],
+			TargetRow:   targetRow,
 			MonthColumn: itemCol,
 		}
 

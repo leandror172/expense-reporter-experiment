@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"expense-reporter/internal/logger"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +23,10 @@ The tool supports:
   - Batch importing from CSV files
   - Smart subcategory matching
   - Automatic backup creation`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		logger.SetDebug(verbose)
+		return nil
+	},
 }
 
 // Execute runs the root command
