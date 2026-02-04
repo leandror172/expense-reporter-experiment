@@ -1,13 +1,30 @@
 package excel
 
 import (
+	"os"
 	"testing"
 )
+
+// getTestWorkbookPath returns the workbook path from environment or default relative path
+func getTestWorkbookPath(t *testing.T) string {
+	t.Helper()
+	workbookPath := os.Getenv("TEST_WORKBOOK_PATH")
+	if workbookPath == "" {
+		workbookPath = "../../Planilha_Normalized_Final.xlsx"
+	}
+
+	// Skip test if workbook doesn't exist
+	if _, err := os.Stat(workbookPath); os.IsNotExist(err) {
+		t.Skipf("Test workbook not found at %s. Set TEST_WORKBOOK_PATH environment variable or place Planilha_Normalized_Final.xlsx in project root.", workbookPath)
+	}
+
+	return workbookPath
+}
 
 // TDD RED: Test loading reference sheet from actual Excel file
 func TestLoadReferenceSheet(t *testing.T) {
 	// This will test with the actual Excel file
-	workbookPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+	workbookPath := getTestWorkbookPath(t)
 
 	mappings, err := LoadReferenceSheet(workbookPath)
 	if err != nil {
@@ -46,7 +63,7 @@ func TestLoadReferenceSheet(t *testing.T) {
 
 // Test finding subcategory row in actual Excel sheet
 func TestFindSubcategoryRow(t *testing.T) {
-	workbookPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+	workbookPath := getTestWorkbookPath(t)
 
 	tests := []struct {
 		name        string
@@ -107,7 +124,7 @@ func TestFindSubcategoryRow(t *testing.T) {
 
 // TDD RED: Test batch finding subcategory rows
 func TestFindSubcategoryRowBatch(t *testing.T) {
-	workbookPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+	workbookPath := getTestWorkbookPath(t)
 
 	tests := []struct {
 		name     string

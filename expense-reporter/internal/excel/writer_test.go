@@ -13,8 +13,8 @@ import (
 // TDD RED: Test writing expense to Excel
 func TestWriteExpense(t *testing.T) {
 	// Create a test copy of the workbook
-	originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
-	testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_workbook.xlsx"
+	originalPath := getTestWorkbookPath(t)
+	testPath := "test_workbook.xlsx"
 
 	// Copy original to test file
 	copyFile(originalPath, testPath)
@@ -210,7 +210,7 @@ func TestWriteBatchExpenses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test workbook copy
-			originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+			originalPath := getTestWorkbookPath(t)
 			testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_batch_workbook.xlsx"
 
 			if err := copyFile(originalPath, testPath); err != nil {

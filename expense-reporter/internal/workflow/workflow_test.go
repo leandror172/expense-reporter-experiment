@@ -8,9 +8,18 @@ import (
 
 // TDD RED: Test complete expense insertion workflow
 func TestInsertExpense(t *testing.T) {
-	// Create test copy
-	originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
-	testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_workflow.xlsx"
+	// Get workbook path from environment or use default relative path
+	originalPath := os.Getenv("TEST_WORKBOOK_PATH")
+	if originalPath == "" {
+		originalPath = "../../Planilha_Normalized_Final.xlsx"
+	}
+
+	// Skip test if workbook doesn't exist
+	if _, err := os.Stat(originalPath); os.IsNotExist(err) {
+		t.Skipf("Test workbook not found at %s. Set TEST_WORKBOOK_PATH environment variable or place Planilha_Normalized_Final.xlsx in project root.", originalPath)
+	}
+
+	testPath := "test_workflow.xlsx"
 
 	copyFile(originalPath, testPath)
 	defer os.Remove(testPath)
@@ -37,8 +46,8 @@ func TestInsertExpense(t *testing.T) {
 		{
 			name:          "smart match - Orion - Consultas",
 			expenseString: "Consulta vet;10/03;180,00;Orion - Consultas",
-			wantErr:       true, // Should fail as ambiguous
-			errContains:   "ambiguous",
+			wantErr:       true,
+			errContains:   "not found", // subcategory doesn't exist in Planilha_Normalized_Final
 		},
 		{
 			name:          "invalid format",
@@ -96,8 +105,16 @@ func TestInsertExpense(t *testing.T) {
 
 // Test ambiguous subcategory handling
 func TestInsertExpenseAmbiguous(t *testing.T) {
-	// This tests the ambiguous case - should return error indicating user needs to choose
-	originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+	// Get workbook path from environment or use default relative path
+	originalPath := os.Getenv("TEST_WORKBOOK_PATH")
+	if originalPath == "" {
+		originalPath = "../../Planilha_Normalized_Final.xlsx"
+	}
+
+	// Skip test if workbook doesn't exist
+	if _, err := os.Stat(originalPath); os.IsNotExist(err) {
+		t.Skipf("Test workbook not found at %s", originalPath)
+	}
 	testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_ambiguous.xlsx"
 
 	copyFile(originalPath, testPath)
@@ -131,7 +148,16 @@ func contains(s, substr string) bool {
 
 // TDD RED: Test batch inserting multiple expenses
 func TestInsertBatchExpenses(t *testing.T) {
-	workbookPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+	// Get workbook path from environment or use default relative path
+	workbookPath := os.Getenv("TEST_WORKBOOK_PATH")
+	if workbookPath == "" {
+		workbookPath = "../../Planilha_Normalized_Final.xlsx"
+	}
+
+	// Skip test if workbook doesn't exist
+	if _, err := os.Stat(workbookPath); os.IsNotExist(err) {
+		t.Skipf("Test workbook not found at %s", workbookPath)
+	}
 
 	tests := []struct {
 		name           string
