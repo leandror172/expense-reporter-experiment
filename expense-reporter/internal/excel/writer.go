@@ -1,12 +1,39 @@
 package excel
 
 import (
+	"expense-reporter/internal/logger"
 	"expense-reporter/internal/models"
 	"fmt"
 	"time"
 
 	"github.com/xuri/excelize/v2"
 )
+
+// boolPtr is a tiny helper because excelize CalcPropsOptions fields are *bool.
+func boolPtr(b bool) *bool { return &b }
+
+// setFullCalcOnLoad marks the workbook so that Excel / LibreOffice will
+// recalculate all formulas (e.g. SUM totals) the next time it is opened.
+// excelize does not update cached formula values when cells change; this is the
+// correct, lightweight fix — it costs nothing at runtime and is idempotent.
+func setFullCalcOnLoad(f *excelize.File) {
+	if err := f.SetCalcProps(&excelize.CalcPropsOptions{
+		FullCalcOnLoad: boolPtr(true),
+	}); err != nil {
+		logger.Warn("setFullCalcOnLoad: failed to set calc props", "error", err)
+	}
+}
+
+// dateStyle creates the dd/mm custom number format style and returns its ID.
+// The workbook already uses "d/m" and "d/m/yyyy" in hand-entered cells;
+// "dd/mm" gives the same layout with zero-padded day and month.
+func dateStyle(f *excelize.File) (int, error) {
+	return f.NewStyle(&excelize.Style{
+		CustomNumFmt: strPtr("dd/mm"),
+	})
+}
+
+func strPtr(s string) *string { return &s }
 
 // ExpenseWithLocation pairs an expense with its target location
 // This is used by batch operations to precompute locations before writing
@@ -62,14 +89,12 @@ func WriteExpense(workbookPath string, expense *models.Expense, location *models
 		return fmt.Errorf("failed to write date to %s: %w", dateCell, err)
 	}
 
-	// Apply date format to the cell
-	dateStyle, err := f.NewStyle(&excelize.Style{
-		NumFmt: 14, // Excel date format: m/d/yy
-	})
+	// Apply dd/mm date format
+	dStyle, err := dateStyle(f)
 	if err != nil {
 		return fmt.Errorf("failed to create date style: %w", err)
 	}
-	if err := f.SetCellStyle(sheetName, dateCell, dateCell, dateStyle); err != nil {
+	if err := f.SetCellStyle(sheetName, dateCell, dateCell, dStyle); err != nil {
 		return fmt.Errorf("failed to apply date style to %s: %w", dateCell, err)
 	}
 
@@ -79,9 +104,9 @@ func WriteExpense(workbookPath string, expense *models.Expense, location *models
 		return fmt.Errorf("failed to write value to %s: %w", valueCell, err)
 	}
 
-	// Apply currency format to the cell
+	// Apply R$ currency format (matches the workbook's existing "R$ "#,##0.00)
 	currencyStyle, err := f.NewStyle(&excelize.Style{
-		NumFmt: 4, // Excel currency format with 2 decimal places
+		CustomNumFmt: strPtr(`"R$ "#,##0.00`),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create currency style: %w", err)
@@ -89,6 +114,9 @@ func WriteExpense(workbookPath string, expense *models.Expense, location *models
 	if err := f.SetCellStyle(sheetName, valueCell, valueCell, currencyStyle); err != nil {
 		return fmt.Errorf("failed to apply currency style to %s: %w", valueCell, err)
 	}
+
+	// Tell Excel/LibreOffice to recalculate all formulas (SUM totals etc.) on open
+	setFullCalcOnLoad(f)
 
 	// Save the workbook
 	if err := f.Save(); err != nil {
@@ -131,15 +159,13 @@ func WriteBatchExpenses(workbookPath string, expensesWithLocations []ExpenseWith
 	}()
 
 	// Create reusable styles ONCE
-	dateStyle, err := f.NewStyle(&excelize.Style{
-		NumFmt: 14, // Excel date format: m/d/yy
-	})
+	dStyle, err := dateStyle(f)
 	if err != nil {
 		return fmt.Errorf("failed to create date style: %w", err)
 	}
 
 	currencyStyle, err := f.NewStyle(&excelize.Style{
-		NumFmt: 4, // Excel currency format with 2 decimal places
+		CustomNumFmt: strPtr(`"R$ "#,##0.00`),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create currency style: %w", err)
@@ -172,8 +198,8 @@ func WriteBatchExpenses(workbookPath string, expensesWithLocations []ExpenseWith
 			return fmt.Errorf("failed to write date for expense %d to %s: %w", i, dateCell, err)
 		}
 
-		// Apply date style (using cached style ID)
-		if err := f.SetCellStyle(sheetName, dateCell, dateCell, dateStyle); err != nil {
+		// Apply dd/mm date style (using cached style ID)
+		if err := f.SetCellStyle(sheetName, dateCell, dateCell, dStyle); err != nil {
 			return fmt.Errorf("failed to apply date style for expense %d to %s: %w", i, dateCell, err)
 		}
 
@@ -189,8 +215,10 @@ func WriteBatchExpenses(workbookPath string, expensesWithLocations []ExpenseWith
 		}
 	}
 
-	// Save the workbook ONCE (this is where the 1.5 second cost happens)
-	// With this approach, we pay the save cost once instead of 212 times
+	// Tell Excel/LibreOffice to recalculate all formulas (SUM totals etc.) on open
+	setFullCalcOnLoad(f)
+
+	// Save the workbook ONCE
 	if err := f.Save(); err != nil {
 		return fmt.Errorf("failed to save workbook after writing %d expenses: %w",
 			len(expensesWithLocations), err)
