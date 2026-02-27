@@ -20,9 +20,17 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Go build artefacts
+*.exe
+.gotmp/
+.tmp/
+
 # Test outputs
 *_output.txt
 test_output.txt
 
-# Reports
-*_report.txt
+# Reports & batch run artefacts
+*report*.txt
+expenses_failed_*.csv
+expenses_rollover_*.csv
+categorized_expenses_*.csv

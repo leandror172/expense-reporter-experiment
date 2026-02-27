@@ -13,8 +13,8 @@ import (
 // TDD RED: Test writing expense to Excel
 func TestWriteExpense(t *testing.T) {
 	// Create a test copy of the workbook
-	originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
-	testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_workbook.xlsx"
+	originalPath := getTestWorkbookPath(t)
+	testPath := "test_workbook.xlsx"
 
 	// Copy original to test file
 	copyFile(originalPath, testPath)
@@ -63,12 +63,12 @@ func TestWriteExpense(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to read value cell: %v", err)
 	}
-	// Excel may format as "35.5" or "35.50" depending on currency formatting
-	if valueNum != "35.5" && valueNum != "35.50" {
-		t.Errorf("Value cell %s = %v, want '35.5' or '35.50'", valueCell, valueNum)
+	// GetCellValue returns the formatted string; with our R$ currency style that's "R$ 35.50"
+	if valueNum != "35.5" && valueNum != "35.50" && valueNum != "R$ 35.50" {
+		t.Errorf("Value cell %s = %v, want '35.5', '35.50', or 'R$ 35.50'", valueCell, valueNum)
 	}
 
-	// Check Date column (N98) - should be Excel serial number
+	// Check Date column (N98) - written as serial number, displayed as dd/mm
 	dateCell := "N98"
 	dateValue, err := f.GetCellValue("Variáveis", dateCell)
 	if err != nil {
@@ -76,6 +76,10 @@ func TestWriteExpense(t *testing.T) {
 	}
 	if dateValue == "" {
 		t.Errorf("Date cell %s is empty", dateCell)
+	}
+	// With dd/mm custom format, April 15 should render as "15/04"
+	if dateValue != "15/04" {
+		t.Logf("Date cell %s = %q (expected dd/mm format like '15/04')", dateCell, dateValue)
 	}
 }
 
@@ -210,7 +214,7 @@ func TestWriteBatchExpenses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test workbook copy
-			originalPath := "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx"
+			originalPath := getTestWorkbookPath(t)
 			testPath := "Z:\\Meu Drive\\controle\\code\\expense-reporter\\test_batch_workbook.xlsx"
 
 			if err := copyFile(originalPath, testPath); err != nil {

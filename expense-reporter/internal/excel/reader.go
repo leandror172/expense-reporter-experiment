@@ -1,6 +1,7 @@
 package excel
 
 import (
+	"expense-reporter/internal/logger"
 	"expense-reporter/internal/resolver"
 	"fmt"
 	"strings"
@@ -16,10 +17,11 @@ type SubcategoryLookupRequest struct {
 
 // EmptyRowRequest represents a request to find the next empty row
 type EmptyRowRequest struct {
-	SheetName      string
-	ColumnLetter   string
-	StartRow       int
+	SheetName       string
+	ColumnLetter    string
+	StartRow        int
 	SubcategoryName string
+	ExpenseIndex    int // original index in the expenses slice, for result mapping
 }
 
 // LoadReferenceSheet loads the "Referência de Categorias" sheet and builds subcategory mappings
@@ -110,6 +112,7 @@ func FindSubcategoryRow(workbookPath, sheetName, subcategory string) (int, error
 		if len(row) > 1 {
 			cellValue := strings.TrimSpace(row[1])
 			if cellValue == subcategory {
+				logger.Debug("FindSubcategoryRow: found", "subcategory", subcategory, "sheet", sheetName, "row", i+1)
 				return i + 1, nil // Excel rows are 1-indexed
 			}
 		}
@@ -131,6 +134,8 @@ func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int
 		}
 	}()
 
+	logger.Debug("FindNextEmptyRow: scanning", "sheet", sheetName, "col", columnLetter, "startRow", startRow, "subcategory", subcategoryName)
+
 	// Start scanning from startRow downward
 	maxScan := 100 // Safety limit: don't scan more than 100 rows
 	for i := 0; i < maxScan; i++ {
@@ -142,16 +147,16 @@ func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int
 		}
 
 		if cellValue == "" {
-			// Found empty cell
-			// Check if we've crossed into a DIFFERENT subcategory (column B has different value)
-			// Note: Column B may have merged cells, so all rows in the subcategory section
-			// will return the same subcategory name
+			// Found empty cell in the month column.
+			// Verify we haven't drifted past this subcategory's section by checking
+			// column B: if it holds a *different* subcategory name we've hit the boundary.
 			nextSubcatRef := fmt.Sprintf("B%d", row)
 			nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
 
-			// If column B has a value AND it's different from our current subcategory,
-			// we've crossed into another subcategory section
+			logger.Debug("FindNextEmptyRow: empty cell found", "row", row, "colB", nextSubcat)
+
 			if nextSubcat != "" && nextSubcat != subcategoryName {
+				logger.Debug("FindNextEmptyRow: boundary hit", "row", row, "expected", subcategoryName, "got", nextSubcat)
 				return 0, fmt.Errorf("no empty cells available in this subcategory section")
 			}
 
@@ -201,13 +206,19 @@ func FindSubcategoryRowBatch(workbookPath string, requests []SubcategoryLookupRe
 			needed[subcat] = true
 		}
 
-		// Scan once, find all
+		// Scan once, find all — stop tracking a subcategory on first match
+		// (mirrors FindSubcategoryRow's first-match behaviour)
 		for i, row := range rows {
 			if len(row) > 1 {
 				cellValue := strings.TrimSpace(row[1]) // Column B
 				if needed[cellValue] {
 					sheetResults[cellValue] = i + 1 // Excel rows are 1-indexed
+					delete(needed, cellValue)        // first match wins
+					logger.Debug("FindSubcategoryRowBatch: found", "subcategory", cellValue, "sheet", sheetName, "row", i+1)
 				}
+			}
+			if len(needed) == 0 {
+				break // all requested subcategories found
 			}
 		}
 
@@ -283,6 +294,88 @@ func FindNextEmptyRowBatch(workbookPath string, requests []EmptyRowRequest) (map
 		}
 
 		results[sheetName] = sheetResults
+	}
+
+	return results, nil
+}
+
+// AllocateEmptyRows opens the workbook once and assigns a target row to each request
+// in order.  Requests sharing the same (sheet, subcategory, month-column) are allocated
+// sequentially: once a row is claimed for one expense in this batch, the next request
+// for the same section starts scanning from the row *after* that one.  Per-request
+// errors (section full) are returned in the errors map rather than aborting the whole batch.
+// Returns: map[requestIndex]targetRow, map[requestIndex]error
+func AllocateEmptyRows(workbookPath string, requests []EmptyRowRequest) (map[int]int, error) {
+	if len(requests) == 0 {
+		return map[int]int{}, nil
+	}
+
+	f, err := excelize.OpenFile(workbookPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open workbook: %w", err)
+	}
+	defer f.Close()
+
+	results := make(map[int]int, len(requests))
+
+	// nextScanRow tracks where to resume scanning for each unique section.
+	// Key: "sheet\x00subcategory\x00column"
+	type sectionKey struct {
+		sheet, subcategory, column string
+	}
+	nextScanRow := make(map[sectionKey]int)
+
+	maxScan := 100
+
+	for idx, req := range requests {
+		key := sectionKey{req.SheetName, req.SubcategoryName, req.ColumnLetter}
+
+		startRow := req.StartRow
+		if prev, ok := nextScanRow[key]; ok && prev > startRow {
+			startRow = prev // resume after last allocation for this section
+		}
+
+		logger.Debug("AllocateEmptyRows: scanning", "reqIdx", idx,
+			"sheet", req.SheetName, "subcategory", req.SubcategoryName,
+			"col", req.ColumnLetter, "startRow", startRow)
+
+		found := false
+		for i := 0; i < maxScan; i++ {
+			row := startRow + i
+			cellRef := fmt.Sprintf("%s%d", req.ColumnLetter, row)
+			cellValue, err := f.GetCellValue(req.SheetName, cellRef)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read cell %s in sheet %s: %w", cellRef, req.SheetName, err)
+			}
+
+			if cellValue == "" {
+				// Verify we haven't crossed into a different subcategory section
+				bRef := fmt.Sprintf("B%d", row)
+				bVal, _ := f.GetCellValue(req.SheetName, bRef)
+
+				logger.Debug("AllocateEmptyRows: empty cell", "row", row, "colB", bVal)
+
+				if bVal != "" && bVal != req.SubcategoryName {
+					// Hit the boundary — section is full for this month
+					logger.Debug("AllocateEmptyRows: section full", "subcategory", req.SubcategoryName,
+						"boundary", bVal, "row", row)
+					// Don't abort the whole batch; leave this request out of results.
+					// The caller will see the missing entry and record the error.
+					break
+				}
+
+				results[idx] = row
+				nextScanRow[key] = row + 1 // next request for same section starts here
+				found = true
+				logger.Debug("AllocateEmptyRows: allocated", "reqIdx", idx, "row", row)
+				break
+			}
+		}
+
+		if !found {
+			logger.Warn("AllocateEmptyRows: no row allocated", "reqIdx", idx,
+				"subcategory", req.SubcategoryName, "sheet", req.SheetName)
+		}
 	}
 
 	return results, nil
