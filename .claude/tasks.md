@@ -54,6 +54,16 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 - [ ] **5.7** Few-shot injection: keyword pre-match against training data, inject top-K examples into classify prompt
 - [ ] **5.8** MCP thin wrapper in LLM repo: `classify_expense` / `add_expense` / `auto_add` tools (calls Go binary as subprocess)
 
+### Deferred Improvements (from AUTO_CATEGORY_README.md Next Steps)
+
+These items are not blocking for Layer 5.1–5.8 but should be revisited after the core classify/auto commands are working:
+
+- [ ] **5.D1** Add missing subcategories: Utilities (água/luz/gás), Insurance, Credit cards, Subscriptions (identified during initial classification run — see `data/classification/AUTO_CATEGORY_README.md` § "Next Steps")
+- [ ] **5.D2** Fuzzy string matching: Levenshtein distance for typo handling (e.g., "Shoope" → "Shopee")
+- [ ] **5.D3** Vendor database: canonical vendor name list to normalize inconsistent spellings
+- [ ] **5.D4** Seasonal/temporal patterns: day-of-month and month-of-year features for recurring bills
+- [ ] **5.D5** ML model experiment: train Random Forest or fine-tune a small BERT on labeled data once enough corrections accumulate (see `data/classification/research_insights.md` § 5 for approach)
+
 ### Key Decisions (from LLM repo session 32 design)
 - Classification logic in **expense-reporter** (Go) — product feature, not LLM infrastructure
 - MCP wrapper in **LLM repo** — thin layer, calls the Go binary as subprocess

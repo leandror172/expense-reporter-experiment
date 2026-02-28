@@ -2,6 +2,22 @@
 
 This document provides insights for machine learning and AI researchers studying automatic expense categorization, text classification, and financial data analysis.
 
+**Relevance to Layer 5:** Sections 1–3 directly inform prompt engineering for the `classify` command. Section 5 (Supervised Learning) and Section 7 (Novel Research Directions) inform the long-term improvement roadmap.
+
+## Table of Contents
+
+1. [What Makes Expense Categorization Challenging?](#1-what-makes-expense-categorization-challenging)
+2. [Most Discriminative Features Identified](#2-most-discriminative-features-identified)
+3. [Patterns That Humans Might Miss](#3-patterns-that-humans-might-miss)
+4. [Potential for Transfer Learning](#4-potential-for-transfer-learning)
+5. [Supervised Learning Approaches](#5-supervised-learning-approaches)
+6. [Data Augmentation Possibilities](#6-data-augmentation-possibilities)
+7. [Novel Research Directions](#7-novel-research-directions)
+8. [Benchmark Dataset Creation](#8-benchmark-dataset-creation)
+- [Conclusion: Open Research Questions](#conclusion-open-research-questions)
+
+---
+
 ## 1. What Makes Expense Categorization Challenging?
 
 ### Unique Characteristics of Expense Data

@@ -1,5 +1,22 @@
 # Expense Auto-Categorization Analysis - Complete Package
 
+## Table of Contents
+
+- [Executive Summary](#executive-summary)
+- [Package Contents](#package-contents)
+- [Quick Start](#quick-start)
+- [Artifact Details](#artifact-details)
+- [Key Findings](#key-findings)
+- [Classification Examples](#classification-examples)
+- [Usage Scenarios](#usage-scenarios)
+- [File Sizes](#file-sizes)
+- [Next Steps](#next-steps)
+- [Technical Details](#technical-details)
+- [Support & Feedback](#support--feedback)
+
+---
+
+<!-- ref:classification-overview -->
 ## Executive Summary
 
 This package contains a complete expense auto-categorization system with comprehensive documentation for reproduction, research, and development.
@@ -42,6 +59,8 @@ This package contains a complete expense auto-categorization system with compreh
 🔭 **research_insights.md** - Insights for ML/AI researchers and future development
 
 ---
+
+<!-- /ref:classification-overview -->
 
 ## Quick Start
 
@@ -287,6 +306,8 @@ Total: ~413 KB
 ---
 
 ## Next Steps
+
+> **Tracking:** System improvement items below are tracked in `.claude/tasks.md` under Layer 5 deferred tasks. Completed items are checked off there.
 
 ### For Immediate Use
 1. ✅ Review categorized_expenses.csv

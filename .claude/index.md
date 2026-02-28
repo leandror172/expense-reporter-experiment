@@ -75,9 +75,15 @@
 See `data/classification/classification_algorithm.md` for the full algorithm description.
 See `data/classification/reproducibility_guide.md` for how to reproduce results.
 
-**Algorithm summary:** Feature-based similarity matching using keyword vectors.
-Training data: ~N labeled expenses with category/subcategory assignments.
-Strategy for Layer 5: hybrid (feature dictionary + top-K few-shot examples in prompt).
+**Algorithm summary:** Hybrid rule-based + statistical scoring. Priority: precision over recall.
+**Training data:** 694 labeled expenses (304 from 2024, 303 from 2025, 87 user corrections).
+**Coverage:** 16 categories, 68 subcategories, 229 keywords.
+**Layer 5 strategy:** Feature dictionary as system context + top-K few-shot examples per request.
+
+**Key ref blocks for Layer 5 agents:**
+- `ref-lookup.sh training-data-schema` — JSON schema for `training_data_complete.json` and `feature_dictionary_enhanced.json`; classify command input format
+- `ref-lookup.sh confidence-thresholds` — HIGH/MEDIUM/LOW thresholds (0.85/0.50) and per-level behavior
+- `ref-lookup.sh classification-overview` — executive summary + algorithm performance stats
 <!-- /ref:classification -->
 
 ---

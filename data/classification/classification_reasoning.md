@@ -1,8 +1,21 @@
 # Classification Reasoning Log
 
-This document provides detailed reasoning for each classified expense, showing the step-by-step decision-making process.
+This document provides detailed reasoning for each classified expense, showing the step-by-step decision-making process used by the hybrid algorithm.
 
-## Summary Statistics
+**Purpose for Layer 5:** Each entry illustrates how the algorithm reached a decision — useful for prompt design, few-shot example selection, and understanding which features are most discriminative for each subcategory.
+
+**Run history:**
+- **Run 1** (entries #1–#87, May 2025): Initial 87-expense classification run. Entries below.
+- *Future runs will be appended as new sections.*
+
+**Per-entry format:**
+1. Feature Extraction — keywords, value, date extracted from normalized text
+2. Pattern Matching — which rules fired, with confidence boosts
+3. Final Classification — winning subcategory, score, confidence level
+
+---
+
+## Run 1 Summary Statistics (May 2025)
 
 - **Total Expenses Classified**: 87
 - **HIGH Confidence**: 67 (77%)

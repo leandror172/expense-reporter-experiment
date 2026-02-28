@@ -60,19 +60,21 @@ Your 261 new expenses represent R$ 56,766.47 in total spending, with an average 
 
 ## Spending Patterns
 
-Analyzing your categorized expenses reveals interesting patterns in how your spending is distributed across different areas of life.
+*Note: This section uses synthetic example data to illustrate the pattern analysis methodology. The actual spending patterns are stored in `.claude/local/FINAL_SUMMARY_personal.md` (gitignored).*
 
-**Entertainment and Leisure** leads your spending with 72 expenses totaling R$ 15,462.55. This category includes restaurants and bars (20 expenses), cannabis purchases (12 expenses), tobacco (7 expenses), coffee subscriptions, beer, video games, and concert tickets. The high count in this category reflects an active social life and investment in recreational activities.
+Analyzing categorized expenses reveals interesting patterns in how spending is distributed across different areas of life. The following is a synthetic example showing the structure of the analysis:
 
-**Home-Related Expenses** (Habitação) is your second-largest category with 41 expenses totaling R$ 7,801.03. This is dominated by regular house cleaning services from Diarista Letícia (19 expenses at approximately R$ 200 each), along with utility bills for electricity and water (11 expenses), and internet service (7 expenses). The consistency of these expenses shows a well-maintained regular schedule for home maintenance.
+**Entertainment and Leisure** leads spending with N expenses totaling R$ X,XXX.XX. This category spans restaurants and bars, leisure purchases, tobacco, subscriptions, and event tickets. A high count in this category reflects an active social life and investment in recreational activities.
 
-**Food and Household Items** (Alimentação / Limpeza) accounts for 40 expenses totaling R$ 9,141.31. Supermarket shopping (22 expenses) and bakery purchases (17 expenses) make up the bulk of this category. This suggests a pattern of regular grocery shopping supplemented by frequent bakery visits, which is typical of Brazilian household spending patterns.
+**Home-Related Expenses** (Habitação) is the second-largest category with N expenses totaling R$ X,XXX.XX. Regular cleaning services (e.g., Diarista [Name], N expenses at ~R$ 200 each), utility bills for electricity and water (N expenses), and internet service (N expenses) dominate. The consistency of these expenses shows a well-maintained regular schedule for home maintenance.
 
-**Transportation** includes 31 expenses totaling R$ 3,148.47, split primarily between rideshare services like Uber and 99 (19 expenses) and fuel purchases (9 expenses). The balance between rideshare and personal vehicle use indicates a mixed transportation strategy.
+**Food and Household Items** (Alimentação / Limpeza) accounts for N expenses totaling R$ X,XXX.XX. Supermarket shopping and bakery purchases make up the bulk of this category — typical of Brazilian household spending patterns.
 
-**Healthcare** (Saúde) represents 26 expenses totaling R$ 5,076.43, with medical consultations (10 expenses) and pharmacy purchases (10 expenses) being the most frequent. Additionally, health insurance premiums (Fixas – Saúde) account for 6 expenses totaling R$ 4,645.36, showing significant investment in both preventive and active healthcare.
+**Transportation** includes N expenses totaling R$ X,XXX.XX, split primarily between rideshare services (Uber, 99) and fuel purchases. The balance between rideshare and personal vehicle use indicates a mixed transportation strategy.
 
-**Anita Business Expenses** total 16 expenses of R$ 3,467.72, all classified as loan payments or business reimbursements as per your correction. This represents a substantial category that's being tracked separately for business accounting purposes.
+**Healthcare** (Saúde) represents N expenses totaling R$ X,XXX.XX, with medical consultations and pharmacy purchases being most frequent. Health insurance premiums (Fixas – Saúde) account for N expenses, showing significant investment in both preventive and active healthcare.
+
+**Business / Reimbursement Expenses** total N expenses, all classified as loan payments or business reimbursements per user correction. This represents a category tracked separately for business accounting purposes.
 
 ---
 
@@ -104,19 +106,21 @@ This combined dataset spans 16 unique top-level categories and 68 distinct subca
 
 ## Cases Requiring Manual Review
 
-Twenty-six expenses need your attention because they fell below the confidence threshold. These aren't classification failures, rather they're appropriate cases where the system recognized ambiguity and deferred to your judgment. Let me explain why these particular expenses are challenging and what patterns they reveal.
+*Note: This section uses synthetic example data to illustrate the review case taxonomy. The actual review cases are stored in `.claude/local/FINAL_SUMMARY_personal.md` (gitignored).*
 
-**Ambiguous Generic Items** represent the largest group of low-confidence cases. Expenses like "memória notebook" (R$ 381.65), "Panorâmica" (R$ 105.00), and "10g 24k" (R$ 460.00) lack clear context about what they actually are. "Memória notebook" could be RAM for a computer (possibly Outros > Diversos or even Escritório), but without more detail the system can't confidently place it. "10g 24k" suggests gold given the karat marking, but the context of why you're buying gold isn't clear from the item description alone.
+N expenses need attention because they fell below the confidence threshold. These aren't classification failures — they're appropriate cases where the system recognized ambiguity and deferred to human judgment. The following synthetic examples illustrate the types of challenging cases:
 
-**Unusual One-Time Purchases** include expenses like "Associação Regera" (R$ 2,392.01), which is a high-value expense with an unfamiliar vendor. The system hasn't seen this pattern before in training data, so it appropriately flags it for review. This could be a membership fee, a professional association, or something else entirely that would benefit from manual categorization and potentially addition to the training data.
+**Ambiguous Generic Items** represent the largest group of low-confidence cases. Expenses with terse descriptions (e.g., "computer part" R$ 380, "specialty item" R$ 460) lack clear context. Without explicit category signals, the system cannot confidently place them — these require the user to clarify purpose.
 
-**Foreign Food Items** such as "Udon gyoza ifood" (R$ 65.89) and "pringles mostarda e mel" (R$ 50.99) present classification challenges. While ifood indicates food delivery, udon gyoza could be categorized as either Delivery or Restaurantes/bares depending on how you prefer to track international cuisine. The Pringles purchase is interesting because it's clearly a snack food but was purchased as a single item rather than part of grocery shopping, making it unclear whether it belongs in Alimentação / Limpeza or perhaps even Lazer.
+**Unusual One-Time Purchases** include high-value expenses from unfamiliar vendors (e.g., "Organization Name" R$ 2,400). The system hasn't seen this pattern in training data, so it appropriately flags it for review. These could be membership fees, professional associations, or new recurring vendors that benefit from manual categorization and addition to the training data.
 
-**Specialized Equipment** items like "Pulverizador" (R$ 130.00), "Nail E ash catcher abduzido" (R$ 215.00), and "2 credenciais expocanabis" (R$ 120.00) are clearly related to your cannabis growing and consumption but don't fit neatly into existing subcategories. The pulverizador is likely a spray bottle for growing, the nail and ash catcher are smoking accessories, and the expo credentials are for a cannabis industry event. These might benefit from additional subcategories within Lazer, or possibly a new category structure for cannabis-related expenses that distinguishes growing supplies, consumption items, and industry participation.
+**Foreign or Specialty Food Items** (e.g., "specialty cuisine delivery" R$ 65, "imported snack" R$ 50) present classification challenges. While the delivery platform is clear, the cuisine type may map to Delivery or Restaurantes/bares depending on user preference.
 
-**Shopping Platform Purchases** from Shopee and similar marketplaces ("2 criados mudo shoope" at R$ 73.29, "3 capas impermeáveis colchão magalu" at R$ 33.15) are challenging because these platforms sell everything, and the item descriptions don't always make the purpose clear. "Criados mudo" are nightstands, which could be Manutenção / prevenção > Casa for home improvement, or possibly Outros > Diversos for furniture. The waterproof mattress covers are clearly home-related but don't fit perfectly into existing subcategories.
+**Specialized Equipment** items that don't fit neatly into existing subcategories (e.g., equipment for a hobby R$ 130, accessories R$ 215, event credentials R$ 120). These may benefit from additional subcategories or a new category structure.
 
-These review cases total R$ 4,719.62, which is only 8.3% of your total spending for this period. The relatively small amount involved means that reviewing them won't require excessive time, but the insights gained from manually categorizing these edge cases could further improve the system's future accuracy.
+**Shopping Platform Purchases** from Shopee, Magalu, and similar marketplaces are challenging because these platforms sell everything. Item descriptions don't always clarify the purpose (e.g., "2 nightstands" R$ 73 — home improvement or furniture?).
+
+These review cases represent approximately 10% of total spending. Manually categorizing them and adding corrections to the training data will steadily improve future accuracy.
 
 ---
 

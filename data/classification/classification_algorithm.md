@@ -1,5 +1,22 @@
 # Classification Algorithm Specification
 
+## Table of Contents
+
+1. [Algorithm Overview](#1-algorithm-overview)
+2. [Step-by-Step Process](#2-step-by-step-process)
+   - [2.1 Input Data Schema](#21-input-data-schema)
+3. [Feature Extraction Pipeline](#3-feature-extraction-pipeline)
+4. [Similarity/Matching Functions](#4-similaritymatching-functions)
+5. [Confidence Scoring Method](#5-confidence-scoring-method)
+6. [Tie-Breaking Rules](#6-tie-breaking-rules)
+7. [Edge Case Handling](#7-edge-case-handling)
+8. [Performance Characteristics](#8-performance-characteristics)
+9. [Algorithm Assumptions](#9-algorithm-assumptions)
+10. [Known Limitations](#10-known-limitations)
+11. [Improvement Opportunities](#11-improvement-opportunities)
+
+---
+
 ## 1. Algorithm Overview
 
 This expense categorization system uses a **hybrid approach** combining:
@@ -35,6 +52,74 @@ graph TD
     O --> Q
     P --> Q
 ```
+
+<!-- ref:training-data-schema -->
+## 2.1 Input Data Schema
+
+**`training_data_complete.json`** — labeled historical expenses used as the knowledge base:
+
+```json
+{
+  "metadata": {
+    "total_expenses": 694,
+    "from_2024": 304,
+    "from_2025_normalized": 303,
+    "from_user_corrections": 87,
+    "unique_categories": 16,
+    "unique_subcategories": 68,
+    "extraction_date": "ISO-8601 timestamp"
+  },
+  "expenses": [
+    {
+      "id": 1,
+      "item": "Diarista Letícia",
+      "date": "2024-01-05",
+      "value": 160.0,
+      "subcategory": "Diarista",
+      "category": "Habitação",
+      "source": "filename.xlsx:sheetname",
+      "year": 2024
+    }
+  ]
+}
+```
+
+**`feature_dictionary_enhanced.json`** — pre-computed features derived from training data:
+
+```json
+{
+  "lexical_features": {
+    "keywords": {
+      "diarista": {
+        "frequency": 17,
+        "dominant_subcategory": "Diarista",
+        "dominant_count": 17,
+        "specificity": 1.0,
+        "idf": 3.65
+      }
+    }
+  },
+  "value_ranges": {
+    "Diarista": {
+      "min": 160.0, "max": 219.8, "mean": 176.19,
+      "median": 172.0, "q1": 160.0, "q3": 172.0, "count": 17
+    }
+  },
+  "category_mapping": {
+    "Diarista": "Habitação"
+  },
+  "user_corrections": { }
+}
+```
+
+**Classify command input** (3 fields):
+
+| Field | Type | Format | Example |
+|-------|------|--------|---------|
+| `item` | string | Free text (BR Portuguese) | `"Diarista Letícia"` |
+| `date` | string | DD/MM/YYYY | `"05/01/2024"` |
+| `value` | float | Decimal (use `.` separator in Go) | `160.0` |
+<!-- /ref:training-data-schema -->
 
 ## 3. Feature Extraction Pipeline
 
@@ -197,6 +282,7 @@ final_score = w₁ × keyword_score + w₂ × semantic_score + w₃ × value_sco
 
 **Rationale**: Keywords are most discriminative, semantic clusters provide context, value is supportive but not definitive.
 
+<!-- ref:confidence-thresholds -->
 ### 5.2 Confidence Level Assignment
 
 ```
@@ -206,6 +292,12 @@ confidence_level = {
     "LOW"      if final_score < 0.50
 }
 ```
+
+**Behavior by level:**
+- **HIGH (≥ 0.85):** Auto-insert. `auto` command proceeds without user confirmation.
+- **MEDIUM (0.50–0.84):** Present top candidates to user, request confirmation.
+- **LOW (< 0.50):** Flag for manual review. `batch-auto` writes to `review.csv`.
+<!-- /ref:confidence-thresholds -->
 
 ## 6. Tie-Breaking Rules
 

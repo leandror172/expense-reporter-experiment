@@ -1,6 +1,21 @@
 # LLM Internal Reasoning - Meta-Analysis
 
-This document provides a self-reflective analysis of my (Claude's) classification process, examining my own cognitive approach, biases, and decision-making patterns.
+This document provides a self-reflective analysis of Claude's classification process, examining its cognitive approach, biases, and decision-making patterns during the auto-categorization task.
+
+**Relevance to Layer 5:** Section 1 (Cognitive Approach) and Section 3 (Uncertainty Handling) directly inform how to structure the Ollama classification prompt — what context to provide, how to phrase confidence requests, and when to ask for top-N alternatives instead of a single answer.
+
+## Table of Contents
+
+1. [Cognitive Approach](#1-cognitive-approach)
+2. [Pattern Recognition: What Humans Might Miss](#2-pattern-recognition-what-humans-might-miss)
+3. [Uncertainty Handling](#3-uncertainty-handling)
+4. [Bias Detection](#4-bias-detection)
+5. [Confidence Calibration](#5-confidence-calibration)
+6. [Failure Modes](#6-failure-modes)
+7. [Improvement Suggestions](#7-improvement-suggestions)
+- [Conclusion: Meta-Cognitive Insights](#conclusion-meta-cognitive-insights)
+
+---
 
 ## 1. Cognitive Approach
 
