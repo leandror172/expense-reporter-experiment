@@ -3,18 +3,11 @@
     "allow": [
       "Bash(go test:*)",
       "Bash(go build:*)",
-      "Bash(set WORKBOOK_PATH=Z:Meu DrivecontrolecodePlanilha_Normalized_Final.xlsx)",
-      "Bash(.expense-reporter.exe batch \"Z:\\\\Meu Drive\\\\controle\\\\code\\\\expenses_to_import.csv\" --backup --report batch_report.txt)",
-      "Bash(expense-reporter.exe batch \"Z:\\\\Meu Drive\\\\controle\\\\code\\\\expenses_to_import.csv\" --backup --report batch_report.txt)",
-      "Bash(cmd /c \"set WORKBOOK_PATH=Z:\\\\Meu Drive\\\\controle\\\\code\\\\Planilha_Normalized_Final.xlsx && expense-reporter.exe batch Z:\\\\Meu Drive\\\\controle\\\\code\\\\expenses_to_import.csv --backup --report batch_report.txt\")",
-      "Bash(powershell -Command \"$env:WORKBOOK_PATH=''Z:\\\\Meu Drive\\\\controle\\\\code\\\\Planilha_Normalized_Final.xlsx''; & .\\\\expense-reporter.exe batch ''Z:\\\\Meu Drive\\\\controle\\\\code\\\\expenses_to_import.csv'' --backup --report batch_report.txt\")",
       "Bash(go run:*)",
-      "Bash(findstr:*)",
+      "Bash(go vet:*)",
       "Bash(go list:*)",
-      "Bash(git reset:*)",
-      "Bash(git config:*)",
-      "Bash(ls:*)",
-      "Bash(rsync:*)"
+      "Bash(./.claude/tools/resume.sh)",
+      "Bash(./.claude/tools/ref-lookup.sh:*)"
     ]
   }
 }

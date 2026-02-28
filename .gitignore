@@ -34,3 +34,18 @@ test_output.txt
 expenses_failed_*.csv
 expenses_rollover_*.csv
 categorized_expenses_*.csv
+
+# Classification training data (personal expense data — never commit)
+data/classification/*.json
+data/classification/*.csv
+!data/classification/algorithm_parameters.json
+
+# Claude Code local data (secrets, personal paths, backups)
+.claude/local/
+
+# Transient fix scripts and one-off reports (moved to docs/archive/transients/)
+docs/archive/transients/
+
+# Backup files
+*.bak
+expense-reporter/*.bak

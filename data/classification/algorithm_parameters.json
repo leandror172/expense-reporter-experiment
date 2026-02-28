@@ -1,0 +1,42 @@
+{
+  "feature_weights": {
+    "keyword_match": 0.5,
+    "semantic_similarity": 0.3,
+    "value_proximity": 0.2
+  },
+  "thresholds": {
+    "high_confidence": 0.85,
+    "medium_confidence": 0.5,
+    "low_confidence": 0.3,
+    "minimum_similarity": 0.2,
+    "pattern_rule_confidence": 0.85
+  },
+  "similarity_methods": {
+    "text": "keyword_tfidf",
+    "value": "gaussian_kernel",
+    "hybrid": "weighted_average"
+  },
+  "preprocessing": {
+    "lowercase": true,
+    "remove_accents": false,
+    "remove_special_chars": true,
+    "normalize_whitespace": true,
+    "min_word_length": 2
+  },
+  "value_scoring": {
+    "use_iqr": true,
+    "outlier_penalty": 0.3,
+    "gaussian_variance": 2.0
+  },
+  "keyword_scoring": {
+    "use_idf": true,
+    "use_specificity": true,
+    "partial_match_weight": 0.3,
+    "exact_match_weight": 1.0
+  },
+  "fallback_strategy": {
+    "default_category": "Diversos",
+    "default_confidence": 0.3,
+    "require_manual_review": true
+  }
+}
