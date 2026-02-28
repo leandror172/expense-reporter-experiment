@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"expense-reporter/internal/classifier"
+	"expense-reporter/pkg/utils"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -38,9 +38,9 @@ func init() {
 func runClassify(cmd *cobra.Command, args []string) error {
 	item := args[0]
 
-	value, err := strconv.ParseFloat(args[1], 64)
+	value, err := utils.ParseCurrency(args[1])
 	if err != nil {
-		return fmt.Errorf("invalid value %q: expected a number (e.g. 35.50)", args[1])
+		return fmt.Errorf("invalid value %q: expected a number (e.g. 35.50 or 35,50)", args[1])
 	}
 
 	date := args[2]
