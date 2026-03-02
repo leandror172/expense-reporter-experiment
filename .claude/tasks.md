@@ -45,9 +45,9 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 - [x] **5.0h** Scaffolding bootstrap: this repo now has .claude/ tools, CLAUDE.md, index.md (session 1)
 
 ### Layer 5 Tasks (next)
-- [ ] **5.1** Port training data into expense-reporter: verify `feature_dictionary_enhanced.json` + `training_data_complete.json` are in `data/classification/`; document their JSON format in index.md
-- [ ] **5.2** `classify` command: 3-field input (date, description, amount) → Ollama HTTP → structured JSON → top-N subcategories with confidence scores
-- [ ] **5.3** `auto` command: classify + insert into Excel if HIGH confidence (≥0.85), else print candidates
+- [x] **5.1** Port training data into expense-reporter: verify `feature_dictionary_enhanced.json` + `training_data_complete.json` are in `data/classification/`; document their JSON format in index.md
+- [x] **5.2** `classify` command: 3-field input (date, description, amount) → Ollama HTTP → structured JSON → top-N subcategories with confidence scores
+- [x] **5.3** `auto` command: classify + insert into Excel if HIGH confidence (≥0.85), else print candidates
 - [ ] **5.4** `batch-auto` command: classify a CSV file → classified.csv (HIGH confidence) + review.csv (LOW confidence)
 - [ ] **5.5** Correction logging: `corrections.jsonl` — `{input, predicted, actual, confidence}` appended on user override
 - [ ] **5.6** Expense persistence: hash ID (sha256[:12] of normalized item+date+value), `expenses_log.jsonl` appended on each insert
