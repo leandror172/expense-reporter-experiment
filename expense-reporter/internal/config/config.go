@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 // Config holds application-wide settings loaded from config/config.json.
@@ -35,14 +34,14 @@ func Load() (*Config, error) {
 }
 
 // configPath returns the absolute path to config/config.json.
-// Resolves relative to this source file so it works regardless of working directory.
+// Resolves relative to the running binary so it works regardless of working directory.
 func configPath() string {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
+	exe, err := os.Executable()
+	if err != nil {
 		return "config/config.json"
 	}
-	// filename is .../internal/config/config.go
-	// config.json is at .../config/config.json (two levels up, then config/)
-	root := filepath.Join(filepath.Dir(filename), "..", "..")
+	// exe is .../bin/expense-reporter (or wherever it was installed)
+	// config.json is expected alongside the binary's parent: .../config/config.json
+	root := filepath.Dir(exe)
 	return filepath.Join(root, "config", "config.json")
 }
