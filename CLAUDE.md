@@ -82,8 +82,8 @@ No Makefile magic needed for normal work. Tests use standard `go test` with tabl
 ## Local Model Usage (Layer 5+)
 
 **Default: always try local model first for any code generation task.**
-If the first call gets a REJECTED veridict, and there is a next model in the model tier list 
-(bellow), try the next model.
+If the first call gets a REJECTED verdict, and there is a next model in the tier list
+(below), try that model before escalating.
 Escalate to Claude only after a second REJECTED verdict, or when the task explicitly requires
 architectural reasoning across 3+ files simultaneously.
 
@@ -93,8 +93,8 @@ architectural reasoning across 3+ files simultaneously.
 3. `my-go-q35-27b` (qwen3.5:27b) — benchmark candidate vs 14B baseline
 4. `my-go-q35` (qwen3.5:9b) — VRAM-only, fastest, for simple tasks
 
-**Preferred classifier model** (for `classify`/`auto` commands):
-1. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — use for 5.7+ (few-shot injection)
+**Local model tier list for classification** (for `classify`/`auto` commands — same cascade rule: try next on REJECTED):
+1. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — primary; required for 5.7+ (few-shot injection)
 2. `my-classifier-q35` (qwen3.5:9b) — VRAM-only, fast, for standard classification
 3. `my-classifier-q3` (qwen3:8b) — proven baseline
 
@@ -108,10 +108,10 @@ architectural reasoning across 3+ files simultaneously.
 **After receiving local model output, evaluate it explicitly:**
 - `ACCEPTED` — used as-is (note the prompt that worked)
 - `IMPROVED` — used with modifications (note what changed and why)
-- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task)
+- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task); try next model in tier before escalating
 
 **Escalate to Claude (frontier) only when:**
-- Local output was REJECTED and a revised prompt also failed
+- Second model in tier also returned REJECTED
 - The task requires reasoning across 3+ files simultaneously
 
 ## Documentation Rules (HARD REQUIREMENTS)
