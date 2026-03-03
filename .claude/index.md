@@ -88,6 +88,133 @@ See `data/classification/reproducibility_guide.md` for how to reproduce results.
 
 ---
 
+<!-- ref:training-data-schema -->
+## Training Data Schema
+
+### `training_data_complete.json` (694 labeled expenses — gitignored)
+
+```
+{
+  "metadata": {
+    "total_expenses": 694,        // 304 from 2024 + 303 from 2025 + 87 user corrections
+    "unique_categories": 16,
+    "unique_subcategories": 68,
+    "extraction_date": "ISO 8601"
+  },
+  "expenses": [
+    {
+      "id": 1,                    // sequential integer
+      "item": "Diarista Letícia", // raw description as it appears in the spreadsheet
+      "date": "2024-01-05",       // ISO 8601 (YYYY-MM-DD); source data is DD/MM/YYYY
+      "value": 160.0,             // float, BRL
+      "subcategory": "Diarista",  // ground truth label
+      "category": "Habitação",    // parent category
+      "source": "Filename.xlsx:SheetName",
+      "year": 2024
+    }
+  ]
+}
+```
+
+### `feature_dictionary_enhanced.json` (229 keywords — gitignored)
+
+```
+{
+  "lexical_features": {
+    "keywords": {
+      "<lowercase_keyword>": {
+        "frequency": 17,                    // occurrence count in training set
+        "dominant_subcategory": "Diarista", // most common subcategory for this keyword
+        "dominant_count": 17,               // how many times the dominant mapping occurred
+        "specificity": 1.0,                 // dominant_count / frequency (1.0 = unambiguous)
+        "idf": 3.652,                       // inverse document frequency (rarity signal)
+        "subcategories": ["Diarista"]       // all subcategories this keyword appears in
+      }
+    }
+  },
+  "value_ranges": {
+    "<subcategory>": { "min": 160.0, "max": 219.8, "mean": 176.19,
+                       "median": 172.0, "q1": 160.0, "q3": 172.0, "count": 17 }
+  },
+  "category_mapping": {
+    "<subcategory>": "<parent_category>"    // 68 entries; flat lookup
+  },
+  "user_corrections": {
+    "<normalized_item_lowercase>": {
+      "category": "Lazer",
+      "subcategory": "Delivery",
+      "full_item": "Delivery brod's"        // original casing
+    }
+  }
+}
+```
+
+### Classify command input (for 5.2)
+
+Three fields passed to the classifier:
+- `item` — expense description string (free text, Portuguese)
+- `value` — float (BRL)
+- `date` — string DD/MM/YYYY (Brazilian format; normalize before lookup)
+
+### How these files are used in Layer 5
+
+| File | Role at classify time |
+|------|----------------------|
+| `training_data_complete.json` | Source of few-shot examples (top-K by keyword similarity, injected into prompt) |
+| `feature_dictionary_enhanced.json` | Fast pre-filter: keyword lookup → candidate subcategory before calling Ollama; also value range plausibility check |
+| `algorithm_parameters.json` | Threshold values (tracked) — HIGH ≥ 0.85, MEDIUM ≥ 0.50, LOW < 0.50 |
+<!-- /ref:training-data-schema -->
+
+---
+
+<!-- ref:confidence-thresholds -->
+## Confidence Thresholds
+
+Source: `data/classification/algorithm_parameters.json` (tracked).
+
+| Level | Threshold | Behavior |
+|-------|-----------|----------|
+| HIGH | ≥ 0.85 | Auto-insert into workbook (`auto` command proceeds without prompt) |
+| MEDIUM | ≥ 0.50 | Print top candidates, ask user to confirm |
+| LOW | < 0.50 | Flag for manual review; do not insert |
+
+**Fallback:** if no keyword matches and value range is inconclusive → category `Diversos`, confidence `0.30`, `require_manual_review: true`.
+
+**Feature weights** (for scoring inside the classifier):
+- keyword_match: 0.50
+- semantic_similarity: 0.30
+- value_proximity: 0.20
+<!-- /ref:confidence-thresholds -->
+
+---
+
+<!-- ref:classification-overview -->
+## Classification Overview
+
+**Dataset:** 694 labeled expenses, 2024–2025, Brazilian Portuguese descriptions, BRL values.
+**Taxonomy:** 16 categories → 68 subcategories.
+**Keyword dictionary:** 229 terms (lowercase, with IDF and specificity scores).
+**User corrections:** 71 override rules (exact normalized item → forced subcategory).
+
+**Algorithm (hybrid, priority order):**
+1. User correction lookup (exact match on normalized item string) → confidence 1.0
+2. Keyword match scoring (TF-IDF weighted, specificity boosted) → up to 0.85
+3. Value range plausibility (Gaussian kernel against per-subcategory IQR) → modifier ±0.20
+4. Fallback → Diversos, 0.30
+
+**Key preprocessing:**
+- Lowercase, remove special chars, normalize whitespace
+- Do NOT strip accents (Portuguese keywords retain accents: `gás`, `habitação`)
+- Minimum word length: 2 chars
+
+**Performance (from Desktop-era analysis):**
+- High-specificity keywords (specificity = 1.0): unambiguous mapping, no LLM needed
+- Ambiguous keywords (e.g., `va` maps to 5 subcategories): value range resolves most cases
+- Remaining ambiguous: few-shot LLM call via Ollama
+<!-- /ref:classification-overview -->
+
+---
+
 ## Classification Data Files
 
 | File | Tracked | Purpose |

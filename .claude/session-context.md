@@ -46,13 +46,15 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Layer 5 — Expense Classifier (first Claude Code session)
-- **Last checkpoint:** Session 1 (2026-02-27) — scaffolding bootstrap complete
-  - `.claude/` tools, CLAUDE.md, index.md, session-log.md created
-  - Classification docs migrated from `~/workspaces/expenses/auto-category/`
-  - Desktop-era planning docs moved to `docs/archive/`
-- **Branch:** `feature/claude-code-scaffolding`
-- **Next:** Layer 5 task 5.1 (verify training data in `data/classification/`), 5.2 (`classify` command)
+- **Active layer:** Layer 5 — Expense Classifier
+- **Last checkpoint:** Session 3 (2026-03-02) — integration testing + Diversos fix
+  - Live tested 4 cases against real Ollama; found Diversos auto-insert bug and fixed it
+  - `internal/config/config.go`: new config reader (`auto_insert_excluded` list)
+  - `config/config.json`: `auto_insert_excluded: ["Diversos"]`
+  - `cmd/auto.go`: `isAutoInsertable(result, excluded)` — threshold + exclusion list check
+  - Known debt: `runtime.Caller` in config.go → should be `os.Executable`; logged in tasks.md
+- **Branch:** `feature/layer5-classifier` (5 commits ahead of master)
+- **Next:** 5.4 (`batch-auto` command: classify CSV → classified.csv + review.csv)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -82,8 +84,9 @@ Or manually:
 - **Structured output:** Ollama `format` param (proven reliable in LLM infra work)
 
 ### Classification Strategy
-- **Model candidates:** `my-classifier-q3` (Qwen3-8B) vs Qwen2.5-Coder-7B (speed). Benchmark at 5.2.
-- **Confidence threshold:** HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (present candidates to user)
+- **Model candidates:** `my-classifier-q3` (Qwen3-8B) vs Qwen2.5-Coder-7B (speed). Benchmark deferred.
+- **Confidence threshold:** HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (print candidates + ⚠ signal)
+- **Feature dictionary pre-filter:** skipped in 5.2; deferred to 5.7 (few-shot injection task)
 - **Few-shot injection (5.7):** keyword pre-match against training data, inject top-K examples into prompt
 
 ### Go Conventions
@@ -91,8 +94,17 @@ Or manually:
 - **Brazilian format:** DD/MM/YYYY dates, comma decimal separator (`1.234,56` notation)
 - **Error pattern:** `fmt.Errorf("context: %w", err)` — wrap with context, not bare return
 - **Table-driven tests:** Standard approach — any new command gets table-driven test coverage
+- **classify/auto input:** Positional args with `utils.ParseCurrency` for value (accepts both `.` and `,`)
+- **TDD:** Write tests red-first before implementation (5.2 was an exception — tests written after)
+- **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it
 
 ### Classification Data
 - `confusion_analysis.json` gitignored (may contain real expense descriptions as test cases)
 - `algorithm_parameters.json` tracked (no personal data, pure algorithm config)
+
+### Integration Testing Findings (session 3)
+- LLM resolves multi-word context better than keyword specificity alone — "VA compras" → 100%
+  despite "va" having specificity=0.36 in feature dictionary
+- Fallback category "Diversos" at high confidence is a real risk — now blocked via exclusion list
+- `Transporte` appearing as subcategory at 90% in Uber case — taxonomy oddity, not urgent
 <!-- /ref:active-decisions -->
