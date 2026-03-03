@@ -82,7 +82,9 @@ No Makefile magic needed for normal work. Tests use standard `go test` with tabl
 ## Local Model Usage (Layer 5+)
 
 **Default: always try local model first for any code generation task.**
-Escalate to Claude only after a REJECTED verdict, or when the task explicitly requires
+If the first call gets a REJECTED veridict, and there is a next model in the model tier list 
+(bellow), try the next model.
+Escalate to Claude only after a second REJECTED verdict, or when the task explicitly requires
 architectural reasoning across 3+ files simultaneously.
 
 **Local model tier list for Go codegen** (benchmark in progress — use in priority order):
