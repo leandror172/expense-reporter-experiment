@@ -54,6 +54,10 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 - [ ] **5.7** Few-shot injection: keyword pre-match against training data, inject top-K examples into classify prompt
 - [ ] **5.8** MCP thin wrapper in LLM repo: `classify_expense` / `add_expense` / `auto_add` tools (calls Go binary as subprocess)
 
+### Deferred Technical Debt
+
+- [ ] **config reader: replace runtime.Caller with os.Executable** — `internal/config/config.go` locates `config/config.json` via `runtime.Caller(0)`, which embeds the build-machine source path in the binary. Works in development; breaks if the binary is deployed elsewhere. Fix: use `os.Executable()` + navigate up to `config/`, matching the pattern in `GetWorkbookPath()` in `root.go`. Low priority until deployment is a concern.
+
 ### Deferred Improvements (from AUTO_CATEGORY_README.md Next Steps)
 
 These items are not blocking for Layer 5.1–5.8 but should be revisited after the core classify/auto commands are working:

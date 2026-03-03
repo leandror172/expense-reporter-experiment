@@ -4,6 +4,48 @@ Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this gro
 
 ---
 
+## 2026-03-02 — Session 3: Integration testing + Diversos auto-insert fix
+
+### Context
+Continuation of session 2 (same day). After the earlier handoff, user asked to run live test
+cases against real Ollama using `Planilha_Normalized_Final_copy.xlsx`.
+
+### What Was Done
+- **Integration testing (4 cases):**
+  - "Diarista Letícia" 160 05/01 → 95% Diarista ✓ (--confirm, user declined)
+  - "Uber Centro" 35.50 15/04 → 100% Uber/Taxi ✓ (--confirm, user declined)
+  - "VA compras" 85.00 10/03 → 100% Supermercado VA — auto-inserted into workbook copy
+    (finding: LLM resolves multi-word ambiguity better than keyword specificity alone; "va"
+    has specificity=0.36 in feature dict but "VA compras" was unambiguous to the model)
+  - "TechCorp SaaS assinatura" 49.90 01/03 → 95% Diversos — auto-inserted (**bug found**)
+- **Fix: configurable auto-insert exclusion list** (commit `1ac43dd`):
+  - `internal/config/config.go`: `Config` struct + `Load()` reads `config/config.json`
+    (known debt: uses `runtime.Caller` for path resolution; should use `os.Executable`)
+  - `config/config.json`: added `"auto_insert_excluded": ["Diversos"]`
+  - `cmd/auto.go`: extracted `isAutoInsertable(result, excluded []string) bool`; distinct ⚠
+    messages for threshold vs exclusion rejection
+  - `cmd/auto_test.go`: 9 tests for `isAutoInsertable` including empty-exclusion-list case
+- **Deferred items logged:**
+  - `tasks.md` (this repo): `runtime.Caller → os.Executable` config reader debt
+  - LLM `tasks.md`: `ollama-bridge file_path input` (token efficiency gap) + same config debt
+- **Local model verdict:** `my-go-q25c14` used for test update — IMPROVED (wrong package name
+  `expense_reporter_test` → `cmd`; syntax typo `0,.95` → `0.95`; structure was correct)
+
+### Decisions Made
+- **Exclusion list in config.json:** Not hardcoded — configurable so users can add subcategories
+  without recompiling. Empty list = no exclusions (Diversos would pass through).
+- **Distinct ⚠ messages:** "below threshold" vs "excluded from auto-insert" — different root
+  causes deserve different messages.
+- **runtime.Caller acknowledged as debt:** Logged and deferred; not blocking for development use.
+- **ollama-bridge file_path:** Token efficiency gap identified — file content must pass through
+  Claude context twice (read + embed in prompt). Logged in LLM tasks for future bridge enhancement.
+
+### Next
+- [ ] 5.4 — `batch-auto` command: classify a CSV, write `classified.csv` (HIGH) + `review.csv` (LOW)
+- [ ] Consider: `Transporte` appearing as subcategory at 90% in case 2 — taxonomy oddity, not urgent
+
+---
+
 ## 2026-03-02 — Session 2: Layer 5 tasks 5.1–5.3
 
 ### Context

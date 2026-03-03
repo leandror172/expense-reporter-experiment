@@ -47,12 +47,13 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 2 (2026-03-02) — tasks 5.1, 5.2, 5.3 complete
-  - `internal/classifier/` package: `Classify()`, `LoadTaxonomy()`, Ollama HTTP + structured output, 11 tests
-  - `cmd/classify.go`: positional args (item, value, DD/MM), `--model/--top/--data-dir` flags
-  - `cmd/auto.go`: classify + auto-insert if ≥ 0.85, `--confirm` flag, `⚠` signal on low confidence
-  - `ref:training-data-schema`, `ref:confidence-thresholds`, `ref:classification-overview` added to index.md
-- **Branch:** `feature/layer5-classifier` (3 commits ahead of master)
+- **Last checkpoint:** Session 3 (2026-03-02) — integration testing + Diversos fix
+  - Live tested 4 cases against real Ollama; found Diversos auto-insert bug and fixed it
+  - `internal/config/config.go`: new config reader (`auto_insert_excluded` list)
+  - `config/config.json`: `auto_insert_excluded: ["Diversos"]`
+  - `cmd/auto.go`: `isAutoInsertable(result, excluded)` — threshold + exclusion list check
+  - Known debt: `runtime.Caller` in config.go → should be `os.Executable`; logged in tasks.md
+- **Branch:** `feature/layer5-classifier` (5 commits ahead of master)
 - **Next:** 5.4 (`batch-auto` command: classify CSV → classified.csv + review.csv)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
@@ -100,4 +101,10 @@ Or manually:
 ### Classification Data
 - `confusion_analysis.json` gitignored (may contain real expense descriptions as test cases)
 - `algorithm_parameters.json` tracked (no personal data, pure algorithm config)
+
+### Integration Testing Findings (session 3)
+- LLM resolves multi-word context better than keyword specificity alone — "VA compras" → 100%
+  despite "va" having specificity=0.36 in feature dictionary
+- Fallback category "Diversos" at high confidence is a real risk — now blocked via exclusion list
+- `Transporte` appearing as subcategory at 90% in Uber case — taxonomy oddity, not urgent
 <!-- /ref:active-decisions -->
