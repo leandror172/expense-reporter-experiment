@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"expense-reporter/internal/classifier"
+	"expense-reporter/internal/config"
 	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 	"fmt"
@@ -56,6 +57,11 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("loading taxonomy: %w", err)
 	}
 
+	appCfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
 	cfg := classifier.Config{
 		OllamaURL: "http://localhost:11434",
 		Model:     autoModel,
@@ -73,7 +79,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 
 	top := results[0]
 
-	if top.Confidence >= highConfidenceThreshold {
+	if isAutoInsertable(top, appCfg.AutoInsertExcluded) {
 		if autoConfirm {
 			fmt.Printf("Top match: %s (%s) — %.0f%% confidence\n", top.Subcategory, top.Category, top.Confidence*100)
 			fmt.Printf("Insert? [y/N] ")
@@ -87,9 +93,27 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	}
 
 	printCandidates(item, value, date, results)
-	fmt.Printf("\n⚠  Not inserted — top confidence %.0f%% is below threshold %.0f%%.\n",
-		top.Confidence*100, highConfidenceThreshold*100)
+	if top.Confidence >= highConfidenceThreshold {
+		fmt.Printf("\n⚠  Not inserted — \"%s\" is excluded from auto-insert.\n", top.Subcategory)
+	} else {
+		fmt.Printf("\n⚠  Not inserted — top confidence %.0f%% is below threshold %.0f%%.\n",
+			top.Confidence*100, highConfidenceThreshold*100)
+	}
 	return nil
+}
+
+// isAutoInsertable returns true if the result meets the confidence threshold
+// and its subcategory is not in the exclusion list.
+func isAutoInsertable(result classifier.Result, excluded []string) bool {
+	if result.Confidence < highConfidenceThreshold {
+		return false
+	}
+	for _, ex := range excluded {
+		if result.Subcategory == ex {
+			return false
+		}
+	}
+	return true
 }
 
 func insertExpense(item, date string, value float64, result classifier.Result) error {
