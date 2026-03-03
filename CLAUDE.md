@@ -81,25 +81,36 @@ No Makefile magic needed for normal work. Tests use standard `go test` with tabl
 
 ## Local Model Usage (Layer 5+)
 
-When implementing Layer 5 classifier features, **try local models first** for code generation.
-This generates training data for future distillation.
+**Default: always try local model first for any code generation task.**
+Escalate to Claude only after a REJECTED verdict, or when the task explicitly requires
+architectural reasoning across 3+ files simultaneously.
+
+**Local model tier list for Go codegen** (benchmark in progress — use in priority order):
+1. `my-go-qcoder` (qwen3-coder:30b, 32K ctx, agentic) — primary candidate, not yet benchmarked
+2. `my-go-q25c14` (qwen2.5-coder:14b) — current proven baseline, ~25-32s, ~800 token budget
+3. `my-go-q35-27b` (qwen3.5:27b) — benchmark candidate vs 14B baseline
+4. `my-go-q35` (qwen3.5:9b) — VRAM-only, fastest, for simple tasks
+
+**Preferred classifier model** (for `classify`/`auto` commands):
+1. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — use for 5.7+ (few-shot injection)
+2. `my-classifier-q35` (qwen3.5:9b) — VRAM-only, fast, for standard classification
+3. `my-classifier-q3` (qwen3:8b) — proven baseline
 
 **Use `mcp__ollama-bridge__generate_code` or `mcp__ollama-bridge__ask_ollama` for:**
-- Go structs, interfaces, simple functions, test stubs
-- Simple transformations (parsing, formatting, serialization)
+- Go structs, interfaces, functions, test stubs
 - Cobra command scaffolding
+- Transformations (parsing, formatting, serialization)
+- Single-file feature additions (e.g. batch-auto, correction logging, persistence)
+- Any task where expected output is a bounded Go file or function
 
 **After receiving local model output, evaluate it explicitly:**
 - `ACCEPTED` — used as-is (note the prompt that worked)
 - `IMPROVED` — used with modifications (note what changed and why)
 - `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task)
 
-**Preferred local model:** `my-go-q25c14` (qwen2.5-coder:14b) — ~25-32s, ACCEPTED quality.
-
-**Do NOT use local models for:**
-- Architectural decisions or multi-file reasoning
-- Security-sensitive code
-- Tasks requiring understanding of large context (>400 tokens of output needed)
+**Escalate to Claude (frontier) only when:**
+- Local output was REJECTED and a revised prompt also failed
+- The task requires reasoning across 3+ files simultaneously
 
 ## Documentation Rules (HARD REQUIREMENTS)
 
