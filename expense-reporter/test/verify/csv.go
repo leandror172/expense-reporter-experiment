@@ -10,23 +10,23 @@ import (
 	"expense-reporter/test/harness"
 )
 
-// StdoutContains returns a Then closure asserting ctx.Stdout contains substr.
-func StdoutContains(substr string) func(*harness.Context) {
+// OutputContains returns a Then closure asserting stdout+stderr contains substr.
+func OutputContains(substr string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		if !strings.Contains(ctx.Stdout+ctx.Stderr, substr) {
-			ctx.T.Errorf("StdoutContains(%q): not found in output\nstdout: %s\nstderr: %s",
+			ctx.T.Errorf("OutputContains(%q): not found in output\nstdout: %s\nstderr: %s",
 				substr, ctx.Stdout, ctx.Stderr)
 		}
 	}
 }
 
-// StdoutNotContains returns a Then closure asserting ctx.Stdout does NOT contain substr.
-func StdoutNotContains(substr string) func(*harness.Context) {
+// OutputNotContains returns a Then closure asserting stdout+stderr does NOT contain substr.
+func OutputNotContains(substr string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		if strings.Contains(ctx.Stdout+ctx.Stderr, substr) {
-			ctx.T.Errorf("StdoutNotContains(%q): unexpectedly found in output\nstdout: %s\nstderr: %s",
+			ctx.T.Errorf("OutputNotContains(%q): unexpectedly found in output\nstdout: %s\nstderr: %s",
 				substr, ctx.Stdout, ctx.Stderr)
 		}
 	}

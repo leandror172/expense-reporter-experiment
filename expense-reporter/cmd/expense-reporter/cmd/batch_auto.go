@@ -267,11 +267,6 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 	}
 
 	for _, r := range rows {
-		var errStr string
-		if r.Error != nil {
-			errStr = r.Error.Error()
-		}
-		_ = errStr
 		w.Write([]string{ //nolint:errcheck
 			r.Item,
 			r.Date,

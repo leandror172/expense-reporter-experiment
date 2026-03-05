@@ -13,6 +13,15 @@ import (
 
 var binaryPath string
 
+// fixturesDir returns the absolute path to test/fixtures/, resolved via findModuleRoot.
+func fixturesDir() string {
+	root, err := findModuleRoot()
+	if err != nil {
+		panic("fixturesDir: " + err.Error())
+	}
+	return filepath.Join(root, "test", "fixtures")
+}
+
 func TestMain(m *testing.M) {
 	binDir, err := os.MkdirTemp("", "expense-reporter-acceptance-*")
 	if err != nil {

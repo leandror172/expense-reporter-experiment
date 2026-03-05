@@ -46,7 +46,6 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 			"--model", cfg.Model,
 			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
 			"--top", fmt.Sprintf("%d", cfg.TopN),
-			"--dry-run",
 			"--output-dir", ctx.WorkDir,
 		}
 		args = append(args, cfg.ExtraArgs...)

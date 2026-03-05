@@ -4,18 +4,12 @@ package acceptance_test
 
 import (
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"expense-reporter/test/actions"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
-
-func fixturesDir() string {
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "fixtures")
-}
 
 func TestBatchAuto_Basic(t *testing.T) {
 	harness.RequireOllama(t, "")
@@ -36,7 +30,7 @@ func TestBatchAuto_Basic(t *testing.T) {
 			verify.ExitCodeZero(),
 			verify.FileExists("classified.csv"),
 			verify.FileExists("review.csv"),
-			verify.RowCountAtLeast("classified.csv", 1), // header + at least 1 data row
+			verify.RowCountAtLeast("classified.csv", 1),
 			verify.ColumnCount("classified.csv", 7),
 			verify.AllConfidencesInRange("classified.csv", 5), // col 5 = confidence
 		},

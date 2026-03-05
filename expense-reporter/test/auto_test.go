@@ -35,7 +35,7 @@ func TestAuto_Basic(t *testing.T) {
 			When: actions.RunAuto(item, value, date),
 			Then: []func(*harness.Context){
 				verify.ExitCodeZero(),
-				verify.StdoutContains("%"),
+				verify.OutputContains("%"),
 			},
 		})
 	}
@@ -53,7 +53,7 @@ func TestAuto_AmbiguousItemStaysInReview(t *testing.T) {
 		When: actions.RunAuto("Outros gastos aleatorios xyz", "10.00", "01/01"),
 		Then: []func(*harness.Context){
 			verify.ExitCodeZero(),
-			verify.StdoutNotContains("✓ Inserted"),
+			verify.OutputNotContains("✓ Inserted"),
 		},
 	})
 }
