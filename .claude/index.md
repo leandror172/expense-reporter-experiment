@@ -27,6 +27,7 @@
 | Agent preferences & resume checklist | `.claude/session-context.md` |
 | Project rules & constraints | `CLAUDE.md` (repo root) |
 | Cross-repo context (LLM infra) | `/mnt/i/workspaces/llm/.claude/` |
+| Implementation plan (session 4) | `.claude/plans/acceptance-harness-batch-auto.md` |
 
 ---
 
