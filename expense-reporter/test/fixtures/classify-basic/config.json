@@ -1,0 +1,5 @@
+{
+  "command": "classify",
+  "model": "my-classifier-q3",
+  "assertion_type": "hard"
+}

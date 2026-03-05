@@ -79,7 +79,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 
 	top := results[0]
 
-	if isAutoInsertable(top, appCfg.AutoInsertExcluded) {
+	if classifier.IsAutoInsertable(top, highConfidenceThreshold, appCfg.AutoInsertExcluded) {
 		if autoConfirm {
 			fmt.Printf("Top match: %s (%s) — %.0f%% confidence\n", top.Subcategory, top.Category, top.Confidence*100)
 			fmt.Printf("Insert? [y/N] ")
@@ -102,20 +102,6 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// isAutoInsertable returns true if the result meets the confidence threshold
-// and its subcategory is not in the exclusion list.
-func isAutoInsertable(result classifier.Result, excluded []string) bool {
-	if result.Confidence < highConfidenceThreshold {
-		return false
-	}
-	for _, ex := range excluded {
-		if result.Subcategory == ex {
-			return false
-		}
-	}
-	return true
-}
-
 func insertExpense(item, date string, value float64, result classifier.Result) error {
 	workbook, err := GetWorkbookPath()
 	if err != nil {
@@ -126,7 +112,7 @@ func insertExpense(item, date string, value float64, result classifier.Result) e
 		return fmt.Errorf("workbook not found at: %s", workbook)
 	}
 
-	insertStr := buildInsertString(item, date, value, result.Subcategory)
+	insertStr := utils.BuildInsertString(item, date, value, result.Subcategory)
 	if err := workflow.InsertExpense(workbook, insertStr); err != nil {
 		return fmt.Errorf("failed to insert expense: %w", err)
 	}
@@ -142,17 +128,6 @@ func printCandidates(item string, value float64, date string, results []classifi
 		bar := confidenceBar(r.Confidence)
 		fmt.Printf("  %d. %-30s %-20s %s %.0f%%\n", i+1, r.Subcategory, r.Category, bar, r.Confidence*100)
 	}
-}
-
-// formatBRValue formats a float64 as a Brazilian decimal string (comma separator).
-func formatBRValue(v float64) string {
-	s := fmt.Sprintf("%.2f", v)
-	return strings.Replace(s, ".", ",", 1)
-}
-
-// buildInsertString constructs the semicolon-delimited string expected by workflow.InsertExpense.
-func buildInsertString(item, date string, value float64, subcategory string) string {
-	return fmt.Sprintf("%s;%s;%s;%s", item, date, formatBRValue(value), subcategory)
 }
 
 // confirmInsert reads a line from r and returns true only for "y" or "yes" (case-insensitive).
