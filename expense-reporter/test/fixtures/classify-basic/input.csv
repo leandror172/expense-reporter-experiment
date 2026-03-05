@@ -1,0 +1,7 @@
+# classify-basic fixture: rows used as scenario table (not passed as file to binary)
+# Format: item;DD/MM;value
+Uber Centro;15/04;35,50
+Compras Carrefour;03/01;150,00
+Conta de luz;05/01;320,00
+Diarista Letícia;05/01;160,00
+Netflix;10/03;55,90

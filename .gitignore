@@ -49,3 +49,6 @@ docs/archive/transients/
 # Backup files
 *.bak
 expense-reporter/*.bak
+
+# Acceptance test results (drift tracking JSON)
+expense-reporter/test/results/

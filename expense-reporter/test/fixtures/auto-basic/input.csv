@@ -1,0 +1,5 @@
+# auto-basic fixture: scenario table read row-by-row by TestAuto_Basic
+# Format: item;DD/MM;value  (auto command takes these as CLI args, not a file)
+Uber Centro;15/04;35,50
+Diarista Letícia;05/01;160,00
+Conta de luz;05/01;320,00

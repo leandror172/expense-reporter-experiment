@@ -1,0 +1,12 @@
+# expected-classified.csv — soft accuracy reference
+# col: item;date;value;subcategory;category;confidence;auto_inserted
+Uber Centro;15/04;35,50;Uber/Taxi;Transporte;0.90;true
+Compras Carrefour;03/01;150,00;Supermercado;Alimentação;0.90;true
+Conta de luz;05/01;320,00;Energia Elétrica;Habitação;0.90;true
+Diarista Letícia;05/01;160,00;Diarista;Habitação;0.90;true
+Netflix;10/03;55,90;Streaming;Lazer;0.90;true
+Farmácia Droga Raia;12/02;87,30;Farmácia;Saúde;0.90;true
+Restaurante Madero;20/03;120,00;Restaurante;Alimentação;0.90;true
+Posto Ipiranga gasolina;08/01;280,00;Combustível;Transporte;0.90;true
+Academia Smart Fit;01/04;99,90;Academia;Saúde;0.90;true
+Aluguel apartamento;05/01;2500,00;Aluguel;Habitação;0.90;true

@@ -28,6 +28,7 @@
 | Project rules & constraints | `CLAUDE.md` (repo root) |
 | Cross-repo context (LLM infra) | `/mnt/i/workspaces/llm/.claude/` |
 | Implementation plan (session 4) | `.claude/plans/acceptance-harness-batch-auto.md` |
+| Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
 
 ---
 
@@ -46,8 +47,13 @@
 | `internal/parser` | `expense-reporter/internal/parser/` | CSV parsing, date/decimal normalization (BR format) |
 | `internal/resolver` | `expense-reporter/internal/resolver/` | Category resolution: matches expense → (category, subcategory) |
 | `internal/workflow` | `expense-reporter/internal/workflow/` | Multi-step workflow: parse → resolve → insert |
-| `pkg/utils` | `expense-reporter/pkg/utils/` | Public utility functions |
+| `pkg/utils` | `expense-reporter/pkg/utils/` | Public utility functions (currency, date, format) |
 | `config` | `expense-reporter/config/` | Configuration files and constants |
+| `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic |
+| `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check) |
+| `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto |
+| `test/verify` | `expense-reporter/test/verify/` | Then-closures: ExitCodeZero, RowCount, AllConfidencesInRange, SoftAccuracy |
+| `test/fixtures` | `expense-reporter/test/fixtures/` | Fixture data per functional slice (classify-basic, batch-auto-basic, batch-auto-exclusions) |
 <!-- /ref:go-structure -->
 
 ---
