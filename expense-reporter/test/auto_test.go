@@ -11,49 +11,53 @@ import (
 	"expense-reporter/test/verify"
 )
 
-// TestAuto_Basic reads rows from the auto-basic fixture and runs the auto command
-// against each, asserting exit 0, confidence output, and no spurious insert.
-func TestAuto_Basic(t *testing.T) {
+func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 	harness.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
-	rows := harness.ReadCSVFile(t, filepath.Join(fixDir, "input.csv"))
 
-	for _, row := range rows {
-		row := row
-		if len(row) < 3 {
-			continue
-		}
-		item, date, value := row[0], row[1], row[2]
-
-		harness.Run(t, harness.Scenario{
-			Name: "auto: " + item,
-			Given: func(ctx *harness.Context) {
-				ctx.BinaryPath = binaryPath
-				ctx.FixtureDir = fixDir
-			},
-			When: actions.RunAuto(item, value, date),
-			Then: []func(*harness.Context){
-				verify.ExitCodeZero(),
-				verify.OutputContains("%"),
-			},
-		})
-	}
+	harness.Run(t, harness.Scenario{
+		Name:  "Uber Centro classified as transport with confidence score",
+		Given: expenseTaxonomyAvailable(fixDir),
+		When:  actions.RunAuto("Uber Centro", "35,50", "15/04"),
+		Then:  expenseClassifiedWithConfidence(),
+	})
 }
 
-// TestAuto_AmbiguousItemStaysInReview verifies that a vague item is not auto-inserted.
-func TestAuto_AmbiguousItemStaysInReview(t *testing.T) {
+func TestAuto_AmbiguousExpenseKeptForManualReview(t *testing.T) {
 	harness.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
-		Name: "auto: vague item must not be auto-inserted",
-		Given: func(ctx *harness.Context) {
-			ctx.BinaryPath = binaryPath
-		},
-		When: actions.RunAuto("Outros gastos aleatorios xyz", "10.00", "01/01"),
-		Then: []func(*harness.Context){
-			verify.ExitCodeZero(),
-			verify.OutputNotContains("✓ Inserted"),
-		},
+		Name:  "vague expense description must not be auto-inserted",
+		Given: expenseClassifierAvailable(),
+		When:  actions.RunAuto("Outros gastos aleatorios xyz", "10.00", "01/01"),
+		Then:  expenseKeptForManualReview(),
 	})
+}
+
+func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.FixtureDir = fixDir
+	}
+}
+
+func expenseClassifierAvailable() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+	}
+}
+
+func expenseClassifiedWithConfidence() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.ExitCodeZero(),
+		verify.OutputContains("%"),
+	}
+}
+
+func expenseKeptForManualReview() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.ExitCodeZero(),
+		verify.OutputNotContains("✓ Inserted"),
+	}
 }

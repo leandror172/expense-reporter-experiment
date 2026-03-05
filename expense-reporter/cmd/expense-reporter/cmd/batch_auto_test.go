@@ -45,7 +45,7 @@ func TestParse3FieldLine(t *testing.T) {
 }
 
 func TestBatchAutoCommand_Flags(t *testing.T) {
-	for _, flag := range []string{"model", "data-dir", "threshold", "top", "dry-run", "output-dir"} {
+	for _, flag := range []string{"model", "data-dir", "ollama-url", "threshold", "top", "dry-run", "output-dir"} {
 		if batchAutoCmd.Flags().Lookup(flag) == nil {
 			t.Errorf("flag %q not registered on batch-auto command", flag)
 		}
