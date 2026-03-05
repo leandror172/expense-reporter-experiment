@@ -10,7 +10,6 @@ import (
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
-	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 
 	"github.com/spf13/cobra"
@@ -19,6 +18,7 @@ import (
 var (
 	batchAutoModel     string
 	batchAutoDataDir   string
+	batchAutoOllamaURL string
 	batchAutoThreshold float64
 	batchAutoTopN      int
 	batchAutoDryRun    bool
@@ -48,6 +48,7 @@ func init() {
 	rootCmd.AddCommand(batchAutoCmd)
 	batchAutoCmd.Flags().StringVar(&batchAutoModel, "model", "my-classifier-q3", "Ollama model to use")
 	batchAutoCmd.Flags().StringVar(&batchAutoDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	batchAutoCmd.Flags().StringVar(&batchAutoOllamaURL, "ollama-url", "http://localhost:11434", "Ollama API base URL")
 	batchAutoCmd.Flags().Float64Var(&batchAutoThreshold, "threshold", 0.85, "Minimum confidence for auto-insert")
 	batchAutoCmd.Flags().IntVar(&batchAutoTopN, "top", 3, "Number of classification candidates")
 	batchAutoCmd.Flags().BoolVar(&batchAutoDryRun, "dry-run", false, "Classify and write CSVs without inserting into workbook")
@@ -69,77 +70,108 @@ type classifiedRow struct {
 func runBatchAuto(cmd *cobra.Command, args []string) error {
 	csvPath := args[0]
 
-	// Determine output directory
-	outputDir := batchAutoOutputDir
-	if outputDir == "" {
-		outputDir = filepath.Dir(csvPath)
-	}
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return fmt.Errorf("creating output dir: %w", err)
-	}
-
-	// Load input lines
-	reader := batch.NewCSVReader(csvPath)
-	lines, err := reader.Read()
+	outputDir, err := resolveOutputDir(csvPath, batchAutoOutputDir)
 	if err != nil {
-		return fmt.Errorf("reading CSV: %w", err)
-	}
-	if len(lines) == 0 {
-		return fmt.Errorf("input CSV is empty")
+		return err
 	}
 
-	// Load taxonomy and config
-	taxonomy, err := classifier.LoadTaxonomy(batchAutoDataDir)
+	lines, err := loadInputLines(csvPath)
 	if err != nil {
-		return fmt.Errorf("loading taxonomy: %w", err)
+		return err
 	}
 
-	appCfg, err := config.Load()
+	taxonomy, appCfg, err := loadBatchAutoDeps(batchAutoDataDir)
 	if err != nil {
-		return fmt.Errorf("loading config: %w", err)
+		return err
 	}
 
-	classifierCfg := classifier.Config{
-		OllamaURL: "http://localhost:11434",
+	cfg := classifier.Config{
+		OllamaURL: batchAutoOllamaURL,
 		Model:     batchAutoModel,
 		TopN:      batchAutoTopN,
 	}
 
-	// Classify each row
+	results := classifyLines(lines, taxonomy, appCfg, cfg, batchAutoThreshold)
+
+	if !batchAutoDryRun {
+		if err := insertClassified(results); err != nil {
+			return err
+		}
+	}
+
+	classifiedPath := filepath.Join(outputDir, "classified.csv")
+	reviewPath := filepath.Join(outputDir, "review.csv")
+
+	if err := writeClassifiedCSV(classifiedPath, results); err != nil {
+		return fmt.Errorf("writing classified.csv: %w", err)
+	}
+	if err := writeReviewCSV(reviewPath, results); err != nil {
+		return fmt.Errorf("writing review.csv: %w", err)
+	}
+
+	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath)
+	return nil
+}
+
+func resolveOutputDir(csvPath, outputDir string) (string, error) {
+	if outputDir == "" {
+		outputDir = filepath.Dir(csvPath)
+	}
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return "", fmt.Errorf("creating output dir: %w", err)
+	}
+	return outputDir, nil
+}
+
+func loadInputLines(csvPath string) ([]string, error) {
+	lines, err := batch.NewCSVReader(csvPath).Read()
+	if err != nil {
+		return nil, fmt.Errorf("reading CSV: %w", err)
+	}
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("input CSV is empty")
+	}
+	return lines, nil
+}
+
+func loadBatchAutoDeps(dataDir string) (classifier.Taxonomy, *config.Config, error) {
+	taxonomy, err := classifier.LoadTaxonomy(dataDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
+	}
+	appCfg, err := config.Load()
+	if err != nil {
+		return nil, nil, fmt.Errorf("loading config: %w", err)
+	}
+	return taxonomy, appCfg, nil
+}
+
+func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.Config, cfg classifier.Config, threshold float64) []classifiedRow {
 	total := len(lines)
 	results := make([]classifiedRow, 0, total)
+
 	for i, line := range lines {
 		row, err := parse3FieldLine(line)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[%d/%d] SKIP  %q: %v\n", i+1, total, line, err)
-			results = append(results, classifiedRow{
-				Item:  line,
-				Error: err,
-			})
+			results = append(results, classifiedRow{Item: line, Error: err})
 			continue
 		}
 
-		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, taxonomy, classifierCfg)
+		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, taxonomy, cfg)
 		if err != nil || len(classResults) == 0 {
-			// Ollama failure — mark for review, continue
 			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, row.Item, err)
-			results = append(results, classifiedRow{
-				Item:  row.Item,
-				Date:  row.Date,
-				Value: row.Value,
-				Error: err,
-			})
+			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, Value: row.Value, Error: err})
 			continue
 		}
 
 		top := classResults[0]
-		autoInsert := classifier.IsAutoInsertable(top, batchAutoThreshold, appCfg.AutoInsertExcluded)
+		autoInsert := classifier.IsAutoInsertable(top, threshold, appCfg.AutoInsertExcluded)
 		status := "REVIEW"
 		if autoInsert {
 			status = "AUTO  "
 		}
-		fmt.Printf("[%d/%d] %s %s → %s (%.0f%%)\n",
-			i+1, total, status, row.Item, top.Subcategory, top.Confidence*100)
+		fmt.Printf("[%d/%d] %s %s → %s (%.0f%%)\n", i+1, total, status, row.Item, top.Subcategory, top.Confidence*100)
 
 		results = append(results, classifiedRow{
 			Item:         row.Item,
@@ -151,52 +183,59 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 			AutoInserted: autoInsert,
 		})
 	}
+	return results
+}
 
-	// Insert high-confidence rows into workbook (unless dry-run)
-	if !batchAutoDryRun {
-		workbook, err := GetWorkbookPath()
-		if err != nil {
-			return fmt.Errorf("getting workbook path: %w", err)
-		}
-		if _, err := os.Stat(workbook); os.IsNotExist(err) {
-			return fmt.Errorf("workbook not found: %s", workbook)
-		}
-
-		// Backup before any modifications
-		bm := batch.NewBackupManager()
-		if _, err := bm.CreateBackup(workbook); err != nil {
-			return fmt.Errorf("creating backup: %w", err)
-		}
-
-		for i := range results {
-			r := &results[i]
-			if !r.AutoInserted || r.Error != nil {
-				continue
-			}
-			insertStr := utils.BuildInsertString(r.Item, r.Date, r.Value, r.Subcategory)
-			if err := workflow.InsertExpense(workbook, insertStr); err != nil {
-				fmt.Fprintf(os.Stderr, "  INSERT ERROR %q: %v\n", r.Item, err)
-				r.AutoInserted = false
-				r.Error = err
-			}
-		}
+func insertClassified(results []classifiedRow) error {
+	workbook, err := GetWorkbookPath()
+	if err != nil {
+		return fmt.Errorf("getting workbook path: %w", err)
+	}
+	if _, err := os.Stat(workbook); os.IsNotExist(err) {
+		return fmt.Errorf("workbook not found: %s", workbook)
 	}
 
-	// Write output CSVs
-	classifiedPath := filepath.Join(outputDir, "classified.csv")
-	reviewPath := filepath.Join(outputDir, "review.csv")
-
-	if err := writeClassifiedCSV(classifiedPath, results); err != nil {
-		return fmt.Errorf("writing classified.csv: %w", err)
-	}
-	if err := writeReviewCSV(reviewPath, results); err != nil {
-		return fmt.Errorf("writing review.csv: %w", err)
+	// Backup before any modifications
+	if _, err := batch.NewBackupManager().CreateBackup(workbook); err != nil {
+		return fmt.Errorf("creating backup: %w", err)
 	}
 
-	// Summary
-	autoCount := 0
-	reviewCount := 0
-	errorCount := 0
+	// Build insert strings for high-confidence rows, track their source indices
+	var srcIdx []int
+	var insertStrings []string
+	for i, r := range results {
+		if r.AutoInserted && r.Error == nil {
+			srcIdx = append(srcIdx, i)
+			insertStrings = append(insertStrings, utils.BuildInsertString(r.Item, r.Date, r.Value, r.Subcategory))
+		}
+	}
+	if len(insertStrings) == 0 {
+		return nil
+	}
+
+	// Use Processor.ProcessBatch for optimised single-open batch insert
+	p := batch.NewProcessor(workbook)
+	if err := p.LoadMappings(); err != nil {
+		return fmt.Errorf("loading workbook mappings: %w", err)
+	}
+	summary, _, err := p.ProcessBatch(insertStrings, nil)
+	if err != nil {
+		return fmt.Errorf("batch insert: %w", err)
+	}
+
+	// Map failures back to classified rows
+	for i, result := range summary.Results {
+		if !result.Success {
+			results[srcIdx[i]].AutoInserted = false
+			results[srcIdx[i]].Error = result.Error
+			fmt.Fprintf(os.Stderr, "  INSERT ERROR %q: %v\n", results[srcIdx[i]].Item, result.Error)
+		}
+	}
+	return nil
+}
+
+func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath string) {
+	autoCount, reviewCount, errorCount := 0, 0, 0
 	for _, r := range results {
 		switch {
 		case r.Error != nil:
@@ -207,9 +246,8 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 			reviewCount++
 		}
 	}
-
 	dryTag := ""
-	if batchAutoDryRun {
+	if dryRun {
 		dryTag = " (dry-run)"
 	}
 	fmt.Printf("\n--- Summary%s ---\n", dryTag)
@@ -218,8 +256,6 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Errors        : %d\n", errorCount)
 	fmt.Printf("  classified.csv: %s\n", classifiedPath)
 	fmt.Printf("  review.csv    : %s\n", reviewPath)
-
-	return nil
 }
 
 // inputRow is a parsed 3-field line.
@@ -238,7 +274,6 @@ func parse3FieldLine(line string) (inputRow, error) {
 	item := strings.TrimSpace(parts[0])
 	date := strings.TrimSpace(parts[1])
 	valueStr := strings.TrimSpace(parts[2])
-
 	if item == "" {
 		return inputRow{}, fmt.Errorf("empty item field")
 	}
@@ -260,12 +295,9 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-
-	// Header
 	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted"}); err != nil {
 		return err
 	}
-
 	for _, r := range rows {
 		w.Write([]string{ //nolint:errcheck
 			r.Item,
@@ -277,7 +309,6 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 			fmt.Sprintf("%v", r.AutoInserted),
 		})
 	}
-
 	w.Flush()
 	return w.Error()
 }
@@ -292,11 +323,9 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-
 	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted"}); err != nil {
 		return err
 	}
-
 	for _, r := range rows {
 		if r.AutoInserted {
 			continue
@@ -311,7 +340,6 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 			"false",
 		})
 	}
-
 	w.Flush()
 	return w.Error()
 }
