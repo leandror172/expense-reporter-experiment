@@ -47,14 +47,12 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 3 (2026-03-02) — integration testing + Diversos fix
-  - Live tested 4 cases against real Ollama; found Diversos auto-insert bug and fixed it
-  - `internal/config/config.go`: new config reader (`auto_insert_excluded` list)
-  - `config/config.json`: `auto_insert_excluded: ["Diversos"]`
-  - `cmd/auto.go`: `isAutoInsertable(result, excluded)` — threshold + exclusion list check
-  - Known debt: `runtime.Caller` in config.go → should be `os.Executable`; logged in tasks.md
-- **Branch:** `feature/layer5-classifier` (5 commits ahead of master)
-- **Next:** 5.4 (`batch-auto` command: classify CSV → classified.csv + review.csv)
+- **Last checkpoint:** Session 4 (2026-03-03) — design session + debt fix
+  - Fixed `runtime.Caller` → `os.Executable` debt in `internal/config/config.go` (commit 405953e)
+  - Designed acceptance test harness (BDD Given/When/Then) + batch-auto command (5.4)
+  - Full implementation plan: `.claude/plans/acceptance-harness-batch-auto.md`
+- **Branch:** `feature/layer5-classifier` (6 commits ahead of master)
+- **Next:** Implement plan — Phase 1 (extract shared logic), Phase 2 (test harness), Phase 3 (batch-auto)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -94,6 +92,8 @@ Or manually:
 - **Brazilian format:** DD/MM/YYYY dates, comma decimal separator (`1.234,56` notation)
 - **Error pattern:** `fmt.Errorf("context: %w", err)` — wrap with context, not bare return
 - **Table-driven tests:** Standard approach — any new command gets table-driven test coverage
+- **No test frameworks:** stdlib `testing` only — no testify, no testscript, no assertion libraries
+- **Acceptance tests:** `//go:build acceptance` tag, separate from unit tests, live Ollama required
 - **classify/auto input:** Positional args with `utils.ParseCurrency` for value (accepts both `.` and `,`)
 - **TDD:** Write tests red-first before implementation (5.2 was an exception — tests written after)
 - **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it

@@ -1,6 +1,6 @@
 # Task Progress — Expense Reporter
 
-**Last Updated:** 2026-02-27 (session 1)
+**Last Updated:** 2026-03-03 (session 4)
 **Active Layer:** Layer 5 — Expense Classifier
 **Full history:** `.claude/session-log.md` (session log), `docs/archive/` (Desktop-era docs)
 
@@ -56,7 +56,7 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 
 ### Deferred Technical Debt
 
-- [ ] **config reader: replace runtime.Caller with os.Executable** — `internal/config/config.go` locates `config/config.json` via `runtime.Caller(0)`, which embeds the build-machine source path in the binary. Works in development; breaks if the binary is deployed elsewhere. Fix: use `os.Executable()` + navigate up to `config/`, matching the pattern in `GetWorkbookPath()` in `root.go`. Low priority until deployment is a concern.
+- [x] **config reader: replace runtime.Caller with os.Executable** — Fixed session 4 (commit 405953e). `internal/config/config.go` now uses `os.Executable()` to resolve `config/config.json` relative to the binary location.
 
 ### Deferred Improvements (from AUTO_CATEGORY_README.md Next Steps)
 
