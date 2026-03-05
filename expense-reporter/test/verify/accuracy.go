@@ -38,12 +38,10 @@ func SoftAccuracy(artifactKey, expectedPath string, floor float64, subcatCol int
 		}
 		expected := harness.ReadCSVFile(ctx.T, expectedPath)
 
-		// Skip header row (first row) in both if present
+		// Skip header row in actual (classified.csv has a real CSV header).
+		// expected-classified.csv uses # comments (stripped by ReadCSVFile) — no header row.
 		if len(actual) > 0 {
 			actual = actual[1:]
-		}
-		if len(expected) > 0 {
-			expected = expected[1:]
 		}
 
 		total := len(actual)

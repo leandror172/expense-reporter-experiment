@@ -4,7 +4,6 @@ package acceptance_test
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"expense-reporter/test/actions"
@@ -40,13 +39,7 @@ func TestClassify_Basic(t *testing.T) {
 			When: actions.RunClassify(item, value, date),
 			Then: []func(*harness.Context){
 				verify.ExitCodeZero(),
-				func(ctx *harness.Context) {
-					ctx.T.Helper()
-					output := ctx.Stdout + ctx.Stderr
-					if !strings.Contains(output, "%") {
-						ctx.T.Errorf("classify %q: output missing confidence %%\n%s", item, output)
-					}
-				},
+				verify.OutputContains("%"),
 			},
 		})
 	}
