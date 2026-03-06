@@ -1,0 +1,4 @@
+# midyear-input.csv — installment expense starting April, all 3 months within current year
+# Format: item;DD/MM;value  (value/N = N installments)
+# Apr/May/Jun all fall within 2025 — no rollover expected
+Academia Smart Fit;01/04;99,90/3

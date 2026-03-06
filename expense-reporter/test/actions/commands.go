@@ -55,6 +55,31 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 	}
 }
 
+// RunBatchAutoWithInput reads config from fixtureDir but uses inputFile as the CSV input
+// instead of the default "input.csv". Registers classified.csv and review.csv in ctx.Artifacts.
+// Use when a fixture directory contains multiple input files for different test scenarios.
+func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		cfg, err := harness.LoadFixtureConfig(fixtureDir)
+		if err != nil {
+			ctx.T.Fatalf("RunBatchAutoWithInput: load config: %v", err)
+		}
+		args := []string{
+			"batch-auto",
+			filepath.Join(ctx.WorkDir, inputFile),
+			"--model", cfg.Model,
+			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
+			"--top", fmt.Sprintf("%d", cfg.TopN),
+			"--output-dir", ctx.WorkDir,
+		}
+		args = append(args, cfg.ExtraArgs...)
+		runCommand(ctx, args...)
+		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
+		ctx.Artifacts["review.csv"] = filepath.Join(ctx.WorkDir, "review.csv")
+		ctx.Artifacts["rollover.csv"] = filepath.Join(ctx.WorkDir, "rollover.csv")
+	}
+}
+
 // RunBatchAutoIntoArtifactDir reads config from fixtureDir, then uses the artifact registered
 // under outputDirKey as the --output-dir value. Registers classified.csv and review.csv in
 // ctx.Artifacts pointing into that directory. Use when the output directory is set up in Given
