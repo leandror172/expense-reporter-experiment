@@ -92,13 +92,17 @@ func SoftAccuracy(artifactKey, expectedPath string, floor float64, subcatCol int
 	}
 }
 
-// AllInReview asserts all rows in the artifact have auto_inserted == "false".
+// AllInReview asserts all data rows in the artifact have auto_inserted == "false".
+// Skips the header row (row 0).
 func AllInReview(artifactKey string, autoInsertedCol int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
 		if rows == nil {
 			return
+		}
+		if len(rows) > 0 {
+			rows = rows[1:] // skip header
 		}
 		for i, row := range rows {
 			if autoInsertedCol >= len(row) {
