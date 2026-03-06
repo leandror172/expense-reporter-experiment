@@ -29,6 +29,8 @@
 | Cross-repo context (LLM infra) | `/mnt/i/workspaces/llm/.claude/` |
 | Implementation plan (session 4) | `.claude/plans/acceptance-harness-batch-auto.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
+| Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
+| Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
 
 ---
 
