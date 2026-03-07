@@ -4,6 +4,48 @@ Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this gro
 
 ---
 
+## 2026-03-03 — Session 4: Debt fix + acceptance test harness & batch-auto design
+
+### Context
+Resumed from session 3. User asked to recontextualize, address tech debt, then discuss
+design for both an acceptance test harness and the 5.4 batch-auto command.
+
+### What Was Done
+- **Fixed `runtime.Caller` debt** (commit `405953e`): replaced `runtime.Caller(0)` with
+  `os.Executable()` in `internal/config/config.go` — config path now resolves relative to
+  the installed binary, not the compile-time source path.
+- **Designed acceptance test harness** — BDD-style Given/When/Then with function injection:
+  - Domain-agnostic `test/harness/` package (Context, Scenario, Run, fixture loader, CSV comparator, Ollama check)
+  - Domain-specific `test/actions/` (command runners) + `test/verify/` (composable assertions)
+  - `//go:build acceptance` tag, `run-acceptance.sh` wrapper, `test/results/` for drift tracking
+  - Dir-per-fixture with representative batches, soft vs hard assertions for non-deterministic outputs
+- **Designed batch-auto command (5.4)** — 3-field CSV input, classify via Ollama, split to
+  classified.csv + review.csv, dry-run flag, continue-on-error, workbook backup before insert
+- **Evaluated testscript** (rogpeppe/go-internal) — decided against: script DSL conflicts with
+  user's function-injection BDD vision. Custom harness on stdlib is more aligned.
+- **Evaluated testify** — decided against: project uses stdlib `testing` throughout, no value added.
+- **Created comprehensive implementation plan:** `.claude/plans/acceptance-harness-batch-auto.md`
+- **Design decisions for shared code extraction:**
+  - `isAutoInsertable` → `internal/classifier/decision.go` (shared by auto + batch-auto)
+  - `buildInsertString`/`formatBRValue` → `pkg/utils/format.go` (alongside existing currency/date utils)
+
+### Decisions Made
+- **No testscript, no testify** — custom harness on stdlib, consistent with existing 190+ tests
+- **Dir-per-fixture** with representative batches (10-20 rows), not single-row scenarios
+- **Continue-on-error (option b)** for Ollama failures mid-batch — failed rows get confidence=0, go to review
+- **Dry-run flag** for batch-auto — classify + write CSVs, skip workbook insertion
+- **Multiple test files per command** in `package acceptance_test` (setup_test.go + per-command files)
+- **Local model candidates** for bounded Go tasks during implementation (decision.go, scenario.go, etc.)
+
+### Next
+- [ ] Implement plan from `.claude/plans/acceptance-harness-batch-auto.md`:
+  - Phase 1: Extract shared logic (decision.go, format.go)
+  - Phase 2: Acceptance test harness skeleton + initial fixtures
+  - Phase 3: batch-auto command (5.4)
+  - Phase 4: Polish (run-acceptance.sh, drift tracking, docs)
+
+---
+
 ## 2026-03-02 — Session 3: Integration testing + Diversos auto-insert fix
 
 ### Context

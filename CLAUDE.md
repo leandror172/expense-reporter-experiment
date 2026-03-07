@@ -99,20 +99,26 @@ architectural reasoning across 3+ files simultaneously.
 3. `my-classifier-q3` (qwen3:8b) — proven baseline
 
 **Use `mcp__ollama-bridge__generate_code` or `mcp__ollama-bridge__ask_ollama` for:**
-- Go structs, interfaces, functions, test stubs
+- Go structs, interfaces, functions, test stubs, new functions
 - Cobra command scaffolding
 - Transformations (parsing, formatting, serialization)
 - Single-file feature additions (e.g. batch-auto, correction logging, persistence)
 - Any task where expected output is a bounded Go file or function
+- Send necessary context - a list of files and the specific lines can be sent through the MCP call
 
 **After receiving local model output, evaluate it explicitly:**
 - `ACCEPTED` — used as-is (note the prompt that worked)
 - `IMPROVED` — used with modifications (note what changed and why)
 - `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task); try next model in tier before escalating
 
+**On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
+- Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
+- Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
+- Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
+
 **Escalate to Claude (frontier) only when:**
 - Second model in tier also returned REJECTED
-- The task requires reasoning across 3+ files simultaneously
+- The task requires reasoning across 4+ files simultaneously
 
 ## Documentation Rules (HARD REQUIREMENTS)
 
@@ -123,6 +129,16 @@ When creating or modifying files:
 4. **§ vs ref:KEY** — use `ref:KEY` for content agents need at runtime; use `§ "Heading"` for background/archive pointers
 
 [ref:indexing-convention]
+
+## Acceptance Testing
+
+File-driven BDD harness in `expense-reporter/test/`. Build tag: `//go:build acceptance`.
+Run: `./run-acceptance.sh` or `go test -tags=acceptance ./test/...`.
+Whenever creating/updating acceptance test (or any test, including unit tests), give a complete rundown of the behavior of the tests in question
+When updating, describe the previous behavior, and the new one, and the reason for the change
+
+[ref:acceptance-patterns] — effort classification + README ref index for new scenarios
+§ "Harness Architecture" in `expense-reporter/test/README.md` — full harness design
 
 ## Git Safety Protocol
 

@@ -1,0 +1,4 @@
+# lateyear-input.csv — installment expense starting October, 2 installments roll to next year
+# Format: item;DD/MM;value  (value/N = N installments)
+# Oct/Nov/Dec → current year (3 installments); Jan/Feb → next year (2 rollover)
+Curso online;01/10;500,00/5

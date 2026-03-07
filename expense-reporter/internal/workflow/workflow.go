@@ -86,62 +86,15 @@ func InsertExpense(workbookPath, expenseString string) error {
 // This is dramatically faster than calling InsertExpense repeatedly (20-28x speedup)
 // Also returns rollover expenses that cross year boundary
 func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*models.BatchError, []RolloverExpense) {
-	// Initialize results slice (same size as input)
-	originalErrors := make([]*models.BatchError, len(expenseStrings))
-
-	// Handle empty batch
 	if len(expenseStrings) == 0 {
-		return originalErrors, nil
+		return make([]*models.BatchError, 0), nil
 	}
 
 	// Step 1: Parse all expenses first (fail fast before file operations)
-	parsedExpenses := make([]*models.Expense, len(expenseStrings))
-	for i, expenseString := range expenseStrings {
-		expense, err := parser.ParseExpenseString(expenseString)
-		if err != nil {
-			originalErrors[i] = models.NewParseError(err.Error(), err)
-			continue
-		}
-		parsedExpenses[i] = expense
-	}
+	parsedExpenses, originalErrors := parseExpenseStrings(expenseStrings)
 
-	// Step 1.5: Expand installments
-	// Track mapping: originalIndex → [expandedIndices]
-	// Track rollover installments for next year
-	expenses := []*models.Expense{}
-	indexMapping := make(map[int][]int) // original → expanded indices
-	allRollovers := []RolloverExpense{}
-
-	for i, parsedExpense := range parsedExpenses {
-		if originalErrors[i] != nil || parsedExpense == nil {
-			// Keep original index mapping for errors
-			indexMapping[i] = []int{len(expenses)}
-			expenses = append(expenses, nil)
-			continue
-		}
-
-		if parsedExpense.IsInstallment() {
-			// Expand into multiple expenses
-			expandedList, rollovers := expandInstallments(parsedExpense, i)
-			startIdx := len(expenses)
-
-			// Add this-year installments to processing queue
-			for j := range expandedList {
-				expenses = append(expenses, expandedList[j])
-				if indexMapping[i] == nil {
-					indexMapping[i] = []int{}
-				}
-				indexMapping[i] = append(indexMapping[i], startIdx+j)
-			}
-
-			// Collect next-year installments for rollover file
-			allRollovers = append(allRollovers, rollovers...)
-		} else {
-			// Regular expense
-			indexMapping[i] = []int{len(expenses)}
-			expenses = append(expenses, parsedExpense)
-		}
-	}
+	// Step 1.5: Expand installments; track original→expanded index mapping
+	expenses, indexMapping, allRollovers := expandAllInstallments(parsedExpenses, originalErrors)
 
 	// Initialize errors array for EXPANDED expenses
 	errors := make([]*models.BatchError, len(expenses))
@@ -149,9 +102,8 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	// Step 2: Load reference sheet mappings ONCE and build hierarchical index
 	mappings, err := excel.LoadReferenceSheet(workbookPath)
 	if err != nil {
-		// If reference sheet fails, all expenses fail
 		for i := range errors {
-			if errors[i] == nil { // Don't overwrite parse errors
+			if errors[i] == nil {
 				errors[i] = models.NewIOError("load reference sheet", err)
 			}
 		}
@@ -159,33 +111,8 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	}
 	pathIndex := excel.BuildPathIndex(mappings)
 
-	// Step 3: Resolve all subcategories using hierarchical paths (in-memory, no file I/O)
-	// Track valid expenses for batch processing
-	validIndices := []int{}
-	resolvedMappings := make([]*resolver.SubcategoryMapping, len(expenses))
-
-	for i, expense := range expenses {
-		if errors[i] != nil || expense == nil {
-			continue // Skip already failed expenses
-		}
-
-		mapping, isAmbiguous, err := resolver.ResolveSubcategoryWithPath(pathIndex, expense.Subcategory)
-		if err != nil {
-			errors[i] = models.NewResolutionError(expense.Subcategory)
-			continue
-		}
-
-		if isAmbiguous {
-			options := resolver.GetAmbiguousOptions(pathIndex.BySubcategory, expense.Subcategory)
-			errors[i] = models.NewAmbiguousError(expense.Subcategory, len(options))
-			continue
-		}
-
-		resolvedMappings[i] = mapping
-		validIndices = append(validIndices, i)
-	}
-
-	// If no valid expenses, return early
+	// Step 3: Resolve all subcategories (in-memory, no file I/O)
+	resolvedMappings, validIndices := resolveAllSubcategories(expenses, errors, pathIndex)
 	if len(validIndices) == 0 {
 		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
@@ -203,17 +130,131 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	// Step 5: Find all subcategory rows in ONE file open
 	subcatRows, err := excel.FindSubcategoryRowBatch(workbookPath, subcatRequests)
 	if err != nil {
-		// If batch lookup fails, mark all remaining valid expenses as failed
 		for _, i := range validIndices {
 			errors[i] = models.NewIOError("find subcategory rows", err)
 		}
 		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 	}
 
-	// Step 6: Find empty rows for all valid expenses in ONE file open.
-	// Each expense gets its own row; multiple expenses targeting the same subcategory
-	// are allocated sequentially (row N, N+1, N+2 …) — exactly what repeated single
-	// inserts would do, but without reopening the file each time.
+	// Step 6: Build empty row requests (one per valid expense)
+	emptyRowRequests := buildEmptyRowRequests(expenses, validIndices, resolvedMappings, subcatRows, errors)
+
+	// Step 7: Allocate rows — one per request, respecting order within each subcategory
+	allocatedRows, err := excel.AllocateEmptyRows(workbookPath, emptyRowRequests)
+	if err != nil {
+		for _, i := range validIndices {
+			if errors[i] == nil {
+				errors[i] = models.NewIOError("find empty rows", err)
+			}
+		}
+		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
+	}
+
+	// Step 8: Build expense-location pairs for batch write
+	expensesWithLocations, finalValidIndices := buildExpensesWithLocations(
+		emptyRowRequests, allocatedRows, expenses, resolvedMappings, subcatRows, errors,
+	)
+
+	// Step 9: Write all valid expenses in ONE file open/save cycle
+	if len(expensesWithLocations) > 0 {
+		if err := excel.WriteBatchExpenses(workbookPath, expensesWithLocations); err != nil {
+			for _, i := range finalValidIndices {
+				errors[i] = models.NewIOError("write expenses", err)
+			}
+			return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
+		}
+	}
+
+	return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
+}
+
+// parseExpenseStrings parses raw expense strings into Expense structs.
+// Returns parallel slices: parsed[i] is nil when errors[i] is non-nil.
+func parseExpenseStrings(expenseStrings []string) ([]*models.Expense, []*models.BatchError) {
+	parsedExpenses := make([]*models.Expense, len(expenseStrings))
+	errors := make([]*models.BatchError, len(expenseStrings))
+	for i, expenseString := range expenseStrings {
+		expense, err := parser.ParseExpenseString(expenseString)
+		if err != nil {
+			errors[i] = models.NewParseError(err.Error(), err)
+			continue
+		}
+		parsedExpenses[i] = expense
+	}
+	return parsedExpenses, errors
+}
+
+// expandAllInstallments expands installment expenses into per-month entries.
+// Returns the expanded expense list, original→expanded index mapping, and rollover expenses.
+func expandAllInstallments(parsedExpenses []*models.Expense, parseErrors []*models.BatchError) ([]*models.Expense, map[int][]int, []RolloverExpense) {
+	expenses := []*models.Expense{}
+	indexMapping := make(map[int][]int)
+	allRollovers := []RolloverExpense{}
+
+	for i, parsedExpense := range parsedExpenses {
+		if parseErrors[i] != nil || parsedExpense == nil {
+			indexMapping[i] = []int{len(expenses)}
+			expenses = append(expenses, nil)
+			continue
+		}
+
+		if parsedExpense.IsInstallment() {
+			expandedList, rollovers := expandInstallments(parsedExpense, i)
+			startIdx := len(expenses)
+			for j := range expandedList {
+				expenses = append(expenses, expandedList[j])
+				if indexMapping[i] == nil {
+					indexMapping[i] = []int{}
+				}
+				indexMapping[i] = append(indexMapping[i], startIdx+j)
+			}
+			allRollovers = append(allRollovers, rollovers...)
+		} else {
+			indexMapping[i] = []int{len(expenses)}
+			expenses = append(expenses, parsedExpense)
+		}
+	}
+	return expenses, indexMapping, allRollovers
+}
+
+// resolveAllSubcategories resolves each expanded expense to its sheet mapping.
+// Sets errors[i] for resolution failures; returns resolved mappings and valid indices.
+func resolveAllSubcategories(expenses []*models.Expense, errors []*models.BatchError, pathIndex *resolver.PathIndex) ([]*resolver.SubcategoryMapping, []int) {
+	resolvedMappings := make([]*resolver.SubcategoryMapping, len(expenses))
+	validIndices := []int{}
+
+	for i, expense := range expenses {
+		if errors[i] != nil || expense == nil {
+			continue
+		}
+
+		mapping, isAmbiguous, err := resolver.ResolveSubcategoryWithPath(pathIndex, expense.Subcategory)
+		if err != nil {
+			errors[i] = models.NewResolutionError(expense.Subcategory)
+			continue
+		}
+
+		if isAmbiguous {
+			options := resolver.GetAmbiguousOptions(pathIndex.BySubcategory, expense.Subcategory)
+			errors[i] = models.NewAmbiguousError(expense.Subcategory, len(options))
+			continue
+		}
+
+		resolvedMappings[i] = mapping
+		validIndices = append(validIndices, i)
+	}
+	return resolvedMappings, validIndices
+}
+
+// buildEmptyRowRequests constructs the row allocation requests for all valid expenses.
+// Sets errors[i] for invalid month; each request is tagged with ExpenseIndex for reverse lookup.
+func buildEmptyRowRequests(
+	expenses []*models.Expense,
+	validIndices []int,
+	resolvedMappings []*resolver.SubcategoryMapping,
+	subcatRows map[string]map[string]int,
+	errors []*models.BatchError,
+) []excel.EmptyRowRequest {
 	emptyRowRequests := []excel.EmptyRowRequest{}
 	for _, i := range validIndices {
 		expense := expenses[i]
@@ -234,22 +275,22 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 			ColumnLetter:    itemCol,
 			StartRow:        subcatRow,
 			SubcategoryName: mapping.Subcategory,
-			ExpenseIndex:    i, // tag so results map back 1:1
+			ExpenseIndex:    i,
 		})
 	}
+	return emptyRowRequests
+}
 
-	// Step 7: Allocate rows — one per request, respecting order within each subcategory
-	allocatedRows, err := excel.AllocateEmptyRows(workbookPath, emptyRowRequests)
-	if err != nil {
-		for _, i := range validIndices {
-			if errors[i] == nil {
-				errors[i] = models.NewIOError("find empty rows", err)
-			}
-		}
-		return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
-	}
-
-	// Step 8: Build expense-location pairs for batch write
+// buildExpensesWithLocations pairs each allocated row with its expense and sheet location.
+// Sets errors[i] for capacity failures (no row allocated); returns pairs and their expense indices.
+func buildExpensesWithLocations(
+	emptyRowRequests []excel.EmptyRowRequest,
+	allocatedRows map[int]int,
+	expenses []*models.Expense,
+	resolvedMappings []*resolver.SubcategoryMapping,
+	subcatRows map[string]map[string]int,
+	errors []*models.BatchError,
+) ([]excel.ExpenseWithLocation, []int) {
 	expensesWithLocations := []excel.ExpenseWithLocation{}
 	finalValidIndices := []int{}
 
@@ -261,7 +302,6 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 
 		targetRow, ok := allocatedRows[idx]
 		if !ok {
-			// Section was full for this expense's month — record as capacity error
 			errors[i] = models.NewCapacityError(
 				resolvedMappings[i].Subcategory,
 				resolvedMappings[i].SheetName,
@@ -291,19 +331,7 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 		})
 		finalValidIndices = append(finalValidIndices, i)
 	}
-
-	// Step 9: Write all valid expenses in ONE file open/save cycle
-	if len(expensesWithLocations) > 0 {
-		if err := excel.WriteBatchExpenses(workbookPath, expensesWithLocations); err != nil {
-			// If batch write fails, mark all expenses that were going to be written as failed
-			for _, i := range finalValidIndices {
-				errors[i] = models.NewIOError("write expenses", err)
-			}
-			return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
-		}
-	}
-
-	return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
+	return expensesWithLocations, finalValidIndices
 }
 
 // aggregateErrors combines errors from expanded installments back to original indices
