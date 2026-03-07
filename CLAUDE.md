@@ -111,6 +111,11 @@ architectural reasoning across 3+ files simultaneously.
 - `IMPROVED` — used with modifications (note what changed and why)
 - `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task); try next model in tier before escalating
 
+**On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
+- Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
+- Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
+- Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
+
 **Escalate to Claude (frontier) only when:**
 - Second model in tier also returned REJECTED
 - The task requires reasoning across 4+ files simultaneously
