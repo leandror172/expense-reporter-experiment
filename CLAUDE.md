@@ -111,6 +111,11 @@ architectural reasoning across 3+ files simultaneously.
 - `IMPROVED` — used with modifications (note what changed and why)
 - `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task); try next model in tier before escalating
 
+**On IMPROVED verdicts — when to fix inline vs. call Ollama again:**
+- ≤3 line fixes (wrong var name, missing nil check, unused import) → fix inline, no second call
+- Ollama missed entire test cases or whole functions → write stub signatures first, then call Ollama with the stub file as `context_files` and list the missing method names in the prompt; second call mainly pays off when bodies are non-trivial (table-driven, many edge cases)
+- Deeper policy discussion deferred to LLM repo: `.claude/tasks.md` § "Deferred Infrastructure / Tooling"
+
 **On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
 - Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
 - Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`

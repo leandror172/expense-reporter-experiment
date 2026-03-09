@@ -70,6 +70,18 @@ func (e *Expense) Validate() error {
 	return nil
 }
 
+// ClassifiedExpense represents an expense that has been classified by the auto-classifier.
+// RawValue preserves the original value string (e.g. "99,90/3") so that installment
+// notation is not lost when passing pre-classified expenses to the insertion pipeline.
+type ClassifiedExpense struct {
+	Item        string
+	Date        string  // DD/MM format as received from the CSV
+	RawValue    string  // Original value string, may include installment notation (e.g. "120,00/2")
+	Subcategory string
+	Category    string
+	Confidence  float64
+}
+
 // SheetLocation represents where an expense should be inserted in the Excel file
 type SheetLocation struct {
 	SheetName   string // e.g., "Variáveis", "Fixas", etc.

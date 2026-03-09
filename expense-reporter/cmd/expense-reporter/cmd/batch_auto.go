@@ -10,6 +10,8 @@ import (
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
+	"expense-reporter/internal/models"
+	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 
 	"github.com/spf13/cobra"
@@ -34,6 +36,7 @@ and auto-insert rows that exceed the confidence threshold into the workbook.
 Output files are written to --output-dir (default: same directory as input):
   classified.csv  — all rows with classification results
   review.csv      — rows not auto-inserted (low confidence or excluded)
+  rollover.csv    — installment rows whose later months fall into next year (if any)
 
 Use --dry-run to skip workbook insertion and only produce the CSV outputs.
 
@@ -59,7 +62,7 @@ func init() {
 type classifiedRow struct {
 	Item         string
 	Date         string
-	Value        float64
+	RawValue     string // original value string, preserves installment notation (e.g. "99,90/3")
 	Subcategory  string
 	Category     string
 	Confidence   float64
@@ -93,8 +96,10 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 
 	results := classifyLines(lines, taxonomy, appCfg, cfg, batchAutoThreshold)
 
+	var rollovers []workflow.RolloverExpense
 	if !batchAutoDryRun {
-		if err := insertClassified(results); err != nil {
+		rollovers, err = insertClassified(results)
+		if err != nil {
 			return err
 		}
 	}
@@ -109,7 +114,15 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("writing review.csv: %w", err)
 	}
 
-	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath)
+	rolloverPath := ""
+	if len(rollovers) > 0 {
+		rolloverPath = filepath.Join(outputDir, "rollover.csv")
+		if err := writeRolloverCSV(rolloverPath, rollovers); err != nil {
+			return fmt.Errorf("writing rollover.csv: %w", err)
+		}
+	}
+
+	printBatchSummary(results, rollovers, batchAutoDryRun, classifiedPath, reviewPath, rolloverPath)
 	return nil
 }
 
@@ -161,7 +174,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, taxonomy, cfg)
 		if err != nil || len(classResults) == 0 {
 			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, row.Item, err)
-			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, Value: row.Value, Error: err})
+			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Error: err})
 			continue
 		}
 
@@ -176,7 +189,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 		results = append(results, classifiedRow{
 			Item:         row.Item,
 			Date:         row.Date,
-			Value:        row.Value,
+			RawValue:     row.RawValue,
 			Subcategory:  top.Subcategory,
 			Category:     top.Category,
 			Confidence:   top.Confidence,
@@ -186,55 +199,52 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 	return results
 }
 
-func insertClassified(results []classifiedRow) error {
+func insertClassified(results []classifiedRow) ([]workflow.RolloverExpense, error) {
 	workbook, err := GetWorkbookPath()
 	if err != nil {
-		return fmt.Errorf("getting workbook path: %w", err)
+		return nil, fmt.Errorf("getting workbook path: %w", err)
 	}
 	if _, err := os.Stat(workbook); os.IsNotExist(err) {
-		return fmt.Errorf("workbook not found: %s", workbook)
+		return nil, fmt.Errorf("workbook not found: %s", workbook)
 	}
 
-	// Backup before any modifications
 	if _, err := batch.NewBackupManager().CreateBackup(workbook); err != nil {
-		return fmt.Errorf("creating backup: %w", err)
+		return nil, fmt.Errorf("creating backup: %w", err)
 	}
 
-	// Build insert strings for high-confidence rows, track their source indices
+	// Build ClassifiedExpense slice for auto-insertable rows; track source indices
 	var srcIdx []int
-	var insertStrings []string
+	var toInsert []models.ClassifiedExpense
 	for i, r := range results {
 		if r.AutoInserted && r.Error == nil {
 			srcIdx = append(srcIdx, i)
-			insertStrings = append(insertStrings, utils.BuildInsertString(r.Item, r.Date, r.Value, r.Subcategory))
+			toInsert = append(toInsert, models.ClassifiedExpense{
+				Item:        r.Item,
+				Date:        r.Date,
+				RawValue:    r.RawValue,
+				Subcategory: r.Subcategory,
+				Category:    r.Category,
+				Confidence:  r.Confidence,
+			})
 		}
 	}
-	if len(insertStrings) == 0 {
-		return nil
+	if len(toInsert) == 0 {
+		return nil, nil
 	}
 
-	// Use Processor.ProcessBatch for optimised single-open batch insert
-	p := batch.NewProcessor(workbook)
-	if err := p.LoadMappings(); err != nil {
-		return fmt.Errorf("loading workbook mappings: %w", err)
-	}
-	summary, _, err := p.ProcessBatch(insertStrings, nil)
-	if err != nil {
-		return fmt.Errorf("batch insert: %w", err)
-	}
+	batchErrors, rollovers := workflow.InsertBatchExpensesFromClassified(workbook, toInsert)
 
-	// Map failures back to classified rows
-	for i, result := range summary.Results {
-		if !result.Success {
+	for i, bErr := range batchErrors {
+		if bErr != nil {
 			results[srcIdx[i]].AutoInserted = false
-			results[srcIdx[i]].Error = result.Error
-			fmt.Fprintf(os.Stderr, "  INSERT ERROR %q: %v\n", results[srcIdx[i]].Item, result.Error)
+			results[srcIdx[i]].Error = fmt.Errorf("%s", bErr.Message)
+			fmt.Fprintf(os.Stderr, "  INSERT ERROR %q: %s\n", results[srcIdx[i]].Item, bErr.Message)
 		}
 	}
-	return nil
+	return rollovers, nil
 }
 
-func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath string) {
+func printBatchSummary(results []classifiedRow, rollovers []workflow.RolloverExpense, dryRun bool, classifiedPath, reviewPath, rolloverPath string) {
 	autoCount, reviewCount, errorCount := 0, 0, 0
 	for _, r := range results {
 		switch {
@@ -254,18 +264,23 @@ func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, rev
 	fmt.Printf("  Auto-inserted : %d\n", autoCount)
 	fmt.Printf("  For review    : %d\n", reviewCount)
 	fmt.Printf("  Errors        : %d\n", errorCount)
+	if len(rollovers) > 0 {
+		fmt.Printf("  Rollovers     : %d (next-year installments → %s)\n", len(rollovers), rolloverPath)
+	}
 	fmt.Printf("  classified.csv: %s\n", classifiedPath)
 	fmt.Printf("  review.csv    : %s\n", reviewPath)
 }
 
 // inputRow is a parsed 3-field line.
 type inputRow struct {
-	Item  string
-	Date  string
-	Value float64
+	Item     string
+	Date     string
+	Value    float64 // per-installment value, used for classifier display
+	RawValue string  // original string, preserves installment notation (e.g. "99,90/3")
 }
 
 // parse3FieldLine splits "item;DD/MM;value" and parses currency.
+// value may include installment notation (e.g. "99,90/3"); RawValue preserves it.
 func parse3FieldLine(line string) (inputRow, error) {
 	parts := strings.SplitN(line, ";", 3)
 	if len(parts) != 3 {
@@ -277,11 +292,11 @@ func parse3FieldLine(line string) (inputRow, error) {
 	if item == "" {
 		return inputRow{}, fmt.Errorf("empty item field")
 	}
-	v, err := utils.ParseCurrency(valueStr)
+	perInstallment, _, err := utils.ParseCurrencyWithInstallments(valueStr)
 	if err != nil {
 		return inputRow{}, fmt.Errorf("parsing value %q: %w", valueStr, err)
 	}
-	return inputRow{Item: item, Date: date, Value: v}, nil
+	return inputRow{Item: item, Date: date, Value: perInstallment, RawValue: valueStr}, nil
 }
 
 // writeClassifiedCSV writes all classified rows to path.
@@ -302,7 +317,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 		w.Write([]string{ //nolint:errcheck
 			r.Item,
 			r.Date,
-			utils.FormatBRValue(r.Value),
+			r.RawValue,
 			r.Subcategory,
 			r.Category,
 			fmt.Sprintf("%.4f", r.Confidence),
@@ -333,11 +348,37 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 		w.Write([]string{ //nolint:errcheck
 			r.Item,
 			r.Date,
-			utils.FormatBRValue(r.Value),
+			r.RawValue,
 			r.Subcategory,
 			r.Category,
 			fmt.Sprintf("%.4f", r.Confidence),
 			"false",
+		})
+	}
+	w.Flush()
+	return w.Error()
+}
+
+// writeRolloverCSV writes next-year installment expenses that could not be inserted
+// into the current workbook. Format: item;date;value;subcategory
+func writeRolloverCSV(path string, rollovers []workflow.RolloverExpense) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	w.Comma = ';'
+	if err := w.Write([]string{"item", "date", "value", "subcategory"}); err != nil {
+		return err
+	}
+	for _, r := range rollovers {
+		w.Write([]string{ //nolint:errcheck
+			r.Expense.FormattedItem(),
+			r.Expense.Date.Format("02/01"),
+			utils.FormatBRValue(r.Expense.Value),
+			r.Expense.Subcategory,
 		})
 	}
 	w.Flush()

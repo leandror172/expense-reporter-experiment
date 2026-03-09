@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"expense-reporter/internal/models"
 )
 
 // TDD RED: Test complete expense insertion workflow
@@ -129,6 +131,45 @@ func TestInsertExpenseAmbiguous(t *testing.T) {
 	// Implementation will determine exact behavior
 	if err == nil {
 		t.Error("InsertExpense() expected error/prompt for ambiguous subcategory, got nil")
+	}
+}
+
+func TestInsertBatchExpensesFromClassified_EmptyBatch(t *testing.T) {
+	errs, rollovers := InsertBatchExpensesFromClassified("", []models.ClassifiedExpense{})
+	if len(errs) != 0 {
+		t.Errorf("expected 0 errors, got %d", len(errs))
+	}
+	if len(rollovers) != 0 {
+		t.Errorf("expected 0 rollovers, got %d", len(rollovers))
+	}
+}
+
+func TestInsertBatchExpensesFromClassified_InvalidRawValue(t *testing.T) {
+	rows := []models.ClassifiedExpense{
+		{Item: "Test Item", Date: "01/01", RawValue: "", Subcategory: "Academia", Category: "Saúde", Confidence: 0.9},
+	}
+	errs, _ := InsertBatchExpensesFromClassified("", rows)
+	if len(errs) == 0 || errs[0] == nil {
+		t.Fatal("expected a parse error for empty RawValue")
+	}
+	if errs[0].Category != models.ErrorCategoryParse {
+		t.Errorf("expected Parse error category, got %q", errs[0].Category)
+	}
+}
+
+func TestInsertBatchExpensesFromClassified_PreservesInstallmentNotation(t *testing.T) {
+	// If RawValue "99,90/3" is incorrectly flattened to "99,90", ParseExpenseString
+	// would still succeed but installment expansion would be skipped.
+	// Using a non-existent workbook guarantees we reach Step 2 (I/O), proving parsing passed.
+	rows := []models.ClassifiedExpense{
+		{Item: "Academia Smart Fit", Date: "01/04", RawValue: "99,90/3", Subcategory: "Academia", Category: "Saúde", Confidence: 0.9},
+	}
+	errs, _ := InsertBatchExpensesFromClassified("/non/existent/path.xlsx", rows)
+	if len(errs) == 0 || errs[0] == nil {
+		t.Fatal("expected an error from non-existent workbook")
+	}
+	if errs[0].Category != models.ErrorCategoryIO {
+		t.Errorf("expected IO error (parse succeeded), got category %q: %s", errs[0].Category, errs[0].Message)
 	}
 }
 

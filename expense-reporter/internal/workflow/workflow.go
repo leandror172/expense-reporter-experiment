@@ -168,6 +168,17 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 }
 
+// InsertBatchExpensesFromClassified inserts pre-classified expenses using the same batch
+// pipeline as InsertBatchExpenses. RawValue is preserved as-is so installment notation
+// (e.g. "99,90/3") is not lost during the string conversion.
+func InsertBatchExpensesFromClassified(workbookPath string, rows []models.ClassifiedExpense) ([]*models.BatchError, []RolloverExpense) {
+	expenseStrings := make([]string, len(rows))
+	for i, row := range rows {
+		expenseStrings[i] = fmt.Sprintf("%s;%s;%s;%s", row.Item, row.Date, row.RawValue, row.Subcategory)
+	}
+	return InsertBatchExpenses(workbookPath, expenseStrings)
+}
+
 // parseExpenseStrings parses raw expense strings into Expense structs.
 // Returns parallel slices: parsed[i] is nil when errors[i] is non-nil.
 func parseExpenseStrings(expenseStrings []string) ([]*models.Expense, []*models.BatchError) {

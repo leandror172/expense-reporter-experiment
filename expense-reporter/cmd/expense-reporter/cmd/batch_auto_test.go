@@ -8,19 +8,20 @@ import (
 
 func TestParse3FieldLine(t *testing.T) {
 	tests := []struct {
-		name     string
-		line     string
-		wantItem string
-		wantDate string
-		wantVal  float64
-		wantErr  bool
+		name         string
+		line         string
+		wantItem     string
+		wantDate     string
+		wantRawValue string
+		wantErr      bool
 	}{
-		{"valid line", "Uber Centro;15/04;35,50", "Uber Centro", "15/04", 35.50, false},
-		{"valid with period decimal", "Item;05/01;160.00", "Item", "05/01", 160.00, false},
-		{"too few fields", "Uber;35,50", "", "", 0, true},
-		{"empty item", ";15/04;35,50", "", "", 0, true},
-		{"invalid value", "Item;15/04;abc", "", "", 0, true},
-		{"leading whitespace trimmed", " Uber ;15/04;35,50", "Uber", "15/04", 35.50, false},
+		{"valid line", "Uber Centro;15/04;35,50", "Uber Centro", "15/04", "35,50", false},
+		{"valid with period decimal", "Item;05/01;160.00", "Item", "05/01", "160.00", false},
+		{"installment value", "Uber Centro;15/04;35,50/3", "Uber Centro", "15/04", "35,50/3", false},
+		{"too few fields", "Uber;35,50", "", "", "", true},
+		{"empty item", ";15/04;35,50", "", "", "", true},
+		{"invalid value", "Item;15/04;abc", "", "", "", true},
+		{"leading whitespace trimmed", " Uber ;15/04;35,50", "Uber", "15/04", "35,50", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -37,8 +38,8 @@ func TestParse3FieldLine(t *testing.T) {
 			if got.Date != tt.wantDate {
 				t.Errorf("Date: got %q, want %q", got.Date, tt.wantDate)
 			}
-			if got.Value != tt.wantVal {
-				t.Errorf("Value: got %v, want %v", got.Value, tt.wantVal)
+			if got.RawValue != tt.wantRawValue {
+				t.Errorf("RawValue: got %q, want %q", got.RawValue, tt.wantRawValue)
 			}
 		})
 	}
@@ -61,8 +62,8 @@ func TestWriteClassifiedCSV(t *testing.T) {
 	defer os.Remove(f.Name())
 
 	rows := []classifiedRow{
-		{Item: "Uber Centro", Date: "15/04", Value: 35.5, Subcategory: "Uber/Taxi", Category: "Transporte", Confidence: 0.95, AutoInserted: true},
-		{Item: "Starbucks", Date: "16/04", Value: 25.0, Subcategory: "Cafe", Category: "Alimentação", Confidence: 0.70, AutoInserted: false},
+		{Item: "Uber Centro", Date: "15/04", RawValue: "35,50", Subcategory: "Uber/Taxi", Category: "Transporte", Confidence: 0.95, AutoInserted: true},
+		{Item: "Starbucks", Date: "16/04", RawValue: "25,00", Subcategory: "Cafe", Category: "Alimentação", Confidence: 0.70, AutoInserted: false},
 	}
 
 	if err := writeClassifiedCSV(f.Name(), rows); err != nil {
