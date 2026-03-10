@@ -3,91 +3,65 @@
 package verify
 
 import (
+	"fmt"
 	"os"
 	"strconv"
-	"strings"
+
+	"github.com/stretchr/testify/assert"
 
 	"expense-reporter/test/harness"
 )
 
-// OutputContains returns a Then closure asserting stdout+stderr contains substr.
-func OutputContains(substr string) func(*harness.Context) {
+// CommandSucceeded asserts the command exited with code 0.
+func CommandSucceeded() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
-		if !strings.Contains(ctx.Stdout+ctx.Stderr, substr) {
-			ctx.T.Errorf("OutputContains(%q): not found in output\nstdout: %s\nstderr: %s",
-				substr, ctx.Stdout, ctx.Stderr)
-		}
+		assert.Zero(ctx.T, ctx.ExitCode,
+			"command should succeed (exit 0)\nstdout: %s\nstderr: %s", ctx.Stdout, ctx.Stderr)
 	}
 }
 
-// OutputNotContains returns a Then closure asserting stdout+stderr does NOT contain substr.
-func OutputNotContains(substr string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		if strings.Contains(ctx.Stdout+ctx.Stderr, substr) {
-			ctx.T.Errorf("OutputNotContains(%q): unexpectedly found in output\nstdout: %s\nstderr: %s",
-				substr, ctx.Stdout, ctx.Stderr)
-		}
-	}
-}
-
-// ExitCodeZero returns a Then closure asserting ctx.ExitCode == 0.
-func ExitCodeZero() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		if ctx.ExitCode != 0 {
-			ctx.T.Errorf("ExitCodeZero: got exit code %d\nstdout: %s\nstderr: %s",
-				ctx.ExitCode, ctx.Stdout, ctx.Stderr)
-		}
-	}
-}
-
-// FileExists returns a Then closure asserting the artifact key maps to an existing file.
-func FileExists(artifactKey string) func(*harness.Context) {
+// OutputFileExists asserts the artifact key maps to an existing file.
+func OutputFileExists(artifactKey string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		path, ok := ctx.Artifacts[artifactKey]
-		if !ok {
-			ctx.T.Errorf("FileExists: artifact key %q not registered", artifactKey)
+		if !assert.True(ctx.T, ok, "artifact %q not registered", artifactKey) {
 			return
 		}
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			ctx.T.Errorf("FileExists: file not found: %s", path)
-		}
+		_, err := os.Stat(path)
+		assert.NoError(ctx.T, err, "output file %q should exist at %s", artifactKey, path)
 	}
 }
 
-// RowCount returns a Then closure asserting the CSV artifact has exactly n rows.
-func RowCount(artifactKey string, n int) func(*harness.Context) {
+// OutputFileHasRows asserts the CSV artifact has exactly n rows (including header).
+func OutputFileHasRows(artifactKey string, n int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
 		if rows == nil {
 			return
 		}
-		if len(rows) != n {
-			ctx.T.Errorf("RowCount(%q): got %d rows, want %d", artifactKey, len(rows), n)
-		}
+		assert.Equal(ctx.T, n, len(rows),
+			"%q should have %d rows (including header)", artifactKey, n)
 	}
 }
 
-// RowCountAtLeast returns a Then closure asserting the CSV artifact has at least n rows.
-func RowCountAtLeast(artifactKey string, n int) func(*harness.Context) {
+// OutputFileHasAtLeastRows asserts the CSV artifact has at least n rows.
+func OutputFileHasAtLeastRows(artifactKey string, n int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
 		if rows == nil {
 			return
 		}
-		if len(rows) < n {
-			ctx.T.Errorf("RowCountAtLeast(%q): got %d rows, want at least %d", artifactKey, len(rows), n)
-		}
+		assert.GreaterOrEqual(ctx.T, len(rows), n,
+			"%q should have at least %d rows", artifactKey, n)
 	}
 }
 
-// ColumnCount returns a Then closure asserting every row in the CSV artifact has exactly n columns.
-func ColumnCount(artifactKey string, n int) func(*harness.Context) {
+// OutputFileHasColumns asserts every row in the CSV artifact has exactly n columns.
+func OutputFileHasColumns(artifactKey string, n int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
@@ -95,16 +69,16 @@ func ColumnCount(artifactKey string, n int) func(*harness.Context) {
 			return
 		}
 		for i, row := range rows {
-			if len(row) != n {
-				ctx.T.Errorf("ColumnCount(%q): row %d has %d columns, want %d", artifactKey, i, len(row), n)
-			}
+			assert.Len(ctx.T, row, n,
+				"%q row %d should have %d columns", artifactKey, i, n)
 		}
 	}
 }
 
-// AllConfidencesInRange returns a Then closure asserting every data row's confidenceCol field is in [0,1].
-// Skips the header row (row 0).
-func AllConfidencesInRange(artifactKey string, confidenceCol int) func(*harness.Context) {
+// AllClassificationScoresValid asserts every data row in classified.csv has a
+// confidence score in [0,1]. Skips the header row.
+func AllClassificationScoresValid(artifactKey string) func(*harness.Context) {
+	const confidenceCol = 5
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
@@ -115,28 +89,23 @@ func AllConfidencesInRange(artifactKey string, confidenceCol int) func(*harness.
 			rows = rows[1:] // skip header
 		}
 		for i, row := range rows {
-			if confidenceCol >= len(row) {
-				ctx.T.Errorf("AllConfidencesInRange(%q): row %d has %d cols, want col %d",
-					artifactKey, i, len(row), confidenceCol)
+			if !assert.Greater(ctx.T, len(row), confidenceCol,
+				"%q row %d missing confidence column", artifactKey, i) {
 				continue
 			}
 			v, err := strconv.ParseFloat(row[confidenceCol], 64)
-			if err != nil {
-				ctx.T.Errorf("AllConfidencesInRange(%q): row %d col %d: parse %q: %v",
-					artifactKey, i, confidenceCol, row[confidenceCol], err)
+			if !assert.NoError(ctx.T, err,
+				"%q row %d: confidence %q is not a valid float", artifactKey, i, row[confidenceCol]) {
 				continue
 			}
-			if !harness.ConfidenceInRange(v) {
-				ctx.T.Errorf("AllConfidencesInRange(%q): row %d confidence %.4f out of [0,1]",
-					artifactKey, i, v)
-			}
+			assert.True(ctx.T, harness.ConfidenceInRange(v),
+				"%q row %d: confidence %.4f out of [0,1]", artifactKey, i, v)
 		}
 	}
 }
 
-// NoOverlap returns a Then closure asserting no row appears in both artifact1 and artifact2
-// (compared by full row equality).
-func NoOverlap(artifact1, artifact2 string) func(*harness.Context) {
+// NoExpenseInBothFiles asserts no row appears in both artifact1 and artifact2.
+func NoExpenseInBothFiles(artifact1, artifact2 string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows1 := readArtifact(ctx, artifact1)
@@ -149,20 +118,45 @@ func NoOverlap(artifact1, artifact2 string) func(*harness.Context) {
 			set[joinRow(row)] = true
 		}
 		for _, row := range rows2 {
-			if set[joinRow(row)] {
-				ctx.T.Errorf("NoOverlap: row %v appears in both %q and %q", row, artifact1, artifact2)
-			}
+			assert.False(ctx.T, set[joinRow(row)],
+				"expense %v appears in both %q and %q", row, artifact1, artifact2)
 		}
 	}
 }
 
+// OutputContains asserts stdout+stderr contains substr.
+func OutputContains(substr string, msgAndArgs ...interface{}) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+		output := ctx.Stdout + ctx.Stderr
+		msg := fmt.Sprintf("%q not found in command output\nstdout: %s\nstderr: %s",
+			substr, ctx.Stdout, ctx.Stderr)
+		if len(msgAndArgs) > 0 {
+			msg = fmt.Sprintf("%s — %v\n%s", substr, msgAndArgs[0], msg)
+		}
+		assert.Contains(ctx.T, output, substr, msg)
+	}
+}
+
+// OutputNotContains asserts stdout+stderr does NOT contain substr.
+func OutputNotContains(substr string, msgAndArgs ...interface{}) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+		output := ctx.Stdout + ctx.Stderr
+		msg := fmt.Sprintf("%q unexpectedly found in command output\nstdout: %s\nstderr: %s",
+			substr, ctx.Stdout, ctx.Stderr)
+		if len(msgAndArgs) > 0 {
+			msg = fmt.Sprintf("%s — %v\n%s", substr, msgAndArgs[0], msg)
+		}
+		assert.NotContains(ctx.T, output, substr, msg)
+	}
+}
+
 // readArtifact resolves an artifact key to a file path and reads it as CSV.
-// Returns nil (with t.Error) if key is missing or file unreadable.
 func readArtifact(ctx *harness.Context, key string) [][]string {
 	ctx.T.Helper()
 	path, ok := ctx.Artifacts[key]
-	if !ok {
-		ctx.T.Errorf("readArtifact: key %q not registered in ctx.Artifacts", key)
+	if !assert.True(ctx.T, ok, "artifact %q not registered in ctx.Artifacts", key) {
 		return nil
 	}
 	return harness.ReadCSVFile(ctx.T, path)
