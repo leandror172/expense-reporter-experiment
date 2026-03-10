@@ -69,6 +69,7 @@ func TestBatchAuto_ClassificationAccuracy(t *testing.T) {
 func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -79,6 +80,7 @@ func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
 func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -134,6 +136,7 @@ func TestBatchAuto_OutputDirFlag(t *testing.T) {
 func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -175,6 +178,7 @@ func TestBatchAuto_RolloverInstallmentsWrittenToFile(t *testing.T) {
 func midYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixtureDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -185,6 +189,7 @@ func midYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Co
 func lateYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixtureDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)

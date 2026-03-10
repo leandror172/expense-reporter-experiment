@@ -13,6 +13,7 @@ import (
 
 func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 	harness.RequireOllama(t, "")
+	harness.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
@@ -39,12 +40,16 @@ func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
+		ctx.DataDir = dataDir
+		ctx.WorkbookPath = testWorkbook
 	}
 }
 
 func expenseClassifierAvailable() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.WorkbookPath = testWorkbook
 	}
 }
 

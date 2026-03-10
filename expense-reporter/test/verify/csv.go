@@ -102,13 +102,17 @@ func ColumnCount(artifactKey string, n int) func(*harness.Context) {
 	}
 }
 
-// AllConfidencesInRange returns a Then closure asserting every row's confidenceCol field is in [0,1].
+// AllConfidencesInRange returns a Then closure asserting every data row's confidenceCol field is in [0,1].
+// Skips the header row (row 0).
 func AllConfidencesInRange(artifactKey string, confidenceCol int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
 		if rows == nil {
 			return
+		}
+		if len(rows) > 0 {
+			rows = rows[1:] // skip header
 		}
 		for i, row := range rows {
 			if confidenceCol >= len(row) {

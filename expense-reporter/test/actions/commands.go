@@ -19,9 +19,17 @@ func RunClassify(args ...string) func(*harness.Context) {
 }
 
 // RunAuto returns a When closure that runs the auto command.
+// Passes --data-dir and --workbook from ctx when set.
 func RunAuto(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		runCommand(ctx, append([]string{"auto"}, args...)...)
+		cmdArgs := []string{"auto"}
+		if ctx.DataDir != "" {
+			cmdArgs = append(cmdArgs, "--data-dir", ctx.DataDir)
+		}
+		if ctx.WorkbookPath != "" {
+			cmdArgs = append(cmdArgs, "--workbook", ctx.WorkbookPath)
+		}
+		runCommand(ctx, append(cmdArgs, args...)...)
 	}
 }
 
@@ -48,6 +56,9 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 			"--top", fmt.Sprintf("%d", cfg.TopN),
 			"--output-dir", ctx.WorkDir,
 		}
+		if ctx.DataDir != "" {
+			args = append(args, "--data-dir", ctx.DataDir)
+		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
 		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
@@ -71,6 +82,9 @@ func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) 
 			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
 			"--top", fmt.Sprintf("%d", cfg.TopN),
 			"--output-dir", ctx.WorkDir,
+		}
+		if ctx.DataDir != "" {
+			args = append(args, "--data-dir", ctx.DataDir)
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
@@ -101,6 +115,9 @@ func RunBatchAutoIntoArtifactDir(fixtureDir, outputDirKey string) func(*harness.
 			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
 			"--top", fmt.Sprintf("%d", cfg.TopN),
 			"--output-dir", outDir,
+		}
+		if ctx.DataDir != "" {
+			args = append(args, "--data-dir", ctx.DataDir)
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
