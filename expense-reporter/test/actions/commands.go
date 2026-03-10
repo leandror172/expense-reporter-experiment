@@ -59,6 +59,9 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 		if ctx.DataDir != "" {
 			args = append(args, "--data-dir", ctx.DataDir)
 		}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
+		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
 		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
@@ -85,6 +88,9 @@ func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) 
 		}
 		if ctx.DataDir != "" {
 			args = append(args, "--data-dir", ctx.DataDir)
+		}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
@@ -118,6 +124,9 @@ func RunBatchAutoIntoArtifactDir(fixtureDir, outputDirKey string) func(*harness.
 		}
 		if ctx.DataDir != "" {
 			args = append(args, "--data-dir", ctx.DataDir)
+		}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
