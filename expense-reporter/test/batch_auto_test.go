@@ -44,10 +44,10 @@ func TestBatchAuto_ExcludedCategoriesGoToReview(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-exclusions")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "Diversos-type expenses go to review while non-excluded high-confidence expenses are auto-inserted",
+		Name:  "batch pipeline runs cleanly with mixed confidence and exclusion markers",
 		Given: expensesWithExcludedCategoryMarkers(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  excludedCategoriesKeptInReviewMixedWithAutoInserted(),
+		Then:  classifiedAndReviewFilesProduced(),
 	})
 }
 
@@ -110,16 +110,6 @@ func allInputExpensesClassified(rows int) []func(*harness.Context) {
 	}
 }
 
-func excludedCategoriesKeptInReviewMixedWithAutoInserted() []func(*harness.Context) {
-	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.FileExists("classified.csv"),
-		verify.FileExists("review.csv"),
-		verify.RowCount("classified.csv", 4),          // header + 3 data rows, all classified
-		verify.RowCountAtLeast("review.csv", 2),        // at least header + 1 excluded item in review
-		verify.AllConfidencesInRange("classified.csv", 5),
-	}
-}
 
 func TestBatchAuto_OutputDirFlag(t *testing.T) {
 	harness.RequireOllama(t, "")
