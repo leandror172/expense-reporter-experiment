@@ -27,6 +27,7 @@ func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 
 func TestAuto_AmbiguousExpenseKeptForManualReview(t *testing.T) {
 	harness.RequireOllama(t, "")
+	harness.RequireWorkbook(t, testWorkbook)
 
 	harness.Run(t, harness.Scenario{
 		Name:  "vague expense description must not be auto-inserted",

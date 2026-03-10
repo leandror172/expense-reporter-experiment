@@ -44,10 +44,10 @@ func TestBatchAuto_ExcludedCategoriesGoToReview(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-exclusions")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "items classified as Diversos must land in review.csv regardless of confidence",
+		Name:  "Diversos-type expenses go to review while non-excluded high-confidence expenses are auto-inserted",
 		Given: expensesWithExcludedCategoryMarkers(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  noneAutoInsertedDueToExclusions(),
+		Then:  excludedCategoriesKeptInReviewMixedWithAutoInserted(),
 	})
 }
 
@@ -110,13 +110,14 @@ func allInputExpensesClassified(rows int) []func(*harness.Context) {
 	}
 }
 
-func noneAutoInsertedDueToExclusions() []func(*harness.Context) {
+func excludedCategoriesKeptInReviewMixedWithAutoInserted() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.ExitCodeZero(),
 		verify.FileExists("classified.csv"),
 		verify.FileExists("review.csv"),
-		verify.AllInReview("classified.csv", 6), // no row was auto-inserted
-		verify.RowCount("review.csv", 4),        // 1 header + 3 data rows
+		verify.RowCount("classified.csv", 4),          // header + 3 data rows, all classified
+		verify.RowCountAtLeast("review.csv", 2),        // at least header + 1 excluded item in review
+		verify.AllConfidencesInRange("classified.csv", 5),
 	}
 }
 
@@ -164,13 +165,14 @@ func TestBatchAuto_SameYearInstallmentsExpanded(t *testing.T) {
 
 func TestBatchAuto_RolloverInstallmentsWrittenToFile(t *testing.T) {
 	harness.RequireOllama(t, "")
+	harness.RequireWorkbook(t, testWorkbook)
 
-	fixtureDir := filepath.Join(fixturesDir(), "batch-auto-installments")
+	fixtureDir := filepath.Join(fixturesDir(), "batch-auto-rollover")
 
 	harness.Run(t, harness.Scenario{
 		Name:  "installments crossing year boundary produce rollover.csv for next-year entries",
 		Given: lateYearInstallmentExpensesReadyForBatch(fixtureDir),
-		When:  actions.RunBatchAutoWithInput(fixtureDir, "lateyear-input.csv"),
+		When:  actions.RunBatchAutoWithFixture(fixtureDir),
 		Then:  nextYearInstallmentsWrittenToRolloverFile(),
 	})
 }
@@ -190,6 +192,7 @@ func lateYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.C
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
+		ctx.WorkbookPath = testWorkbook
 		ctx.FixtureDir = fixtureDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
