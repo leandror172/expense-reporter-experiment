@@ -4,5 +4,5 @@
   "threshold": 0.85,
   "assertion_type": "hard",
   "top_n": 3,
-  "extra_args": ["--dry-run"]
+  "extra_args": []
 }
