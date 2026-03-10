@@ -11,7 +11,11 @@ import (
 	"testing"
 )
 
-var binaryPath string
+var (
+	binaryPath   string
+	dataDir      string // absolute path to data/classification
+	testWorkbook string // from EXPENSE_WORKBOOK_PATH; empty = workbook tests skip
+)
 
 // fixturesDir returns the absolute path to test/fixtures/, resolved via findModuleRoot.
 func fixturesDir() string {
@@ -36,7 +40,12 @@ func TestMain(m *testing.M) {
 	}
 	binaryPath = filepath.Join(binDir, binName)
 
+	testWorkbook = os.Getenv("EXPENSE_WORKBOOK_PATH")
+
 	moduleRoot, err := findModuleRoot()
+	if err == nil {
+		dataDir = filepath.Join(moduleRoot, "..", "data", "classification")
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "TestMain: findModuleRoot: %v\n", err)
 		os.Exit(1)
