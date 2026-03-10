@@ -56,14 +56,14 @@ func expenseClassifierAvailable() func(*harness.Context) {
 
 func expenseClassifiedWithConfidence() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.OutputContains("%"),
+		verify.CommandSucceeded(),
+		verify.OutputContains("%", "confidence score should be shown after classification"),
 	}
 }
 
 func expenseKeptForManualReview() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.OutputNotContains("✓ Inserted"),
+		verify.CommandSucceeded(),
+		verify.OutputNotContains("✓ Inserted", "vague expense should not be auto-inserted"),
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/stretchr/testify/assert"
+
 	"expense-reporter/test/harness"
 )
 
@@ -27,9 +29,10 @@ type AccuracyReport struct {
 	Details  []AccuracyTuple `json:"details"`
 }
 
-// SoftAccuracy compares the subcategory column of the actual CSV against expectedPath.
-// Fails only if accuracy < floor. Writes an AccuracyReport JSON to resultsDir.
-func SoftAccuracy(artifactKey, expectedPath string, floor float64, subcatCol int, resultsDir string) func(*harness.Context) {
+// ClassificationAccuracyAtLeast compares the subcategory column of the actual
+// classified.csv against an expected reference file. Fails only if accuracy < floor.
+// Writes an AccuracyReport JSON to resultsDir for drift tracking over time.
+func ClassificationAccuracyAtLeast(artifactKey, expectedPath string, floor float64, resultsDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		actual := readArtifact(ctx, artifactKey)
@@ -49,6 +52,7 @@ func SoftAccuracy(artifactKey, expectedPath string, floor float64, subcatCol int
 			total = len(expected)
 		}
 
+		const subcatCol = 3
 		var details []AccuracyTuple
 		correct := 0
 		for i := 0; i < total; i++ {
@@ -61,8 +65,8 @@ func SoftAccuracy(artifactKey, expectedPath string, floor float64, subcatCol int
 				got = actual[i][subcatCol]
 			}
 			want := ""
-			if 3 < len(expected[i]) {
-				want = expected[i][3]
+			if subcatCol < len(expected[i]) {
+				want = expected[i][subcatCol]
 			}
 			match := got == want
 			if match {
@@ -85,16 +89,16 @@ func SoftAccuracy(artifactKey, expectedPath string, floor float64, subcatCol int
 			}
 		}
 
-		if accuracy < floor {
-			ctx.T.Errorf("SoftAccuracy(%q): %.0f%% < floor %.0f%% (%d/%d correct)",
-				artifactKey, accuracy*100, floor*100, correct, total)
-		}
+		assert.GreaterOrEqual(ctx.T, accuracy, floor,
+			"classification accuracy %.0f%% is below required floor %.0f%% (%d/%d correct)\nSee %s for details",
+			accuracy*100, floor*100, correct, total, resultsDir)
 	}
 }
 
-// AllInReview asserts all data rows in the artifact have auto_inserted == "false".
-// Skips the header row (row 0).
-func AllInReview(artifactKey string, autoInsertedCol int) func(*harness.Context) {
+// NoneWereAutoInserted asserts all data rows in the artifact have auto_inserted == "false".
+// Skips the header row. Use to verify that no expense passed the auto-insert threshold.
+func NoneWereAutoInserted(artifactKey string) func(*harness.Context) {
+	const autoInsertedCol = 6
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()
 		rows := readArtifact(ctx, artifactKey)
@@ -105,14 +109,13 @@ func AllInReview(artifactKey string, autoInsertedCol int) func(*harness.Context)
 			rows = rows[1:] // skip header
 		}
 		for i, row := range rows {
-			if autoInsertedCol >= len(row) {
-				ctx.T.Errorf("AllInReview(%q): row %d missing col %d", artifactKey, i, autoInsertedCol)
+			if !assert.Greater(ctx.T, len(row), autoInsertedCol,
+				"%q row %d missing auto_inserted column", artifactKey, i) {
 				continue
 			}
-			if row[autoInsertedCol] != "false" {
-				ctx.T.Errorf("AllInReview(%q): row %d auto_inserted=%q, want \"false\"",
-					artifactKey, i, row[autoInsertedCol])
-			}
+			assert.Equal(ctx.T, "false", row[autoInsertedCol],
+				"%q row %d: expense was auto-inserted but should have been kept for manual review",
+				artifactKey, i)
 		}
 	}
 }

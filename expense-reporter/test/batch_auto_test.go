@@ -66,51 +66,6 @@ func TestBatchAuto_ClassificationAccuracy(t *testing.T) {
 	})
 }
 
-func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-	}
-}
-
-func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-	}
-}
-
-func classifiedAndReviewFilesProduced() []func(*harness.Context) {
-	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.FileExists("classified.csv"),
-		verify.FileExists("review.csv"),
-		verify.RowCountAtLeast("classified.csv", 1),
-		verify.ColumnCount("classified.csv", 7),
-		verify.AllConfidencesInRange("classified.csv", 5),
-	}
-}
-
-func allInputExpensesClassified(rows int) []func(*harness.Context) {
-	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.FileExists("classified.csv"),
-		verify.FileExists("review.csv"),
-		verify.RowCount("classified.csv", rows),
-		verify.ColumnCount("classified.csv", 7),
-		verify.AllConfidencesInRange("classified.csv", 5),
-	}
-}
-
-
 func TestBatchAuto_OutputDirFlag(t *testing.T) {
 	harness.RequireOllama(t, "")
 
@@ -122,22 +77,6 @@ func TestBatchAuto_OutputDirFlag(t *testing.T) {
 		When:  actions.RunBatchAutoIntoArtifactDir(fixDir, "outDir"),
 		Then:  classifiedAndReviewFilesProduced(),
 	})
-}
-
-func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		outDir := filepath.Join(ctx.WorkDir, "out")
-		if err := os.MkdirAll(outDir, 0o755); err != nil {
-			ctx.T.Fatalf("mkdir out: %v", err)
-		}
-		ctx.Artifacts["outDir"] = outDir
-	}
 }
 
 func TestBatchAuto_SameYearInstallmentsExpanded(t *testing.T) {
@@ -168,6 +107,44 @@ func TestBatchAuto_RolloverInstallmentsWrittenToFile(t *testing.T) {
 	})
 }
 
+func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.FixtureDir = fixDir
+		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+	}
+}
+
+func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.FixtureDir = fixDir
+		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+	}
+}
+
+func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.FixtureDir = fixDir
+		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+		outDir := filepath.Join(ctx.WorkDir, "out")
+		if err := os.MkdirAll(outDir, 0o755); err != nil {
+			ctx.T.Fatalf("mkdir out: %v", err)
+		}
+		ctx.Artifacts["outDir"] = outDir
+	}
+}
+
 func midYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
@@ -192,29 +169,51 @@ func lateYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.C
 	}
 }
 
+func classifiedAndReviewFilesProduced() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+		verify.OutputFileExists("classified.csv"),
+		verify.OutputFileExists("review.csv"),
+		verify.OutputFileHasAtLeastRows("classified.csv", 1),
+		verify.OutputFileHasColumns("classified.csv", 7),
+		verify.AllClassificationScoresValid("classified.csv"),
+	}
+}
+
+func allInputExpensesClassified(rows int) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+		verify.OutputFileExists("classified.csv"),
+		verify.OutputFileExists("review.csv"),
+		verify.OutputFileHasRows("classified.csv", rows),
+		verify.OutputFileHasColumns("classified.csv", 7),
+		verify.AllClassificationScoresValid("classified.csv"),
+	}
+}
+
 // installmentExpenseAutoInserted verifies the installment expense was successfully
 // classified and auto-inserted. The per-installment workbook rows (3 for a /3 expense)
 // are written during insertion but not surfaced in output — workbook verification
 // requires verify/workbook.go which is not yet implemented.
 func installmentExpenseAutoInserted() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.FileExists("classified.csv"),
-		verify.OutputContains("Auto-inserted : 1"),
+		verify.CommandSucceeded(),
+		verify.OutputFileExists("classified.csv"),
+		verify.OutputContains("Auto-inserted : 1", "installment expense should be auto-inserted"),
 	}
 }
 
 func nextYearInstallmentsWrittenToRolloverFile() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.FileExists("rollover.csv"),
-		verify.RowCount("rollover.csv", 3),
+		verify.CommandSucceeded(),
+		verify.OutputFileExists("rollover.csv"),
+		verify.OutputFileHasRows("rollover.csv", 3), // header + 2 rollover installments
 	}
 }
 
 func classificationMatchesExpectedWithMinAccuracy(expectedPath, resultsDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExitCodeZero(),
-		verify.SoftAccuracy("classified.csv", expectedPath, 0.5, 3, resultsDir),
+		verify.CommandSucceeded(),
+		verify.ClassificationAccuracyAtLeast("classified.csv", expectedPath, 0.5, resultsDir),
 	}
 }
