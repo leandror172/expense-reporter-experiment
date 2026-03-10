@@ -7,77 +7,16 @@ import (
 	"expense-reporter/internal/parser"
 	"expense-reporter/internal/resolver"
 	"fmt"
-	"strings"
 	"time"
 )
 
-// InsertExpense is the main workflow function that parses, resolves, and inserts an expense
+// InsertExpense inserts a single expense into the workbook.
+// Delegates to InsertBatchExpenses so both paths share identical pipeline logic.
 func InsertExpense(workbookPath, expenseString string) error {
-	// Step 1: Parse the expense string
-	expense, err := parser.ParseExpenseString(expenseString)
-	if err != nil {
-		return fmt.Errorf("failed to parse expense: %w", err)
+	errs, _ := InsertBatchExpenses(workbookPath, []string{expenseString})
+	if len(errs) > 0 && errs[0] != nil {
+		return fmt.Errorf("%s", errs[0].Message)
 	}
-
-	// Step 2: Load reference sheet mappings and build hierarchical index
-	mappings, err := excel.LoadReferenceSheet(workbookPath)
-	if err != nil {
-		return fmt.Errorf("failed to load reference sheet: %w", err)
-	}
-	pathIndex := excel.BuildPathIndex(mappings)
-
-	// Step 3: Resolve subcategory to sheet location using hierarchical path
-	mapping, isAmbiguous, err := resolver.ResolveSubcategoryWithPath(pathIndex, expense.Subcategory)
-	if err != nil {
-		return fmt.Errorf("failed to resolve subcategory: %w", err)
-	}
-
-	// Step 4: Handle ambiguous subcategories
-	if isAmbiguous {
-		options := resolver.GetAmbiguousOptions(pathIndex.BySubcategory, expense.Subcategory)
-		sheetNames := make([]string, len(options))
-		for i, opt := range options {
-			sheetNames[i] = opt.SheetName
-		}
-		return fmt.Errorf("ambiguous subcategory '%s' found in sheets: [%s]. Use hierarchical path like 'Sheet,Category,Subcategory' to disambiguate",
-			expense.Subcategory, strings.Join(sheetNames, ", "))
-	}
-
-	// Step 5: Find the target row in the sheet
-	targetRow, err := excel.FindSubcategoryRow(workbookPath, mapping.SheetName, mapping.Subcategory)
-	if err != nil {
-		return fmt.Errorf("failed to find subcategory row: %w", err)
-	}
-	logger.Debug("single: subcategory row found", "subcategory", mapping.Subcategory, "sheet", mapping.SheetName, "row", targetRow)
-
-	// Step 6: Get month columns for the expense date
-	itemCol, _, _, err := excel.GetMonthColumns(expense.Date.Month())
-	if err != nil {
-		return fmt.Errorf("failed to get month columns: %w", err)
-	}
-	logger.Debug("single: month columns", "month", expense.Date.Month(), "itemCol", itemCol)
-
-	// Step 7: Find next empty row in the subcategory section
-	nextEmptyRow, err := excel.FindNextEmptyRow(workbookPath, mapping.SheetName, itemCol, targetRow, mapping.Subcategory)
-	if err != nil {
-		return fmt.Errorf("failed to find empty row: %w", err)
-	}
-	logger.Debug("single: empty row found", "subcategory", mapping.Subcategory, "targetRow", nextEmptyRow)
-
-	// Step 8: Create sheet location
-	location := &models.SheetLocation{
-		SheetName:   mapping.SheetName,
-		Category:    mapping.Category,
-		SubcatRow:   targetRow,
-		TargetRow:   nextEmptyRow,
-		MonthColumn: itemCol,
-	}
-
-	// Step 9: Write the expense to Excel
-	if err := excel.WriteExpense(workbookPath, expense, location); err != nil {
-		return fmt.Errorf("failed to write expense: %w", err)
-	}
-
 	return nil
 }
 
@@ -90,10 +29,24 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 		return make([]*models.BatchError, 0), nil
 	}
 
-	// Step 1: Parse all expenses first (fail fast before file operations)
+	// Parse all expenses first (fail fast before file operations)
 	parsedExpenses, originalErrors := parseExpenseStrings(expenseStrings)
 
-	// Step 1.5: Expand installments; track original→expanded index mapping
+	return insertParsedExpenses(workbookPath, parsedExpenses, originalErrors)
+}
+
+// InsertBatchExpensesFromClassified inserts pre-classified expenses using the same batch
+// pipeline as InsertBatchExpenses. RawValue is preserved as-is so installment notation
+// (e.g. "99,90/3") is not lost during the string conversion.
+func InsertBatchExpensesFromClassified(workbookPath string, rows []models.ClassifiedExpense) ([]*models.BatchError, []RolloverExpense) {
+
+	// Parse all expenses first (fail fast before file operations)
+	parsedExpenses, originalErrors := parseClassifiedExpenses(rows)
+	return insertParsedExpenses(workbookPath, parsedExpenses, originalErrors)
+}
+
+func insertParsedExpenses(workbookPath string, parsedExpenses []*models.Expense, originalErrors []*models.BatchError) ([]*models.BatchError, []RolloverExpense) {
+	// Step 1: Expand installments; track original→expanded index mapping
 	expenses, indexMapping, allRollovers := expandAllInstallments(parsedExpenses, originalErrors)
 
 	// Initialize errors array for EXPANDED expenses
@@ -168,17 +121,6 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 	return aggregateErrors(originalErrors, errors, indexMapping), allRollovers
 }
 
-// InsertBatchExpensesFromClassified inserts pre-classified expenses using the same batch
-// pipeline as InsertBatchExpenses. RawValue is preserved as-is so installment notation
-// (e.g. "99,90/3") is not lost during the string conversion.
-func InsertBatchExpensesFromClassified(workbookPath string, rows []models.ClassifiedExpense) ([]*models.BatchError, []RolloverExpense) {
-	expenseStrings := make([]string, len(rows))
-	for i, row := range rows {
-		expenseStrings[i] = fmt.Sprintf("%s;%s;%s;%s", row.Item, row.Date, row.RawValue, row.Subcategory)
-	}
-	return InsertBatchExpenses(workbookPath, expenseStrings)
-}
-
 // parseExpenseStrings parses raw expense strings into Expense structs.
 // Returns parallel slices: parsed[i] is nil when errors[i] is non-nil.
 func parseExpenseStrings(expenseStrings []string) ([]*models.Expense, []*models.BatchError) {
@@ -186,6 +128,22 @@ func parseExpenseStrings(expenseStrings []string) ([]*models.Expense, []*models.
 	errors := make([]*models.BatchError, len(expenseStrings))
 	for i, expenseString := range expenseStrings {
 		expense, err := parser.ParseExpenseString(expenseString)
+		if err != nil {
+			errors[i] = models.NewParseError(err.Error(), err)
+			continue
+		}
+		parsedExpenses[i] = expense
+	}
+	return parsedExpenses, errors
+}
+
+// parseClassifiedExpenses parses classified expense structs into Expense structs.
+// Returns parallel slices: parsed[i] is nil when errors[i] is non-nil.
+func parseClassifiedExpenses(rows []models.ClassifiedExpense) ([]*models.Expense, []*models.BatchError) {
+	parsedExpenses := make([]*models.Expense, len(rows))
+	errors := make([]*models.BatchError, len(rows))
+	for i, expense := range rows {
+		expense, err := parser.ParseExpense(expense)
 		if err != nil {
 			errors[i] = models.NewParseError(err.Error(), err)
 			continue
@@ -247,7 +205,11 @@ func resolveAllSubcategories(expenses []*models.Expense, errors []*models.BatchE
 
 		if isAmbiguous {
 			options := resolver.GetAmbiguousOptions(pathIndex.BySubcategory, expense.Subcategory)
-			errors[i] = models.NewAmbiguousError(expense.Subcategory, len(options))
+			sheetNames := make([]string, len(options))
+			for j, opt := range options {
+				sheetNames[j] = opt.SheetName
+			}
+			errors[i] = models.NewAmbiguousError(expense.Subcategory, sheetNames)
 			continue
 		}
 
