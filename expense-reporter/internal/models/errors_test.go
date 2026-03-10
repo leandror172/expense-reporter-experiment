@@ -53,7 +53,7 @@ func TestNewResolutionError(t *testing.T) {
 }
 
 func TestNewAmbiguousError(t *testing.T) {
-	err := NewAmbiguousError("Leandro", 2)
+	err := NewAmbiguousError("Leandro", []string{"Variáveis", "Extras"})
 
 	if err.Category != ErrorCategoryAmbiguous {
 		t.Errorf("Expected category %s, got %s", ErrorCategoryAmbiguous, err.Category)
@@ -67,7 +67,7 @@ func TestNewAmbiguousError(t *testing.T) {
 	if !err.Retriable {
 		t.Error("Expected ambiguous error to be retriable")
 	}
-	expectedMsg := "subcategory 'Leandro' is ambiguous, found in 2 sheets: please specify which one to use"
+	expectedMsg := "subcategory 'Leandro' is ambiguous, found in sheets: [Variáveis, Extras]: please specify which one to use"
 	if err.Error() != expectedMsg {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, err.Error())
 	}

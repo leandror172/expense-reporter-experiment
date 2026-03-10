@@ -1,6 +1,9 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // ErrorCategory represents the type of error that occurred
 type ErrorCategory string
@@ -65,11 +68,12 @@ func NewResolutionError(subcategory string) *BatchError {
 	}
 }
 
-// NewAmbiguousError creates an ambiguous error (multiple sheets)
-func NewAmbiguousError(subcategory string, sheetCount int) *BatchError {
+// NewAmbiguousError creates an ambiguous error (multiple sheets).
+// sheetNames lists every sheet the subcategory was found in.
+func NewAmbiguousError(subcategory string, sheetNames []string) *BatchError {
 	return &BatchError{
 		Category:      ErrorCategoryAmbiguous,
-		Message:       fmt.Sprintf("subcategory '%s' is ambiguous, found in %d sheets: please specify which one to use", subcategory, sheetCount),
+		Message:       fmt.Sprintf("subcategory '%s' is ambiguous, found in sheets: [%s]: please specify which one to use", subcategory, strings.Join(sheetNames, ", ")),
 		OutputFile:    OutputFileAmbiguous,
 		GroupLabel:    "Ambiguous Subcategories",
 		Retriable:     true,

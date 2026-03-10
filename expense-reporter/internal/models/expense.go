@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"expense-reporter/pkg/utils"
 	"fmt"
 	"time"
 )
@@ -20,6 +21,49 @@ type Expense struct {
 	Value       float64
 	Subcategory string
 	Installment *Installment // nil = regular expense, non-nil = installment
+}
+
+func NewExpense(item string, subcategory string, dateStr string, valueStr string) (*Expense, error) {
+	// Validate item description
+	if item == "" {
+		return nil, fmt.Errorf("item description cannot be empty")
+	}
+
+	// Validate subcategory
+	if subcategory == "" {
+		return nil, fmt.Errorf("subcategory cannot be empty")
+	}
+
+	// Parse date
+	date, err := utils.ParseDate(dateStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date: %w", err)
+	}
+
+	// Parse value with installments
+	value, installmentCount, err := utils.ParseCurrencyWithInstallments(valueStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value: %w", err)
+	}
+
+	expense := &Expense{
+		Item:        item,
+		Date:        date,
+		Value:       value, // Per-installment value if installments > 1
+		Subcategory: subcategory,
+	}
+
+	// Add installment info if applicable
+	if installmentCount > 1 {
+		totalValue := value * float64(installmentCount)
+		expense.Installment = &Installment{
+			Total:   totalValue,
+			Count:   installmentCount,
+			Current: 0, // Unexpanded yet
+		}
+	}
+
+	return expense, nil
 }
 
 // IsInstallment returns true if this expense is an installment
@@ -75,8 +119,8 @@ func (e *Expense) Validate() error {
 // notation is not lost when passing pre-classified expenses to the insertion pipeline.
 type ClassifiedExpense struct {
 	Item        string
-	Date        string  // DD/MM format as received from the CSV
-	RawValue    string  // Original value string, may include installment notation (e.g. "120,00/2")
+	Date        string // DD/MM format as received from the CSV
+	RawValue    string // Original value string, may include installment notation (e.g. "120,00/2")
 	Subcategory string
 	Category    string
 	Confidence  float64

@@ -7,7 +7,21 @@
       "Bash(go vet:*)",
       "Bash(go list:*)",
       "Bash(./.claude/tools/resume.sh)",
-      "Bash(./.claude/tools/ref-lookup.sh:*)"
+      "Bash(./.claude/tools/ref-lookup.sh:*)",
+      "mcp__ollama-bridge__ref_lookup",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(/tmp/expense-reporter:*)",
+      "Bash(/mnt/i/workspaces/expenses/code/.claude/tools/rotate-session-log.sh:*)",
+      "mcp__plugin_github_github__update_pull_request",
+      "Bash(.claude/tools/resume.sh:*)",
+      "mcp__plugin_github_github__add_issue_comment",
+      "mcp__plugin_github_github__pull_request_read",
+      "Bash(/mnt/i/workspaces/expenses/code/.claude/tools/ref-lookup.sh acceptance-patterns:*)",
+      "Bash(/mnt/i/workspaces/expenses/code/.claude/tools/ref-lookup.sh acceptance-verify:*)"
     ]
+  },
+  "remote": {
+    "defaultEnvironmentId": "env_01VVKze2YiCa55JpCBW2PSD8"
   }
 }
