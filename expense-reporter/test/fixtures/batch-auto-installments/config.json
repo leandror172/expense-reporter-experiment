@@ -1,7 +1,7 @@
 {
   "command": "batch-auto",
   "model": "my-classifier-q3",
-  "threshold": 0.0,
+  "threshold": 0.1,
   "assertion_type": "hard",
   "top_n": 3,
   "extra_args": []
