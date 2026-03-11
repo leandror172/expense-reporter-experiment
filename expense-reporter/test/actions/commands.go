@@ -66,6 +66,7 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 		runCommand(ctx, args...)
 		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
 		ctx.Artifacts["review.csv"] = filepath.Join(ctx.WorkDir, "review.csv")
+		ctx.Artifacts["rollover.csv"] = filepath.Join(ctx.WorkDir, "rollover.csv")
 	}
 }
 
@@ -140,6 +141,12 @@ func runCommand(ctx *harness.Context, args ...string) {
 	if len(args) == 0 {
 		ctx.T.Fatal("runCommand: no args provided")
 	}
+	// Log the subcommand and first meaningful flag for visibility during long runs
+	label := args[0]
+	if len(args) > 1 {
+		label += " " + args[1]
+	}
+	ctx.T.Logf("  $ expense-reporter %s", label)
 	cmd := exec.Command(ctx.BinaryPath, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

@@ -42,7 +42,9 @@ func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
 		ctx.DataDir = dataDir
-		ctx.WorkbookPath = testWorkbook
+		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
+		}
 	}
 }
 
@@ -50,7 +52,9 @@ func expenseClassifierAvailable() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
-		ctx.WorkbookPath = testWorkbook
+		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
+		}
 	}
 }
 
