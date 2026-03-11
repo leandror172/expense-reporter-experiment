@@ -52,7 +52,6 @@ func Run(t *testing.T, s Scenario) {
 		if s.When != nil {
 			t.Log("→ When: executing command (may take a while — waiting for Ollama)")
 			s.When(ctx)
-			t.Logf("← When: done (exit code %d)", ctx.ExitCode)
 		}
 		t.Logf("→ Then: checking %d assertion(s)", len(s.Then))
 		for _, step := range s.Then {

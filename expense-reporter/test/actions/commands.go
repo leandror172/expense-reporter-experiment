@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"expense-reporter/test/harness"
 )
@@ -141,12 +142,12 @@ func runCommand(ctx *harness.Context, args ...string) {
 	if len(args) == 0 {
 		ctx.T.Fatal("runCommand: no args provided")
 	}
-	// Log the subcommand and first meaningful flag for visibility during long runs
 	label := args[0]
 	if len(args) > 1 {
 		label += " " + args[1]
 	}
 	ctx.T.Logf("  $ expense-reporter %s", label)
+	start := time.Now()
 	cmd := exec.Command(ctx.BinaryPath, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -155,12 +156,15 @@ func runCommand(ctx *harness.Context, args ...string) {
 	err := cmd.Run()
 	ctx.Stdout = stdout.String()
 	ctx.Stderr = stderr.String()
+	elapsed := time.Since(start).Round(time.Second)
 	if err == nil {
 		ctx.ExitCode = 0
+		ctx.T.Logf("  ✓ completed in %s", elapsed)
 		return
 	}
 	if e, ok := err.(*exec.ExitError); ok {
 		ctx.ExitCode = e.ExitCode()
+		ctx.T.Logf("  ✗ completed in %s (exit %d)", elapsed, ctx.ExitCode)
 	} else {
 		ctx.T.Fatalf("runCommand %v: unexpected error: %v", args, err)
 	}
