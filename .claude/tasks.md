@@ -56,6 +56,8 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 
 ### Deferred Technical Debt
 
+- [ ] **TestBatchAuto_SameYearInstallmentsExpanded — reduce scope to structural validation**: The current test uses a real workbook insert to verify installment expansion, but this is fragile — the classifier may return a category name instead of a subcategory name (e.g. "Saúde" instead of "Academia"), causing a resolution error independent of installment logic. The installment expansion is already covered by `workflow_test.go` unit tests. Better acceptance test: use `--dry-run` and assert the classified.csv has the expense with installment notation preserved in the `value` column, or just assert structural validity (`classifiedAndReviewFilesProduced()`). Avoids dependency on classifier subcategory quality for a test whose purpose is installment mechanics.
+
 - [x] **config reader: replace runtime.Caller with os.Executable** — Fixed session 4 (commit 405953e). `internal/config/config.go` now uses `os.Executable()` to resolve `config/config.json` relative to the binary location.
 
 ### Deferred Improvements (from AUTO_CATEGORY_README.md Next Steps)
