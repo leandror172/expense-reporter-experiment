@@ -1,4 +1,5 @@
 # input.csv — installment expense starting October, 2 installments roll to next year
 # Format: item;DD/MM;value  (value/N = N installments)
-# Oct/Nov/Dec → current year (3 installments); Jan/Feb → next year (2 rollover)
-Curso online;01/10;500,00/5
+# Oct/Nov/Dec 2025 → current year (3 installments); Jan/Feb 2026 → next year (2 rollover)
+# Uber Centro is used as it reliably classifies as Uber/Taxi (a known subcategory)
+Uber Centro;01/10;500,00/5
