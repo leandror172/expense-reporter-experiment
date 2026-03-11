@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
+	"expense-reporter/internal/models"
 	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 	"fmt"
@@ -113,8 +114,19 @@ func insertExpense(item, date string, value float64, result classifier.Result) e
 	}
 
 	insertStr := utils.BuildInsertString(item, date, value, result.Subcategory)
-	if err := workflow.InsertExpense(workbook, insertStr); err != nil {
-		return fmt.Errorf("failed to insert expense: %w", err)
+	errs, _ := workflow.InsertBatchExpenses(workbook, []string{insertStr})
+
+	if len(errs) > 0 && errs[0] != nil {
+		bErr := errs[0]
+		switch bErr.Category {
+		case models.ErrorCategoryIO, models.ErrorCategoryCapacity:
+			// Infrastructure or capacity problems — propagate as hard errors
+			return fmt.Errorf("failed to insert expense: %s", bErr.Message)
+		default:
+			// Resolution, ambiguous, parse errors — fall back to review gracefully
+			fmt.Printf("⚠  Not inserted — %s\n", bErr.Message)
+			return nil
+		}
 	}
 
 	fmt.Printf("✓ Inserted: %s → %s (%s) — %.0f%% confidence\n",
