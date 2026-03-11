@@ -2,7 +2,17 @@
 
 package harness
 
-import "testing"
+import (
+	"flag"
+	"os"
+	"testing"
+)
+
+var keepArtifactsOnFailure = flag.Bool("keep-on-failure", false,
+	"preserve work dir contents when a test fails (for inspection)")
+
+var keepArtifacts = flag.Bool("keep-artifacts", false,
+	"preserve work dir contents after every test (pass or fail)")
 
 // Context holds state for a single acceptance test scenario.
 type Context struct {
@@ -42,10 +52,23 @@ type Scenario struct {
 func Run(t *testing.T, s Scenario) {
 	t.Helper()
 	t.Logf("scenario: %s", s.Name)
+
+	workDir, err := os.MkdirTemp("", t.Name())
+	if err != nil {
+		t.Fatalf("Run: create work dir: %v", err)
+	}
+	t.Cleanup(func() {
+		if *keepArtifacts || (t.Failed() && *keepArtifactsOnFailure) {
+			t.Logf("artifacts preserved: %s", workDir)
+			return
+		}
+		os.RemoveAll(workDir)
+	})
+
 	ctx := &Context{
 		T:         t,
 		Artifacts: make(map[string]string),
-		WorkDir:   t.TempDir(),
+		WorkDir:   workDir,
 	}
 	if s.Given != nil {
 		t.Log("→ Given: setting up scenario")
