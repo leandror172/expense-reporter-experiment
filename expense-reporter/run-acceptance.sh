@@ -46,9 +46,9 @@ for arg in "$@"; do
 done
 
 if [ -n "$RUN_FILTER" ]; then
-  go test -tags=acceptance -v -timeout 1800s -run "$RUN_FILTER" $EXTRA_FLAGS ./test/...
+  go test -tags=acceptance -v -timeout 1800s -run "$RUN_FILTER" ./test/... $EXTRA_FLAGS
 else
-  go test -tags=acceptance -v -timeout 1800s $EXTRA_FLAGS ./test/...
+  go test -tags=acceptance -v -timeout 1800s ./test/... $EXTRA_FLAGS
 fi
 
 echo ""
