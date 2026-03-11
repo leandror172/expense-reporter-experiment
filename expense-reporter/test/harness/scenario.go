@@ -36,29 +36,29 @@ type Scenario struct {
 	Then  []func(*Context)
 }
 
-// Run executes the scenario inside t.Run, calling Given → When → Then[] in order.
+// Run executes the scenario directly on t (no subtest), calling Given → When → Then[] in order.
+// Running on the parent t means t.Log() output is flushed in real-time with -v,
+// giving visibility during long-running Ollama calls.
 func Run(t *testing.T, s Scenario) {
 	t.Helper()
 	t.Logf("scenario: %s", s.Name)
-	t.Run(s.Name, func(t *testing.T) {
-		ctx := &Context{
-			T:         t,
-			Artifacts: make(map[string]string),
-			WorkDir:   t.TempDir(),
+	ctx := &Context{
+		T:         t,
+		Artifacts: make(map[string]string),
+		WorkDir:   t.TempDir(),
+	}
+	if s.Given != nil {
+		t.Log("→ Given: setting up scenario")
+		s.Given(ctx)
+	}
+	if s.When != nil {
+		t.Log("→ When: executing command (may take a while — waiting for Ollama)")
+		s.When(ctx)
+	}
+	t.Logf("→ Then: checking %d assertion(s)", len(s.Then))
+	for _, step := range s.Then {
+		if step != nil {
+			step(ctx)
 		}
-		if s.Given != nil {
-			t.Log("→ Given: setting up scenario")
-			s.Given(ctx)
-		}
-		if s.When != nil {
-			t.Log("→ When: executing command (may take a while — waiting for Ollama)")
-			s.When(ctx)
-		}
-		t.Logf("→ Then: checking %d assertion(s)", len(s.Then))
-		for _, step := range s.Then {
-			if step != nil {
-				step(ctx)
-			}
-		}
-	})
+	}
 }
