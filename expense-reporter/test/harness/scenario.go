@@ -39,6 +39,7 @@ type Scenario struct {
 // Run executes the scenario inside t.Run, calling Given → When → Then[] in order.
 func Run(t *testing.T, s Scenario) {
 	t.Helper()
+	t.Logf("scenario: %s", s.Name)
 	t.Run(s.Name, func(t *testing.T) {
 		ctx := &Context{
 			T:         t,

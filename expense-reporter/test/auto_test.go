@@ -68,6 +68,7 @@ func expenseClassifiedWithConfidence() []func(*harness.Context) {
 func expenseKeptForManualReview() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
-		verify.OutputNotContains("✓ Inserted", "vague expense should not be auto-inserted"),
+		verify.OutputNotContains("✓ Inserted",
+			"vague expense should not be auto-inserted (may go to review or fail resolution gracefully)"),
 	}
 }
