@@ -7,6 +7,7 @@ cd "$SCRIPT_DIR"
 
 echo "=== Acceptance Test Runner ==="
 
+export EXPENSE_WORKBOOK_PATH="${EXPENSE_WORKBOOK_PATH:-$(realpath "$SCRIPT_DIR/../Planilha_Normalized_Final_copy.xlsx" 2>/dev/null)}"
 # Pre-flight: workbook
 if [ -z "${EXPENSE_WORKBOOK_PATH:-}" ]; then
   echo "WARNING: EXPENSE_WORKBOOK_PATH is not set."
@@ -33,8 +34,22 @@ fi
 echo "      OK — build succeeded"
 
 # Run acceptance tests
+# Usage: ./run-acceptance.sh [TestFilter] [-keep-on-failure] [-keep-artifacts]
 echo "[3/3] Running acceptance tests..."
-go test -tags=acceptance -v -timeout 1800s ./test/...
+RUN_FILTER=""
+EXTRA_FLAGS=""
+for arg in "$@"; do
+  case "$arg" in
+    -keep-on-failure|-keep-artifacts) EXTRA_FLAGS="$EXTRA_FLAGS $arg" ;;
+    *) RUN_FILTER="$arg" ;;
+  esac
+done
+
+if [ -n "$RUN_FILTER" ]; then
+  go test -tags=acceptance -v -timeout 1800s -run "$RUN_FILTER" $EXTRA_FLAGS ./test/...
+else
+  go test -tags=acceptance -v -timeout 1800s $EXTRA_FLAGS ./test/...
+fi
 
 echo ""
 echo "=== Done ==="
