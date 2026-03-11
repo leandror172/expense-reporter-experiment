@@ -80,6 +80,21 @@ func DiscoverFixtures(baseDir string) ([]string, error) {
 	return fixtures, nil
 }
 
+// CopyWorkbookToWorkDir copies the workbook to the test's isolated work directory
+// and updates ctx.WorkbookPath to point to the copy. This prevents tests that write
+// to the workbook from sharing mutable state across the test suite.
+func CopyWorkbookToWorkDir(ctx *Context, workbookPath string) error {
+	if workbookPath == "" {
+		return nil
+	}
+	dst := filepath.Join(ctx.WorkDir, filepath.Base(workbookPath))
+	if err := copyFile(workbookPath, dst); err != nil {
+		return err
+	}
+	ctx.WorkbookPath = dst
+	return nil
+}
+
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {

@@ -149,10 +149,12 @@ func midYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Co
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
-		ctx.WorkbookPath = testWorkbook
 		ctx.FixtureDir = fixtureDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 	}
 }
@@ -161,10 +163,12 @@ func lateYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.C
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
-		ctx.WorkbookPath = testWorkbook
 		ctx.FixtureDir = fixtureDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 	}
 }
