@@ -83,13 +83,15 @@ design for both an acceptance test harness and the 5.4 batch-auto command.
 - **Evaluated testscript** (rogpeppe/go-internal) — decided against: script DSL conflicts with
   user's function-injection BDD vision. Custom harness on stdlib is more aligned.
 - **Evaluated testify** — decided against: project uses stdlib `testing` throughout, no value added.
+  _(Reversed in session 5: testify adopted in `test/verify/` package only for business-descriptive assertions; unit tests remain stdlib)_
 - **Created comprehensive implementation plan:** `.claude/plans/acceptance-harness-batch-auto.md`
 - **Design decisions for shared code extraction:**
   - `isAutoInsertable` → `internal/classifier/decision.go` (shared by auto + batch-auto)
   - `buildInsertString`/`formatBRValue` → `pkg/utils/format.go` (alongside existing currency/date utils)
 
 ### Decisions Made
-- **No testscript, no testify** — custom harness on stdlib, consistent with existing 190+ tests
+- **No testscript** — script DSL conflicts with function-injection BDD vision
+- **testify in verify package only** — adopted in session 5 for business-descriptive assertion names; unit tests remain stdlib
 - **Dir-per-fixture** with representative batches (10-20 rows), not single-row scenarios
 - **Continue-on-error (option b)** for Ollama failures mid-batch — failed rows get confidence=0, go to review
 - **Dry-run flag** for batch-auto — classify + write CSVs, skip workbook insertion

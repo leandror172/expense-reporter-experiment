@@ -76,22 +76,22 @@ fixtures/<name>/
 
 | Function | Signature | Assertion |
 |----------|-----------|-----------|
-| `ExitCodeZero` | `() func(*Context)` | Last command exited 0 |
-| `FileExists` | `(artifactKey) func(*Context)` | Artifact file exists on disk |
-| `RowCount` | `(artifactKey, n) func(*Context)` | CSV has exactly n rows |
-| `RowCountAtLeast` | `(artifactKey, n) func(*Context)` | CSV has >= n rows |
-| `ColumnCount` | `(artifactKey, n) func(*Context)` | Every row has n columns |
-| `AllConfidencesInRange` | `(artifactKey, col) func(*Context)` | Column values in [0.0, 1.0] |
-| `NoOverlap` | `(artifact1, artifact2) func(*Context)` | No row in both files |
-| `StdoutContains` | `(substr) func(*Context)` | stdout+stderr contains substr |
-| `StdoutNotContains` | `(substr) func(*Context)` | stdout+stderr does not contain substr |
+| `CommandSucceeded` | `() func(*Context)` | Last command exited 0 |
+| `OutputFileExists` | `(artifactKey) func(*Context)` | Artifact file exists on disk |
+| `OutputFileHasRows` | `(artifactKey, n) func(*Context)` | CSV has exactly n rows |
+| `OutputFileHasAtLeastRows` | `(artifactKey, n) func(*Context)` | CSV has >= n rows |
+| `OutputFileHasColumns` | `(artifactKey, n) func(*Context)` | Every row has n columns |
+| `AllClassificationScoresValid` | `(artifactKey) func(*Context)` | Confidence column values in [0.0, 1.0] |
+| `NoExpenseInBothFiles` | `(artifact1, artifact2) func(*Context)` | No row in both files |
+| `OutputContains` | `(substr) func(*Context)` | stdout+stderr contains substr |
+| `OutputNotContains` | `(substr) func(*Context)` | stdout+stderr does not contain substr |
 
 ### Accuracy (`test/verify/accuracy.go`)
 
 | Function | Signature | Assertion |
 |----------|-----------|-----------|
-| `SoftAccuracy` | `(artifactKey, expectedPath, floor, subcatCol, resultsDir) func(*Context)` | Category accuracy >= floor; writes JSON report to resultsDir |
-| `AllInReview` | `(artifactKey, autoInsertedCol) func(*Context)` | Every row has `auto_inserted == "false"` |
+| `ClassificationAccuracyAtLeast` | `(artifactKey, expectedPath, floor, resultsDir) func(*Context)` | Category accuracy >= floor; writes JSON report to resultsDir |
+| `NoneWereAutoInserted` | `(artifactKey) func(*Context)` | Every row has `auto_inserted == "false"` |
 
 ### Column indices for batch-auto output (classified.csv / review.csv)
 
