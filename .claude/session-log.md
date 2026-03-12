@@ -1,6 +1,65 @@
 # Session Log — Expense Reporter
 
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-03-11 — Session 5: Acceptance harness implementation + batch-auto + pipeline refactors
+
+### Context
+Implemented the full acceptance harness + batch-auto plan from session 4, then spent significant
+time on PR review cycles, harness stabilisation, and pipeline quality improvements.
+
+### What Was Done
+- **batch-auto command (5.4):** `cmd/batch_auto.go` — read 3-field CSV → classify → insert → write
+  `classified.csv` + `review.csv`; flags: `--model`, `--data-dir`, `--ollama-url`, `--threshold`,
+  `--top`, `--dry-run`, `--output-dir`, `--workbook`
+- **Acceptance test harness:** `test/harness/`, `test/actions/`, `test/verify/` with
+  `//go:build acceptance`; Given/When/Then pattern; `run-acceptance.sh` with Ollama pre-flight,
+  workbook auto-detection, test filter arg, `-keep-on-failure`/`-keep-artifacts` flags
+- **9 acceptance tests, all passing:** Basic, MixedConfidence, ExcludedCategoriesGoToReview,
+  ClassificationAccuracy, OutputDirFlag, SameYearInstallmentsExpanded, RolloverInstallmentsWrittenToFile,
+  KnownExpenseIsClassifiedWithConfidence, AmbiguousExpenseKeptForManualReview
+- **Fixtures:** `batch-auto-basic` (10 rows dry-run), `batch-auto-exclusions`, `batch-auto-installments`
+  (midyear + lateyear input files, threshold 0.0), `batch-auto-rollover` (threshold 0.0)
+- **Pipeline refactors:**
+  - `InsertBatchExpenses` extracted into 5 focused helpers (parseExpenseStrings, expandAllInstallments,
+    resolveAllSubcategories, buildEmptyRowRequests, buildExpensesWithLocations)
+  - `InsertBatchExpensesFromClassified`: new entry point for pre-classified expenses, no string round-trip
+  - `InsertExpense` unified — now delegates to `InsertBatchExpenses` (single pipeline)
+  - `models.ClassifiedExpense` struct with `RawValue string` (preserves installment notation)
+  - `models.NewExpense` constructor extracted from `ParseExpenseString`
+  - `parser.ParseExpense(ClassifiedExpense)` for classified path
+  - `NewAmbiguousError` now takes `[]string` sheet names — message includes actual sheet names
+- **auto command fix:** Resolution/ambiguous errors now fall back to review (exit 0 + ⚠ message)
+  instead of propagating as hard failures (exit 1); IO/capacity errors remain hard
+- **Verify package migrated to testify** with business-descriptive names:
+  `ExitCodeZero` → `CommandSucceeded`, `FileExists` → `OutputFileExists`,
+  `AllConfidencesInRange` → `AllClassificationScoresValid`, `AllInReview` → `NoneWereAutoInserted`,
+  `SoftAccuracy` → `ClassificationAccuracyAtLeast`, etc.
+- **Harness improvements:** Removed `t.Run()` for real-time `t.Log()` output; added
+  `CopyWorkbookToWorkDir` for per-test workbook isolation; `RunBatchAutoWithInput` for
+  multi-input-file fixtures; `EXPENSE_WORKBOOK_PATH` auto-detected from workbook relative to script
+- **Ollama IMPROVED/ACCEPTED policy documented** in CLAUDE.md and LLM repo deferred tasks
+
+### Decisions Made
+- **testify in verify package** — only there; unit tests remain stdlib
+- **`t.Run()` removed from `harness.Run()`** — real-time log flushing outweighs losing subtest nesting
+- **Threshold 0.0 in mechanics-testing fixtures** (installments, rollover) — decouples from
+  classifier non-determinism; confidence correctness tested by other fixtures
+- **Uber Centro as canonical reliable fixture item** — classifier consistently returns Uber/Taxi
+- **`EXPENSE_WORKBOOK_PATH` is the global config** for workbook-dependent tests; script auto-detects
+- **Exclusions acceptance test scoped to structural validation** — LLM non-determinism makes
+  routing assertions fragile; exclusion logic is deterministic and covered by unit tests
+- **Deferred:** Rollover/installment tests could be reduced to structural scope (tasks.md)
+- **Deferred to LLM repo:** IMPROVED verdict workflow — stubs-then-Ollama pattern for missing test cases
+
+### Next
+- [ ] **PR #6** is open on `feature/acceptance-harness-batch-auto` — ready for merge to master
+- [ ] **5.5** — Correction logging (`corrections.jsonl`)
+- [ ] **5.6** — Few-shot injection (feature dictionary pre-filter + top-K into prompt)
+- [ ] **5.7/5.8** — MCP thin wrapper in LLM repo
 
 ---
 
@@ -127,44 +186,3 @@ First active feature session. Resumed from session 1 (scaffolding). Started with
 
 ---
 
-## 2026-02-27 — Session 1 (Claude Code bootstrap)
-
-### Pre-history (Claude Desktop, sessions 1–N)
-
-All work before this session was done in Claude Desktop (separate context, no session tracking).
-
-**What was built (Phases 1–11 in Desktop):**
-- Phase 1-2: Domain model — `Expense`, `SubCategory`, `Category` structs; CSV parser (DD/MM/YYYY, comma decimals)
-- Phase 3-4: Excel writer — inserts expense row into workbook using excelize; auto-detects sheet
-- Phase 5-6: Category resolver — keyword matching against category/subcategory taxonomy
-- Phase 7-8: Batch import — process CSV file, report successes/failures
-- Phase 9-11: Cobra CLI — `add` (single expense), `batch` (CSV import), `version` commands; 190+ tests
-- v2.1.0 reached: full CLI working, all tests passing, Excel integration verified
-
-**Classification work (separate Claude Desktop context):**
-- Auto-categorization analysis of ~N historical expenses using LLM-assisted feature extraction
-- Feature dictionary (keyword → category mapping), training data, similarity matrices
-- Results in `~/workspaces/expenses/auto-category/` (original); copied to `data/classification/`
-
-### Done this session
-- Bootstrap `.claude/` scaffolding in this repo (tools, skills, CLAUDE.md, index.md, session-log.md, session-context.md, tasks.md)
-- Migrated classification docs from `~/workspaces/expenses/auto-category/` → `data/classification/`
-- Moved Desktop-era planning docs to `docs/archive/`
-- Set up `.gitignore` for personal data files
-- Confirmed: `cd expense-reporter && go test ./...` still passes
-
-### Key decisions
-- Layer 5 feature work (classify/auto/batch-auto commands) happens in this repo
-- MCP thin wrapper (5.8) stays in LLM repo (`/mnt/i/workspaces/llm/`)
-- Training data (personal expense data) gitignored; docs-only tracked in `data/classification/`
-- `confusion_analysis.json` gitignored (may contain real expense descriptions)
-
-### Blockers
-- None
-
-### Next
-- [ ] 5.1 — Port training data: confirm `feature_dictionary_enhanced.json` + `training_data_complete.json` are in `data/classification/` and document their format
-- [ ] 5.2 — `classify` command: 3-field input → Ollama HTTP → structured JSON → top-N subcategories with confidence
-- [ ] 5.3 — `auto` command: classify + insert if HIGH confidence (≥0.85)
-
----

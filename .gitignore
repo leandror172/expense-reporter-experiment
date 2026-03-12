@@ -43,6 +43,9 @@ data/classification/*.csv
 # Claude Code local data (secrets, personal paths, backups)
 .claude/local/
 
+# Claude Code local settings (personal permissions allowlist, remote env ID — machine-specific)
+.claude/settings.local.json
+
 # Transient fix scripts and one-off reports (moved to docs/archive/transients/)
 docs/archive/transients/
 
