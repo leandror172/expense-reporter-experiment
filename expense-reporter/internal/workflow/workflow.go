@@ -168,8 +168,10 @@ func expandAllInstallments(parsedExpenses []*models.Expense, parseErrors []*mode
 		}
 
 		if parsedExpense.IsInstallment() {
+			// Expand into multiple expenses
 			expandedList, rollovers := expandInstallments(parsedExpense, i)
 			startIdx := len(expenses)
+			// Add this-year installments to processing queue
 			for j := range expandedList {
 				expenses = append(expenses, expandedList[j])
 				if indexMapping[i] == nil {
@@ -177,8 +179,10 @@ func expandAllInstallments(parsedExpenses []*models.Expense, parseErrors []*mode
 				}
 				indexMapping[i] = append(indexMapping[i], startIdx+j)
 			}
+			// Collect next-year installments for rollover file
 			allRollovers = append(allRollovers, rollovers...)
 		} else {
+			// Regular expense
 			indexMapping[i] = []int{len(expenses)}
 			expenses = append(expenses, parsedExpense)
 		}
