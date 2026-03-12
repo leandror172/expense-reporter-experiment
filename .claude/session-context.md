@@ -47,12 +47,14 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 4 (2026-03-03) — design session + debt fix
-  - Fixed `runtime.Caller` → `os.Executable` debt in `internal/config/config.go` (commit 405953e)
-  - Designed acceptance test harness (BDD Given/When/Then) + batch-auto command (5.4)
-  - Full implementation plan: `.claude/plans/acceptance-harness-batch-auto.md`
-- **Branch:** `feature/layer5-classifier` (6 commits ahead of master)
-- **Next:** Implement plan — Phase 1 (extract shared logic), Phase 2 (test harness), Phase 3 (batch-auto)
+- **Last checkpoint:** Session 5 (2026-03-11) — full implementation of acceptance harness + batch-auto
+  - batch-auto command (5.4) complete with full acceptance test suite (9 tests, all passing)
+  - Pipeline refactored: unified InsertExpense, ClassifiedExpense model, InsertBatchExpensesFromClassified
+  - verify package migrated to testify with business-descriptive names
+  - Harness hardened: workbook isolation, keep-on-failure flag, real-time logging
+  - PR #6 open on `feature/acceptance-harness-batch-auto`
+- **Branch:** `feature/acceptance-harness-batch-auto` (ready for merge)
+- **Next:** Merge PR #6, then start 5.5 (correction logging) or 5.6 (few-shot injection)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -92,8 +94,11 @@ Or manually:
 - **Brazilian format:** DD/MM/YYYY dates, comma decimal separator (`1.234,56` notation)
 - **Error pattern:** `fmt.Errorf("context: %w", err)` — wrap with context, not bare return
 - **Table-driven tests:** Standard approach — any new command gets table-driven test coverage
-- **No test frameworks:** stdlib `testing` only — no testify, no testscript, no assertion libraries
+- **No test frameworks in unit tests:** stdlib `testing` only — testify used only in `test/verify/` package
 - **Acceptance tests:** `//go:build acceptance` tag, separate from unit tests, live Ollama required
+- **Acceptance harness:** `test/harness/` (Context, Scenario, Run), `test/actions/`, `test/verify/`;
+  `run-acceptance.sh` with Ollama pre-flight, workbook auto-detect, filter arg, keep-artifacts flags
+- **Workbook config:** `EXPENSE_WORKBOOK_PATH` env var — script auto-detects from relative path to workbook
 - **classify/auto input:** Positional args with `utils.ParseCurrency` for value (accepts both `.` and `,`)
 - **TDD:** Write tests red-first before implementation (5.2 was an exception — tests written after)
 - **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it
@@ -101,6 +106,14 @@ Or manually:
 ### Classification Data
 - `confusion_analysis.json` gitignored (may contain real expense descriptions as test cases)
 - `algorithm_parameters.json` tracked (no personal data, pure algorithm config)
+
+### Acceptance Test Fixture Stability (session 5)
+- **Threshold 0.0** in mechanics-testing fixtures (installments, rollover) — decouples from
+  classifier confidence non-determinism; other fixtures use 0.85
+- **Uber Centro** is the canonical reliable test item — consistently returns Uber/Taxi subcategory
+- **Exclusions test** scoped to structural validation only — LLM routing assertions are fragile;
+  exclusion logic is deterministic and covered by `classifier/decision_test.go` unit tests
+- **auto command** now falls back to review (exit 0) on resolution/ambiguous errors; only IO/capacity → exit 1
 
 ### Integration Testing Findings (session 3)
 - LLM resolves multi-word context better than keyword specificity alone — "VA compras" → 100%
