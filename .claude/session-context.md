@@ -47,13 +47,14 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 6 (2026-03-13) — PR #6 merged; 5.5 fully designed, ready to implement
-  - PR #6 (`feature/acceptance-harness-batch-auto`) merged to master
-  - ref:acceptance-verify updated with correct function names from session 5 renames
-  - 5.5 plan complete: `internal/feedback/` package, `classifications.jsonl`, TDD approach
-  - Plan saved at `.claude/plans/polished-knitting-simon.md`
-- **Branch:** `feature/feedback-logging-5.5` (ready to implement)
-- **Next:** Implement 5.5 per plan at `.claude/plans/polished-knitting-simon.md`
+- **Last checkpoint:** Session 7 (2026-03-13) — 5.5 fully implemented on `feature/feedback-logging-5.5`
+  - Phase 1: `internal/feedback/` package (TDD — 6 unit tests, all green)
+  - Phase 2: `internal/config/` — `ClassificationsPath` field + `ClassificationsFilePath()` method
+  - Phase 3: `auto.go`, `batch_auto.go`, `add.go` hooked to log confirmed/manual entries
+  - Phase 4: acceptance tests — `test/feedback_test.go`, `verify/feedback.go`, `RunAdd` action, `batch-auto-feedback` fixture
+  - All 190+ unit tests pass, `go vet` clean, acceptance tests compile
+- **Branch:** `feature/feedback-logging-5.5` (implementation complete — ready for PR)
+- **Next:** Open PR for 5.5 → merge → start 5.7 (few-shot injection)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
