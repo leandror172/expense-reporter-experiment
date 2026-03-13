@@ -19,16 +19,9 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto command logs confirmed feedback entry on successful insert",
-		Given: autoFeedbackSetup(fixDir),
+		Given: knownExpenseReadyForAutoInsert(fixDir),
 		When:  actions.RunAuto("Uber Centro", "35,50", "15/04"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputContains("✓ Inserted"),
-			verify.FeedbackFileExists("classifications.jsonl"),
-			verify.FeedbackEntryCount("classifications.jsonl", 1),
-			verify.FeedbackContainsStatus("classifications.jsonl", "confirmed"),
-			verify.FeedbackContainsItem("classifications.jsonl", "Uber Centro"),
-		},
+		Then:  autoInsertConfirmedInFeedback(fixDir),
 	})
 }
 
@@ -40,14 +33,9 @@ func TestBatchAuto_FeedbackLoggedForInsertedRows(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto logs confirmed feedback for all auto-inserted rows",
-		Given: batchFeedbackSetup(fixDir),
+		Given: knownExpenseBatchReadyForInsert(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.FeedbackFileExists("classifications.jsonl"),
-			verify.FeedbackAllConfirmed("classifications.jsonl"),
-			verify.FeedbackContainsStatus("classifications.jsonl", "confirmed"),
-		},
+		Then:  batchInsertionsConfirmedInFeedback(fixDir),
 	})
 }
 
@@ -59,35 +47,28 @@ func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto dry-run does not create feedback log",
-		Given: batchFeedbackDryRunSetup(fixDir),
+		Given: mixedExpensesReadyForDryRun(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.FeedbackFileNotExists("classifications.jsonl"),
-		},
+		Then:  noFeedbackFileCreated(),
 	})
 }
 
 func TestAdd_ManualFeedbackLogged(t *testing.T) {
 	harness.RequireWorkbook(t, testWorkbook)
 
+	fixDir := filepath.Join(fixturesDir(), "add-feedback")
+
 	harness.Run(t, harness.Scenario{
 		Name:  "add command logs manual feedback entry",
-		Given: addFeedbackSetup(),
+		Given: singleExpenseReadyForManualAdd(),
 		When:  actions.RunAdd("Padaria Maeda;15/03;27,50;Padaria"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.FeedbackFileExists("classifications.jsonl"),
-			verify.FeedbackEntryCount("classifications.jsonl", 1),
-			verify.FeedbackContainsStatus("classifications.jsonl", "manual"),
-			verify.FeedbackContainsItem("classifications.jsonl", "Padaria Maeda"),
-		},
+		Then:  manualEntryLoggedInFeedback(fixDir),
 	})
 }
 
 // --- Given helpers ---
 
-func autoFeedbackSetup(fixDir string) func(*harness.Context) {
+func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
@@ -95,26 +76,11 @@ func autoFeedbackSetup(fixDir string) func(*harness.Context) {
 		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
-		setupFeedbackConfig(ctx)
+		withFeedbackConfig(ctx)
 	}
 }
 
-func batchFeedbackSetup(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
-		setupFeedbackConfig(ctx)
-	}
-}
-
-func batchFeedbackDryRunSetup(fixDir string) func(*harness.Context) {
+func knownExpenseBatchReadyForInsert(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
@@ -122,22 +88,37 @@ func batchFeedbackDryRunSetup(fixDir string) func(*harness.Context) {
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
-		setupFeedbackConfig(ctx)
+		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
+		}
+		withFeedbackConfig(ctx)
 	}
 }
 
-func addFeedbackSetup() func(*harness.Context) {
+func mixedExpensesReadyForDryRun(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.FixtureDir = fixDir
+		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+		withFeedbackConfig(ctx)
+	}
+}
+
+func singleExpenseReadyForManualAdd() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
-		setupFeedbackConfig(ctx)
+		withFeedbackConfig(ctx)
 	}
 }
 
-// setupFeedbackConfig writes binary config with classifications_path and registers the artifact.
-func setupFeedbackConfig(ctx *harness.Context) {
+// withFeedbackConfig writes binary config with classifications_path and registers the artifact.
+func withFeedbackConfig(ctx *harness.Context) {
 	jsonlPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
 	if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
 		"classifications_path": jsonlPath,
@@ -145,4 +126,35 @@ func setupFeedbackConfig(ctx *harness.Context) {
 		ctx.T.Fatalf("SetupBinaryConfig: %v", err)
 	}
 	ctx.Artifacts["classifications.jsonl"] = jsonlPath
+}
+
+// --- Then helpers ---
+
+func autoInsertConfirmedInFeedback(fixDir string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+		verify.OutputContains("✓ Inserted"),
+		verify.FeedbackMatchesExpected("classifications.jsonl", filepath.Join(fixDir, "expected-feedback.jsonl")),
+	}
+}
+
+func batchInsertionsConfirmedInFeedback(fixDir string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+		verify.FeedbackMatchesExpected("classifications.jsonl", filepath.Join(fixDir, "expected-feedback.jsonl")),
+	}
+}
+
+func noFeedbackFileCreated() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+		verify.FeedbackFileNotExists("classifications.jsonl"),
+	}
+}
+
+func manualEntryLoggedInFeedback(fixDir string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+		verify.FeedbackMatchesExpected("classifications.jsonl", filepath.Join(fixDir, "expected-feedback.jsonl")),
+	}
 }
