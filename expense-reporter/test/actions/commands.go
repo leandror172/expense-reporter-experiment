@@ -34,6 +34,18 @@ func RunAuto(args ...string) func(*harness.Context) {
 	}
 }
 
+// RunAdd returns a When closure that runs the add command with the given expense string.
+// Passes --workbook from ctx when set.
+func RunAdd(expenseString string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"add", expenseString}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
+		}
+		runCommand(ctx, args...)
+	}
+}
+
 // RunBatchAuto returns a When closure that runs the batch-auto command.
 func RunBatchAuto(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
