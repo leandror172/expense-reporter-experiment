@@ -47,14 +47,13 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 5 (2026-03-11) — full implementation of acceptance harness + batch-auto
-  - batch-auto command (5.4) complete with full acceptance test suite (9 tests, all passing)
-  - Pipeline refactored: unified InsertExpense, ClassifiedExpense model, InsertBatchExpensesFromClassified
-  - verify package migrated to testify with business-descriptive names
-  - Harness hardened: workbook isolation, keep-on-failure flag, real-time logging
-  - PR #6 open on `feature/acceptance-harness-batch-auto`
-- **Branch:** `feature/acceptance-harness-batch-auto` (ready for merge)
-- **Next:** Merge PR #6, then start 5.5 (correction logging) or 5.6 (few-shot injection)
+- **Last checkpoint:** Session 6 (2026-03-13) — PR #6 merged; 5.5 fully designed, ready to implement
+  - PR #6 (`feature/acceptance-harness-batch-auto`) merged to master
+  - ref:acceptance-verify updated with correct function names from session 5 renames
+  - 5.5 plan complete: `internal/feedback/` package, `classifications.jsonl`, TDD approach
+  - Plan saved at `.claude/plans/polished-knitting-simon.md`
+- **Branch:** `feature/feedback-logging-5.5` (ready to implement)
+- **Next:** Implement 5.5 per plan at `.claude/plans/polished-knitting-simon.md`
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
