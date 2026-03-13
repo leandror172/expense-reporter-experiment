@@ -203,3 +203,27 @@ cases against real Ollama using `Planilha_Normalized_Final_copy.xlsx`.
 
 ---
 
+
+## 2026-03-13 — Session 7: 5.5 implementation (classification feedback logging)
+
+### What Happened
+- Implemented 5.5 in 4 phases on branch `feature/feedback-logging-5.5`
+- **Phase 1 (TDD):** `internal/feedback/` package — `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; 6 unit tests green
+- **Phase 2 (Config):** `ClassificationsPath` + `ClassificationsFilePath()` in `internal/config/`; 3 unit tests
+- **Phase 3 (Hooks):** `auto.go` → `logConfirmedFeedback`; `batch_auto.go` → `logBatchFeedback`; `add.go` → `logManualFeedbackFromAdd` with 3 helpers
+- **Phase 4 (Acceptance):** `feedback_test.go` (4 tests), `verify/feedback.go` (5 verifiers), `RunAdd` action, `SetupBinaryConfig` harness helper, `batch-auto-feedback` fixture
+- Ollama calls: `feedback.go` ACCEPTED (~800 est. tokens saved); test file timed out x2 (cold start); feedback_test.go REJECTED (wrong harness API)
+- Rule change noted: 1st timeout = retry, not reject
+
+### Decisions Made
+- **Non-fatal logging:** All feedback writes are best-effort — stderr warning only, never blocks the command
+- **add.go data-dir:** Hardcoded `"data/classification"` relative path for taxonomy lookup; silently empty category if not found
+- **DryRun test fixture:** Reused existing `batch-auto-basic` (already has `--dry-run` in extra_args) — no new fixture needed
+- **batch-auto-feedback fixture:** threshold=0.0 to force all rows into auto-insert regardless of confidence
+
+### Next
+- [ ] **Open PR for 5.5** on `feature/feedback-logging-5.5` → merge to master
+- [ ] **Run acceptance tests** to verify end-to-end: `./run-acceptance.sh`
+- [ ] **5.7** — few-shot injection: consume `classifications.jsonl` as training signal
+
+---

@@ -54,10 +54,12 @@
 | `pkg/utils` | `expense-reporter/pkg/utils/` | Public utility functions (currency, date, format) |
 | `config` | `expense-reporter/config/` | Configuration files and constants |
 | `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic |
-| `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check) |
-| `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto |
-| `test/verify` | `expense-reporter/test/verify/` | Then-closures: ExitCodeZero, RowCount, AllConfidencesInRange, SoftAccuracy |
-| `test/fixtures` | `expense-reporter/test/fixtures/` | Fixture data per functional slice (classify-basic, batch-auto-basic, batch-auto-exclusions) |
+| `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` |
+| `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry` |
+| `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check, SetupBinaryConfig) |
+| `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd |
+| `test/verify` | `expense-reporter/test/verify/` | Then-closures: ExitCodeZero, RowCount, AllConfidencesInRange, SoftAccuracy, FeedbackFile* |
+| `test/fixtures` | `expense-reporter/test/fixtures/` | Fixture data per functional slice (classify-basic, batch-auto-basic, batch-auto-exclusions, batch-auto-feedback) |
 <!-- /ref:go-structure -->
 
 ---
