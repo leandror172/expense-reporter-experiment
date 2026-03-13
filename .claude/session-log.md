@@ -1,7 +1,32 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-03-13 — Session 8: 5.5 PR review + merge
+
+### Context
+Resumed with PR #7 (`feature/feedback-logging-5.5`) open. User reviewed it and left 3 inline comments on `feedback_test.go`.
+
+### What Was Done
+- **Ran full acceptance suite** — all 13 tests pass (4 new feedback tests confirmed green end-to-end)
+- **Fixed run-acceptance.sh CRLF** — file had Windows line endings; stripped `\r`; restored to LF (was already LF in index, so no commit needed)
+- **Addressed 3 PR review comments:**
+  1. **Given names** — renamed to business-oriented: `knownExpenseReadyForAutoInsert`, `knownExpenseBatchReadyForInsert`, `mixedExpensesReadyForDryRun`, `singleExpenseReadyForManualAdd`
+  2. **Then functions** — extracted named helpers returning `[]func(*harness.Context)`: `autoInsertConfirmedInFeedback`, `batchInsertionsConfirmedInFeedback`, `noFeedbackFileCreated`, `manualEntryLoggedInFeedback`
+  3. **Expected output files** — added `FeedbackMatchesExpected` verifier (partial-match, skips `id`/`timestamp`); added `expected-feedback.jsonl` to `auto-basic/`, `batch-auto-feedback/`, and new `add-feedback/` fixtures
+- **PR #7 merged** to master; local master updated
+
+### Decisions Made
+- **`FeedbackMatchesExpected` uses partial-match semantics**: expected file specifies only the fields to check; `id` and `timestamp` always skipped (implementation details)
+- **LLM-dependent fields excluded from auto/batch expected files**: `predicted_subcategory`, `actual_subcategory`, `confidence` omitted since classifier output is non-deterministic; add test has full expected (no LLM path)
+- **1st Ollama timeout = retry, not reject** (user clarification): only treat as first rejection if the model actually responds with wrong output; cold-start timeouts get one free retry
+
+### Next
+- [ ] **Start 5.7** — few-shot injection: load top-K entries from `classifications.jsonl` and inject into Ollama classifier prompt
+- [ ] Run full acceptance suite with `run-acceptance.sh` to confirm master is clean
 
 ---
 
@@ -161,69 +186,3 @@ design for both an acceptance test harness and the 5.4 batch-auto command.
 
 ---
 
-## 2026-03-02 — Session 3: Integration testing + Diversos auto-insert fix
-
-### Context
-Continuation of session 2 (same day). After the earlier handoff, user asked to run live test
-cases against real Ollama using `Planilha_Normalized_Final_copy.xlsx`.
-
-### What Was Done
-- **Integration testing (4 cases):**
-  - "Diarista Letícia" 160 05/01 → 95% Diarista ✓ (--confirm, user declined)
-  - "Uber Centro" 35.50 15/04 → 100% Uber/Taxi ✓ (--confirm, user declined)
-  - "VA compras" 85.00 10/03 → 100% Supermercado VA — auto-inserted into workbook copy
-    (finding: LLM resolves multi-word ambiguity better than keyword specificity alone; "va"
-    has specificity=0.36 in feature dict but "VA compras" was unambiguous to the model)
-  - "TechCorp SaaS assinatura" 49.90 01/03 → 95% Diversos — auto-inserted (**bug found**)
-- **Fix: configurable auto-insert exclusion list** (commit `1ac43dd`):
-  - `internal/config/config.go`: `Config` struct + `Load()` reads `config/config.json`
-    (known debt: uses `runtime.Caller` for path resolution; should use `os.Executable`)
-  - `config/config.json`: added `"auto_insert_excluded": ["Diversos"]`
-  - `cmd/auto.go`: extracted `isAutoInsertable(result, excluded []string) bool`; distinct ⚠
-    messages for threshold vs exclusion rejection
-  - `cmd/auto_test.go`: 9 tests for `isAutoInsertable` including empty-exclusion-list case
-- **Deferred items logged:**
-  - `tasks.md` (this repo): `runtime.Caller → os.Executable` config reader debt
-  - LLM `tasks.md`: `ollama-bridge file_path input` (token efficiency gap) + same config debt
-- **Local model verdict:** `my-go-q25c14` used for test update — IMPROVED (wrong package name
-  `expense_reporter_test` → `cmd`; syntax typo `0,.95` → `0.95`; structure was correct)
-
-### Decisions Made
-- **Exclusion list in config.json:** Not hardcoded — configurable so users can add subcategories
-  without recompiling. Empty list = no exclusions (Diversos would pass through).
-- **Distinct ⚠ messages:** "below threshold" vs "excluded from auto-insert" — different root
-  causes deserve different messages.
-- **runtime.Caller acknowledged as debt:** Logged and deferred; not blocking for development use.
-- **ollama-bridge file_path:** Token efficiency gap identified — file content must pass through
-  Claude context twice (read + embed in prompt). Logged in LLM tasks for future bridge enhancement.
-
-### Next
-- [ ] 5.4 — `batch-auto` command: classify a CSV, write `classified.csv` (HIGH) + `review.csv` (LOW)
-- [ ] Consider: `Transporte` appearing as subcategory at 90% in case 2 — taxonomy oddity, not urgent
-
----
-
-
-## 2026-03-13 — Session 7: 5.5 implementation (classification feedback logging)
-
-### What Happened
-- Implemented 5.5 in 4 phases on branch `feature/feedback-logging-5.5`
-- **Phase 1 (TDD):** `internal/feedback/` package — `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; 6 unit tests green
-- **Phase 2 (Config):** `ClassificationsPath` + `ClassificationsFilePath()` in `internal/config/`; 3 unit tests
-- **Phase 3 (Hooks):** `auto.go` → `logConfirmedFeedback`; `batch_auto.go` → `logBatchFeedback`; `add.go` → `logManualFeedbackFromAdd` with 3 helpers
-- **Phase 4 (Acceptance):** `feedback_test.go` (4 tests), `verify/feedback.go` (5 verifiers), `RunAdd` action, `SetupBinaryConfig` harness helper, `batch-auto-feedback` fixture
-- Ollama calls: `feedback.go` ACCEPTED (~800 est. tokens saved); test file timed out x2 (cold start); feedback_test.go REJECTED (wrong harness API)
-- Rule change noted: 1st timeout = retry, not reject
-
-### Decisions Made
-- **Non-fatal logging:** All feedback writes are best-effort — stderr warning only, never blocks the command
-- **add.go data-dir:** Hardcoded `"data/classification"` relative path for taxonomy lookup; silently empty category if not found
-- **DryRun test fixture:** Reused existing `batch-auto-basic` (already has `--dry-run` in extra_args) — no new fixture needed
-- **batch-auto-feedback fixture:** threshold=0.0 to force all rows into auto-insert regardless of confidence
-
-### Next
-- [ ] **Open PR for 5.5** on `feature/feedback-logging-5.5` → merge to master
-- [ ] **Run acceptance tests** to verify end-to-end: `./run-acceptance.sh`
-- [ ] **5.7** — few-shot injection: consume `classifications.jsonl` as training signal
-
----

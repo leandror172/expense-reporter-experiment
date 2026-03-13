@@ -47,14 +47,12 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 7 (2026-03-13) — 5.5 fully implemented on `feature/feedback-logging-5.5`
-  - Phase 1: `internal/feedback/` package (TDD — 6 unit tests, all green)
-  - Phase 2: `internal/config/` — `ClassificationsPath` field + `ClassificationsFilePath()` method
-  - Phase 3: `auto.go`, `batch_auto.go`, `add.go` hooked to log confirmed/manual entries
-  - Phase 4: acceptance tests — `test/feedback_test.go`, `verify/feedback.go`, `RunAdd` action, `batch-auto-feedback` fixture
-  - All 190+ unit tests pass, `go vet` clean, acceptance tests compile
-- **Branch:** `feature/feedback-logging-5.5` (implementation complete — ready for PR)
-- **Next:** Open PR for 5.5 → merge → start 5.7 (few-shot injection)
+- **Last checkpoint:** Session 8 (2026-03-13) — PR #7 merged; 5.5 complete on master
+  - All 13 acceptance tests pass (4 new feedback tests verified end-to-end)
+  - PR review addressed: business Given names, named Then fns, `FeedbackMatchesExpected` + expected fixture files
+  - `run-acceptance.sh` CRLF issue was a working-tree-only artifact (already LF in index)
+- **Branch:** `master` (5.5 merged, branch deleted)
+- **Next:** Start 5.7 — few-shot injection (consume `classifications.jsonl` in classifier prompt)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -102,6 +100,7 @@ Or manually:
 - **classify/auto input:** Positional args with `utils.ParseCurrency` for value (accepts both `.` and `,`)
 - **TDD:** Write tests red-first before implementation (5.2 was an exception — tests written after)
 - **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it
+- **Ollama timeout policy (session 8):** 1st timeout = retry (cold start), not a rejection. Only treat as 1st rejection if the model responds with wrong output. Two rejections → escalate to Claude.
 
 ### Classification Data
 - `confusion_analysis.json` gitignored (may contain real expense descriptions as test cases)
