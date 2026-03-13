@@ -10,6 +10,7 @@ import (
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
+	"expense-reporter/internal/feedback"
 	"expense-reporter/internal/models"
 	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
@@ -98,7 +99,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 
 	var rollovers []workflow.RolloverExpense
 	if !batchAutoDryRun {
-		rollovers, err = insertClassified(results)
+		rollovers, err = insertClassified(results, appCfg, batchAutoModel)
 		if err != nil {
 			return err
 		}
@@ -199,7 +200,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 	return results
 }
 
-func insertClassified(results []classifiedRow) ([]workflow.RolloverExpense, error) {
+func insertClassified(results []classifiedRow, appCfg *config.Config, model string) ([]workflow.RolloverExpense, error) {
 	workbook, err := GetWorkbookPath()
 	if err != nil {
 		return nil, fmt.Errorf("getting workbook path: %w", err)
@@ -241,7 +242,41 @@ func insertClassified(results []classifiedRow) ([]workflow.RolloverExpense, erro
 			fmt.Fprintf(os.Stderr, "  INSERT ERROR %q: %s\n", results[srcIdx[i]].Item, bErr.Message)
 		}
 	}
+	logBatchFeedback(appCfg, results, srcIdx, batchErrors, model)
 	return rollovers, nil
+}
+
+// logBatchFeedback appends confirmed feedback entries for all successfully inserted rows.
+// Non-fatal: logs a warning to stderr if any individual write fails.
+func logBatchFeedback(appCfg *config.Config, results []classifiedRow, srcIdx []int, batchErrors []*models.BatchError, model string) {
+	path := appCfg.ClassificationsFilePath()
+	if path == "" {
+		return
+	}
+	// Iterate source indices — log rows where AutoInserted is still true (no insert error)
+	for i, idx := range srcIdx {
+		if batchErrors[i] != nil {
+			continue
+		}
+		r := results[idx]
+		if !r.AutoInserted {
+			continue
+		}
+		// Parse per-installment value for ID generation
+		perInstallment, _, err := utils.ParseCurrencyWithInstallments(r.RawValue)
+		if err != nil {
+			continue
+		}
+		predicted := classifier.Result{
+			Subcategory: r.Subcategory,
+			Category:    r.Category,
+			Confidence:  r.Confidence,
+		}
+		entry := feedback.NewConfirmedEntry(r.Item, r.Date, perInstallment, predicted, model)
+		if err := feedback.Append(path, entry); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠  feedback log %q: %v\n", r.Item, err)
+		}
+	}
 }
 
 func printBatchSummary(results []classifiedRow, rollovers []workflow.RolloverExpense, dryRun bool, classifiedPath, reviewPath, rolloverPath string) {
