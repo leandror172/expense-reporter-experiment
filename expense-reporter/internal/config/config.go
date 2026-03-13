@@ -8,11 +8,29 @@ import (
 
 // Config holds application-wide settings loaded from config/config.json.
 type Config struct {
-	WorkbookPath       string   `json:"workbook_path"`
-	ReferenceSheet     string   `json:"reference_sheet"`
-	DateYear           int      `json:"date_year"`
-	Verbose            bool     `json:"verbose"`
-	AutoInsertExcluded []string `json:"auto_insert_excluded"`
+	WorkbookPath        string   `json:"workbook_path"`
+	ReferenceSheet      string   `json:"reference_sheet"`
+	DateYear            int      `json:"date_year"`
+	Verbose             bool     `json:"verbose"`
+	AutoInsertExcluded  []string `json:"auto_insert_excluded"`
+	ClassificationsPath string   `json:"classifications_path"`
+}
+
+// ClassificationsFilePath returns the absolute path to classifications.jsonl.
+// If ClassificationsPath is absolute, it is returned as-is.
+// If relative, it is resolved relative to the running binary's directory.
+func (c *Config) ClassificationsFilePath() string {
+	if c.ClassificationsPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(c.ClassificationsPath) {
+		return c.ClassificationsPath
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return c.ClassificationsPath
+	}
+	return filepath.Join(filepath.Dir(exe), c.ClassificationsPath)
 }
 
 // Load reads config/config.json relative to the source tree root.
