@@ -3,5 +3,6 @@
   "reference_sheet": "Referência de Categorias",
   "date_year": 2025,
   "verbose": false,
-  "auto_insert_excluded": ["Diversos"]
+  "auto_insert_excluded": ["Diversos"],
+  "classifications_path": "classifications.jsonl"
 }
