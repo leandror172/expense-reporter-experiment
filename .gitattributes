@@ -1,0 +1,9 @@
+# Enforce LF line endings for all text files.
+# Prevents Windows tools from re-adding CR when files live on a mounted NTFS volume.
+* text=auto eol=lf
+
+# Explicitly binary — never touch line endings
+*.xlsx binary
+*.png  binary
+*.jpg  binary
+*.zip  binary
