@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
+	"expense-reporter/internal/feedback"
 	"expense-reporter/internal/models"
 	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
@@ -90,7 +91,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 				return nil
 			}
 		}
-		return insertExpense(item, date, value, top)
+		return insertExpense(item, date, value, top, appCfg)
 	}
 
 	printCandidates(item, value, date, results)
@@ -103,7 +104,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func insertExpense(item, date string, value float64, result classifier.Result) error {
+func insertExpense(item, date string, value float64, result classifier.Result, appCfg *config.Config) error {
 	workbook, err := GetWorkbookPath()
 	if err != nil {
 		return fmt.Errorf("failed to get workbook path: %w", err)
@@ -131,7 +132,21 @@ func insertExpense(item, date string, value float64, result classifier.Result) e
 
 	fmt.Printf("✓ Inserted: %s → %s (%s) — %.0f%% confidence\n",
 		item, result.Subcategory, result.Category, result.Confidence*100)
+	logConfirmedFeedback(appCfg, item, date, value, result, autoModel)
 	return nil
+}
+
+// logConfirmedFeedback appends a confirmed entry to classifications.jsonl.
+// Non-fatal: logs a warning to stderr if the write fails.
+func logConfirmedFeedback(appCfg *config.Config, item, date string, value float64, result classifier.Result, model string) {
+	path := appCfg.ClassificationsFilePath()
+	if path == "" {
+		return
+	}
+	entry := feedback.NewConfirmedEntry(item, date, value, result, model)
+	if err := feedback.Append(path, entry); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
+	}
 }
 
 func printCandidates(item string, value float64, date string, results []classifier.Result) {
