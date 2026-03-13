@@ -118,6 +118,68 @@ func FeedbackAllConfirmed(artifactKey string) func(*harness.Context) {
 	}
 }
 
+// FeedbackMatchesExpected compares the actual JSONL artifact against an expected JSONL file.
+// The expected file is a specification: only the fields present in each expected entry are checked.
+// id and timestamp are always skipped (they are implementation details, not business data).
+// Line count must match exactly.
+func FeedbackMatchesExpected(artifactKey, expectedPath string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+		expectedLines := readJSONLFile(ctx.T, expectedPath)
+		if expectedLines == nil {
+			return
+		}
+		actualLines := readFeedbackLines(ctx, artifactKey)
+		if actualLines == nil {
+			return
+		}
+		if !assert.Equal(ctx.T, len(expectedLines), len(actualLines),
+			"%q: expected %d entries, got %d", artifactKey, len(expectedLines), len(actualLines)) {
+			return
+		}
+		for i := range expectedLines {
+			var exp, act map[string]interface{}
+			if err := json.Unmarshal([]byte(expectedLines[i]), &exp); err != nil {
+				ctx.T.Errorf("expected line %d: invalid JSON: %v", i+1, err)
+				continue
+			}
+			if err := json.Unmarshal([]byte(actualLines[i]), &act); err != nil {
+				ctx.T.Errorf("actual line %d: invalid JSON: %v", i+1, err)
+				continue
+			}
+			for field, expVal := range exp {
+				if field == "id" || field == "timestamp" {
+					continue
+				}
+				actVal, ok := act[field]
+				if !assert.True(ctx.T, ok, "line %d: field %q missing from actual entry", i+1, field) {
+					continue
+				}
+				assert.Equal(ctx.T, expVal, actVal, "line %d field %q mismatch", i+1, field)
+			}
+		}
+	}
+}
+
+// readJSONLFile reads a file and returns non-empty lines.
+func readJSONLFile(t interface{ Helper(); Errorf(string, ...interface{}) }, path string) []string {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Errorf("opening expected file %s: %v", path, err)
+		return nil
+	}
+	defer f.Close()
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if line := scanner.Text(); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
+}
+
 // readFeedbackLines reads the JSONL artifact and returns non-empty lines.
 // Returns nil if the artifact is not registered or the file can't be read.
 func readFeedbackLines(ctx *harness.Context, key string) []string {
