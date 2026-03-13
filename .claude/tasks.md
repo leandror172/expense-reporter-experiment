@@ -1,6 +1,6 @@
 # Task Progress — Expense Reporter
 
-**Last Updated:** 2026-03-03 (session 4)
+**Last Updated:** 2026-03-13 (session 6)
 **Active Layer:** Layer 5 — Expense Classifier
 **Full history:** `.claude/session-log.md` (session log), `docs/archive/` (Desktop-era docs)
 
@@ -48,8 +48,8 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 - [x] **5.1** Port training data into expense-reporter: verify `feature_dictionary_enhanced.json` + `training_data_complete.json` are in `data/classification/`; document their JSON format in index.md
 - [x] **5.2** `classify` command: 3-field input (date, description, amount) → Ollama HTTP → structured JSON → top-N subcategories with confidence scores
 - [x] **5.3** `auto` command: classify + insert into Excel if HIGH confidence (≥0.85), else print candidates
-- [ ] **5.4** `batch-auto` command: classify a CSV file → classified.csv (HIGH confidence) + review.csv (LOW confidence)
-- [ ] **5.5** Correction logging: `corrections.jsonl` — `{input, predicted, actual, confidence}` appended on user override
+- [x] **5.4** `batch-auto` command: classify a CSV file → classified.csv (HIGH confidence) + review.csv (LOW confidence)
+- [ ] **5.5** Classification feedback logging: `classifications.jsonl` — `{id, item, date, value, predicted_*, actual_*, confidence, model, status, timestamp}` appended on insert (status: confirmed/corrected/manual). Plan: `.claude/plans/polished-knitting-simon.md`
 - [ ] **5.6** Expense persistence: hash ID (sha256[:12] of normalized item+date+value), `expenses_log.jsonl` appended on each insert
 - [ ] **5.7** Few-shot injection: keyword pre-match against training data, inject top-K examples into classify prompt
 - [ ] **5.8** MCP thin wrapper in LLM repo: `classify_expense` / `add_expense` / `auto_add` tools (calls Go binary as subprocess)
