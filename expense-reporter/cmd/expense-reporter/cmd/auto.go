@@ -133,6 +133,7 @@ func insertExpense(item, date string, value float64, result classifier.Result, a
 	fmt.Printf("✓ Inserted: %s → %s (%s) — %.0f%% confidence\n",
 		item, result.Subcategory, result.Category, result.Confidence*100)
 	logConfirmedFeedback(appCfg, item, date, value, result, autoModel)
+	logExpense(appCfg, item, date, value, result.Subcategory, result.Category)
 	return nil
 }
 
@@ -146,6 +147,19 @@ func logConfirmedFeedback(appCfg *config.Config, item, date string, value float6
 	entry := feedback.NewConfirmedEntry(item, date, value, result, model)
 	if err := feedback.Append(path, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
+	}
+}
+
+// logExpense appends a slim expense entry to expenses_log.jsonl.
+// Non-fatal: logs a warning to stderr if the write fails.
+func logExpense(appCfg *config.Config, item, date string, value float64, subcategory, category string) {
+	path := appCfg.ExpensesLogFilePath()
+	if path == "" {
+		return
+	}
+	entry := feedback.NewExpenseEntry(item, date, value, subcategory, category)
+	if err := feedback.AppendExpense(path, entry); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
 	}
 }
 

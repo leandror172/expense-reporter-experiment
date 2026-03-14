@@ -276,6 +276,7 @@ func logBatchFeedback(appCfg *config.Config, results []classifiedRow, srcIdx []i
 		if err := feedback.Append(path, entry); err != nil {
 			fmt.Fprintf(os.Stderr, "⚠  feedback log %q: %v\n", r.Item, err)
 		}
+		logExpense(appCfg, r.Item, r.Date, perInstallment, r.Subcategory, r.Category)
 	}
 }
 
