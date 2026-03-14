@@ -9,6 +9,39 @@
 | Harness capability gap | `test/harness/` or `test/actions/` |
 | New feature to test | `cmd/` + `internal/` |
 
+## Then Composition Pattern
+
+Then helpers are composable slices combined with `slices.Concat` at the call site:
+
+```go
+Then: slices.Concat(
+    commandSucceeded(),
+    classificationsMatchExpected(fixDir),
+    expenseLogMatchesExpected(fixDir),
+),
+```
+
+Each helper returns `[]func(*harness.Context)` scoped to one concern. This allows mixing and matching at the test level without monolithic helpers.
+
+**Naming rule:** helpers describe the concern they assert, not the overall test scenario.
+
+## JSONL Log Verification
+
+For commands that write JSONL log files on insert, use file-specific verifiers (not generic string-keyed ones):
+
+| Verifier | Artifact checked |
+|----------|-----------------|
+| `verify.ClassificationsMatch(expectedPath)` | `classifications.jsonl` |
+| `verify.ClassificationsNotCreated()` | `classifications.jsonl` |
+| `verify.ExpenseLogMatches(expectedPath)` | `expenses_log.jsonl` |
+| `verify.ExpenseLogNotCreated()` | `expenses_log.jsonl` |
+
+**Fixture files:** each fixture dir that exercises an insert command must have both:
+- `expected-feedback.jsonl` — for `classifications.jsonl` verification
+- `expected-expenses_log.jsonl` — for `expenses_log.jsonl` verification
+
+**Field selection in expected files:** include only deterministic fields. Omit `id` and `timestamp` always (they are implementation details — the verifier already skips them). Omit `subcategory`/`category` for classifier-dependent tests (LLM output is non-deterministic across runs); include them for `add` command tests where the subcategory is passed explicitly.
+
 ## README Refs
 
 | Key | Contains |
