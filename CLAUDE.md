@@ -133,24 +133,22 @@ architectural reasoning across 3+ files simultaneously.
 - Any task where expected output is a bounded Go file or function
 - Send necessary context - a list of files and the specific lines can be sent through the MCP call
 
-**After receiving local model output, evaluate it explicitly:**
-- `ACCEPTED` — used as-is (note the prompt that worked)
-- `IMPROVED` — used with modifications (note what changed and why)
-- `REJECTED` — not usable (note the failure reason: logic error / wrong API / off-task); try next model in tier before escalating
-
-**On IMPROVED verdicts — when to fix inline vs. call Ollama again:**
-- ≤3 line fixes (wrong var name, missing nil check, unused import) → fix inline, no second call
-- Ollama missed entire test cases or whole functions → write stub signatures first, then call Ollama with the stub file as `context_files` and list the missing method names in the prompt; second call mainly pays off when bodies are non-trivial (table-driven, many edge cases)
-- Deeper policy discussion deferred to LLM repo: `.claude/tasks.md` § "Deferred Infrastructure / Tooling"
-
-**On ACCEPTED or IMPROVED verdicts, add a rough token estimate — do NOT read files or write code to compute it:**
-- Mentally apply `(chars in your prompt + chars in response) / 4` as a ballpark of what Claude would have spent
-- Note it inline in one phrase, e.g.: `ACCEPTED — ~300 est. Claude tokens saved`
-- Rough is fine; the log records exact values automatically (`claude_tokens_est`, `prompt_eval_count`, `eval_count`) for later analysis
-
 **Escalate to Claude (frontier) only when:**
 - Second model in tier also returned REJECTED
 - The task requires reasoning across 4+ files simultaneously
+
+<!-- overlay:ollama-scaffolding v1 -->
+## Local Model Verdict & Retry Policy
+
+**You MUST read `.claude/overlays/local-model-retry-patterns.md` before evaluating
+any local model output.** It defines the verdict protocol (ACCEPTED/IMPROVED/REJECTED),
+the decision tree for handling imperfect output, and the cold-start grace period.
+
+Key rules (detail in the reference file):
+- Evaluate every local model response with an explicit verdict
+- Classify imperfect output by defect type, fix scope, and prompt cost — not line count
+- First-call timeouts are `TIMEOUT_COLD_START`, not REJECTED — retry immediately
+<!-- /overlay:ollama-scaffolding -->
 
 ## Documentation Rules (HARD REQUIREMENTS)
 
