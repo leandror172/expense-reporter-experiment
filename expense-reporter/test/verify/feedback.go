@@ -161,6 +161,26 @@ func FeedbackMatchesExpected(artifactKey, expectedPath string) func(*harness.Con
 	}
 }
 
+// ClassificationsMatch asserts classifications.jsonl matches the expected JSONL fixture.
+func ClassificationsMatch(expectedPath string) func(*harness.Context) {
+	return FeedbackMatchesExpected("classifications.jsonl", expectedPath)
+}
+
+// ClassificationsNotCreated asserts classifications.jsonl was not created.
+func ClassificationsNotCreated() func(*harness.Context) {
+	return FeedbackFileNotExists("classifications.jsonl")
+}
+
+// ExpenseLogMatches asserts expenses_log.jsonl matches the expected JSONL fixture.
+func ExpenseLogMatches(expectedPath string) func(*harness.Context) {
+	return FeedbackMatchesExpected("expenses_log.jsonl", expectedPath)
+}
+
+// ExpenseLogNotCreated asserts expenses_log.jsonl was not created.
+func ExpenseLogNotCreated() func(*harness.Context) {
+	return FeedbackFileNotExists("expenses_log.jsonl")
+}
+
 // readJSONLFile reads a file and returns non-empty lines.
 func readJSONLFile(t interface{ Helper(); Errorf(string, ...interface{}) }, path string) []string {
 	t.Helper()

@@ -4,6 +4,7 @@ package acceptance_test
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"expense-reporter/test/actions"
@@ -21,7 +22,11 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 		Name:  "auto command logs confirmed feedback entry on successful insert",
 		Given: knownExpenseReadyForAutoInsert(fixDir),
 		When:  actions.RunAuto("Uber Centro", "35,50", "15/04"),
-		Then:  autoInsertConfirmedInFeedback(fixDir),
+		Then: slices.Concat(
+			autoInsertSucceeded(),
+			classificationsMatchExpected(fixDir),
+			expenseLogMatchesExpected(fixDir),
+		),
 	})
 }
 
@@ -35,7 +40,11 @@ func TestBatchAuto_FeedbackLoggedForInsertedRows(t *testing.T) {
 		Name:  "batch-auto logs confirmed feedback for all auto-inserted rows",
 		Given: knownExpenseBatchReadyForInsert(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  batchInsertionsConfirmedInFeedback(fixDir),
+		Then: slices.Concat(
+			commandSucceeded(),
+			classificationsMatchExpected(fixDir),
+			expenseLogMatchesExpected(fixDir),
+		),
 	})
 }
 
@@ -49,7 +58,10 @@ func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
 		Name:  "batch-auto dry-run does not create feedback log",
 		Given: mixedExpensesReadyForDryRun(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  noFeedbackFileCreated(),
+		Then: slices.Concat(
+			commandSucceeded(),
+			noLogsCreated(),
+		),
 	})
 }
 
@@ -62,7 +74,11 @@ func TestAdd_ManualFeedbackLogged(t *testing.T) {
 		Name:  "add command logs manual feedback entry",
 		Given: singleExpenseReadyForManualAdd(),
 		When:  actions.RunAdd("Padaria Maeda;15/03;27,50;Padaria"),
-		Then:  manualEntryLoggedInFeedback(fixDir),
+		Then: slices.Concat(
+			commandSucceeded(),
+			classificationsMatchExpected(fixDir),
+			expenseLogMatchesExpected(fixDir),
+		),
 	})
 }
 
@@ -117,44 +133,50 @@ func singleExpenseReadyForManualAdd() func(*harness.Context) {
 	}
 }
 
-// withFeedbackConfig writes binary config with classifications_path and registers the artifact.
+// withFeedbackConfig writes binary config with classifications_path + expenses_log_path and registers both artifacts.
 func withFeedbackConfig(ctx *harness.Context) {
-	jsonlPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
+	classificationsPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
+	expensesLogPath := filepath.Join(ctx.WorkDir, "expenses_log.jsonl")
 	if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
-		"classifications_path": jsonlPath,
+		"classifications_path": classificationsPath,
+		"expenses_log_path":    expensesLogPath,
 	}); err != nil {
 		ctx.T.Fatalf("SetupBinaryConfig: %v", err)
 	}
-	ctx.Artifacts["classifications.jsonl"] = jsonlPath
+	ctx.Artifacts["classifications.jsonl"] = classificationsPath
+	ctx.Artifacts["expenses_log.jsonl"] = expensesLogPath
 }
 
-// --- Then helpers ---
+// --- Then helpers (composable) ---
 
-func autoInsertConfirmedInFeedback(fixDir string) []func(*harness.Context) {
+func commandSucceeded() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandSucceeded(),
+	}
+}
+
+func autoInsertSucceeded() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
 		verify.OutputContains("✓ Inserted"),
-		verify.FeedbackMatchesExpected("classifications.jsonl", filepath.Join(fixDir, "expected-feedback.jsonl")),
 	}
 }
 
-func batchInsertionsConfirmedInFeedback(fixDir string) []func(*harness.Context) {
+func classificationsMatchExpected(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.CommandSucceeded(),
-		verify.FeedbackMatchesExpected("classifications.jsonl", filepath.Join(fixDir, "expected-feedback.jsonl")),
+		verify.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
 	}
 }
 
-func noFeedbackFileCreated() []func(*harness.Context) {
+func expenseLogMatchesExpected(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.CommandSucceeded(),
-		verify.FeedbackFileNotExists("classifications.jsonl"),
+		verify.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
 
-func manualEntryLoggedInFeedback(fixDir string) []func(*harness.Context) {
+func noLogsCreated() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.CommandSucceeded(),
-		verify.FeedbackMatchesExpected("classifications.jsonl", filepath.Join(fixDir, "expected-feedback.jsonl")),
+		verify.ClassificationsNotCreated(),
+		verify.ExpenseLogNotCreated(),
 	}
 }
