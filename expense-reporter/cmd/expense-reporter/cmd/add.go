@@ -80,6 +80,7 @@ func logManualFeedbackFromAdd(expenseString string) {
 	category := resolveCategoryFromTaxonomy(subcategory, "data/classification")
 
 	logManualFeedback(appCfg, item, date, value, subcategory, category)
+	logExpense(appCfg, item, date, value, subcategory, category)
 }
 
 // parseExpenseForFeedback splits "item;DD/MM;value;subcategory" and parses the value.

@@ -4,5 +4,6 @@
   "date_year": 2025,
   "verbose": false,
   "auto_insert_excluded": ["Diversos"],
-  "classifications_path": "classifications.jsonl"
+  "classifications_path": "classifications.jsonl",
+  "expenses_log_path": "expenses_log.jsonl"
 }

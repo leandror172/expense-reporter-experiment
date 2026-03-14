@@ -14,6 +14,23 @@ type Config struct {
 	Verbose             bool     `json:"verbose"`
 	AutoInsertExcluded  []string `json:"auto_insert_excluded"`
 	ClassificationsPath string   `json:"classifications_path"`
+	ExpensesLogPath     string   `json:"expenses_log_path"`
+}
+
+// ExpensesLogFilePath returns the absolute path to expenses_log.jsonl.
+// Same resolution logic as ClassificationsFilePath.
+func (c *Config) ExpensesLogFilePath() string {
+	if c.ExpensesLogPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(c.ExpensesLogPath) {
+		return c.ExpensesLogPath
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return c.ExpensesLogPath
+	}
+	return filepath.Join(filepath.Dir(exe), c.ExpensesLogPath)
 }
 
 // ClassificationsFilePath returns the absolute path to classifications.jsonl.
