@@ -254,6 +254,15 @@ Source: `data/classification/algorithm_parameters.json` (tracked).
 
 ---
 
+## Vision & Planning Docs (docs/)
+
+| File | Content |
+|------|---------|
+| `docs/expense-classifier-vision.md` | End-to-end Layer 5–6+ vision: user scenario, domain boundaries, iterative build plan (Phases 0–5), technical notes on structured output, persistence, queue. **Primary reference for understanding scope and architecture.** |
+| `docs/expense-classifier-data-inventory.md` | Inventory of all auto-category analysis artifacts (feature dict, training data, confusion analysis, etc.) and their priority/role at build time. Also documents expense-reporter architecture as of Layer 5 start. |
+
+---
+
 ## Historical Docs (docs/archive/)
 
 Desktop-era planning documents — read for context, do not modify.
