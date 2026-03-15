@@ -1,7 +1,33 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-03-14 — Session 9: 5.6 expense persistence log
+
+### Context
+Resumed after 5.5 merge. Recontextualized; discovered 5.6 was in tasks.md but skipped in last session's "next" pointer. Copied vision docs from LLM repo to `docs/`. Discussed separation of `expenses_log.jsonl` from `classifications.jsonl` and decided the separation was worth doing now.
+
+### What Was Done
+- **Copied vision docs** — `docs/expense-classifier-vision.md` and `docs/expense-classifier-data-inventory.md` from LLM repo; indexed in `.claude/index.md`
+- **5.6 implementation** — `internal/feedback/expense_log.go`: `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense`; `ExpensesLogPath`/`ExpensesLogFilePath()` in config; `expenses_log_path` in `config.json`; `logExpense()` wired into `auto`, `add`, `batch-auto`
+- **Unit tests** — `expense_log_test.go` (4 tests incl. cross-ID consistency check); 3 new `config_test.go` tests for `ExpensesLogFilePath`
+- **Acceptance tests refactored** — composable Then helpers (`commandSucceeded`, `autoInsertSucceeded`, `classificationsMatchExpected`, `expenseLogMatchesExpected`, `noLogsCreated`) composed via `slices.Concat`; file-specific verifiers (`ClassificationsMatch`, `ExpenseLogMatches`, `ClassificationsNotCreated`, `ExpenseLogNotCreated`) added to `verify/feedback.go`; `expected-expenses_log.jsonl` fixture files added for 3 fixture dirs
+- **PATTERNS.md updated** — Then composition pattern, JSONL log verification rules, fixture field selection guidance documented
+- **All 13 acceptance tests pass** on master
+- **Merged to master** via PR
+
+### Decisions Made
+- `expenses_log.jsonl` separated from `classifications.jsonl` — the two files have different concerns (insert identity vs. learning signal); mixing them would require filtering `status: manual` entries in 5.7 and complicates future lifecycle tracking
+- `expected-expenses_log.jsonl` omits `subcategory`/`category` for classifier-dependent tests (LLM non-determinism); includes them for `add` tests (deterministic)
+- Then helpers use `slices.Concat` over plain slice literal — preserves ability to group multiple assertions per helper while staying composable
+- File-specific verifiers embed artifact key — `ClassificationsMatch(path)` not `FeedbackMatchesExpected("classifications.jsonl", path)`
+- GoLand `//go:build acceptance` navigation: configure via `Settings → Go → Build Tags`, add `acceptance` — do not remove the tag
+
+### Next
+- [ ] **Start 5.7** — few-shot injection: load top-K entries from `classifications.jsonl` (filter `status != manual`), keyword pre-match against training data, inject as few-shot examples into Ollama classifier prompt
 
 ---
 
@@ -139,50 +165,6 @@ time on PR review cycles, harness stabilisation, and pipeline quality improvemen
 - [ ] **5.5** — Correction logging (`corrections.jsonl`)
 - [ ] **5.6** — Few-shot injection (feature dictionary pre-filter + top-K into prompt)
 - [ ] **5.7/5.8** — MCP thin wrapper in LLM repo
-
----
-
-## 2026-03-03 — Session 4: Debt fix + acceptance test harness & batch-auto design
-
-### Context
-Resumed from session 3. User asked to recontextualize, address tech debt, then discuss
-design for both an acceptance test harness and the 5.4 batch-auto command.
-
-### What Was Done
-- **Fixed `runtime.Caller` debt** (commit `405953e`): replaced `runtime.Caller(0)` with
-  `os.Executable()` in `internal/config/config.go` — config path now resolves relative to
-  the installed binary, not the compile-time source path.
-- **Designed acceptance test harness** — BDD-style Given/When/Then with function injection:
-  - Domain-agnostic `test/harness/` package (Context, Scenario, Run, fixture loader, CSV comparator, Ollama check)
-  - Domain-specific `test/actions/` (command runners) + `test/verify/` (composable assertions)
-  - `//go:build acceptance` tag, `run-acceptance.sh` wrapper, `test/results/` for drift tracking
-  - Dir-per-fixture with representative batches, soft vs hard assertions for non-deterministic outputs
-- **Designed batch-auto command (5.4)** — 3-field CSV input, classify via Ollama, split to
-  classified.csv + review.csv, dry-run flag, continue-on-error, workbook backup before insert
-- **Evaluated testscript** (rogpeppe/go-internal) — decided against: script DSL conflicts with
-  user's function-injection BDD vision. Custom harness on stdlib is more aligned.
-- **Evaluated testify** — decided against: project uses stdlib `testing` throughout, no value added.
-  _(Reversed in session 5: testify adopted in `test/verify/` package only for business-descriptive assertions; unit tests remain stdlib)_
-- **Created comprehensive implementation plan:** `.claude/plans/acceptance-harness-batch-auto.md`
-- **Design decisions for shared code extraction:**
-  - `isAutoInsertable` → `internal/classifier/decision.go` (shared by auto + batch-auto)
-  - `buildInsertString`/`formatBRValue` → `pkg/utils/format.go` (alongside existing currency/date utils)
-
-### Decisions Made
-- **No testscript** — script DSL conflicts with function-injection BDD vision
-- **testify in verify package only** — adopted in session 5 for business-descriptive assertion names; unit tests remain stdlib
-- **Dir-per-fixture** with representative batches (10-20 rows), not single-row scenarios
-- **Continue-on-error (option b)** for Ollama failures mid-batch — failed rows get confidence=0, go to review
-- **Dry-run flag** for batch-auto — classify + write CSVs, skip workbook insertion
-- **Multiple test files per command** in `package acceptance_test` (setup_test.go + per-command files)
-- **Local model candidates** for bounded Go tasks during implementation (decision.go, scenario.go, etc.)
-
-### Next
-- [ ] Implement plan from `.claude/plans/acceptance-harness-batch-auto.md`:
-  - Phase 1: Extract shared logic (decision.go, format.go)
-  - Phase 2: Acceptance test harness skeleton + initial fixtures
-  - Phase 3: batch-auto command (5.4)
-  - Phase 4: Polish (run-acceptance.sh, drift tracking, docs)
 
 ---
 
