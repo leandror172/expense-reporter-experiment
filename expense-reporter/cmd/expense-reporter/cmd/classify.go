@@ -53,6 +53,7 @@ func runClassify(cmd *cobra.Command, args []string) error {
 	cfg := classifier.Config{
 		OllamaURL: "http://localhost:11434",
 		Model:     classifyModel,
+		DataDir:   classifyDataDir,
 		TopN:      classifyTopN,
 	}
 
