@@ -61,6 +61,33 @@ timestamp}` appended on insert (status: confirmed/corrected/manual). Plan: `.cla
 
 - [x] **config reader: replace runtime.Caller with os.Executable** — Fixed session 4 (commit 405953e). `internal/config/config.go` now uses `os.Executable()` to resolve `config/config.json` relative to the binary location.
 
+### Deferred — Retrieval Pipeline Evolution (from 5.7 planning, session 10)
+
+These build on the keyword matching layer delivered in 5.7. Each is a separate cascade
+layer — see `data/classification/retrieval-strategy.md` for the full pipeline design.
+
+- [ ] **5.R1** TF-IDF retrieval layer: second cascade layer for multi-word similarity matching.
+  Uses existing IDF weights from `feature_dictionary_enhanced.json` (229 keywords).
+  Pure Go implementation, no external dependency. ~1.2MB memory for 694 training vectors.
+  **Trigger:** keyword miss rate > 10% or accuracy on misses < 70%.
+  Reference: `data/classification/tfidf-retrieval.md`
+- [ ] **5.R2** Embedding retrieval layer (RAG): third cascade layer for semantic matching.
+  Uses Ollama `/api/embeddings` endpoint (local, no external API). Handles synonym/brand
+  gaps that lexical methods can't bridge. Needs embedding model benchmarking for Portuguese.
+  **Trigger:** semantic gap cases > 5% of corrections after TF-IDF is active.
+  Reference: `data/classification/embedding-retrieval.md`
+- [ ] **5.R3** Value-range plausibility: use `value_ranges` from feature dict to pre-filter
+  or post-validate subcategory candidates. Example: R$5000 expense matching "Diarista"
+  (max 220) should be flagged as implausible. Orthogonal to few-shot injection — can be
+  a separate scoring modifier or pre-filter on the taxonomy sent to the model.
+- [ ] **5.R4** Historical workbook extraction: extract labeled expenses from pre-2024
+  workbooks to expand training set beyond 694 entries. Benefits all retrieval layers
+  equally (more examples = better keyword coverage, TF-IDF vocabulary, embedding space).
+- [ ] **5.R5** Correction-weighted example selection: when `classifications.jsonl` has
+  enough corrected entries, prioritize them as few-shot examples over confirmed/training
+  entries. Simple sort order initially (corrected > training > confirmed). Refine to
+  weighted scoring if correction volume warrants it.
+
 ### Deferred Improvements (from AUTO_CATEGORY_README.md Next Steps)
 
 These items are not blocking for Layer 5.1–5.8 but should be revisited after the core classify/auto commands are working:

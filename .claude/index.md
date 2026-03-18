@@ -230,6 +230,16 @@ Source: `data/classification/algorithm_parameters.json` (tracked).
 
 ---
 
+## Retrieval Strategy Docs
+
+| File | Tracked | Purpose |
+|------|---------|---------|
+| `data/classification/retrieval-strategy.md` | ✅ Yes | High-level retrieval pipeline: cascade diagram, token budget, data source strategy — [ref:retrieval-strategy], [ref:retrieval-token-budget] |
+| `data/classification/tfidf-retrieval.md` | ✅ Yes | TF-IDF retrieval layer: existing artifacts, implementation approach, decision criteria — [ref:tfidf-retrieval] |
+| `data/classification/embedding-retrieval.md` | ✅ Yes | Embedding/RAG retrieval layer: Ollama API, vector store, multilingual considerations — [ref:embedding-retrieval] |
+
+---
+
 ## Classification Data Files
 
 | File | Tracked | Purpose |
