@@ -47,14 +47,14 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 9 (2026-03-14) — 5.6 complete and merged to master
-  - `expenses_log.jsonl` separated from `classifications.jsonl` — insert identity vs. learning signal
-  - `internal/feedback/expense_log.go`: `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense`
-  - Config: `ExpensesLogPath` + `ExpensesLogFilePath()`; wired into auto, add, batch-auto
-  - Acceptance tests: composable Then helpers via `slices.Concat`; file-specific verifiers; `expected-expenses_log.jsonl` fixtures
-  - All 13 acceptance tests pass
-- **Branch:** `master` (5.6 merged)
-- **Next:** Start 5.7 — few-shot injection (load top-K from `classifications.jsonl`, filter `status != manual`, inject into Ollama prompt)
+- **Last checkpoint:** Session 10 (2026-03-18) — 5.7 planned, not yet implemented
+  - Retrieval strategy designed: 3-layer cascade (keywords → TF-IDF → embeddings)
+  - 3 reference docs: `data/classification/retrieval-strategy.md`, `tfidf-retrieval.md`, `embedding-retrieval.md`
+  - Implementation plan: `.claude/plans/5.7-few-shot-injection.md` (6 phases)
+  - 8 BDD acceptance test scenarios designed
+  - Convention change: unit tests now use testify
+- **Branch:** `feature/5.7-few-shot-injection` (plan committed, no implementation yet)
+- **Next:** Execute 5.7 plan — example selection engine, data loading, prompt injection, acceptance tests
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -87,7 +87,7 @@ Or manually:
 - **Model candidates:** `my-classifier-q3` (Qwen3-8B) vs Qwen2.5-Coder-7B (speed). Benchmark deferred.
 - **Confidence threshold:** HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (print candidates + ⚠ signal)
 - **Feature dictionary pre-filter:** skipped in 5.2; deferred to 5.7 (few-shot injection task)
-- **Few-shot injection (5.7):** keyword pre-match against training data, inject top-K examples into prompt; filter `status != manual` when reading `classifications.jsonl`
+- **Few-shot injection (5.7):** planned — 3-layer cascade (keywords now, TF-IDF/embeddings deferred); plan at `.claude/plans/5.7-few-shot-injection.md`; reference docs at `data/classification/retrieval-strategy.md`, `tfidf-retrieval.md`, `embedding-retrieval.md`
 - **`expenses_log.jsonl`** — slim insert log (`id`, `item`, `date`, `value`, `subcategory`, `category`, `timestamp`); separate from `classifications.jsonl`; ID is sha256[:12] shared across both files for cross-file correlation
 
 ### Go Conventions
@@ -95,7 +95,7 @@ Or manually:
 - **Brazilian format:** DD/MM/YYYY dates, comma decimal separator (`1.234,56` notation)
 - **Error pattern:** `fmt.Errorf("context: %w", err)` — wrap with context, not bare return
 - **Table-driven tests:** Standard approach — any new command gets table-driven test coverage
-- **No test frameworks in unit tests:** stdlib `testing` only — testify used only in `test/verify/` package
+- **Unit tests use testify:** `assert`/`require` from `github.com/stretchr/testify` (convention change session 10); acceptance `test/verify/` already used testify
 - **Acceptance tests:** `//go:build acceptance` tag, separate from unit tests, live Ollama required
 - **Acceptance harness:** `test/harness/` (Context, Scenario, Run), `test/actions/`, `test/verify/`;
   `run-acceptance.sh` with Ollama pre-flight, workbook auto-detect, filter arg, keep-artifacts flags
