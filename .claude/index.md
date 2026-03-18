@@ -57,7 +57,7 @@
 | `internal/workflow` | `expense-reporter/internal/workflow/` | Multi-step workflow: parse → resolve → insert |
 | `pkg/utils` | `expense-reporter/pkg/utils/` | Public utility functions (currency, date, format) |
 | `config` | `expense-reporter/config/` | Configuration files and constants |
-| `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic |
+| `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic; `examples.go` (SelectExamples, KeywordIndex, tokenization); `loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools) |
 | `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` |
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`) |
 | `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check, SetupBinaryConfig) |
@@ -72,12 +72,12 @@
 ## Testing Conventions
 
 - **Test runner:** `cd expense-reporter && go test ./...`
-- **Framework:** Standard library (`testing` package), table-driven tests
-- **Coverage:** 190+ tests across all packages
+- **Framework:** `testing` package (stdlib) + testify (`assert`/`require`) — both in use
+- **Unit test style:** testify preferred for new tests; existing stdlib tests left as-is
+- **Coverage:** 220+ tests across all packages
 - **Pattern:** Each `internal/X/` has `X_test.go` with table-driven cases
 - **Test data:** `expense-reporter/expenses.example.csv` — safe, no personal data
 - **TDD approach:** Write failing test first, implement to pass (established pattern from Phases 1-4)
-- **No external test framework** — only stdlib `testing` + `testify` if already present in go.mod
 
 **Do NOT:**
 - Use `testing.T.Fatal` where `t.Errorf` suffices

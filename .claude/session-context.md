@@ -47,14 +47,16 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 10 (2026-03-18) — 5.7 planned, not yet implemented
-  - Retrieval strategy designed: 3-layer cascade (keywords → TF-IDF → embeddings)
-  - 3 reference docs: `data/classification/retrieval-strategy.md`, `tfidf-retrieval.md`, `embedding-retrieval.md`
-  - Implementation plan: `.claude/plans/5.7-few-shot-injection.md` (6 phases)
-  - 8 BDD acceptance test scenarios designed
-  - Convention change: unit tests now use testify
-- **Branch:** `feature/5.7-few-shot-injection` (plan committed, no implementation yet)
-- **Next:** Execute 5.7 plan — example selection engine, data loading, prompt injection, acceptance tests
+- **Last checkpoint:** Session 10 (2026-03-18) — 5.7 complete
+  - Keyword-matched few-shot injection into Ollama prompts implemented (all 6 phases)
+  - New: `internal/classifier/examples.go` (SelectExamples, KeywordIndex, tokenization)
+  - New: `internal/classifier/loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools)
+  - Modified: `classifier.go` buildRequest injects user/assistant example pairs; Classify orchestrates loading
+  - Config: added `DataDir` + `FeedbackPath` fields; wired in classify/auto/batch-auto commands
+  - Tests: 30+ new unit tests (testify); 3 new acceptance scenarios in `test/fewshot_test.go`
+  - Graceful degradation: missing training data / feedback file → nil, nil (no error)
+- **Branch:** `feature/5.7-few-shot-injection` (implementation complete, not yet merged)
+- **Next:** 5.8 — MCP thin wrapper in LLM repo (`classify_expense` / `add_expense` / `auto_add`)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -87,7 +89,7 @@ Or manually:
 - **Model candidates:** `my-classifier-q3` (Qwen3-8B) vs Qwen2.5-Coder-7B (speed). Benchmark deferred.
 - **Confidence threshold:** HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (print candidates + ⚠ signal)
 - **Feature dictionary pre-filter:** skipped in 5.2; deferred to 5.7 (few-shot injection task)
-- **Few-shot injection (5.7):** planned — 3-layer cascade (keywords now, TF-IDF/embeddings deferred); plan at `.claude/plans/5.7-few-shot-injection.md`; reference docs at `data/classification/retrieval-strategy.md`, `tfidf-retrieval.md`, `embedding-retrieval.md`
+- **Few-shot injection (5.7):** implemented — keyword layer (layer 1 of 3-layer cascade) complete; SelectExamples in `internal/classifier/examples.go`; loaders in `loader.go`; injected as user/assistant pairs in buildRequest; TF-IDF/embeddings deferred to future sessions
 - **`expenses_log.jsonl`** — slim insert log (`id`, `item`, `date`, `value`, `subcategory`, `category`, `timestamp`); separate from `classifications.jsonl`; ID is sha256[:12] shared across both files for cross-file correlation
 
 ### Go Conventions
