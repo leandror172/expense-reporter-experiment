@@ -90,9 +90,11 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := classifier.Config{
-		OllamaURL: batchAutoOllamaURL,
-		Model:     batchAutoModel,
-		TopN:      batchAutoTopN,
+		OllamaURL:    batchAutoOllamaURL,
+		Model:        batchAutoModel,
+		DataDir:      batchAutoDataDir,
+		FeedbackPath: appCfg.ClassificationsFilePath(),
+		TopN:         batchAutoTopN,
 	}
 
 	results := classifyLines(lines, taxonomy, appCfg, cfg, batchAutoThreshold)
