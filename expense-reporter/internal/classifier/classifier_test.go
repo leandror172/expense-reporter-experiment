@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --- LoadTaxonomy ---
@@ -261,4 +264,109 @@ func TestClassify_NetworkError(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for unreachable Ollama, got nil")
 	}
+}
+
+// --- formatExampleMessages ---
+
+func TestFormatExampleMessages(t *testing.T) {
+	example := Example{
+		Item:        "Uber Centro",
+		Value:       25.50,
+		Date:        "15/04",
+		Subcategory: "Uber",
+		Category:    "Transporte",
+	}
+
+	t.Run("nil examples", func(t *testing.T) {
+		assert.Nil(t, formatExampleMessages(nil))
+	})
+
+	t.Run("single example", func(t *testing.T) {
+		msgs := formatExampleMessages([]Example{example})
+		require.Len(t, msgs, 2)
+
+		assert.Equal(t, "user", msgs[0].Role)
+		assert.Contains(t, msgs[0].Content, "item: Uber Centro")
+		assert.Contains(t, msgs[0].Content, "value: 25.50")
+		assert.Contains(t, msgs[0].Content, "date: 15/04")
+
+		assert.Equal(t, "assistant", msgs[1].Role)
+		assert.Contains(t, msgs[1].Content, `"subcategory":"Uber"`)
+		assert.Contains(t, msgs[1].Content, `"category":"Transporte"`)
+		assert.Contains(t, msgs[1].Content, `"confidence":0.95`)
+	})
+
+	t.Run("two examples", func(t *testing.T) {
+		msgs := formatExampleMessages([]Example{example, example})
+		require.Len(t, msgs, 4)
+
+		assert.Equal(t, "user", msgs[0].Role)
+		assert.Equal(t, "assistant", msgs[1].Role)
+		assert.Equal(t, "user", msgs[2].Role)
+		assert.Equal(t, "assistant", msgs[3].Role)
+	})
+}
+
+// --- buildRequest with few-shot examples ---
+
+func TestBuildRequest_FewShot(t *testing.T) {
+	taxonomy := Taxonomy{"Uber": "Transporte"}
+	cfg := Config{Model: "my-test-model", TopN: 3}
+
+	example := Example{
+		Item:        "Uber Centro",
+		Value:       25.50,
+		Date:        "15/04",
+		Subcategory: "Uber",
+		Category:    "Transporte",
+	}
+
+	t.Run("no examples", func(t *testing.T) {
+		body, err := buildRequest("Actual Item", 100.0, "20/05", taxonomy, nil, cfg)
+		require.NoError(t, err)
+
+		var req ollamaRequest
+		require.NoError(t, json.Unmarshal(body, &req))
+
+		assert.Len(t, req.Messages, 2)
+		assert.Equal(t, "system", req.Messages[0].Role)
+		assert.Equal(t, "user", req.Messages[1].Role)
+		assert.Contains(t, req.Messages[1].Content, "item: Actual Item")
+	})
+
+	t.Run("two examples", func(t *testing.T) {
+		body, err := buildRequest("Actual Item", 100.0, "20/05", taxonomy, []Example{example, example}, cfg)
+		require.NoError(t, err)
+
+		var req ollamaRequest
+		require.NoError(t, json.Unmarshal(body, &req))
+
+		assert.Len(t, req.Messages, 6)
+		assert.Equal(t, "system", req.Messages[0].Role)
+		assert.Equal(t, "user", req.Messages[1].Role)
+		assert.Equal(t, "assistant", req.Messages[2].Role)
+		assert.Equal(t, "user", req.Messages[3].Role)
+		assert.Equal(t, "assistant", req.Messages[4].Role)
+		assert.Equal(t, "user", req.Messages[5].Role)
+		assert.Contains(t, req.Messages[5].Content, "item: Actual Item")
+		assert.Contains(t, req.Messages[2].Content, `"confidence":0.95`)
+	})
+
+	t.Run("stream is false", func(t *testing.T) {
+		body, err := buildRequest("Actual Item", 100.0, "20/05", taxonomy, nil, cfg)
+		require.NoError(t, err)
+
+		var req ollamaRequest
+		require.NoError(t, json.Unmarshal(body, &req))
+		assert.False(t, req.Stream)
+	})
+
+	t.Run("model from config", func(t *testing.T) {
+		body, err := buildRequest("Actual Item", 100.0, "20/05", taxonomy, nil, cfg)
+		require.NoError(t, err)
+
+		var req ollamaRequest
+		require.NoError(t, json.Unmarshal(body, &req))
+		assert.Equal(t, "my-test-model", req.Model)
+	})
 }

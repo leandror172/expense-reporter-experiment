@@ -13,9 +13,14 @@ import (
 )
 
 // RunClassify returns a When closure that runs the classify command.
+// Passes --data-dir from ctx when set.
 func RunClassify(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		runCommand(ctx, append([]string{"classify"}, args...)...)
+		cmdArgs := []string{"classify"}
+		if ctx.DataDir != "" {
+			cmdArgs = append(cmdArgs, "--data-dir", ctx.DataDir)
+		}
+		runCommand(ctx, append(cmdArgs, args...)...)
 	}
 }
 
