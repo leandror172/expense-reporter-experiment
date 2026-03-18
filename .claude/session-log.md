@@ -1,7 +1,39 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-03-18 — Session 10: 5.7 planning — few-shot injection
+
+### Context
+First session after 5.6 merge. Recontextualized via `resume.sh`. Entire session was design/planning for 5.7 — no implementation code written.
+
+### What Was Done
+- **Retrieval strategy analysis** — explored current classifier flow, token budget, data sources, and designed a 3-layer cascade pipeline (keywords → TF-IDF → embeddings)
+- **3 reference documents created** (committed to master):
+  - `data/classification/retrieval-strategy.md` — high-level pipeline, token budget (~462 baseline, ~20/example), data source merge strategy
+  - `data/classification/tfidf-retrieval.md` — TF-IDF findings: existing IDF weights in feature dict, 229-dim vectors, Go implementation approach
+  - `data/classification/embedding-retrieval.md` — Ollama `/api/embeddings` API, vector store sizing, multilingual considerations, decision criteria
+- **5 deferred tasks** added to `tasks.md` (5.R1–5.R5): TF-IDF layer, embedding layer, value-range plausibility, historical workbook extraction, correction-weighted selection
+- **8 BDD acceptance test scenarios** designed for `fewshot_test.go`
+- **Implementation plan** written at `.claude/plans/5.7-few-shot-injection.md` — 6 phases: example selection engine, data loading, prompt construction, acceptance tests, existing test verification, doc updates
+- **Convention change:** unit tests now use testify (assert/require) — saved to memory
+
+### Decisions Made
+- **Layered retrieval cascade** — keywords first (5.7), TF-IDF later (5.R1), embeddings last (5.R2); complementary layers, not replacements
+- **Both data sources** for examples: `training_data_complete.json` (694 static entries) + `classifications.jsonl` (runtime feedback, filtered `status != manual`)
+- **Few-shot as conversation turns** — user/assistant message pairs before the real query (not appended to system prompt)
+- **`--verbose` flag** for observability — existing flag, use `logger.Debug` for few-shot injection details; acceptance tests assert on this output
+- **No file-based prompt template** (for now) — keep `strings.Builder` pattern; consider `embed.FS` if iteration velocity increases
+- **Correction prioritization** — simple sort (corrected > training > confirmed), not weighted scoring; tested via acceptance (verbose output) + unit tests (selection algorithm)
+- **Testify for unit tests** — convention change from stdlib-only; don't retroactively convert existing tests
+- **Graceful degradation** — missing training data returns empty examples (not error); classifier falls back to taxonomy-only prompt
+
+### Next
+- [ ] **Execute 5.7 plan** on branch `feature/5.7-few-shot-injection` following `.claude/plans/5.7-few-shot-injection.md` — implementation intended for Sonnet model
+- [ ] Plan includes recontextualization instructions (resume.sh + read session-context.md)
 
 ---
 
@@ -107,64 +139,6 @@ User reviewed the PR and left a comment about stale data in `test/README.md` ref
   2. Phase 2: Extend config (`ClassificationsPath` field + `ClassificationsFilePath()` method)
   3. Phase 3: Hook `auto.go`, `batch_auto.go`, `add.go`
   4. Phase 4: Acceptance tests in `test/feedback_test.go`
-
----
-
-## 2026-03-11 — Session 5: Acceptance harness implementation + batch-auto + pipeline refactors
-
-### Context
-Implemented the full acceptance harness + batch-auto plan from session 4, then spent significant
-time on PR review cycles, harness stabilisation, and pipeline quality improvements.
-
-### What Was Done
-- **batch-auto command (5.4):** `cmd/batch_auto.go` — read 3-field CSV → classify → insert → write
-  `classified.csv` + `review.csv`; flags: `--model`, `--data-dir`, `--ollama-url`, `--threshold`,
-  `--top`, `--dry-run`, `--output-dir`, `--workbook`
-- **Acceptance test harness:** `test/harness/`, `test/actions/`, `test/verify/` with
-  `//go:build acceptance`; Given/When/Then pattern; `run-acceptance.sh` with Ollama pre-flight,
-  workbook auto-detection, test filter arg, `-keep-on-failure`/`-keep-artifacts` flags
-- **9 acceptance tests, all passing:** Basic, MixedConfidence, ExcludedCategoriesGoToReview,
-  ClassificationAccuracy, OutputDirFlag, SameYearInstallmentsExpanded, RolloverInstallmentsWrittenToFile,
-  KnownExpenseIsClassifiedWithConfidence, AmbiguousExpenseKeptForManualReview
-- **Fixtures:** `batch-auto-basic` (10 rows dry-run), `batch-auto-exclusions`, `batch-auto-installments`
-  (midyear + lateyear input files, threshold 0.0), `batch-auto-rollover` (threshold 0.0)
-- **Pipeline refactors:**
-  - `InsertBatchExpenses` extracted into 5 focused helpers (parseExpenseStrings, expandAllInstallments,
-    resolveAllSubcategories, buildEmptyRowRequests, buildExpensesWithLocations)
-  - `InsertBatchExpensesFromClassified`: new entry point for pre-classified expenses, no string round-trip
-  - `InsertExpense` unified — now delegates to `InsertBatchExpenses` (single pipeline)
-  - `models.ClassifiedExpense` struct with `RawValue string` (preserves installment notation)
-  - `models.NewExpense` constructor extracted from `ParseExpenseString`
-  - `parser.ParseExpense(ClassifiedExpense)` for classified path
-  - `NewAmbiguousError` now takes `[]string` sheet names — message includes actual sheet names
-- **auto command fix:** Resolution/ambiguous errors now fall back to review (exit 0 + ⚠ message)
-  instead of propagating as hard failures (exit 1); IO/capacity errors remain hard
-- **Verify package migrated to testify** with business-descriptive names:
-  `ExitCodeZero` → `CommandSucceeded`, `FileExists` → `OutputFileExists`,
-  `AllConfidencesInRange` → `AllClassificationScoresValid`, `AllInReview` → `NoneWereAutoInserted`,
-  `SoftAccuracy` → `ClassificationAccuracyAtLeast`, etc.
-- **Harness improvements:** Removed `t.Run()` for real-time `t.Log()` output; added
-  `CopyWorkbookToWorkDir` for per-test workbook isolation; `RunBatchAutoWithInput` for
-  multi-input-file fixtures; `EXPENSE_WORKBOOK_PATH` auto-detected from workbook relative to script
-- **Ollama IMPROVED/ACCEPTED policy documented** in CLAUDE.md and LLM repo deferred tasks
-
-### Decisions Made
-- **testify in verify package** — only there; unit tests remain stdlib
-- **`t.Run()` removed from `harness.Run()`** — real-time log flushing outweighs losing subtest nesting
-- **Threshold 0.0 in mechanics-testing fixtures** (installments, rollover) — decouples from
-  classifier non-determinism; confidence correctness tested by other fixtures
-- **Uber Centro as canonical reliable fixture item** — classifier consistently returns Uber/Taxi
-- **`EXPENSE_WORKBOOK_PATH` is the global config** for workbook-dependent tests; script auto-detects
-- **Exclusions acceptance test scoped to structural validation** — LLM non-determinism makes
-  routing assertions fragile; exclusion logic is deterministic and covered by unit tests
-- **Deferred:** Rollover/installment tests could be reduced to structural scope (tasks.md)
-- **Deferred to LLM repo:** IMPROVED verdict workflow — stubs-then-Ollama pattern for missing test cases
-
-### Next
-- [ ] **PR #6** is open on `feature/acceptance-harness-batch-auto` — ready for merge to master
-- [ ] **5.5** — Correction logging (`corrections.jsonl`)
-- [ ] **5.6** — Few-shot injection (feature dictionary pre-filter + top-K into prompt)
-- [ ] **5.7/5.8** — MCP thin wrapper in LLM repo
 
 ---
 
