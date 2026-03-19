@@ -38,6 +38,12 @@ type KeywordEntry struct {
 // KeywordIndex maps lowercase token → KeywordEntry.
 type KeywordIndex map[string]KeywordEntry
 
+// subcatScore pairs a subcategory name with its max specificity score across matched tokens.
+type subcatScore struct {
+	subcategory string
+	score       float64
+}
+
 // nonAlphanumRe matches runs of characters that are not Unicode letters, digits, or spaces.
 var nonAlphanumRe = regexp.MustCompile(`[^\p{L}\p{N} ]+`)
 
@@ -61,37 +67,63 @@ func SelectExamples(item string, pool []Example, keywords KeywordIndex, topK int
 		return nil
 	}
 
-	// Collect per-subcategory max specificity across all matched tokens.
-	subcategoryScores := make(map[string]float64)
+	subcategoryScores := calculateSubcategoryScores(tokens, keywords)
+	if len(subcategoryScores) == 0 {
+		return nil
+	}
+
+	sorted := sortSubcategoriesByScore(subcategoryScores)
+	return selectExamplesBySpecificity(pool, sorted, topK)
+}
+
+// tokenize lowercases item, strips non-alphanumeric chars, splits on whitespace,
+// and returns tokens with rune length >= 2.
+func tokenize(item string) []string {
+	lower := strings.ToLower(item)
+	cleaned := nonAlphanumRe.ReplaceAllString(lower, " ")
+	fields := strings.Fields(cleaned)
+	tokens := fields[:0]
+	for _, f := range fields {
+		if utf8.RuneCountInString(f) >= 2 {
+			tokens = append(tokens, f)
+		}
+	}
+	return tokens
+}
+
+// calculateSubcategoryScores returns the max specificity score per subcategory
+// across all matched tokens.
+func calculateSubcategoryScores(tokens []string, keywords KeywordIndex) map[string]float64 {
+	scores := make(map[string]float64)
 	for _, token := range tokens {
 		entry, exists := keywords[token]
 		if !exists {
 			continue
 		}
 		for _, subcategory := range entry.Subcategories {
-			if entry.Specificity > subcategoryScores[subcategory] {
-				subcategoryScores[subcategory] = entry.Specificity
+			if entry.Specificity > scores[subcategory] {
+				scores[subcategory] = entry.Specificity
 			}
 		}
 	}
+	return scores
+}
 
-	if len(subcategoryScores) == 0 {
-		return nil
-	}
-
-	// Sort subcategories by specificity descending.
-	type subcatScore struct {
-		subcategory string
-		score       float64
-	}
-	sorted := make([]subcatScore, 0, len(subcategoryScores))
-	for subcat, score := range subcategoryScores {
+// sortSubcategoriesByScore returns subcategories sorted by specificity descending.
+func sortSubcategoriesByScore(scores map[string]float64) []subcatScore {
+	sorted := make([]subcatScore, 0, len(scores))
+	for subcat, score := range scores {
 		sorted = append(sorted, subcatScore{subcat, score})
 	}
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].score > sorted[j].score
 	})
+	return sorted
+}
 
+// selectExamplesBySpecificity picks examples using the high/ambiguous branching rule
+// and returns up to topK.
+func selectExamplesBySpecificity(pool []Example, sorted []subcatScore, topK int) []Example {
 	var result []Example
 
 	if sorted[0].score >= 0.7 {
@@ -107,7 +139,6 @@ func SelectExamples(item string, pool []Example, keywords KeywordIndex, topK int
 		for i := 0; i < limit; i++ {
 			buckets[i] = bucketExamples(pool, sorted[i].subcategory)
 		}
-		// Round-robin interleave.
 		maxLen := 0
 		for _, b := range buckets {
 			if len(b) > maxLen {
@@ -127,21 +158,6 @@ func SelectExamples(item string, pool []Example, keywords KeywordIndex, topK int
 		result = result[:topK]
 	}
 	return result
-}
-
-// tokenize lowercases item, strips non-alphanumeric chars, splits on whitespace,
-// and returns tokens with rune length >= 2.
-func tokenize(item string) []string {
-	lower := strings.ToLower(item)
-	cleaned := nonAlphanumRe.ReplaceAllString(lower, " ")
-	fields := strings.Fields(cleaned)
-	tokens := fields[:0]
-	for _, f := range fields {
-		if utf8.RuneCountInString(f) >= 2 {
-			tokens = append(tokens, f)
-		}
-	}
-	return tokens
 }
 
 // bucketExamples returns examples matching subcat, sorted by source priority
