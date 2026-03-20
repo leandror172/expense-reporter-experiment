@@ -3,6 +3,7 @@ package classifier
 import (
 	"bytes"
 	"encoding/json"
+	"expense-reporter/internal/logger"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,10 +20,11 @@ type Result struct {
 
 // Config controls classifier behaviour.
 type Config struct {
-	OllamaURL string // default: http://localhost:11434
-	Model     string // default: my-classifier-q3
-	DataDir   string // path to data/classification/
-	TopN      int    // number of candidates to return (default: 3)
+	OllamaURL    string // default: http://localhost:11434
+	Model        string // default: my-classifier-q3
+	DataDir      string // path to data/classification/
+	FeedbackPath string // path to classifications.jsonl (optional; skipped when empty)
+	TopN         int    // number of candidates to return (default: 3)
 }
 
 // Taxonomy maps subcategory name → parent category name.
@@ -46,6 +48,7 @@ func LoadTaxonomy(dataDir string) (Taxonomy, error) {
 
 // Classify sends item/value/date to Ollama and returns top-N subcategory candidates.
 // date must be in DD/MM format.
+// When cfg.DataDir is set, few-shot examples are loaded and injected into the prompt.
 func Classify(item string, value float64, date string, taxonomy Taxonomy, cfg Config) ([]Result, error) {
 	if cfg.OllamaURL == "" {
 		cfg.OllamaURL = "http://localhost:11434"
@@ -57,7 +60,25 @@ func Classify(item string, value float64, date string, taxonomy Taxonomy, cfg Co
 		cfg.TopN = 3
 	}
 
-	body, err := buildRequest(item, value, date, taxonomy, cfg)
+	// Load and select few-shot examples when a data directory is configured.
+	var examples []Example
+	if cfg.DataDir != "" {
+		keywords, err := LoadKeywordIndex(cfg.DataDir)
+		if err != nil {
+			logger.Debug("few-shot: keyword index unavailable", "err", err)
+		} else {
+			training, _ := LoadTrainingExamples(cfg.DataDir)
+			var feedback []Example
+			if cfg.FeedbackPath != "" {
+				feedback, _ = LoadFeedbackExamples(cfg.FeedbackPath)
+			}
+			pool := MergeExamplePools(training, feedback)
+			examples = SelectExamples(item, pool, keywords, 5)
+			logger.Debug("few-shot", "count", len(examples), "item", item)
+		}
+	}
+
+	body, err := buildRequest(item, value, date, taxonomy, examples, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -123,21 +144,48 @@ var responseSchema = json.RawMessage(`{
 	"required": ["results"]
 }`)
 
-func buildRequest(item string, value float64, date string, taxonomy Taxonomy, cfg Config) ([]byte, error) {
+func buildRequest(item string, value float64, date string, taxonomy Taxonomy, examples []Example, cfg Config) ([]byte, error) {
+	messages := []ollamaMessage{
+		{Role: "system", Content: buildSystemPrompt(taxonomy, cfg.TopN)},
+	}
+	messages = append(messages, formatExampleMessages(examples)...)
+	messages = append(messages, ollamaMessage{
+		Role:    "user",
+		Content: fmt.Sprintf("item: %s\nvalue: %.2f\ndate: %s", item, value, date),
+	})
+
 	req := ollamaRequest{
 		Model:    cfg.Model,
 		Stream:   false,
 		Format:   responseSchema,
-		Messages: []ollamaMessage{
-			{Role: "system", Content: buildSystemPrompt(taxonomy, cfg.TopN)},
-			{Role: "user", Content: fmt.Sprintf("item: %s\nvalue: %.2f\ndate: %s", item, value, date)},
-		},
+		Messages: messages,
 	}
 	data, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling request: %w", err)
 	}
 	return data, nil
+}
+
+// formatExampleMessages converts examples into user/assistant message pairs for few-shot injection.
+func formatExampleMessages(examples []Example) []ollamaMessage {
+	if len(examples) == 0 {
+		return nil
+	}
+	msgs := make([]ollamaMessage, 0, len(examples)*2)
+	for _, ex := range examples {
+		userContent := fmt.Sprintf("item: %s\nvalue: %.2f\ndate: %s", ex.Item, ex.Value, ex.Date)
+		// Synthetic assistant response matching the response schema with high confidence.
+		assistantContent := fmt.Sprintf(
+			`{"results":[{"subcategory":%q,"category":%q,"confidence":0.95}]}`,
+			ex.Subcategory, ex.Category,
+		)
+		msgs = append(msgs,
+			ollamaMessage{Role: "user", Content: userContent},
+			ollamaMessage{Role: "assistant", Content: assistantContent},
+		)
+	}
+	return msgs
 }
 
 func parseResponse(body interface{ Read([]byte) (int, error) }, topN int) ([]Result, error) {

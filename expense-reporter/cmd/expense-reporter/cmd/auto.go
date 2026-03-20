@@ -65,9 +65,11 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := classifier.Config{
-		OllamaURL: "http://localhost:11434",
-		Model:     autoModel,
-		TopN:      3,
+		OllamaURL:    "http://localhost:11434",
+		Model:        autoModel,
+		DataDir:      autoDataDir,
+		FeedbackPath: appCfg.ClassificationsFilePath(),
+		TopN:         3,
 	}
 
 	results, err := classifier.Classify(item, value, date, taxonomy, cfg)

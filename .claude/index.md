@@ -29,9 +29,11 @@
 | Cross-repo context (LLM infra) | `/mnt/i/workspaces/llm/.claude/` |
 | Implementation plan (session 4) | `.claude/plans/acceptance-harness-batch-auto.md` |
 | Implementation plan (session 6 — 5.5) | `.claude/plans/polished-knitting-simon.md` |
+| Implementation plan (session 10 — 5.7) | `.claude/plans/5.7-few-shot-injection.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
+| Session log archive (session 7 — 2026-03-11) | `.claude/archive/session-log-2026-03-11-to-2026-03-11.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
@@ -55,7 +57,7 @@
 | `internal/workflow` | `expense-reporter/internal/workflow/` | Multi-step workflow: parse → resolve → insert |
 | `pkg/utils` | `expense-reporter/pkg/utils/` | Public utility functions (currency, date, format) |
 | `config` | `expense-reporter/config/` | Configuration files and constants |
-| `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic |
+| `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic; `examples.go` (SelectExamples, KeywordIndex, tokenization); `loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools) |
 | `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` |
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`) |
 | `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check, SetupBinaryConfig) |
@@ -70,12 +72,12 @@
 ## Testing Conventions
 
 - **Test runner:** `cd expense-reporter && go test ./...`
-- **Framework:** Standard library (`testing` package), table-driven tests
-- **Coverage:** 190+ tests across all packages
+- **Framework:** `testing` package (stdlib) + testify (`assert`/`require`) — both in use
+- **Unit test style:** testify preferred for new tests; existing stdlib tests left as-is
+- **Coverage:** 220+ tests across all packages
 - **Pattern:** Each `internal/X/` has `X_test.go` with table-driven cases
 - **Test data:** `expense-reporter/expenses.example.csv` — safe, no personal data
 - **TDD approach:** Write failing test first, implement to pass (established pattern from Phases 1-4)
-- **No external test framework** — only stdlib `testing` + `testify` if already present in go.mod
 
 **Do NOT:**
 - Use `testing.T.Fatal` where `t.Errorf` suffices
