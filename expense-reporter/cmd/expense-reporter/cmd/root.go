@@ -11,6 +11,7 @@ import (
 
 var workbookPath string
 var verbose bool
+var outputJSON bool
 
 var rootCmd = &cobra.Command{
 	Use:   "expense-reporter",
@@ -42,6 +43,8 @@ func init() {
 		"Path to Excel workbook (or use EXPENSE_WORKBOOK_PATH env)")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false,
 		"Verbose output")
+	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false,
+		"Output in JSON format (machine-readable)")
 }
 
 // GetWorkbookPath returns the path to the Excel workbook
