@@ -47,16 +47,15 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 10 (2026-03-18) — 5.7 complete
-  - Keyword-matched few-shot injection into Ollama prompts implemented (all 6 phases)
-  - New: `internal/classifier/examples.go` (SelectExamples, KeywordIndex, tokenization)
-  - New: `internal/classifier/loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools)
-  - Modified: `classifier.go` buildRequest injects user/assistant example pairs; Classify orchestrates loading
-  - Config: added `DataDir` + `FeedbackPath` fields; wired in classify/auto/batch-auto commands
-  - Tests: 30+ new unit tests (testify); 3 new acceptance scenarios in `test/fewshot_test.go`
-  - Graceful degradation: missing training data / feedback file → nil, nil (no error)
-- **Branch:** `feature/5.7-few-shot-injection` (implementation complete, not yet merged)
-- **Next:** 5.8 — MCP thin wrapper in LLM repo (`classify_expense` / `add_expense` / `auto_add`)
+- **Last checkpoint:** Session 12 (2026-03-23) — 5.8a complete
+  - `--json` persistent flag on root command (all subcommands inherit)
+  - New: `cmd/.../cmd/output.go` (ClassifyOutput, CandidateOutput, AutoOutput, printJSON, toCandidates)
+  - Modified: `classify.go` JSON output branch; `auto.go` read-only JSON branch (never inserts)
+  - `auto --json` returns recommendation: `would_insert` / `review` / `excluded`
+  - Tests: 5 unit tests in `output_test.go`; 2 acceptance scenarios in `test/json_output_test.go`
+  - New verify helpers: `verify/json.go` (OutputIsValidJSON, OutputJSONHasKey)
+- **Branch:** `feature/5.8a-json-output` (implementation complete, not yet committed)
+- **Next:** 5.8b — Python MCP server in `mcp-server/` (this repo): 3 tools calling Go binary with `--json`
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -81,7 +80,8 @@ Or manually:
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
-- **MCP thin wrapper in LLM repo** — 3 tools: `classify_expense`, `add_expense`, `auto_add`; calls Go binary as subprocess
+- **MCP thin wrapper in this repo** (`mcp-server/`) — 3 tools: `classify_expense`, `add_expense`, `auto_add`; calls Go binary with `--json` as subprocess
+- **5.8 split:** 5.8a = Go `--json` flag (done); 5.8b = Python MCP server (next)
 - **Training data strategy:** hybrid — feature dictionary as system context + top-K few-shot examples per request
 - **Structured output:** Ollama `format` param (proven reliable in LLM infra work)
 
