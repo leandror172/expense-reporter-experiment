@@ -1,7 +1,47 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-03-23 — Session 12: 5.8a — JSON output for classify/auto
+
+### Context
+Resumed after 5.7 merge to master. Recontextualized via `resume.sh`. Discussed 5.8 architecture extensively — originally planned as MCP thin wrapper in LLM repo, but decided the MCP server belongs in this repo since it's a tool of this app. Reviewed the grand vision (`docs/expense-classifier-vision.md`) which reshaped 5.8 into two sub-tasks: 5.8a (Go-side `--json` flag) and 5.8b (Python MCP wrapper). This session implemented 5.8a.
+
+### What Was Done
+- **5.7 merged** — user merged `feature/5.7-few-shot-injection` to master before session work began
+- **5.8 architecture discussion** — read LLM repo's MCP server (`server.py`, `registry.py`), all Cobra commands, and concurrency control docs; decided MCP server lives in expense-reporter repo, not LLM repo
+- **5.8a implementation** — `--json` persistent flag on root command; new `output.go` with `ClassifyOutput`, `CandidateOutput`, `AutoOutput` structs + `printJSON`/`toCandidates` helpers
+- **classify --json** — outputs structured JSON with item/value/date/candidates array
+- **auto --json** — read-only mode: classifies, evaluates `IsAutoInsertable`, returns recommendation (`would_insert`/`review`/`excluded`) but **never inserts** into workbook. Matches vision flow: classify → user picks → insert
+- **Unit tests** — `output_test.go`: 5 tests (toCandidates, ClassifyOutput serialization, AutoOutput serialization, nil Result omitempty, printJSON stdout capture)
+- **Acceptance tests** — `test/json_output_test.go`: 2 scenarios (classify --json valid JSON with keys, auto --json returns recommendation without inserting); `test/verify/json.go`: `OutputIsValidJSON()`, `OutputJSONHasKey()` verify helpers
+- **All tests pass** — 18 acceptance (16 existing + 2 new), 220+ unit tests, clean build + vet
+- **Deferred task T1** — resume context loading improvement documented in `.claude/ideas/resume-context-loading.md`
+- **Ollama usage** — used `my-go-qcoder` (qwen3-coder:30b) for `output.go` and `output_test.go` generation; identified gap where later files were written without Ollama (feedback saved to memory)
+
+### Decisions Made
+- **MCP server lives in expense-reporter repo** — it's a tool of this app, not generic LLM infra; uses Python/FastMCP (same stack as LLM repo's ollama-bridge)
+- **5.8 split into 5.8a + 5.8b** — vision doc showed MCP is one of several consumers (Telegram next); Go binary `--json` is the real API surface, MCP wrapper becomes trivially thin
+- **auto --json never inserts** — matches vision flow (classify → present → user picks → add); action field is `would_insert` (recommendation), not `inserted`
+- **`--json` is persistent on root** — future commands (batch-auto, add) can adopt without plumbing changes
+- **TDD violation acknowledged** — tests written after implementation instead of red-first; noted for future sessions
+
+### 5.8b Design Decisions (discussed, not yet implemented)
+- **Three tools:** `classify_expense` (candidates only), `add_expense` (insert), `auto_add` (candidates + recommendation) — all three kept; auto_add is superset of classify but both useful
+- **Thin wrapper:** ~150 lines server.py, no OllamaClient/registry/persona reuse from ollama-bridge
+- **Binary path:** `EXPENSE_REPORTER_BIN` env var primary, fallback builds from Go module root
+- **Workbook path:** MCP param forwarded as `--workbook` (not hidden, not env-resolved by MCP)
+- **Exposed params:** `model` and `top` only (caller-meaningful); `data_dir` hidden (infrastructure)
+- **Testing:** Integration tests (build binary, call with `--json`); minimal; use `--dry-run` for add
+- **5.8b-prep task:** Add `--dry-run` flag to Go `add` command before building MCP server
+
+### Next
+- [ ] **Merge `feature/5.8a-json-output`** to master
+- [ ] **5.8b-prep:** Add `--dry-run` to `add` command (Go)
+- [ ] **5.8b:** Python MCP server in `mcp-server/` — `classify_expense`, `add_expense`, `auto_add`
 
 ---
 
@@ -86,31 +126,6 @@ Resumed after 5.5 merge. Recontextualized; discovered 5.6 was in tasks.md but sk
 
 ### Next
 - [ ] **Start 5.7** — few-shot injection: load top-K entries from `classifications.jsonl` (filter `status != manual`), keyword pre-match against training data, inject as few-shot examples into Ollama classifier prompt
-
----
-
-## 2026-03-13 — Session 8: 5.5 PR review + merge
-
-### Context
-Resumed with PR #7 (`feature/feedback-logging-5.5`) open. User reviewed it and left 3 inline comments on `feedback_test.go`.
-
-### What Was Done
-- **Ran full acceptance suite** — all 13 tests pass (4 new feedback tests confirmed green end-to-end)
-- **Fixed run-acceptance.sh CRLF** — file had Windows line endings; stripped `\r`; restored to LF (was already LF in index, so no commit needed)
-- **Addressed 3 PR review comments:**
-  1. **Given names** — renamed to business-oriented: `knownExpenseReadyForAutoInsert`, `knownExpenseBatchReadyForInsert`, `mixedExpensesReadyForDryRun`, `singleExpenseReadyForManualAdd`
-  2. **Then functions** — extracted named helpers returning `[]func(*harness.Context)`: `autoInsertConfirmedInFeedback`, `batchInsertionsConfirmedInFeedback`, `noFeedbackFileCreated`, `manualEntryLoggedInFeedback`
-  3. **Expected output files** — added `FeedbackMatchesExpected` verifier (partial-match, skips `id`/`timestamp`); added `expected-feedback.jsonl` to `auto-basic/`, `batch-auto-feedback/`, and new `add-feedback/` fixtures
-- **PR #7 merged** to master; local master updated
-
-### Decisions Made
-- **`FeedbackMatchesExpected` uses partial-match semantics**: expected file specifies only the fields to check; `id` and `timestamp` always skipped (implementation details)
-- **LLM-dependent fields excluded from auto/batch expected files**: `predicted_subcategory`, `actual_subcategory`, `confidence` omitted since classifier output is non-deterministic; add test has full expected (no LLM path)
-- **1st Ollama timeout = retry, not reject** (user clarification): only treat as first rejection if the model actually responds with wrong output; cold-start timeouts get one free retry
-
-### Next
-- [ ] **Start 5.7** — few-shot injection: load top-K entries from `classifications.jsonl` and inject into Ollama classifier prompt
-- [ ] Run full acceptance suite with `run-acceptance.sh` to confirm master is clean
 
 ---
 

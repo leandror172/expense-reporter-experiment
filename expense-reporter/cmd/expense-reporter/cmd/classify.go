@@ -62,6 +62,15 @@ func runClassify(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("classification failed: %w", err)
 	}
 
+	if outputJSON {
+		return printJSON(ClassifyOutput{
+			Item:       item,
+			Value:      value,
+			Date:       date,
+			Candidates: toCandidates(results),
+		})
+	}
+
 	fmt.Printf("Classifying: %s  R$ %.2f  %s\n\n", item, value, date)
 	for i, r := range results {
 		bar := confidenceBar(r.Confidence)

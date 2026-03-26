@@ -88,6 +88,10 @@ layer — see `data/classification/retrieval-strategy.md` for the full pipeline 
   entries. Simple sort order initially (corrected > training > confirmed). Refine to
   weighted scoring if correction volume warrants it.
 
+### Deferred Tooling Improvements
+
+- [ ] **T1** Resume context loading: session-context.md not auto-loaded on resume, so TDD/user-pref directives are missed. Options documented in `.claude/ideas/resume-context-loading.md`. Likely solution: `/resume` skill.
+
 ### Deferred Improvements (from AUTO_CATEGORY_README.md Next Steps)
 
 These items are not blocking for Layer 5.1–5.8 but should be revisited after the core classify/auto commands are working:
