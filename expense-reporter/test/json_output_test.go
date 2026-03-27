@@ -69,6 +69,21 @@ func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
 	})
 }
 
+// TestAddDryRunJSON_ResolvesCategory verifies that add --dry-run --json resolves
+// the parent category from taxonomy when --data-dir is provided.
+func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
+	harness.Run(t, harness.Scenario{
+		Name:  "add --dry-run --json resolves category from taxonomy",
+		Given: classifierForJSON(),
+		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Then: []func(*harness.Context){
+			verify.CommandSucceeded(),
+			verify.OutputIsValidJSON(),
+			verify.OutputJSONHasValue("category", "Transporte"),
+		},
+	})
+}
+
 // binaryOnly sets up context with just the binary path — no Ollama, no workbook, no data dir.
 func binaryOnly() func(*harness.Context) {
 	return func(ctx *harness.Context) {
