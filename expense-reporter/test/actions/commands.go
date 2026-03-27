@@ -52,10 +52,14 @@ func RunAdd(expenseString string) func(*harness.Context) {
 }
 
 // RunAddDryRun returns a When closure that runs the add command with --dry-run.
-// Extra flags (e.g., "--json") are appended after the expense string.
+// Passes --data-dir from ctx when set. Extra flags (e.g., "--json") are appended after the expense string.
 func RunAddDryRun(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		args := []string{"add", "--dry-run", expenseString}
+		args := []string{"add", "--dry-run"}
+		if ctx.DataDir != "" {
+			args = append(args, "--data-dir", ctx.DataDir)
+		}
+		args = append(args, expenseString)
 		args = append(args, extraFlags...)
 		runCommand(ctx, args...)
 	}
