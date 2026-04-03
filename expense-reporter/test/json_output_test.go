@@ -47,6 +47,50 @@ func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
 	})
 }
 
+// TestAddDryRunJSON_ReturnsValidJSONWithAction verifies that add --dry-run --json
+// produces valid JSON with parsed expense fields and "would_insert" action.
+// Does NOT require Ollama — no classification involved.
+func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
+	harness.Run(t, harness.Scenario{
+		Name:  "add --dry-run --json returns valid JSON with would_insert action",
+		Given: binaryOnly(),
+		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Then: []func(*harness.Context){
+			verify.CommandSucceeded(),
+			verify.OutputIsValidJSON(),
+			verify.OutputJSONHasKey("item"),
+			verify.OutputJSONHasKey("value"),
+			verify.OutputJSONHasKey("date"),
+			verify.OutputJSONHasKey("subcategory"),
+			verify.OutputJSONHasKey("action"),
+			verify.OutputJSONHasValue("action", "would_insert"),
+			verify.OutputNotContains("✓ Expense added", "Dry-run mode must not insert"),
+		},
+	})
+}
+
+// TestAddDryRunJSON_ResolvesCategory verifies that add --dry-run --json resolves
+// the parent category from taxonomy when --data-dir is provided.
+func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
+	harness.Run(t, harness.Scenario{
+		Name:  "add --dry-run --json resolves category from taxonomy",
+		Given: classifierForJSON(),
+		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Then: []func(*harness.Context){
+			verify.CommandSucceeded(),
+			verify.OutputIsValidJSON(),
+			verify.OutputJSONHasValue("category", "Transporte"),
+		},
+	})
+}
+
+// binaryOnly sets up context with just the binary path — no Ollama, no workbook, no data dir.
+func binaryOnly() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+	}
+}
+
 // classifierForJSON sets up the context for JSON output tests.
 // No workbook needed since --json mode is read-only.
 func classifierForJSON() func(*harness.Context) {

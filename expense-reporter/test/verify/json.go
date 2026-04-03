@@ -26,6 +26,28 @@ func OutputIsValidJSON() func(*harness.Context) {
 	}
 }
 
+// OutputJSONHasValue asserts that stdout JSON has the given value at the given top-level key.
+func OutputJSONHasValue(key string, expected interface{}) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+
+		var result map[string]interface{}
+		if err := json.Unmarshal([]byte(ctx.Stdout), &result); err != nil {
+			ctx.T.Errorf("stdout is not valid JSON: %v\nstdout: %s", err, ctx.Stdout)
+			return
+		}
+
+		actual, exists := result[key]
+		if !exists {
+			ctx.T.Errorf("JSON missing key %q\nstdout: %s", key, ctx.Stdout)
+			return
+		}
+		if actual != expected {
+			ctx.T.Errorf("JSON key %q: expected %v, got %v\nstdout: %s", key, expected, actual, ctx.Stdout)
+		}
+	}
+}
+
 // OutputJSONHasKey asserts that stdout contains valid JSON with the given top-level key.
 func OutputJSONHasKey(key string) func(*harness.Context) {
 	return func(ctx *harness.Context) {

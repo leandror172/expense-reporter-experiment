@@ -1,7 +1,34 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-03-27 — Session 13: 5.8b — Python MCP server + dry-run + data-dir fix
+
+### Context
+Resumed from session 12. Recontextualized, opened PR for 5.8a, then worked through 5.8b-prep and 5.8b. Discussed whether to use Opus→Sonnet delegation pattern (decided not to for this size of task). Explored MCP tool interfaces against the grand vision, reducing 3 tools to 2 (`classify_expense` + `add_expense`). Used Ollama for code gen with explicit verdicts. Discovered and fixed latent `--data-dir` bug via live MCP testing.
+
+### What Was Done
+- **PR #11** — 5.8a JSON output merged to remote (push + PR)
+- **5.8b-prep** (`feature/5.8b-prep-add-dry-run`, PR #12) — `--dry-run` flag on `add` command; early parse refactor; `AddOutput` struct; 5 unit tests + 1 acceptance test; `RunAddDryRun` action + `OutputJSONHasValue` verify helper
+- **5.8b** (`feature/5.8b-mcp-server-impl`, PR #13) — new `mcp-server/` Python project (uv + FastMCP); `binary.py` (find_binary, run_binary, error types); `server.py` (classify_expense + add_expense tools); 7 integration tests; `run-server.sh`; registered with Claude Code
+- **fix(add)** (`feature/5.8b-add-data-dir`, PR #14) — `--data-dir` flag on `add` command; MCP server passes it explicitly; category now resolves correctly in `add_expense` response; new acceptance test `TestAddDryRunJSON_ResolvesCategory`
+- **End-to-end test** — MCP tools smoke-tested live; both tools confirmed working after restart
+
+### Decisions Made
+- **2 tools not 3** — dropped separate `classify_expense` (raw) vs `auto_add` (recommendation); `classify_expense` now maps to `auto --json` (candidates + recommendation); `add_expense` maps to `add --json`
+- **`auto_add` name was misleading** — renamed to `classify_expense` since it never adds
+- **Python justified in Go repo** — MCP server is thin subprocess wrapper, Go MCP SDK maturity unknown; Python + FastMCP is proven pattern
+- **Opus→Sonnet delegation** — analyzed as not worth it for this task size; fits better for larger mechanical tasks (e.g. 5.R1 TF-IDF)
+- **Ollama for code gen** — test file: REJECTED (truncation + wrong approach); server.py: IMPROVED (right shape, FastMCP API bugs); binary.py written by Claude directly (Ollama skipped)
+- **`--data-dir` on `add`** — resolved latent bug where taxonomy lookup silently failed when called from MCP server (cwd mismatch); default preserved as `"data/classification"` for CLI use
+
+### Next
+- Merge PR chain: 5.8a → 5.8b-prep → 5.8b → 5.8b-add-data-dir → master
+- Consider deferred task: `TestBatchAuto_SameYearInstallmentsExpanded` scope reduction (tasks.md)
+- Next feature work: 5.R1 TF-IDF retrieval layer or T1 resume context loading
 
 ---
 
@@ -100,32 +127,6 @@ First session after 5.6 merge. Recontextualized via `resume.sh`. Entire session 
 ### Next
 - [ ] **Execute 5.7 plan** on branch `feature/5.7-few-shot-injection` following `.claude/plans/5.7-few-shot-injection.md` — implementation intended for Sonnet model
 - [ ] Plan includes recontextualization instructions (resume.sh + read session-context.md)
-
----
-
-## 2026-03-14 — Session 9: 5.6 expense persistence log
-
-### Context
-Resumed after 5.5 merge. Recontextualized; discovered 5.6 was in tasks.md but skipped in last session's "next" pointer. Copied vision docs from LLM repo to `docs/`. Discussed separation of `expenses_log.jsonl` from `classifications.jsonl` and decided the separation was worth doing now.
-
-### What Was Done
-- **Copied vision docs** — `docs/expense-classifier-vision.md` and `docs/expense-classifier-data-inventory.md` from LLM repo; indexed in `.claude/index.md`
-- **5.6 implementation** — `internal/feedback/expense_log.go`: `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense`; `ExpensesLogPath`/`ExpensesLogFilePath()` in config; `expenses_log_path` in `config.json`; `logExpense()` wired into `auto`, `add`, `batch-auto`
-- **Unit tests** — `expense_log_test.go` (4 tests incl. cross-ID consistency check); 3 new `config_test.go` tests for `ExpensesLogFilePath`
-- **Acceptance tests refactored** — composable Then helpers (`commandSucceeded`, `autoInsertSucceeded`, `classificationsMatchExpected`, `expenseLogMatchesExpected`, `noLogsCreated`) composed via `slices.Concat`; file-specific verifiers (`ClassificationsMatch`, `ExpenseLogMatches`, `ClassificationsNotCreated`, `ExpenseLogNotCreated`) added to `verify/feedback.go`; `expected-expenses_log.jsonl` fixture files added for 3 fixture dirs
-- **PATTERNS.md updated** — Then composition pattern, JSONL log verification rules, fixture field selection guidance documented
-- **All 13 acceptance tests pass** on master
-- **Merged to master** via PR
-
-### Decisions Made
-- `expenses_log.jsonl` separated from `classifications.jsonl` — the two files have different concerns (insert identity vs. learning signal); mixing them would require filtering `status: manual` entries in 5.7 and complicates future lifecycle tracking
-- `expected-expenses_log.jsonl` omits `subcategory`/`category` for classifier-dependent tests (LLM non-determinism); includes them for `add` tests (deterministic)
-- Then helpers use `slices.Concat` over plain slice literal — preserves ability to group multiple assertions per helper while staying composable
-- File-specific verifiers embed artifact key — `ClassificationsMatch(path)` not `FeedbackMatchesExpected("classifications.jsonl", path)`
-- GoLand `//go:build acceptance` navigation: configure via `Settings → Go → Build Tags`, add `acceptance` — do not remove the tag
-
-### Next
-- [ ] **Start 5.7** — few-shot injection: load top-K entries from `classifications.jsonl` (filter `status != manual`), keyword pre-match against training data, inject as few-shot examples into Ollama classifier prompt
 
 ---
 
