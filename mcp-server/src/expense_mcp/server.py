@@ -95,7 +95,7 @@ async def add_expense(
     binary_path = ctx.request_context.lifespan_context["binary_path"]
 
     expense_string = f"{item};{date};{value};{subcategory}"
-    args = ["add", "--json"]
+    args = ["add", "--json", "--data-dir", str(_DATA_DIR)]
     if dry_run:
         args.append("--dry-run")
     if workbook is not None:

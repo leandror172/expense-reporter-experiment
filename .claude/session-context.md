@@ -47,15 +47,13 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 12 (2026-03-23) — 5.8a complete
-  - `--json` persistent flag on root command (all subcommands inherit)
-  - New: `cmd/.../cmd/output.go` (ClassifyOutput, CandidateOutput, AutoOutput, printJSON, toCandidates)
-  - Modified: `classify.go` JSON output branch; `auto.go` read-only JSON branch (never inserts)
-  - `auto --json` returns recommendation: `would_insert` / `review` / `excluded`
-  - Tests: 5 unit tests in `output_test.go`; 2 acceptance scenarios in `test/json_output_test.go`
-  - New verify helpers: `verify/json.go` (OutputIsValidJSON, OutputJSONHasKey)
-- **Branch:** `feature/5.8a-json-output` (implementation complete, not yet committed)
-- **Next:** 5.8b — Python MCP server in `mcp-server/` (this repo): 3 tools calling Go binary with `--json`
+- **Last checkpoint:** Session 13 (2026-03-27) — 5.8b complete + data-dir fix
+  - `mcp-server/` Python project: `binary.py` + `server.py` (classify_expense, add_expense)
+  - `add --dry-run` flag + `AddOutput` struct; `add --data-dir` flag (fixes MCP taxonomy lookup)
+  - MCP server registered and smoke-tested live; both tools confirmed working
+  - Open PRs: #11 (5.8a), #12 (5.8b-prep), #13 (5.8b), #14 (5.8b-add-data-dir)
+- **Branch:** `feature/5.8b-add-data-dir` (all committed and pushed)
+- **Next:** Merge PR chain to master; then 5.R1 TF-IDF retrieval or T1 resume context loading
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -80,8 +78,8 @@ Or manually:
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
-- **MCP thin wrapper in this repo** (`mcp-server/`) — 3 tools: `classify_expense`, `add_expense`, `auto_add`; calls Go binary with `--json` as subprocess
-- **5.8 split:** 5.8a = Go `--json` flag (done); 5.8b = Python MCP server (next)
+- **MCP thin wrapper in this repo** (`mcp-server/`) — 2 tools: `classify_expense` (→ `auto --json`), `add_expense` (→ `add --json`); calls Go binary as subprocess; registered with Claude Code
+- **5.8 split:** 5.8a = Go `--json` flag (done); 5.8b = Python MCP server (done)
 - **Training data strategy:** hybrid — feature dictionary as system context + top-K few-shot examples per request
 - **Structured output:** Ollama `format` param (proven reliable in LLM infra work)
 
