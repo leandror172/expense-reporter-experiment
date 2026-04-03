@@ -14,6 +14,7 @@ import (
 )
 
 var addDryRun bool
+var addDataDir string
 
 var addCmd = &cobra.Command{
 	Use:   "add \"<item>;<DD/MM>;<##,##>;<subcat>\"",
@@ -38,6 +39,7 @@ Notes:
 
 func init() {
 	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into workbook")
+	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	rootCmd.AddCommand(addCmd)
 }
 
@@ -49,7 +51,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\"")
 	}
 
-	category := resolveCategoryFromTaxonomy(subcategory, "data/classification")
+	category := resolveCategoryFromTaxonomy(subcategory, addDataDir)
 
 	if addDryRun {
 		return runAddDryRun(cmd, item, date, value, subcategory, category)
