@@ -302,6 +302,28 @@ Desktop-era planning documents — read for context, do not modify.
 
 ---
 
+## Per-Folder Memories
+
+| Folder | Files | Content |
+|--------|-------|---------|
+| `.memories/` | QUICK.md, KNOWLEDGE.md | Repo-wide status, architecture, cross-repo relationships |
+| `expense-reporter/.memories/` | QUICK.md, KNOWLEDGE.md | Go app structure, command hierarchy, batch pipeline, config |
+| `expense-reporter/internal/classifier/.memories/` | QUICK.md, KNOWLEDGE.md | Few-shot algorithm, prompt architecture, empirical findings |
+| `expense-reporter/test/.memories/` | QUICK.md, KNOWLEDGE.md | BDD harness design, fixture format, soft/hard assertions |
+| `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
+
+---
+
+## READMEs
+
+| File | Content |
+|------|---------|
+| `README.md` | Repo root — project overview, components, quick start |
+| `expense-reporter/README.md` | Full CLI documentation — all commands, classification system, testing |
+| `expense-reporter/test/README.md` | Acceptance test harness architecture, fixtures, verifiers |
+
+---
+
 ## Tools
 
 | Tool | Path | Purpose |
