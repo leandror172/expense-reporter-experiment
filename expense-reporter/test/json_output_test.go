@@ -3,6 +3,7 @@
 package acceptance_test
 
 import (
+	"slices"
 	"testing"
 
 	"expense-reporter/test/actions"
@@ -19,12 +20,10 @@ func TestClassifyJSON_ReturnsValidJSONWithCandidates(t *testing.T) {
 		Name:  "classify --json returns valid JSON with candidates array",
 		Given: classifierForJSON(),
 		When:  actions.RunClassify("--json", "Uber Centro", "35,50", "15/04"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputIsValidJSON(),
-			verify.OutputJSONHasKey("item"),
-			verify.OutputJSONHasKey("candidates"),
-		},
+		Then: slices.Concat(
+			thenJSONSucceeded(),
+			thenJSONHasCandidates(),
+		),
 	})
 }
 
@@ -37,13 +36,11 @@ func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
 		Name:  "auto --json returns action recommendation without inserting",
 		Given: classifierForJSON(),
 		When:  actions.RunAuto("--json", "Uber Centro", "35,50", "15/04"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputIsValidJSON(),
-			verify.OutputJSONHasKey("action"),
-			verify.OutputJSONHasKey("candidates"),
-			verify.OutputNotContains("✓ Inserted", "JSON mode must not insert into workbook"),
-		},
+		Then: slices.Concat(
+			thenJSONSucceeded(),
+			thenJSONHasActionAndCandidates(),
+			thenJSONModeDidNotInsert(),
+		),
 	})
 }
 
@@ -55,17 +52,12 @@ func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
 		Name:  "add --dry-run --json returns valid JSON with would_insert action",
 		Given: binaryOnly(),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputIsValidJSON(),
-			verify.OutputJSONHasKey("item"),
-			verify.OutputJSONHasKey("value"),
-			verify.OutputJSONHasKey("date"),
-			verify.OutputJSONHasKey("subcategory"),
-			verify.OutputJSONHasKey("action"),
-			verify.OutputJSONHasValue("action", "would_insert"),
-			verify.OutputNotContains("✓ Expense added", "Dry-run mode must not insert"),
-		},
+		Then: slices.Concat(
+			thenJSONSucceeded(),
+			thenJSONHasExpenseFields(),
+			thenJSONActionIs("would_insert"),
+			thenDryRunDidNotInsert(),
+		),
 	})
 }
 
@@ -76,11 +68,10 @@ func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
 		Name:  "add --dry-run --json resolves category from taxonomy",
 		Given: classifierForJSON(),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputIsValidJSON(),
-			verify.OutputJSONHasValue("category", "Transporte"),
-		},
+		Then: slices.Concat(
+			thenJSONSucceeded(),
+			thenJSONCategoryIs("Transporte"),
+		),
 	})
 }
 
@@ -97,5 +88,71 @@ func classifierForJSON() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
+	}
+}
+
+// --- Then helpers ---
+
+// thenJSONSucceeded is the base for all JSON output tests: command exits 0 and stdout is valid JSON.
+// Builds on commandSucceeded() from feedback_test.go (same package).
+func thenJSONSucceeded() []func(*harness.Context) {
+	return slices.Concat(
+		commandSucceeded(),
+		[]func(*harness.Context){verify.OutputIsValidJSON()},
+	)
+}
+
+// thenJSONHasExpenseFields checks the four core fields present in any add-command JSON output.
+func thenJSONHasExpenseFields() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasKey("item"),
+		verify.OutputJSONHasKey("value"),
+		verify.OutputJSONHasKey("date"),
+		verify.OutputJSONHasKey("subcategory"),
+	}
+}
+
+// thenJSONHasCandidates checks the shape of classify --json output.
+func thenJSONHasCandidates() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasKey("item"),
+		verify.OutputJSONHasKey("candidates"),
+	}
+}
+
+// thenJSONHasActionAndCandidates checks the shape of auto --json output.
+func thenJSONHasActionAndCandidates() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasKey("action"),
+		verify.OutputJSONHasKey("candidates"),
+	}
+}
+
+// thenJSONActionIs checks that the action field is present and has the expected value.
+func thenJSONActionIs(action string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasKey("action"),
+		verify.OutputJSONHasAction(action),
+	}
+}
+
+// thenJSONCategoryIs checks that the category field has the expected value.
+func thenJSONCategoryIs(category string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasCategory(category),
+	}
+}
+
+// thenJSONModeDidNotInsert asserts --json mode never writes to the workbook.
+func thenJSONModeDidNotInsert() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputNotContains("✓ Inserted", "JSON mode must not insert into workbook"),
+	}
+}
+
+// thenDryRunDidNotInsert asserts --dry-run mode never writes to the workbook.
+func thenDryRunDidNotInsert() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputNotContains("✓ Expense added", "Dry-run mode must not insert"),
 	}
 }

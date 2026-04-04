@@ -48,6 +48,16 @@ func OutputJSONHasValue(key string, expected interface{}) func(*harness.Context)
 	}
 }
 
+// OutputJSONHasCategory asserts that the JSON output has the given category value.
+func OutputJSONHasCategory(category string) func(*harness.Context) {
+	return OutputJSONHasValue("category", category)
+}
+
+// OutputJSONHasAction asserts that the JSON output has the given action value.
+func OutputJSONHasAction(action string) func(*harness.Context) {
+	return OutputJSONHasValue("action", action)
+}
+
 // OutputJSONHasKey asserts that stdout contains valid JSON with the given top-level key.
 func OutputJSONHasKey(key string) func(*harness.Context) {
 	return func(ctx *harness.Context) {

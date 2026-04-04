@@ -55,7 +55,7 @@ Ollama model versions, while others are sensitive to model changes.
 **Implication:** Use canonical items for structural tests. Use diverse items only in
 soft-assertion tests where accuracy drift is tracked.
 
-## Composable Then Pattern (2026-03)
+## Composable Then Pattern (2026-04)
 Then helpers return `[]func(*harness.Context)`, not single functions. Combined with
 `slices.Concat` at the test site. Each helper is scoped to one concern (e.g.,
 "classified output has correct columns" vs "accuracy meets floor").
@@ -64,6 +64,14 @@ hard to compose different assertion sets for different fixtures.
 **Implication:** When adding a new assertion concern, create a new helper function
 that returns `[]func(*Context)`. Never add assertions to existing helpers unless
 they're truly part of the same concern.
+
+**Convention (2026-04):** `Then:` blocks must contain only named `then*` helpers —
+never raw `verify.*` calls directly. `verify.*` calls belong inside helper bodies.
+This keeps test intent readable at the scenario level and keeps assertion details
+encapsulated. `then*` helpers live in the same `*_test.go` file as their tests;
+`verify.*` functions live in `verify/` and return single `func(*harness.Context)`.
+`commandSucceeded()` (feedback_test.go, same package) is the shared base — use it
+via `slices.Concat` rather than calling `verify.CommandSucceeded()` directly.
 
 ## JSONL Verification Design (2026-03)
 File-specific verifiers (not generic string-keyed):
