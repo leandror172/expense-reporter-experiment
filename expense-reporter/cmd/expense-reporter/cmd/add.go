@@ -13,6 +13,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var addDryRun bool
+var addDataDir string
+
 var addCmd = &cobra.Command{
 	Use:   "add \"<item>;<DD/MM>;<##,##>;<subcat>\"",
 	Short: "Add a single expense",
@@ -35,11 +38,24 @@ Notes:
 }
 
 func init() {
+	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into workbook")
+	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	rootCmd.AddCommand(addCmd)
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
 	expenseString := args[0]
+
+	item, date, value, subcategory, ok := parseExpenseForFeedback(expenseString)
+	if !ok {
+		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\"")
+	}
+
+	category := resolveCategoryFromTaxonomy(subcategory, addDataDir)
+
+	if addDryRun {
+		return runAddDryRun(cmd, item, date, value, subcategory, category)
+	}
 
 	workbook, err := GetWorkbookPath()
 	if err != nil {
@@ -57,28 +73,52 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("✓ Expense added successfully!")
-	logManualFeedbackFromAdd(expenseString)
+	logParsedManualFeedback(item, date, value, subcategory, category)
 	return nil
 }
 
-// logManualFeedbackFromAdd parses expenseString and appends a manual feedback entry.
-// Non-fatal at every step: any failure silently skips logging.
-func logManualFeedbackFromAdd(expenseString string) {
-	// Load config; skip logging if unavailable
+// AddOutput represents the structured output of an add --dry-run command.
+type AddOutput struct {
+	Item        string `json:"item"`
+	Value       float64 `json:"value"`
+	Date        string `json:"date"`
+	Subcategory string `json:"subcategory"`
+	Category    string `json:"category"`
+	Action      string `json:"action"`
+}
+
+func runAddDryRun(cmd *cobra.Command, item, date string, value float64, subcategory, category string) error {
+	jsonMode, _ := cmd.Flags().GetBool("json")
+
+	if jsonMode {
+		return printJSON(AddOutput{
+			Item:        item,
+			Value:       value,
+			Date:        date,
+			Subcategory: subcategory,
+			Category:    category,
+			Action:      "would_insert",
+		})
+	}
+
+	fmt.Printf("Dry run — would insert:\n")
+	fmt.Printf("  Item:        %s\n", item)
+	fmt.Printf("  Date:        %s\n", date)
+	fmt.Printf("  Value:       %.2f\n", value)
+	fmt.Printf("  Subcategory: %s\n", subcategory)
+	if category != "" {
+		fmt.Printf("  Category:    %s\n", category)
+	}
+	return nil
+}
+
+// logParsedManualFeedback appends feedback and expense log entries using pre-parsed values.
+// Non-fatal: any failure silently skips logging.
+func logParsedManualFeedback(item, date string, value float64, subcategory, category string) {
 	appCfg, err := config.Load()
 	if err != nil {
 		return
 	}
-
-	// Parse the expense string into its constituent parts
-	item, date, value, subcategory, ok := parseExpenseForFeedback(expenseString)
-	if !ok {
-		return
-	}
-
-	// Resolve parent category from taxonomy (best-effort; empty on failure)
-	category := resolveCategoryFromTaxonomy(subcategory, "data/classification")
-
 	logManualFeedback(appCfg, item, date, value, subcategory, category)
 	logExpense(appCfg, item, date, value, subcategory, category)
 }

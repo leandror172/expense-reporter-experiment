@@ -83,6 +83,39 @@ func runAuto(cmd *cobra.Command, args []string) error {
 
 	top := results[0]
 
+	// JSON mode: read-only — classify and return recommendation, never insert.
+	if outputJSON {
+		topCandidate := &CandidateOutput{
+			Subcategory: top.Subcategory,
+			Category:    top.Category,
+			Confidence:  top.Confidence,
+		}
+
+		var action, message string
+		if classifier.IsAutoInsertable(top, highConfidenceThreshold, appCfg.AutoInsertExcluded) {
+			action = "would_insert"
+			message = fmt.Sprintf("%s → %s (%s) — %.0f%% confidence, ready to insert",
+				item, top.Subcategory, top.Category, top.Confidence*100)
+		} else if top.Confidence >= highConfidenceThreshold {
+			action = "excluded"
+			message = fmt.Sprintf("%q is excluded from auto-insert", top.Subcategory)
+		} else {
+			action = "review"
+			message = fmt.Sprintf("top confidence %.0f%% is below threshold %.0f%%",
+				top.Confidence*100, highConfidenceThreshold*100)
+		}
+
+		return printJSON(AutoOutput{
+			Item:       item,
+			Value:      value,
+			Date:       date,
+			Action:     action,
+			Result:     topCandidate,
+			Candidates: toCandidates(results),
+			Message:    message,
+		})
+	}
+
 	if classifier.IsAutoInsertable(top, highConfidenceThreshold, appCfg.AutoInsertExcluded) {
 		if autoConfirm {
 			fmt.Printf("Top match: %s (%s) — %.0f%% confidence\n", top.Subcategory, top.Category, top.Confidence*100)

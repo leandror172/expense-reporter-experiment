@@ -47,16 +47,13 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 10 (2026-03-18) — 5.7 complete
-  - Keyword-matched few-shot injection into Ollama prompts implemented (all 6 phases)
-  - New: `internal/classifier/examples.go` (SelectExamples, KeywordIndex, tokenization)
-  - New: `internal/classifier/loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools)
-  - Modified: `classifier.go` buildRequest injects user/assistant example pairs; Classify orchestrates loading
-  - Config: added `DataDir` + `FeedbackPath` fields; wired in classify/auto/batch-auto commands
-  - Tests: 30+ new unit tests (testify); 3 new acceptance scenarios in `test/fewshot_test.go`
-  - Graceful degradation: missing training data / feedback file → nil, nil (no error)
-- **Branch:** `feature/5.7-few-shot-injection` (implementation complete, not yet merged)
-- **Next:** 5.8 — MCP thin wrapper in LLM repo (`classify_expense` / `add_expense` / `auto_add`)
+- **Last checkpoint:** Session 13 (2026-03-27) — 5.8b complete + data-dir fix
+  - `mcp-server/` Python project: `binary.py` + `server.py` (classify_expense, add_expense)
+  - `add --dry-run` flag + `AddOutput` struct; `add --data-dir` flag (fixes MCP taxonomy lookup)
+  - MCP server registered and smoke-tested live; both tools confirmed working
+  - Open PRs: #11 (5.8a), #12 (5.8b-prep), #13 (5.8b), #14 (5.8b-add-data-dir)
+- **Branch:** `feature/5.8b-add-data-dir` (all committed and pushed)
+- **Next:** Merge PR chain to master; then 5.R1 TF-IDF retrieval or T1 resume context loading
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -81,7 +78,8 @@ Or manually:
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
-- **MCP thin wrapper in LLM repo** — 3 tools: `classify_expense`, `add_expense`, `auto_add`; calls Go binary as subprocess
+- **MCP thin wrapper in this repo** (`mcp-server/`) — 2 tools: `classify_expense` (→ `auto --json`), `add_expense` (→ `add --json`); calls Go binary as subprocess; registered with Claude Code
+- **5.8 split:** 5.8a = Go `--json` flag (done); 5.8b = Python MCP server (done)
 - **Training data strategy:** hybrid — feature dictionary as system context + top-K few-shot examples per request
 - **Structured output:** Ollama `format` param (proven reliable in LLM infra work)
 

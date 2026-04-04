@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"expense-reporter/test/actions"
@@ -22,10 +23,7 @@ func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 		Name:  "classify with training data logs few-shot injection under --verbose",
 		Given: classifierWithDataDir(),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputContains("few-shot", "--verbose should show few-shot debug line"),
-		},
+		Then: thenFewShotLineVisible(),
 	})
 }
 
@@ -39,11 +37,10 @@ func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
 		Name:  "classify without training data degrades gracefully — no error, few-shot count 0",
 		Given: classifierWithKeywordsOnly(),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputContains("few-shot", "few-shot line should still appear when training data absent"),
-			verify.OutputNotContains("training", "no error about missing training file should appear"),
-		},
+		Then: slices.Concat(
+			thenFewShotLineVisible(),
+			thenNoTrainingErrorShown(),
+		),
 	})
 }
 
@@ -58,14 +55,7 @@ func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
 		Name:  "batch-auto with few-shot still produces classified and review CSV files",
 		Given: mixedExpensesReadyForDryRun(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then: []func(*harness.Context){
-			verify.CommandSucceeded(),
-			verify.OutputFileExists("classified.csv"),
-			verify.OutputFileExists("review.csv"),
-			verify.OutputFileHasAtLeastRows("classified.csv", 1),
-			verify.OutputFileHasColumns("classified.csv", 7),
-			verify.AllClassificationScoresValid("classified.csv"),
-		},
+		Then: classifiedAndReviewFilesProduced(),
 	})
 }
 
@@ -95,6 +85,25 @@ func classifierWithKeywordsOnly() func(*harness.Context) {
 		}
 		// Intentionally omit training_data_complete.json.
 		ctx.DataDir = tmpDir
+	}
+}
+
+// --- Then helpers ---
+
+// thenFewShotLineVisible asserts the command succeeded and --verbose shows few-shot injection.
+func thenFewShotLineVisible() []func(*harness.Context) {
+	return slices.Concat(
+		commandSucceeded(),
+		[]func(*harness.Context){
+			verify.OutputContains("few-shot", "few-shot debug line should appear in --verbose output"),
+		},
+	)
+}
+
+// thenNoTrainingErrorShown asserts no error about missing training data appears in output.
+func thenNoTrainingErrorShown() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputNotContains("training", "no error about missing training file should appear"),
 	}
 }
 

@@ -1,473 +1,298 @@
 # Expense Reporter
 
-CLI tool for automating expense entry into Excel budget spreadsheet.
+Go CLI that automates personal expense management — reads bank statement exports,
+classifies them using local LLMs, and inserts entries into an Excel budget workbook.
 
-## Status: Production Ready ✅
+## Overview
 
-**Current Version**: 2.1.0 with Hierarchical Paths
-**Total Tests**: 190+ tests (all passing)
-**Development Phases**: 11 phases complete
+Built for Brazilian personal finance: DD/MM/YYYY dates, comma decimal separators
+(`1.234,56`), BRL currency, and a hierarchical category taxonomy (Category → Subcategory).
 
-## Features
+Classification runs entirely on local Ollama models — no cloud API calls, keeping
+financial data private.
 
-### ✅ Single Expense Entry
-Add individual expenses quickly:
+**Current version:** 2.1.0  
+**Tests:** 190+ unit tests, 8 acceptance test fixtures  
+**Go version:** 1.25.5
+
+## Commands
+
+### `add` — Insert a single expense
+
 ```bash
 expense-reporter add "Uber Centro;15/04;35,50;Uber/Taxi"
+# ✓ Expense added successfully!
 ```
 
-### ✅ Batch Import (CSV)
-Import multiple expenses from a CSV file:
+The expense string format is `<item>;<DD/MM>;<value>;<subcategory>`.
+Values use Brazilian format (`35,50` = thirty-five reais and fifty centavos).
+Installment notation is supported: `300,00/3` divides into 3 monthly payments.
+
+Flags:
+- `--dry-run` — validate and parse without inserting
+- `--data-dir` — path to classification data (for category resolution)
+- `--json` — structured JSON output
+
+### `classify` — Classify an expense (read-only)
+
+```bash
+expense-reporter classify "Uber Centro" 35,50 15/04
+#   1. Uber/Taxi           Transporte     ████████████████ 95%
+#   2. 99/Taxi             Transporte     ████████         52%
+#   3. Combustível         Transporte     ████             28%
+```
+
+Sends the expense to a local Ollama model and returns ranked subcategory candidates
+with confidence scores. Does not insert anything.
+
+Flags:
+- `--model` — Ollama model override (default: `my-classifier-q3`)
+- `--data-dir` — path to classification data directory
+- `--json` — structured JSON output
+
+### `auto` — Classify and auto-insert if confident
+
+```bash
+expense-reporter auto "Uber Centro" 35,50 15/04
+# ✓ Inserted: Uber Centro → Uber/Taxi (Transporte) — 95% confidence
+```
+
+Classifies the expense, then:
+- **Confidence ≥ 85%** and subcategory not excluded → auto-inserts into workbook
+- **Confidence < 85%** → prints candidates for manual review, does not insert
+- **Excluded subcategory** (e.g., "Diversos") → prints warning, does not insert
+
+Flags:
+- `--confirm` — always ask for confirmation before inserting
+- `--model`, `--data-dir`, `--json` — same as `classify`
+
+In JSON mode, `auto` is read-only — it returns a recommendation
+(`would_insert` / `review` / `excluded`) without inserting.
+
+### `batch` — Bulk manual import from CSV
+
 ```bash
 expense-reporter batch expenses.csv --backup --report=import_report.txt
 ```
 
-### ✅ Installment Payments
-Automatically expand installment payments across multiple months:
+Imports multiple expenses from a semicolon-delimited CSV file.
+Each row must include a known subcategory (no classification involved).
+
+Flags:
+- `--backup` — create timestamped backup before processing
+- `--report` — report output path (default: `batch_report.txt`)
+- `--silent` — suppress progress bar
+
+### `batch-auto` — Classify and auto-insert a CSV batch
+
 ```bash
-# Input: 300,00 divided into 3 monthly installments
-Compra parcelada;20/02;300,00/3;mercado
-
-# Creates 3 expenses automatically:
-# Feb 20: "Compra parcelada (1/3)" - 100,00
-# Mar 20: "Compra parcelada (2/3)" - 100,00
-# Apr 20: "Compra parcelada (3/3)" - 100,00
+expense-reporter batch-auto expenses.csv
+expense-reporter batch-auto expenses.csv --dry-run --output-dir /tmp/out
 ```
 
-**Features:**
-- Automatic division of total amount by installment count
-- Monthly date progression (same day, next month)
-- Formatted item descriptions with "(N/M)" suffix
-- Year rollover detection (installments crossing into next year saved to separate file)
-- Partial success handling (some installments succeed, others fail capacity)
+Reads a 3-field CSV (`item;DD/MM;value`), classifies each row via Ollama,
+and auto-inserts rows exceeding the confidence threshold.
 
-### ✅ Smart Subcategory Matching
-Automatically handles variations:
-- "Orion - Consultas" → "Orion" (parent matching)
-- Detects ambiguous subcategories across multiple sheets
+Output files:
+- `classified.csv` — all rows with classification results
+- `review.csv` — rows not auto-inserted (low confidence or excluded)
+- `rollover.csv` — installment rows crossing into next year
 
-### ✅ Hierarchical Subcategory Paths
-When a subcategory exists in multiple sheets, use hierarchical paths to disambiguate:
+Flags:
+- `--dry-run` — classify only, skip workbook insertion
+- `--threshold` — confidence threshold (default: 0.85)
+- `--model`, `--data-dir`, `--output-dir`, `--top`
 
-**Formats:**
-- Full path: `Fixas,Habitação,Diarista`
-- 2-level: `Habitação,Diarista`
-- 1-level: `Diarista` (may be ambiguous)
+### `version` — Print version
 
-**Examples:**
-```csv
-# Ambiguous - will fail with helpful error
-Cleaning service;15/04;150,00;Diarista
-
-# Disambiguated with 2-level path
-Cleaning service;15/04;150,00;Habitação,Diarista
-
-# Disambiguated with 3-level path
-Cleaning service;15/04;150,00;Fixas,Habitação,Diarista
-```
-
-**Features:**
-- **Case-insensitive**: `FIXAS,habitação,Diarista` works
-- **Spaces allowed**: `Fixas , Habitação , Diarista` works
-- **Progressive resolution**: System tries shortest path first
-- **Backward compatible**: Existing single-name subcategories still work
-
-**How It Works:**
-The resolver tries to match from deepest level first:
-1. Try just "Diarista"
-2. If ambiguous, try "Habitação,Diarista"
-3. If still ambiguous, try "Fixas,Habitação,Diarista"
-
-Stops at first unambiguous match.
-
-**Ambiguous Subcategories:**
-When batch import encounters ambiguous subcategories, it creates an `ambiguous_expenses.csv` file with path suggestions:
-```csv
-# Ambiguous expenses - choose correct path and re-import
-# Replace the subcategory with the full hierarchical path
-# Format: Sheet,Category,Subcategory OR Category,Subcategory
-
-Cleaning service;15/04;150,00;Diarista
-# Path options:
-#   Fixas,Habitação,Diarista
-#   Variáveis,Casa,Diarista
-```
-
-Edit the subcategory in the expense line to the correct path and re-import.
-
-### ✅ Professional CLI
-- Cobra framework (kubectl/docker pattern)
-- Built-in help and command structure
-- Global and command-specific flags
-- Environment variable support
-
-### ✅ Robust Error Handling
-- Clear error messages
-- Ambiguous subcategory detection
-- Continue-on-error batch processing
-- Detailed error reporting
-
-## Installation
-
-### Prerequisites
-- Go 1.21+
-- Excel workbook with proper structure (see documentation)
-
-### Build
 ```bash
-git clone <repository>
-cd expense-reporter
-go build -o expense-reporter.exe ./cmd/expense-reporter
+expense-reporter version
+# expense-reporter version 2.1.0
 ```
 
-### Install to PATH
-```bash
-go install ./cmd/expense-reporter
-```
+## Classification System
 
-## Quick Start
+The classifier uses local Ollama models with a three-layer retrieval cascade
+for few-shot example selection:
 
-### 1. Set Workbook Path
-```bash
-# Option 1: Environment variable
-export EXPENSE_WORKBOOK_PATH="/path/to/your/workbook.xlsx"
+1. **Keyword layer** (implemented) — tokenizes the expense description, looks up tokens
+   in a feature dictionary with specificity scores, selects training examples from
+   the most relevant subcategories
+2. **TF-IDF layer** (planned) — corpus-level term frequency for better retrieval
+3. **Embedding layer** (deferred) — vector similarity for semantic matching
 
-# Option 2: Global flag
-expense-reporter --workbook="/path/to/workbook.xlsx" ...
-```
+### How it works
 
-### 2. Add Single Expense
-```bash
-expense-reporter add "Pão francês;22/12;8,50;Padaria"
-# ✓ Expense added successfully!
-```
+1. Load taxonomy from `feature_dictionary_enhanced.json` (subcategory → category mapping)
+2. Select up to 5 few-shot examples via keyword matching
+3. Build prompt: system instruction + taxonomy + few-shot pairs + user query
+4. Send to Ollama with structured output (JSON schema in `format` param)
+5. Parse response, apply confidence threshold and exclusion list
+6. Insert or present for review
 
-### 3. Import from CSV
-```bash
-# Create CSV file (expenses.csv):
-# Uber Centro;15/04;35,50;Uber/Taxi
-# Compras Carrefour;03/01;150,00;Supermercado
-# Pão francês;22/12;8,50;Padaria
+### Feedback loop
 
-expense-reporter batch expenses.csv
-```
+Two JSONL files persist classification results:
+- `classifications.jsonl` — full classification context (predicted vs actual, model, status)
+- `expenses_log.jsonl` — slim insert log (item, date, value, subcategory, category)
+
+Confirmed and corrected entries are loaded back as few-shot examples, so classification
+accuracy improves with use. Corrected examples get highest priority in selection.
+
+## MCP Server
+
+`mcp-server/` contains a Python MCP server that wraps the Go binary for integration
+with Claude Code and other MCP clients. See [mcp-server/](../mcp-server/) for details.
+
+Two tools:
+- `classify_expense` — calls `auto --json` (read-only, returns recommendation)
+- `add_expense` — calls `add --json` (inserts into workbook)
 
 ## Input Format
 
-### Expense String Format
-```
-<item_description>;<DD/MM>;<value_##,##>;<subcategory>
-```
+### Expense string
 
-**Fields:**
-- `item_description`: Free text (no semicolons)
-- `DD/MM`: Day and month (year is always 2025)
-- `value_##,##`: Value with comma as decimal separator (Brazilian format)
-  - **Regular**: `150,00` (single payment)
-  - **Installment**: `300,00/3` (total divided by installment count)
-- `subcategory`: Must match subcategory in Excel reference sheet
-
-**Examples:**
 ```
-Uber para o centro;15/04;35,50;Uber/Taxi
-Compra Pão de Açúcar;03/01;245,67;Supermercado
-Consulta vet;22/03;180,00;Orion - Consultas
-
-# Installment payments
-Cartão de crédito;01/01;1200,00/12;crédito
-Compra parcelada;20/02;300,00/3;mercado
+<item>;<DD/MM>;<value>;<subcategory>
 ```
 
-### CSV File Format
+- **Item:** free text (no semicolons)
+- **Date:** DD/MM (year from `config.json`, default 2025)
+- **Value:** Brazilian format — `150,00` for single payment, `300,00/3` for installments
+- **Subcategory:** must exist in the Excel reference sheet
+
+### CSV format
+
+Semicolon-delimited. Lines starting with `#` are comments.
+
+For `batch` (4 fields):
 ```csv
-# Comments start with #
-# Empty lines are ignored
-
-# Transportation
 Uber Centro;15/04;35,50;Uber/Taxi
-Combustível posto;10/04;250,00;Combustível
-
-# Groceries
 Compras Carrefour;03/01;150,00;Supermercado
-Feira orgânica;05/01;80,00;Feira
 ```
 
-## Commands
-
-### Add Single Expense
-```bash
-expense-reporter add "<expense_string>"
-
-# Examples:
-expense-reporter add "Uber;15/04;35,50;Uber/Taxi"
-expense-reporter add "Pão;22/12;8,50;Padaria"
-```
-
-### Batch Import
-```bash
-expense-reporter batch <csv_file> [flags]
-
-Flags:
-  --backup          Create timestamped backup before processing
-  --report string   Report output path (default "batch_report.txt")
-  --silent          Suppress progress bar output
-
-# Examples:
-expense-reporter batch expenses.csv
-expense-reporter batch expenses.csv --backup
-expense-reporter batch expenses.csv --silent --report=""
-```
-
-### Help
-```bash
-expense-reporter --help              # Show all commands
-expense-reporter add --help          # Help for add command
-expense-reporter batch --help        # Help for batch command
-```
-
-### Version
-```bash
-expense-reporter version
-# Output: expense-reporter version 1.0.0
-```
-
-## Batch Import Features
-
-### Progress Bar
-Real-time visual feedback during batch processing:
-```
-Processing 15 expenses...
-[████████████████████████████████] 15/15 (100%)
-```
-
-### Detailed Report
-Generates comprehensive report with:
-- Summary statistics (success/error/ambiguous counts)
-- List of successful insertions
-- Detailed error messages
-- Ambiguous entries with sheet options
-
-### Ambiguous Handling
-When a subcategory appears in multiple sheets:
-1. Skips insertion (doesn't guess)
-2. Saves to `ambiguous_expenses.csv` with sheet options
-3. User reviews and chooses correct sheet
-4. Re-import after editing
-
-### Backup Creation
-Optional timestamped backup:
-```bash
-expense-reporter batch expenses.csv --backup
-# Creates: workbook_backup_20250415_143022.xlsx
-```
-
-### Installment Expansion
-Automatically expands installment payments into individual monthly expenses:
-
-**Input CSV:**
+For `batch-auto` (3 fields — subcategory is classified):
 ```csv
-Compra parcelada;20/02;300,00/3;mercado
-Cartão anual;01/01;1200,00/12;crédito
+Uber Centro;15/04;35,50
+Compras Carrefour;03/01;150,00
 ```
 
-**Result:**
-- First expense creates 3 entries (Feb 20, Mar 20, Apr 20), each 100,00
-- Second expense creates 12 entries (Jan-Dec), each 100,00
-- Item descriptions automatically formatted: "Compra parcelada (1/3)", "Compra parcelada (2/3)", etc.
+### Hierarchical subcategory paths
 
-**Year Rollover Handling:**
-If installments extend into next year, they're saved to `expenses_rollover_YYYYMMDD_HHMMSS.csv`:
-```csv
-# Example: November expense with 3 installments
-Compra fim de ano;20/11;600,00/3;mercado
-
-# Nov and Dec installed this year
-# Jan installment saved to rollover file for import next year
+When a subcategory appears in multiple sheets, disambiguate with paths:
 ```
+Diarista                      # may be ambiguous
+Habitação,Diarista            # 2-level path
+Fixas,Habitação,Diarista      # full path
+```
+
+Resolution is progressive — tries the shortest path first, adds levels if ambiguous.
+
+## Installment Payments
+
+Input `300,00/3` produces 3 monthly entries of `100,00` each:
+```
+Compra parcelada (1/3) — Feb 20 — 100,00
+Compra parcelada (2/3) — Mar 20 — 100,00
+Compra parcelada (3/3) — Apr 20 — 100,00
+```
+
+Installments crossing into the next year are written to a separate rollover file.
 
 ## Project Structure
 
 ```
-expense-reporter/
-├── cmd/
-│   └── expense-reporter/
-│       ├── main.go                 # CLI entry point (7 lines)
-│       ├── main_test.go            # Main tests
-│       └── cmd/
-│           ├── root.go             # Root command & global flags
-│           ├── add.go              # Single expense command
-│           ├── batch.go            # Batch import command
-│           ├── version.go          # Version command
-│           └── *_test.go           # Command tests
-├── internal/
-│   ├── batch/                      # Batch import package
-│   │   ├── models.go               # Batch data structures
-│   │   ├── csv_reader.go           # CSV file reading
-│   │   ├── processor.go            # Batch processing logic
-│   │   ├── progress.go             # Progress bar wrapper
-│   │   ├── report.go               # Report generation
-│   │   ├── backup.go               # Backup creation
-│   │   ├── ambiguous_writer.go     # Ambiguous CSV writer
-│   │   ├── rollover_writer.go      # Rollover installments writer
-│   │   └── *_test.go               # 23 test functions
-│   ├── cli/                        # CLI interface utilities
-│   ├── excel/                      # Excel operations
-│   │   ├── columns.go              # Month column mapping
-│   │   ├── reader.go               # Reference sheet reader
-│   │   ├── writer.go               # Excel writing with formatting
-│   │   └── *_test.go               # Excel tests
-│   ├── models/                     # Data models
-│   │   ├── expense.go              # Expense, SheetLocation, Installment
-│   │   └── expense_test.go         # Model tests
-│   ├── parser/                     # Expense string parser
-│   │   ├── parser.go
-│   │   └── parser_test.go
-│   ├── resolver/                   # Subcategory resolver
-│   │   ├── resolver.go             # Smart matching logic
-│   │   └── resolver_test.go
-│   └── workflow/                   # End-to-end workflow
-│       ├── workflow.go             # Complete insertion logic
-│       └── workflow_test.go
-└── pkg/
-    └── utils/                      # Utility functions
-        ├── date.go                 # Date parsing (DD/MM)
-        ├── currency.go             # Currency parsing (##,## and ##,##/N)
-        └── *_test.go               # Utility tests
+cmd/expense-reporter/
+  main.go                  # Entry point
+  cmd/                     # Cobra subcommands: add, auto, batch, batch-auto,
+                           #   classify, version, root, output
+internal/
+  batch/                   # CSV reading, installment expansion, progress, reports
+  classifier/              # LLM classification — Ollama client, few-shot selection,
+                           #   decision logic, training data loaders
+  cli/                     # CLI formatting (confidence bars)
+  config/                  # config.json loader
+  excel/                   # Excelize wrapper — reference sheet, column mapping, writer
+  feedback/                # JSONL persistence (classifications + expense log)
+  logger/                  # Debug logging
+  models/                  # Domain types: Expense, BatchError, ClassifiedExpense
+  parser/                  # Semicolon-delimited expense string parser
+  resolver/                # Fuzzy subcategory matching against reference sheet
+  workflow/                # Orchestration: parse → resolve → expand → insert pipeline
+pkg/utils/                 # Currency parsing, date formatting, string building
+config/config.json         # Runtime config (workbook path, exclusion list, log paths)
+test/                      # Acceptance test suite (BDD harness, live Ollama)
 ```
 
-## Development Phases
+## Configuration
 
-### Original Implementation (Phases 1-4)
-1. **Phase 1**: Foundation - Parser, models, utils (50 tests)
-2. **Phase 2**: Excel Integration - Resolver, reader (85 tests)
-3. **Phase 3**: Business Logic - Writer, workflow (95 tests)
-4. **Phase 4**: CLI Interface - Cobra migration (131 tests)
+`config/config.json`:
+```json
+{
+  "workbook_path": "../workbook.xlsx",
+  "reference_sheet": "Referência de Categorias",
+  "date_year": 2025,
+  "auto_insert_excluded": ["Diversos"],
+  "classifications_path": "classifications.jsonl",
+  "expenses_log_path": "expenses_log.jsonl"
+}
+```
 
-### Batch Import Feature (Phases 5-9)
-5. **Batch Phase 1**: Cobra Framework - Professional CLI (132 tests)
-6. **Batch Phase 2**: CSV + Ambiguous - Reader and handlers (151 tests)
-7. **Batch Phase 3**: Processor + Progress - Core batch logic (166 tests)
-8. **Batch Phase 4**: Report + Backup - Output and safety (175 tests)
-9. **Batch Phase 5**: CLI Integration - Complete feature (179 tests)
+Workbook path resolution: `--workbook` flag → `EXPENSE_WORKBOOK_PATH` env → config default.
 
-### Installment Payment Feature (Phase 10)
-10. **Installment Support**: Automatic payment expansion (179+ tests)
-    - Extended currency parser to handle division syntax (`300,00/3`)
-    - Added `Installment` model with total, count, and current tracking
-    - Implemented installment expansion in workflow (one input → multiple expenses)
-    - Created rollover file writer for next-year installments
-    - Updated Excel writer to use formatted item descriptions
-    - Comprehensive error aggregation for partial failures
-    - Date arithmetic with month overflow handling
+## Testing
+
+### Unit tests
+
+```bash
+cd expense-reporter && go test ./...    # 190+ tests, ~50s
+cd expense-reporter && go vet ./...     # lint
+```
+
+Table-driven tests using [testify](https://github.com/stretchr/testify) (`assert`/`require`).
+
+### Acceptance tests
+
+File-driven BDD harness in `test/` with build tag `//go:build acceptance`.
+Requires a live Ollama instance.
+
+```bash
+cd expense-reporter && ./run-acceptance.sh
+```
+
+8 fixture directories: classify-basic, auto-basic, batch-auto-basic, batch-auto-exclusions,
+batch-auto-feedback, batch-auto-installments, batch-auto-rollover, add-feedback.
+
+Soft accuracy assertions track classification drift across model/prompt updates
+without requiring exact reproducibility.
 
 ## Dependencies
 
 ```go
 require (
-    github.com/xuri/excelize/v2 v2.10.0          // Excel operations
-    github.com/spf13/cobra v1.10.2                // CLI framework
+    github.com/spf13/cobra v1.10.2               // CLI framework
+    github.com/xuri/excelize/v2 v2.10.0           // Excel operations
     github.com/schollz/progressbar/v3 v3.18.0     // Progress bar
+    github.com/stretchr/testify v1.11.1            // Test assertions
 )
 ```
 
-## Testing
+**Runtime:** [Ollama](https://ollama.com/) for local LLM classification
+(required for `classify`, `auto`, `batch-auto` commands).
 
-### Run All Tests
-```bash
-go test ./...
-# ok  	expense-reporter/cmd/expense-reporter	0.310s
-# ok  	expense-reporter/internal/batch	      1.318s
-# ok  	expense-reporter/internal/excel	      0.535s
-# ... (all passing)
-```
+## Development History
 
-### Run Specific Package
-```bash
-go test ./internal/batch/... -v      # Batch tests
-go test ./internal/parser/... -v     # Parser tests
-go test ./cmd/expense-reporter -v    # Main tests
-```
-
-### Test Coverage
-```bash
-go test ./... -cover
-# Total: 179 tests across 50 test functions
-```
-
-## TDD Methodology
-
-This project strictly follows Test-Driven Development:
-
-1. **RED**: Write failing tests first
-2. **GREEN**: Implement minimum code to pass
-3. **REFACTOR**: Improve while keeping tests green
-
-**Quality Standards:**
-- ✅ No tautological tests (user's hard rule)
-- ✅ Tests verify behavior, not field assignments
-- ✅ Comprehensive edge case coverage
-- ✅ Integration tests with real scenarios
-- ✅ Table-driven test patterns
-
-## Documentation
-
-- **README.md** - This file (quick start & reference)
-- **PHASE1_COMPLETE.md** - Foundation phase details
-- **PHASE2_COMPLETE.md** - Excel integration details
-- **PHASE3_COMPLETE.md** - Business logic details
-- **PHASE4_COMPLETE.md** - CLI interface details
-- **BATCH_IMPORT_COMPLETE.md** - Batch feature complete documentation
-- **PROJECT_COMPLETE.md** - Full project summary
-
-## Known Limitations
-
-1. **Year Hardcoded**: Always uses 2025 (per specification)
-2. **Brazilian Format**: Uses comma as decimal separator
-3. **Sequential Processing**: Not parallel (Excel file locking)
-4. **Windows Tested**: Primarily tested on Windows
-5. **Installment Syntax**: Only division format supported (`300,00/3`), multiplication format (`100,00x3`) reserved for future
-
-## Troubleshooting
-
-### "Workbook not found"
-```bash
-# Check path is correct
-export EXPENSE_WORKBOOK_PATH="/full/path/to/workbook.xlsx"
-
-# Or use flag
-expense-reporter --workbook="/path/to/workbook.xlsx" add "..."
-```
-
-### "Subcategory not found"
-Check Excel reference sheet - subcategory must exist exactly as entered.
-Use parent matching: "Orion - Consultas" will match "Orion"
-
-### "Ambiguous subcategory"
-Subcategory appears in multiple sheets. Use batch import to generate options list,
-or check reference sheet to see which sheets contain the subcategory.
-
-### Batch Import Errors
-Check `batch_report.txt` for detailed error list with line numbers.
-
-## Contributing
-
-This is a personal project but improvements are welcome:
-1. Maintain TDD approach
-2. Follow existing code patterns
-3. No tautological tests
-4. Update documentation
+**Phases 1–4:** Foundation — parser, models, Excel integration, Cobra CLI (131 tests)  
+**Phases 5–9:** Batch import — CSV reader, processor, progress, reports, ambiguous handling (179 tests)  
+**Phase 10:** Installment payments — expansion, rollover, partial failure handling  
+**Phase 11:** Hierarchical subcategory paths — disambiguation for multi-sheet subcategories  
+**Layer 5.2:** LLM classifier — Ollama integration, structured output, confidence scoring  
+**Layer 5.3:** Decision logic — threshold + exclusion list for auto-insert  
+**Layer 5.4–5.5:** Auto/batch-auto commands — single and batch classification workflows  
+**Layer 5.6:** Feedback persistence — classifications.jsonl + expenses_log.jsonl  
+**Layer 5.7:** Few-shot injection — keyword-based example selection from training + feedback data  
+**Layer 5.8:** JSON output + MCP server — machine-readable output, Python MCP wrapper
 
 ## License
 
 Personal use project.
-
-## Author
-
-Built with Test-Driven Development following strict quality standards.
-
----
-
-**Status**: ✅ Production Ready
-**Tests**: 179+ passing
-**Quality**: High (TDD, comprehensive coverage)
-**Version**: 2.0.0

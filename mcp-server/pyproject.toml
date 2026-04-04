@@ -1,0 +1,21 @@
+[project]
+name = "expense-mcp"
+version = "0.1.0"
+description = "MCP server wrapping expense-reporter Go binary for Claude Code integration"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.2,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
