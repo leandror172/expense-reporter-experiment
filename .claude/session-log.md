@@ -1,7 +1,43 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-04-20 — Session 14: Feedback System Documentation & CSV Reconstruction Tool
+
+### Context
+Resumed on master branch. User extracted 1601 expense entries from large JSON file (ChatExport), hit batch-auto bug during classification workflow, then pivoted to understanding feedback system architecture and creating tooling to recover from such failures.
+
+### What Was Done
+- **Bug investigation & reporting** — batch-auto failed to write CSV output files when workbook insertion failed; loss of all classification work; logged to `BUG_REPORT.md`
+- **Feedback system research** — discovered and documented that system CAN read `status=corrected` entries but nothing writes them (critical missing feature for learning loop)
+- **Comprehensive documentation** (`docs/FEEDBACK_SYSTEM.md`):
+  - 6 REF blocks: entry structure, command flows (add/auto/batch-auto), training integration, missing correction feature, file paths, cold-start behavior
+  - Indexed in `.claude/index.md` for future reference via `ref-lookup.sh`
+- **CSV reconstruction tool** (`.claude/tools/reconstruct-csvs.py`):
+  - Parses batch-auto logs + original CSV (line-matched indexing)
+  - Reconstructs `classified.csv` and `review.csv` from 373-line run (326 auto-inserted, 23 review, 24 skipped)
+  - Efficient non-I/O approach (no reading full files into memory)
+- **Personal memory** — saved feedback system findings to user memory for cross-session reference
+- **Commits** — `docs: add feedback system architecture documentation` (22cdd33) on new branch `docs/feedback-system-csv-reconstruction`
+
+### Decisions Made
+- **Document findings instead of implementing** — feedback system is complex and worth understanding before adding features; created searchable reference for future work
+- **Script-based recovery** — better to provide reconstruction tool than auto-save via side effects
+- **REF-based documentation** — organized by concept (entry structure, flows, training, gaps) not by file
+
+### What's Staged
+- `.claude/tools/reconstruct-csvs.py` — CSV reconstruction from logs
+- `docs/FEEDBACK_SYSTEM.md` — Feedback system architecture docs
+- `.claude/index.md` — Updated tools table + feedback section
+- `BUG_REPORT.md` — Bug report for workbook insertion failure
+
+### Next
+- Create PR for this branch (docs/feedback-system-csv-reconstruction → master)
+- Possible future work: implement `NewCorrectedEntry()` + `correct` command to enable feedback loop closure
+- Consider 5.R1 TF-IDF retrieval or surface-level feedback in review flow
 
 ---
 
@@ -95,38 +131,6 @@ Resumed immediately after Session 10 (planning session). Plan at `.claude/plans/
 ### Next
 - [ ] **Merge `feature/5.7-few-shot-injection`** to master (PR open)
 - [ ] **Start 5.8** — MCP thin wrapper in LLM repo (`/mnt/i/workspaces/llm/`): 3 tools `classify_expense`, `add_expense`, `auto_add` calling Go binary as subprocess
-
----
-
-## 2026-03-18 — Session 10: 5.7 planning — few-shot injection
-
-### Context
-First session after 5.6 merge. Recontextualized via `resume.sh`. Entire session was design/planning for 5.7 — no implementation code written.
-
-### What Was Done
-- **Retrieval strategy analysis** — explored current classifier flow, token budget, data sources, and designed a 3-layer cascade pipeline (keywords → TF-IDF → embeddings)
-- **3 reference documents created** (committed to master):
-  - `data/classification/retrieval-strategy.md` — high-level pipeline, token budget (~462 baseline, ~20/example), data source merge strategy
-  - `data/classification/tfidf-retrieval.md` — TF-IDF findings: existing IDF weights in feature dict, 229-dim vectors, Go implementation approach
-  - `data/classification/embedding-retrieval.md` — Ollama `/api/embeddings` API, vector store sizing, multilingual considerations, decision criteria
-- **5 deferred tasks** added to `tasks.md` (5.R1–5.R5): TF-IDF layer, embedding layer, value-range plausibility, historical workbook extraction, correction-weighted selection
-- **8 BDD acceptance test scenarios** designed for `fewshot_test.go`
-- **Implementation plan** written at `.claude/plans/5.7-few-shot-injection.md` — 6 phases: example selection engine, data loading, prompt construction, acceptance tests, existing test verification, doc updates
-- **Convention change:** unit tests now use testify (assert/require) — saved to memory
-
-### Decisions Made
-- **Layered retrieval cascade** — keywords first (5.7), TF-IDF later (5.R1), embeddings last (5.R2); complementary layers, not replacements
-- **Both data sources** for examples: `training_data_complete.json` (694 static entries) + `classifications.jsonl` (runtime feedback, filtered `status != manual`)
-- **Few-shot as conversation turns** — user/assistant message pairs before the real query (not appended to system prompt)
-- **`--verbose` flag** for observability — existing flag, use `logger.Debug` for few-shot injection details; acceptance tests assert on this output
-- **No file-based prompt template** (for now) — keep `strings.Builder` pattern; consider `embed.FS` if iteration velocity increases
-- **Correction prioritization** — simple sort (corrected > training > confirmed), not weighted scoring; tested via acceptance (verbose output) + unit tests (selection algorithm)
-- **Testify for unit tests** — convention change from stdlib-only; don't retroactively convert existing tests
-- **Graceful degradation** — missing training data returns empty examples (not error); classifier falls back to taxonomy-only prompt
-
-### Next
-- [ ] **Execute 5.7 plan** on branch `feature/5.7-few-shot-injection` following `.claude/plans/5.7-few-shot-injection.md` — implementation intended for Sonnet model
-- [ ] Plan includes recontextualization instructions (resume.sh + read session-context.md)
 
 ---
 
