@@ -21,6 +21,15 @@ func CommandSucceeded() func(*harness.Context) {
 	}
 }
 
+// CommandFailed asserts the command exited with a non-zero code.
+func CommandFailed() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+		assert.NotZero(ctx.T, ctx.ExitCode,
+			"command should fail (non-zero exit)\nstdout: %s\nstderr: %s", ctx.Stdout, ctx.Stderr)
+	}
+}
+
 // OutputFileExists asserts the artifact key maps to an existing file.
 func OutputFileExists(artifactKey string) func(*harness.Context) {
 	return func(ctx *harness.Context) {

@@ -116,9 +116,10 @@ architectural reasoning across 3+ files simultaneously.
 
 **Local model tier list for Go codegen** (benchmark in progress — use in priority order):
 1. `my-go-qcoder` (qwen3-coder:30b, 32K ctx, agentic) — primary candidate, not yet benchmarked
-2. `my-go-q25c14` (qwen2.5-coder:14b) — current proven baseline, ~25-32s, ~800 token budget
-3. `my-go-q35-27b` (qwen3.5:27b) — benchmark candidate vs 14B baseline
-4. `my-go-q35` (qwen3.5:9b) — VRAM-only, fastest, for simple tasks
+2. `my-go-g3-12b` (gemma3:12b, 16K ctx) — second-line fallback
+3. `my-go-q25c14` (qwen2.5-coder:14b) — current proven baseline, ~25-32s, ~800 token budget
+4. `my-go-q35-27b` (qwen3.5:27b) — benchmark candidate vs 14B baseline
+5. `my-go-q35` (qwen3.5:9b) — VRAM-only, fastest, for simple tasks
 
 **Local model tier list for classification** (for `classify`/`auto` commands — same cascade rule: try next on REJECTED):
 1. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — primary; required for 5.7+ (few-shot injection)

@@ -138,6 +138,186 @@ func TestNewManualEntry(t *testing.T) {
 	}
 }
 
+func TestNewCorrectedEntry(t *testing.T) {
+	fixedTime := time.Date(2026, 3, 13, 14, 30, 0, 0, time.UTC)
+	orig := Now
+	Now = func() time.Time { return fixedTime }
+	defer func() { Now = orig }()
+
+	predicted := classifier.Result{
+		Subcategory: "Uber/Taxi",
+		Category:    "Transporte",
+		Confidence:  0.92,
+	}
+
+	e := NewCorrectedEntry("Uber Centro", "15/04/2025", 35.50, predicted, "my-classifier-q3", "Combustível", "Transporte")
+
+	if e.Status != StatusCorrected {
+		t.Errorf("Status = %q, want %q", e.Status, StatusCorrected)
+	}
+	if e.PredictedSubcategory != "Uber/Taxi" {
+		t.Errorf("PredictedSubcategory = %q, want Uber/Taxi", e.PredictedSubcategory)
+	}
+	if e.PredictedCategory != "Transporte" {
+		t.Errorf("PredictedCategory = %q, want Transporte", e.PredictedCategory)
+	}
+	if e.ActualSubcategory != "Combustível" {
+		t.Errorf("ActualSubcategory = %q, want Combustível", e.ActualSubcategory)
+	}
+	if e.ActualCategory != "Transporte" {
+		t.Errorf("ActualCategory = %q, want Transporte", e.ActualCategory)
+	}
+	if e.Confidence != 0.92 {
+		t.Errorf("Confidence = %f, want 0.92", e.Confidence)
+	}
+	if e.Model != "my-classifier-q3" {
+		t.Errorf("Model = %q, want my-classifier-q3", e.Model)
+	}
+	if !hexPattern.MatchString(e.ID) {
+		t.Errorf("ID %q is not 12-char hex", e.ID)
+	}
+	wantTS := "2026-03-13T14:30:00Z"
+	if e.Timestamp != wantTS {
+		t.Errorf("Timestamp = %q, want %q", e.Timestamp, wantTS)
+	}
+	if e.Item != "Uber Centro" {
+		t.Errorf("Item = %q, want Uber Centro", e.Item)
+	}
+}
+
+func TestFindLatestEntry(t *testing.T) {
+	tests := []struct {
+		name      string
+		setup     func(dir string) (path string, wantID string)
+		wantFound bool
+		wantErr   bool
+	}{
+		{
+			name: "missing file returns not found",
+			setup: func(dir string) (string, string) {
+				return dir + "/nonexistent.jsonl", "anyid"
+			},
+			wantFound: false,
+			wantErr:   false,
+		},
+		{
+			name: "empty file returns not found",
+			setup: func(dir string) (string, string) {
+				f, err := os.CreateTemp(dir, "feedback-*.jsonl")
+				if err != nil {
+					t.Fatalf("CreateTemp: %v", err)
+				}
+				return f.Name(), "anyid"
+			},
+			wantFound: false,
+			wantErr:   false,
+		},
+		{
+			name: "single matching entry returned",
+			setup: func(dir string) (string, string) {
+				f, err := os.CreateTemp(dir, "feedback-*.jsonl")
+				if err != nil {
+					t.Fatalf("CreateTemp: %v", err)
+				}
+				path := f.Name()
+				f.Close()
+
+				entry := Entry{
+					ID:     "abc123def456",
+					Item:   "Test Item",
+					Date:   "01/01/2025",
+					Value:  99.00,
+					Status: StatusConfirmed,
+				}
+				if err := Append(path, entry); err != nil {
+					t.Fatalf("Append: %v", err)
+				}
+				return path, "abc123def456"
+			},
+			wantFound: true,
+		},
+		{
+			name: "multiple entries with same ID returns last",
+			setup: func(dir string) (string, string) {
+				f, err := os.CreateTemp(dir, "feedback-*.jsonl")
+				if err != nil {
+					t.Fatalf("CreateTemp: %v", err)
+				}
+				path := f.Name()
+				f.Close()
+
+				entry1 := Entry{ID: "sameid", Item: "First Item", Date: "01/01/2025", Value: 99.00, Status: StatusConfirmed, Model: "first"}
+				if err := Append(path, entry1); err != nil {
+					t.Fatalf("Append first: %v", err)
+				}
+
+				entry2 := Entry{ID: "differentid", Item: "Second Item", Date: "02/01/2025", Value: 88.00, Status: StatusManual, Model: "second"}
+				if err := Append(path, entry2); err != nil {
+					t.Fatalf("Append second: %v", err)
+				}
+
+				entry3 := Entry{ID: "sameid", Item: "Third Item", Date: "03/01/2025", Value: 77.00, Status: StatusCorrected, Model: "third"}
+				if err := Append(path, entry3); err != nil {
+					t.Fatalf("Append third: %v", err)
+				}
+
+				return path, "sameid"
+			},
+			wantFound: true,
+		},
+		{
+			name: "id not found returns not found",
+			setup: func(dir string) (string, string) {
+				f, err := os.CreateTemp(dir, "feedback-*.jsonl")
+				if err != nil {
+					t.Fatalf("CreateTemp: %v", err)
+				}
+				path := f.Name()
+				f.Close()
+
+				entry := Entry{
+					ID:     "differentid",
+					Item:   "Test Item",
+					Date:   "01/01/2025",
+					Value:  99.00,
+					Status: StatusConfirmed,
+				}
+				if err := Append(path, entry); err != nil {
+					t.Fatalf("Append: %v", err)
+				}
+				return path, "missingid"
+			},
+			wantFound: false,
+			wantErr:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path, wantID := tt.setup(dir)
+
+			entry, found, err := FindLatestEntry(path, wantID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FindLatestEntry() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if found != tt.wantFound {
+				t.Errorf("FindLatestEntry() found = %v, want %v", found, tt.wantFound)
+			}
+
+			if tt.wantFound && entry.ID != wantID {
+				t.Errorf("FindLatestEntry() ID = %q, want %q", entry.ID, wantID)
+			}
+
+			if tt.name == "multiple entries with same ID returns last" {
+				if entry.Model != "third" {
+					t.Errorf("FindLatestEntry() Model = %q, want third (last entry wins)", entry.Model)
+				}
+			}
+		})
+	}
+}
+
 func TestAppend(t *testing.T) {
 	dir := t.TempDir()
 	f, err := os.CreateTemp(dir, "feedback-*.jsonl")

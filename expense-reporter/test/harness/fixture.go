@@ -80,6 +80,19 @@ func DiscoverFixtures(baseDir string) ([]string, error) {
 	return fixtures, nil
 }
 
+// SeedFileFromFixture copies a single named file from fixtureDir into ctx.WorkDir.
+// If destName is empty, the source name is used as the destination name. Use this
+// to seed pre-existing state files (e.g., a prior classifications.jsonl) without
+// copying every file in the fixture directory.
+func SeedFileFromFixture(ctx *Context, fixtureDir, sourceName, destName string) error {
+	if destName == "" {
+		destName = sourceName
+	}
+	src := filepath.Join(fixtureDir, sourceName)
+	dst := filepath.Join(ctx.WorkDir, destName)
+	return copyFile(src, dst)
+}
+
 // CopyWorkbookToWorkDir copies the workbook to the test's isolated work directory
 // and updates ctx.WorkbookPath to point to the copy. This prevents tests that write
 // to the workbook from sharing mutable state across the test suite.

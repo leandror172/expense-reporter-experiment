@@ -1,0 +1,3 @@
+{"item":"Uber Centro","date":"15/04","value":35.5,"predicted_subcategory":"Padaria","predicted_category":"Alimentação / Limpeza","confidence":0.71,"actual_subcategory":"Padaria","actual_category":"Alimentação / Limpeza","model":"my-classifier-q3","status":"confirmed"}
+{"item":"Uber Centro","date":"15/04","value":35.5,"predicted_subcategory":"Uber/Taxi","predicted_category":"Transporte","confidence":0.92,"actual_subcategory":"Uber/Taxi","actual_category":"Transporte","model":"my-classifier-q35","status":"confirmed"}
+{"item":"Uber Centro","date":"15/04","value":35.5,"predicted_subcategory":"Uber/Taxi","predicted_category":"Transporte","confidence":0.92,"actual_subcategory":"Combustível","actual_category":"Transporte","model":"my-classifier-q35","status":"corrected"}

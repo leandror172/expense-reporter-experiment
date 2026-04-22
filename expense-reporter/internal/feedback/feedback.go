@@ -1,6 +1,7 @@
 package feedback
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/json"
 	"expense-reporter/internal/classifier"
@@ -71,6 +72,48 @@ func Append(path string, entry Entry) error {
 	return nil
 }
 
+// FindLatestEntry scans the JSONL file at path for the most recent entry whose ID matches.
+// Returns (entry, true, nil) if found, (zero, false, nil) if no match (including missing file),
+// and (zero, false, err) only on read/parse errors. "Most recent" means the last matching line
+// in file order (entries are append-only, so file order is chronological).
+func FindLatestEntry(path, id string) (Entry, bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Entry{}, false, nil
+		}
+		return Entry{}, false, fmt.Errorf("opening feedback file: %w", err)
+	}
+	defer f.Close()
+
+	var latest Entry
+	found := false
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		var entry Entry
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			return Entry{}, false, fmt.Errorf("parsing feedback line: %w", err)
+		}
+
+		if entry.ID == id {
+			latest = entry
+			found = true
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return Entry{}, false, fmt.Errorf("reading feedback file: %w", err)
+	}
+
+	return latest, found, nil
+}
+
 // NewConfirmedEntry builds a confirmed Entry where predicted == actual.
 func NewConfirmedEntry(item, date string, value float64, predicted classifier.Result, model string) Entry {
 	return Entry{
@@ -103,6 +146,26 @@ func NewManualEntry(item, date string, value float64, subcategory, category stri
 		ActualCategory:       category,
 		Model:                "",
 		Status:               StatusManual,
+		Timestamp:            Now().UTC().Format(time.RFC3339),
+	}
+}
+
+// NewCorrectedEntry builds a corrected Entry where the user overrode the model's prediction.
+// The predicted fields come from `predicted` (what the model said); actual fields come from
+// the user's correction (which differs from predicted, by definition).
+func NewCorrectedEntry(item, date string, value float64, predicted classifier.Result, model, actualSubcategory, actualCategory string) Entry {
+	return Entry{
+		ID:                   GenerateID(item, date, value),
+		Item:                 item,
+		Date:                 date,
+		Value:                value,
+		PredictedSubcategory: predicted.Subcategory,
+		PredictedCategory:    predicted.Category,
+		Confidence:           predicted.Confidence,
+		ActualSubcategory:    actualSubcategory,
+		ActualCategory:       actualCategory,
+		Model:                model,
+		Status:               StatusCorrected,
 		Timestamp:            Now().UTC().Format(time.RFC3339),
 	}
 }
