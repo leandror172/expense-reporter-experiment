@@ -103,6 +103,23 @@ Flags:
 - `--threshold` — confidence threshold (default: 0.85)
 - `--model`, `--data-dir`, `--output-dir`, `--top`
 
+### `correct` — Override a prior auto-classification
+
+```bash
+expense-reporter correct "Uber Centro;15/04;35,50;Combustível"
+# ✓ Correction logged: Uber Centro → Combustível (was Uber/Taxi)
+```
+
+When a previously confirmed (auto-inserted) classification was wrong, `correct` logs
+a `corrected` entry to `classifications.jsonl`, preserving the original `predicted_*`
+and `model` fields so future few-shot retrieval can prioritize learning from this
+mistake. Requires a prior entry — for expenses with no model prediction, use `add`.
+
+This command does **not** modify the workbook; it only writes to the feedback log.
+
+Flags:
+- `--data-dir` — path to classification data (for resolving the corrected category)
+
 ### `version` — Print version
 
 ```bash
@@ -138,6 +155,11 @@ Two JSONL files persist classification results:
 
 Confirmed and corrected entries are loaded back as few-shot examples, so classification
 accuracy improves with use. Corrected examples get highest priority in selection.
+
+Three commands write to the log:
+- `add` → `manual` (no model prediction)
+- `auto` / `batch-auto` → `confirmed` (model prediction accepted)
+- `correct` → `corrected` (user overrode a prior `confirmed` entry)
 
 ## MCP Server
 
@@ -205,7 +227,7 @@ Installments crossing into the next year are written to a separate rollover file
 cmd/expense-reporter/
   main.go                  # Entry point
   cmd/                     # Cobra subcommands: add, auto, batch, batch-auto,
-                           #   classify, version, root, output
+                           #   classify, correct, version, root, output
 internal/
   batch/                   # CSV reading, installment expansion, progress, reports
   classifier/              # LLM classification — Ollama client, few-shot selection,
@@ -260,8 +282,9 @@ Requires a live Ollama instance.
 cd expense-reporter && ./run-acceptance.sh
 ```
 
-8 fixture directories: classify-basic, auto-basic, batch-auto-basic, batch-auto-exclusions,
-batch-auto-feedback, batch-auto-installments, batch-auto-rollover, add-feedback.
+10 fixture directories: classify-basic, auto-basic, batch-auto-basic, batch-auto-exclusions,
+batch-auto-feedback, batch-auto-installments, batch-auto-rollover, add-feedback,
+correct-overrides-confirmed, correct-uses-latest-entry.
 
 Soft accuracy assertions track classification drift across model/prompt updates
 without requiring exact reproducibility.
@@ -292,6 +315,7 @@ require (
 **Layer 5.6:** Feedback persistence — classifications.jsonl + expenses_log.jsonl  
 **Layer 5.7:** Few-shot injection — keyword-based example selection from training + feedback data  
 **Layer 5.8:** JSON output + MCP server — machine-readable output, Python MCP wrapper
+**Layer 5.9:** Correction workflow — `correct` command closes the feedback loop by writing `status="corrected"` entries that take priority in few-shot retrieval
 
 ## License
 

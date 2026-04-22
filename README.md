@@ -9,7 +9,7 @@ local LLMs and inserts them into an Excel budget workbook.
 Go CLI application. Parses CSV bank exports, classifies expenses via Ollama,
 and writes to an Excel workbook with hierarchical category resolution.
 
-Commands: `add`, `batch`, `classify`, `auto`, `batch-auto`, `version`.
+Commands: `add`, `batch`, `classify`, `auto`, `batch-auto`, `correct`, `version`.
 
 ```bash
 cd expense-reporter && go build ./cmd/expense-reporter

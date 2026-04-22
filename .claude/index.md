@@ -243,7 +243,7 @@ The feedback system logs classification decisions to `classifications.jsonl` for
 - `[ref:feedback-entry-structure]` — JSON entry format, status values (confirmed/corrected/manual)
 - `[ref:feedback-sources]` — Which commands create which feedback entries (add, auto, batch-auto)
 - `[ref:feedback-training]` — How feedback becomes training examples for next run
-- `[ref:feedback-missing-feature]` — Missing correction workflow (status="corrected" not implemented)
+- `[ref:feedback-correction-workflow]` — Correction workflow via `correct` command (status="corrected"), closed in Layer 5.9
 - `[ref:feedback-file-path]` — Configuration and file resolution logic
 - `[ref:feedback-cold-start]` — Behavior when classifications.jsonl doesn't exist
 
