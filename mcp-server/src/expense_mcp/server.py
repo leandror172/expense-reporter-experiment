@@ -77,19 +77,32 @@ async def add_expense(
     subcategory: str,
     workbook: str | None = None,
     dry_run: bool = False,
+    predicted_subcategory: str | None = None,
+    predicted_category: str | None = None,
+    classification_id: str | None = None,
+    confidence: float | None = None,
+    model: str | None = None,
 ) -> str:
     """Add an expense to the workbook.
 
     Assembles the expense string and calls the Go binary to insert.
     Use dry_run=True to validate without inserting.
 
+    When called after classify_expense, pass the prediction context so the
+    feedback system records whether the user accepted or corrected the model.
+
     Args:
         item: Expense description (e.g., "Uber Centro")
         date: Date as DD/MM (e.g., "15/04")
         value: Amount in Brazilian format (e.g., "35,50")
-        subcategory: Target subcategory (e.g., "Uber/Taxi")
+        subcategory: Target subcategory chosen by the user (e.g., "Uber/Taxi")
         workbook: Path to Excel workbook (optional, uses env default)
         dry_run: Validate and parse without inserting
+        predicted_subcategory: Model's top-ranked subcategory from classify_expense
+        predicted_category: Model's predicted category from classify_expense
+        classification_id: classification_id from the classify_expense response
+        confidence: Model's confidence score from classify_expense
+        model: Model name used during classification
     """
     ctx = mcp.get_context()
     binary_path = ctx.request_context.lifespan_context["binary_path"]
@@ -100,6 +113,16 @@ async def add_expense(
         args.append("--dry-run")
     if workbook is not None:
         args.extend(["--workbook", workbook])
+    if predicted_subcategory is not None:
+        args.extend(["--predicted-subcategory", predicted_subcategory])
+    if predicted_category is not None:
+        args.extend(["--predicted-category", predicted_category])
+    if classification_id is not None:
+        args.extend(["--classification-id", classification_id])
+    if confidence is not None:
+        args.extend(["--confidence", str(confidence)])
+    if model is not None:
+        args.extend(["--model", model])
     args.append(expense_string)
 
     try:

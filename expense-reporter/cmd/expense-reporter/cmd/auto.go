@@ -106,13 +106,14 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		}
 
 		return printJSON(AutoOutput{
-			Item:       item,
-			Value:      value,
-			Date:       date,
-			Action:     action,
-			Result:     topCandidate,
-			Candidates: toCandidates(results),
-			Message:    message,
+			Item:             item,
+			Value:            value,
+			Date:             date,
+			Action:           action,
+			Result:           topCandidate,
+			Candidates:       toCandidates(results),
+			Message:          message,
+			ClassificationID: feedback.GenerateID(item, date, value),
 		})
 	}
 

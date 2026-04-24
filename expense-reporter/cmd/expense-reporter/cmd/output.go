@@ -24,14 +24,17 @@ type CandidateOutput struct {
 
 // AutoOutput represents the structure of automatic classification output.
 // In JSON mode, auto NEVER inserts — it returns a recommendation only.
+// ClassificationID is the deterministic sha256[:12] of the expense; add_expense
+// uses it to cross-reference the prior classify call in classifications.jsonl.
 type AutoOutput struct {
-	Item       string            `json:"item"`
-	Value      float64           `json:"value"`
-	Date       string            `json:"date"`
-	Action     string            `json:"action"`
-	Result     *CandidateOutput  `json:"result,omitempty"`
-	Candidates []CandidateOutput `json:"candidates"`
-	Message    string            `json:"message"`
+	Item             string            `json:"item"`
+	Value            float64           `json:"value"`
+	Date             string            `json:"date"`
+	Action           string            `json:"action"`
+	Result           *CandidateOutput  `json:"result,omitempty"`
+	Candidates       []CandidateOutput `json:"candidates"`
+	Message          string            `json:"message"`
+	ClassificationID string            `json:"classification_id"`
 }
 
 // printJSON encodes the given value to JSON and writes it to os.Stdout with 2-space indent.
