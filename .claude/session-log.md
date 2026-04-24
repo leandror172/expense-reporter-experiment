@@ -1,7 +1,35 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-04-24 — Session 17: MCP-Layer Corrections Shipped
+
+### Context
+Resumed from session 16's plan (`docs/plans/mcp-layer-corrections.md`). Resolved two open micro-decisions before starting: `chosen == predicted` → write `confirmed` (training signal, consistency with auto); ID miss → warn-and-continue (insert is primary, feedback is best-effort).
+
+### What Was Done
+- **Step 1:** Grepped `internal/classifier/` — zero references to `expenses_log.jsonl`, confirming no double-count risk.
+- **Step 2:** Wrote 3 acceptance tests in `feedback_test.go` (prediction match → confirmed, mismatch → corrected, no flags → manual/backwards-compat). Extended `RunAdd` with variadic `extraFlags` and `--data-dir` forwarding. Fixed Given naming per PATTERNS.md: `expenseClassifiedByModel` (past-tense action, not state).
+- **Step 3:** TDD inner loop — `TestLogPredictedFeedback` (4 cases: confirmed, corrected, ID-miss-warn, no-path no-op) red first; then implemented `logPredictedFeedback` + 5 new cobra flags in `add.go`. All 190+ unit tests green.
+- **Step 4:** `AutoOutput` gains `classification_id` (sha256[:12] of item|date|value); `auto --json` populates it. `add_expense` MCP tool in `server.py` extended with 5 optional prediction params forwarded as CLI flags. 7 MCP tests green.
+- **Step 5:** `docs/FEEDBACK_SYSTEM.md` updated — new `add` prediction-flags source documented, "future work" bullet removed. `session-context.md` current-status + Telegram-flow line updated.
+- **2 commits:** `15a8082` (feat: add flags + feedback branching) + `6ef3e5b` (feat: MCP layer).
+
+### Decisions Made
+- **`chosen == predicted` → write `confirmed`:** Training signal; consistent with `auto`'s existing confirmed-writes; no double-count risk since `add` is the only writer in the MCP path.
+- **ID miss → warn-and-continue:** Insert must not be blocked by a log concern. Feedback is best-effort; all predicted context is already in the flags.
+- **MCP Python changes done by Claude directly:** No Python persona in tier list; change was purely mechanical pattern-repetition — no benefit to delegating to Ollama.
+- **Ollama prompt style correction (saved to memory):** Prompts must describe behavior, not spell out implementation code line-by-line. Prior sessions were passing if-else logic as literal code.
+- **Parallel model calls reinforced as bad:** Calling two different-sized models simultaneously causes VRAM contention worse than same-model parallel. Always serial, always tier 1 first.
+- **RunAdd extended with variadic extraFlags:** Cleaner than creating multiple named actions; backwards-compatible; --data-dir forwarding was the missing piece for taxonomy resolution in acceptance tests.
+
+### Next
+- **Open PRs still unmerged:** #16 (docs/feedback-system-csv-reconstruction) and #17 (correct command) — consider creating PR for the MCP-layer corrections on this branch (`feature/correct-command`)
+- **Uncommitted:** `CLAUDE.md`, `.claude/session-context.md`, `docs/FEEDBACK_SYSTEM.md` — commit docs as session close
+- **Next feature investment:** 5.R1 TF-IDF retrieval (better few-shot example selection) — documented in `internal/classifier/.memories/QUICK.md`
 
 ---
 
@@ -106,33 +134,6 @@ Resumed on master branch. User extracted 1601 expense entries from large JSON fi
 - Create PR for this branch (docs/feedback-system-csv-reconstruction → master)
 - Possible future work: implement `NewCorrectedEntry()` + `correct` command to enable feedback loop closure
 - Consider 5.R1 TF-IDF retrieval or surface-level feedback in review flow
-
----
-
-## 2026-03-27 — Session 13: 5.8b — Python MCP server + dry-run + data-dir fix
-
-### Context
-Resumed from session 12. Recontextualized, opened PR for 5.8a, then worked through 5.8b-prep and 5.8b. Discussed whether to use Opus→Sonnet delegation pattern (decided not to for this size of task). Explored MCP tool interfaces against the grand vision, reducing 3 tools to 2 (`classify_expense` + `add_expense`). Used Ollama for code gen with explicit verdicts. Discovered and fixed latent `--data-dir` bug via live MCP testing.
-
-### What Was Done
-- **PR #11** — 5.8a JSON output merged to remote (push + PR)
-- **5.8b-prep** (`feature/5.8b-prep-add-dry-run`, PR #12) — `--dry-run` flag on `add` command; early parse refactor; `AddOutput` struct; 5 unit tests + 1 acceptance test; `RunAddDryRun` action + `OutputJSONHasValue` verify helper
-- **5.8b** (`feature/5.8b-mcp-server-impl`, PR #13) — new `mcp-server/` Python project (uv + FastMCP); `binary.py` (find_binary, run_binary, error types); `server.py` (classify_expense + add_expense tools); 7 integration tests; `run-server.sh`; registered with Claude Code
-- **fix(add)** (`feature/5.8b-add-data-dir`, PR #14) — `--data-dir` flag on `add` command; MCP server passes it explicitly; category now resolves correctly in `add_expense` response; new acceptance test `TestAddDryRunJSON_ResolvesCategory`
-- **End-to-end test** — MCP tools smoke-tested live; both tools confirmed working after restart
-
-### Decisions Made
-- **2 tools not 3** — dropped separate `classify_expense` (raw) vs `auto_add` (recommendation); `classify_expense` now maps to `auto --json` (candidates + recommendation); `add_expense` maps to `add --json`
-- **`auto_add` name was misleading** — renamed to `classify_expense` since it never adds
-- **Python justified in Go repo** — MCP server is thin subprocess wrapper, Go MCP SDK maturity unknown; Python + FastMCP is proven pattern
-- **Opus→Sonnet delegation** — analyzed as not worth it for this task size; fits better for larger mechanical tasks (e.g. 5.R1 TF-IDF)
-- **Ollama for code gen** — test file: REJECTED (truncation + wrong approach); server.py: IMPROVED (right shape, FastMCP API bugs); binary.py written by Claude directly (Ollama skipped)
-- **`--data-dir` on `add`** — resolved latent bug where taxonomy lookup silently failed when called from MCP server (cwd mismatch); default preserved as `"data/classification"` for CLI use
-
-### Next
-- Merge PR chain: 5.8a → 5.8b-prep → 5.8b → 5.8b-add-data-dir → master
-- Consider deferred task: `TestBatchAuto_SameYearInstallmentsExpanded` scope reduction (tasks.md)
-- Next feature work: 5.R1 TF-IDF retrieval layer or T1 resume context loading
 
 ---
 

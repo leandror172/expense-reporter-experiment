@@ -66,6 +66,16 @@ Each line in `classifications.jsonl` is a JSON entry with:
 - Fails with a clear error if no prior entry exists (suggests `add` instead) — does NOT touch the workbook
 - Code: `cmd/correct.go:runCorrect()`
 
+### Command: `add` with Prediction Flags (MCP/Telegram Flow)
+- MCP caller (e.g. Telegram bot) first calls `classify_expense` → receives candidates + `classification_id`
+- User picks a subcategory; bot calls `add_expense` with the chosen + predicted context
+- `add` accepts: `--predicted-subcategory`, `--predicted-category`, `--classification-id`, `--confidence`, `--model`
+- If `chosen == predicted`: creates `status="confirmed"` entry (user accepted model's top candidate)
+- If `chosen != predicted`: creates `status="corrected"` entry (user picked a different subcategory)
+- If `--classification-id` given but not found in file: warns stderr and continues (best-effort)
+- Without prediction flags: falls back to `status="manual"` (backwards compatible)
+- Code: `cmd/add.go:logPredictedFeedback()`
+
 <!-- /ref:feedback-sources -->
 
 <!-- ref:feedback-training -->
@@ -100,7 +110,6 @@ These examples are injected into the classifier prompt as few-shot learning data
 **Constraint:** `correct` requires a prior entry. If none exists, it fails with a hint to use `add` instead. This matches the Telegram-flow design intent — corrections always override a model prediction; entries with no prediction history are manual entries.
 
 **What's still future work:**
-- The Telegram bot equivalent: writing `corrected` entries at insert time when the user picks a non-top candidate from a model's proposals (currently `add` only writes `manual` — needs an MCP/bot-layer extension that accepts a predicted-subcategory parameter)
 - Workbook cell relocation (`correct` does not move the value to the new subcategory cell — user fixes the workbook manually)
 
 <!-- /ref:feedback-correction-workflow -->
