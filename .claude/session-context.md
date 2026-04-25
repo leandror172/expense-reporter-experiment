@@ -47,13 +47,13 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 17 (2026-04-24) — MCP-layer corrections shipped
-  - `add` gains `--predicted-subcategory`, `--predicted-category`, `--classification-id`, `--confidence`, `--model`
-  - `auto --json` now emits `classification_id` so MCP callers can pass it back to `add`
-  - `add_expense` MCP tool accepts and forwards all prediction flags
-  - 3 acceptance tests + 4 unit tests cover confirmed/corrected/manual/no-path branches
+- **Last checkpoint:** Session 18 (2026-04-25) — batch-auto CSV-preservation fix shipped
+  - Layer 1 (UX): fail-fast workbook validation before expensive classification
+  - Layer 2 (durability): reorder CSV writes to always run, even on insertion failure
+  - 2 new acceptance tests (missing-workbook fast-fail 0.01s, corrupt-workbook CSVs-preserved)
+  - All unit tests green; infrastructure timeout on full acceptance suite (not regression)
 - **Open PRs:** #16 (docs feedback system) + #17 (5.9 correct command) — still unmerged
-- **Next:** PR for MCP-layer corrections; revisit 5.R1 TF-IDF as parallel investment
+- **Next:** Create PR for batch-auto fix (base: master); future options: BUG_REPORT_DEFAULT_WORKBOOK_PATH.md or 5.R1 TF-IDF retrieval
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 

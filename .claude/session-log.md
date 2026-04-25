@@ -1,7 +1,43 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-04-25 — Session 18: Batch-Auto CSV Preservation Fix
+
+### Context
+Resumed from session 17's handoff. User: "We'll work on batch-auto-preserve-csvs-on-insert-failure.md to solve BUG_REPORT.md" with strict advisor rules (conflict resolution, response format). Started by reading bug report, plan, current code to ground understanding before calling advisor on test strategy.
+
+### What Was Done
+- **Analyzed bug root cause:** `runBatchAuto` orders work (classify → insert → CSV-write). Early return on insert failure discards CSV writes, but classification is already in memory. Plan is two-layer fix: Layer 1 (fail-fast), Layer 2 (reorder).
+- **Acceptance-test design forced option B (both layers):** Advisor reconciliation call resolved premise conflict — Layer 2 is *not* dead code if we strengthen `insertClassified` to return error on unopenable workbook, making reorder meaningful for corrupt files.
+- **Implementation (TDD: red → green):**
+  - `ValidateWorkbook(path) error` in `excel/` — opens + closes xlsx, returns parse error if corrupt
+  - `insertClassified` — calls `ValidateWorkbook` after `os.Stat`, returns wrapped error
+  - `runBatchAuto` rewrote — captures `insertErr` instead of early-returning, always runs CSV writes
+  - Layer 1 UX: workbook path validation before `classifyLines` with actionable hint
+- **Acceptance tests (both green, no Ollama):**
+  - `TestBatchAuto_MissingWorkbook_FailsFastBeforeClassification` — Layer 1, exits in 0.01s
+  - `TestBatchAuto_InsertFailure_PreservesCSVs` — Layer 2, corrupt xlsx, CSVs written, exit 1
+- **Testing:** All 13 unit tests green; new acceptance tests green; full acceptance suite hits 600s infrastructure timeout (not regression)
+- **Memory saved:** Ollama context_files base path (Go module root, not repo root)
+- **1 commit:** `8f838a6` on `fix/batch-auto-preserve-csvs-on-insert-failure`
+
+### Decisions Made
+- **Acceptance-first workflow validated again** — test scenarios revealed implementation correctness (Layer 1 fast-fail only observable via elapsed time, Layer 2 CSV+error both visible in acceptance context)
+- **Conflict resolution pattern successful:** Advisor's reconciliation call on Layer 2 premise prevented unnecessary code
+- **ValidateWorkbook in excel package** — workbook-validation concern belongs with workbook code; orchestrators delegate file ops
+
+### Next
+- Create PR for batch-auto fix (base: master)
+- BUG_REPORT_DEFAULT_WORKBOOK_PATH.md deferred — latent bug, out-of-scope. Option 1 recommended: remove executable-relative default.
+- Two open PRs from session 15: #16, #17 — post-merge order TBD
+
+### Gotchas
+- **Acceptance suite timeout:** Full 600s is tight (Basic 286s + MixedConfidence 299s = 585s remaining). New tests fast (<5s) but suite times out mid-flight. Infrastructure constraint for future sessions.
+- **Ollama context_files paths:** Must be absolute from module root, not repo root or symlinks. Early attempts failed silently.
 
 ---
 
@@ -98,42 +134,6 @@ Resumed via `.claude/tools/resume.sh` from session 14's "Next" pointer. Discusse
 - Verify PR #17 in CI; merge order with PR #16 (rebase if #17 lands first)
 - After merge: 5.R1 TF-IDF retrieval (better few-shot example selection) OR Telegram-flow `corrected` extension at MCP layer — user pick
 - Consider gitignore cleanup for `expense-reporter/expense-reporter` binary and `expenses_failed_*.csv` artifacts (separate small commit)
-
----
-
-## 2026-04-20 — Session 14: Feedback System Documentation & CSV Reconstruction Tool
-
-### Context
-Resumed on master branch. User extracted 1601 expense entries from large JSON file (ChatExport), hit batch-auto bug during classification workflow, then pivoted to understanding feedback system architecture and creating tooling to recover from such failures.
-
-### What Was Done
-- **Bug investigation & reporting** — batch-auto failed to write CSV output files when workbook insertion failed; loss of all classification work; logged to `BUG_REPORT.md`
-- **Feedback system research** — discovered and documented that system CAN read `status=corrected` entries but nothing writes them (critical missing feature for learning loop)
-- **Comprehensive documentation** (`docs/FEEDBACK_SYSTEM.md`):
-  - 6 REF blocks: entry structure, command flows (add/auto/batch-auto), training integration, missing correction feature, file paths, cold-start behavior
-  - Indexed in `.claude/index.md` for future reference via `ref-lookup.sh`
-- **CSV reconstruction tool** (`.claude/tools/reconstruct-csvs.py`):
-  - Parses batch-auto logs + original CSV (line-matched indexing)
-  - Reconstructs `classified.csv` and `review.csv` from 373-line run (326 auto-inserted, 23 review, 24 skipped)
-  - Efficient non-I/O approach (no reading full files into memory)
-- **Personal memory** — saved feedback system findings to user memory for cross-session reference
-- **Commits** — `docs: add feedback system architecture documentation` (22cdd33) on new branch `docs/feedback-system-csv-reconstruction`
-
-### Decisions Made
-- **Document findings instead of implementing** — feedback system is complex and worth understanding before adding features; created searchable reference for future work
-- **Script-based recovery** — better to provide reconstruction tool than auto-save via side effects
-- **REF-based documentation** — organized by concept (entry structure, flows, training, gaps) not by file
-
-### What's Staged
-- `.claude/tools/reconstruct-csvs.py` — CSV reconstruction from logs
-- `docs/FEEDBACK_SYSTEM.md` — Feedback system architecture docs
-- `.claude/index.md` — Updated tools table + feedback section
-- `BUG_REPORT.md` — Bug report for workbook insertion failure
-
-### Next
-- Create PR for this branch (docs/feedback-system-csv-reconstruction → master)
-- Possible future work: implement `NewCorrectedEntry()` + `correct` command to enable feedback loop closure
-- Consider 5.R1 TF-IDF retrieval or surface-level feedback in review flow
 
 ---
 
