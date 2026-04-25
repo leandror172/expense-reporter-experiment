@@ -46,14 +46,14 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Layer 5.9 complete — feedback loop closed via `correct` command; MCP-layer corrections planned (next)
-- **Last checkpoint:** Session 16 (2026-04-23) — MCP-layer corrections plan written to `docs/plans/mcp-layer-corrections.md`
-  - Scoping grep confirmed feedback schema + constructors already exist; gap is `add.go` only
-  - MCP wrapper confirmed to live in `mcp-server/` (this repo, not llm repo)
-  - Locked: signal shape (c) — both `--classification-id` and `--predicted-subcategory` on `add`
-  - Deferred: confirmation logging infra (2.C) — open micro-decision on `chosen == predicted` case
-- **Open PRs:** #16 (docs feedback system) + #17 (5.9 correct command) — still unmerged since session 15
-- **Next:** Execute `docs/plans/mcp-layer-corrections.md` starting with Step 1 (verify no double-count risk) then acceptance tests; revisit 5.R1 TF-IDF as alternative parallel investment
+- **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
+- **Last checkpoint:** Session 18 (2026-04-25) — batch-auto CSV-preservation fix shipped
+  - Layer 1 (UX): fail-fast workbook validation before expensive classification
+  - Layer 2 (durability): reorder CSV writes to always run, even on insertion failure
+  - 2 new acceptance tests (missing-workbook fast-fail 0.01s, corrupt-workbook CSVs-preserved)
+  - All unit tests green; infrastructure timeout on full acceptance suite (not regression)
+- **Open PRs:** #16 (docs feedback system) + #17 (5.9 correct command) — still unmerged
+- **Next:** Create PR for batch-auto fix (base: master); future options: BUG_REPORT_DEFAULT_WORKBOOK_PATH.md or 5.R1 TF-IDF retrieval
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -115,7 +115,7 @@ Or manually:
 ### Correction Workflow (session 15, Layer 5.9)
 - **`correct` is feedback-only** — no `--workbook` flag; user fixes workbook manually
 - **Requires a prior entry** — fails with hint to use `add` if none exists (matches design: corrections always override a prediction)
-- **Telegram-flow corrections deferred** — writing `corrected` at insert time when user picks a non-top candidate needs MCP-layer extension (e.g., `--predicted-subcategory` flag on `add`)
+- **Telegram-flow corrections shipped (session 17)** — `add --predicted-subcategory` writes `confirmed`/`corrected` entries; `classify_expense` now surfaces `classification_id`; `add_expense` MCP tool forwards all prediction flags
 
 ### Classification Data
 - `confusion_analysis.json` gitignored (may contain real expense descriptions as test cases)

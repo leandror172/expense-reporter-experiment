@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"testing"
+
+	"expense-reporter/internal/config"
+	"expense-reporter/internal/feedback"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -152,4 +158,131 @@ func TestRunAddDryRun_Text_EmptyCategory(t *testing.T) {
 	output := buf.String()
 	assert.Contains(t, output, "Dry run — would insert:")
 	assert.NotContains(t, output, "Category:")
+}
+
+func TestLogPredictedFeedback(t *testing.T) {
+	tests := []struct {
+		name                 string
+		chosenSubcategory    string
+		chosenCategory       string
+		predictedSubcategory string
+		predictedCategory    string
+		classificationID     string
+		confidence           float64
+		model                string
+		noClassificationsPath bool
+		expectStatus         feedback.Status
+		expectStderrContains string
+	}{
+		{
+			name:                 "chosen matches predicted — confirmed entry written",
+			chosenSubcategory:    "Uber/Taxi",
+			chosenCategory:       "Transporte",
+			predictedSubcategory: "Uber/Taxi",
+			predictedCategory:    "Transporte",
+			classificationID:     "",
+			confidence:           0.92,
+			model:                "my-classifier-q3",
+			expectStatus:         feedback.StatusConfirmed,
+		},
+		{
+			name:                 "chosen differs from predicted — corrected entry written",
+			chosenSubcategory:    "Combustível",
+			chosenCategory:       "Transporte",
+			predictedSubcategory: "Uber/Taxi",
+			predictedCategory:    "Transporte",
+			classificationID:     "",
+			confidence:           0.92,
+			model:                "my-classifier-q3",
+			expectStatus:         feedback.StatusCorrected,
+		},
+		{
+			name:                 "classification-id not found — stderr warning, entry still written",
+			chosenSubcategory:    "Combustível",
+			chosenCategory:       "Transporte",
+			predictedSubcategory: "Uber/Taxi",
+			predictedCategory:    "Transporte",
+			classificationID:     "nonexistent123",
+			confidence:           0.85,
+			model:                "my-classifier-q3",
+			expectStatus:         feedback.StatusCorrected,
+			expectStderrContains: `classification-id "nonexistent123" not found`,
+		},
+		{
+			name:                  "no classifications path configured — no file written, no panic",
+			chosenSubcategory:     "Uber/Taxi",
+			chosenCategory:        "Transporte",
+			predictedSubcategory:  "Uber/Taxi",
+			predictedCategory:     "Transporte",
+			noClassificationsPath: true,
+			confidence:            0.92,
+			model:                 "my-classifier-q3",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			classificationsPath := filepath.Join(tempDir, "classifications.jsonl")
+			expensesLogPath := filepath.Join(tempDir, "expenses_log.jsonl")
+
+			var appCfg *config.Config
+			if tc.noClassificationsPath {
+				appCfg = &config.Config{ExpensesLogPath: expensesLogPath}
+			} else {
+				appCfg = &config.Config{
+					ClassificationsPath: classificationsPath,
+					ExpensesLogPath:     expensesLogPath,
+				}
+			}
+
+			// Capture stderr
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			oldStderr := os.Stderr
+			os.Stderr = w
+
+			logPredictedFeedback(appCfg,
+				"Uber Centro", "15/04", 35.50,
+				tc.chosenSubcategory, tc.chosenCategory,
+				tc.predictedSubcategory, tc.predictedCategory,
+				tc.classificationID,
+				tc.confidence, tc.model,
+			)
+
+			w.Close()
+			os.Stderr = oldStderr
+			stderrBytes, err := io.ReadAll(r)
+			require.NoError(t, err)
+
+			if tc.expectStderrContains != "" {
+				assert.Contains(t, string(stderrBytes), tc.expectStderrContains)
+			} else {
+				assert.Empty(t, string(stderrBytes))
+			}
+
+			if tc.noClassificationsPath {
+				_, statErr := os.Stat(classificationsPath)
+				assert.True(t, os.IsNotExist(statErr), "classifications file should not be created when path is empty")
+				return
+			}
+
+			f, err := os.Open(classificationsPath)
+			require.NoError(t, err)
+			defer f.Close()
+
+			scanner := bufio.NewScanner(f)
+			require.True(t, scanner.Scan(), "expected one line in classifications file")
+			var entry feedback.Entry
+			require.NoError(t, json.Unmarshal(scanner.Bytes(), &entry))
+
+			assert.Equal(t, tc.expectStatus, entry.Status)
+			assert.Equal(t, tc.predictedSubcategory, entry.PredictedSubcategory)
+			assert.Equal(t, tc.predictedCategory, entry.PredictedCategory)
+			assert.Equal(t, tc.chosenSubcategory, entry.ActualSubcategory)
+			assert.Equal(t, tc.chosenCategory, entry.ActualCategory)
+			assert.Equal(t, tc.confidence, entry.Confidence)
+			assert.Equal(t, tc.model, entry.Model)
+		})
+	}
 }

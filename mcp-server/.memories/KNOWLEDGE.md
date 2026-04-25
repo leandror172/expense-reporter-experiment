@@ -19,8 +19,10 @@ Go binary with `--json` and returns `stdout` verbatim. Error handling converts
 non-zero exit codes to JSON error responses.
 **Rationale:** Single source of truth. If classification logic existed in both Go and
 Python, they could diverge. The Go binary is the canonical implementation.
-**Implication:** Any new expense-reporter features (new flags, new output fields) are
-automatically available to MCP clients without Python changes — just pass new args.
+**Implication:** New output fields in Go (e.g. `classification_id` in `AutoOutput`)
+surface to MCP clients automatically — no Python changes needed. But new *input* flags
+(e.g. prediction flags on `add`) require explicitly adding them to the Python tool
+signature and forwarding them, because they are part of the declared MCP tool contract.
 
 ## Binary Resolution Strategy (2026-03-26)
 Priority: `EXPENSE_REPORTER_BIN` env var → auto-build from Go module.

@@ -24,6 +24,16 @@ type EmptyRowRequest struct {
 	ExpenseIndex    int // original index in the expenses slice, for result mapping
 }
 
+// ValidateWorkbook checks that a workbook file can be opened by excelize.
+// Catches corrupt or non-xlsx files that pass os.Stat.
+func ValidateWorkbook(path string) error {
+	f, err := excelize.OpenFile(path)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
 // LoadReferenceSheet loads the "Referência de Categorias" sheet and builds subcategory mappings
 func LoadReferenceSheet(workbookPath string) (map[string][]resolver.SubcategoryMapping, error) {
 	f, err := excelize.OpenFile(workbookPath)

@@ -6,6 +6,9 @@
 Full CLI operational: add, batch, classify, auto, batch-auto, correct, version commands.
 190+ unit tests passing. JSON output mode (`--json`) on classify/auto/add.
 Few-shot injection (5.7) complete — keyword-based example selection active.
+MCP prediction feedback (5.9+) complete — `add` accepts `--predicted-subcategory` and related
+flags; writes `confirmed`/`corrected` instead of `manual` when prediction context is present.
+`auto --json` emits `classification_id` for the caller to pass back to `add`.
 Next: TF-IDF retrieval layer (5.R1) for better few-shot example selection.
 
 ## Structure

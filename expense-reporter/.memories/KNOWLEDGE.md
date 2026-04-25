@@ -24,14 +24,16 @@ a batch eliminates the bottleneck.
 **Implication:** Single-expense `InsertExpense` delegates to `InsertBatchExpenses` with
 a one-element slice — both paths share identical pipeline logic.
 
-## JSON Output Mode (2026-03)
+## JSON Output Mode (2026-03, updated 2026-04)
 `--json` flag on root command; checked by `classify`, `auto`, and `add` subcommands.
 Output structs: `ClassifyOutput`, `AutoOutput`, `AddOutput` — all in `cmd/output.go`.
 `auto --json` is read-only (never inserts) and returns `action: "would_insert"|"review"|"excluded"`.
+`AutoOutput` includes `classification_id` (sha256[:12] of item+date+value) so MCP callers
+can pass it back to `add` for cross-referencing the prior classify call.
 **Rationale:** MCP server needs structured, parseable output. Human-readable output
 (confidence bars, Unicode symbols) breaks machine consumption.
 **Implication:** JSON mode on `auto` is intentionally non-destructive — the MCP server
-decides whether to call `add` separately.
+decides whether to call `add` separately, passing back the prediction context.
 
 ## Resolver — Fuzzy Subcategory Matching (2026-02)
 `internal/resolver` builds a hierarchical index from the Excel reference sheet.
@@ -51,6 +53,20 @@ Automatic backup before any write operation.
 makes the tool resilient to layout changes.
 **Implication:** The reference sheet must follow the expected format (category/subcategory
 columns), but data sheet column positions are flexible.
+
+## MCP Prediction Feedback Flow (2026-04)
+`add` branches its feedback write based on whether prediction flags are present:
+- No flags → `status=manual` (backwards-compatible, no model involved)
+- `--predicted-subcategory X`, chosen == X → `status=confirmed` (user accepted top candidate)
+- `--predicted-subcategory X`, chosen != X → `status=corrected` (user overrode the model)
+`--classification-id` is cross-reference only — a miss warns stderr but never blocks the insert.
+**Rationale:** Insert is the primary operation; feedback is best-effort. A log concern
+should never prevent an expense from being recorded. The `confirmed` write on match was
+chosen (not skipped) because it's the only signal that the Telegram flow accepted the
+prediction — `auto` is never called in that path, so skipping it would silently discard
+a training signal.
+**Implication:** `add` now produces all three feedback statuses depending on call context.
+The caller (MCP bot) controls which status is written by choosing which flags to pass.
 
 ## Feedback Persistence Design (2026-03)
 Two append-only JSONL files:

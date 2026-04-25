@@ -16,6 +16,12 @@ import (
 var addDryRun bool
 var addDataDir string
 
+var addPredictedSubcategory string
+var addPredictedCategory string
+var addClassificationID string
+var addConfidence float64
+var addModel string
+
 var addCmd = &cobra.Command{
 	Use:   "add \"<item>;<DD/MM>;<##,##>;<subcat>\"",
 	Short: "Add a single expense",
@@ -40,6 +46,11 @@ Notes:
 func init() {
 	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into workbook")
 	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	addCmd.Flags().StringVar(&addPredictedSubcategory, "predicted-subcategory", "", "Model's top prediction for subcategory")
+	addCmd.Flags().StringVar(&addPredictedCategory, "predicted-category", "", "Model's predicted category")
+	addCmd.Flags().StringVar(&addClassificationID, "classification-id", "", "ID from the prior classify call (for cross-reference)")
+	addCmd.Flags().Float64Var(&addConfidence, "confidence", 0.0, "Model's confidence score")
+	addCmd.Flags().StringVar(&addModel, "model", "", "Model name used for classification")
 	rootCmd.AddCommand(addCmd)
 }
 
@@ -62,7 +73,6 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get workbook path: %w", err)
 	}
 
-	// Verify workbook exists
 	if _, err := os.Stat(workbook); os.IsNotExist(err) {
 		return fmt.Errorf("workbook not found at: %s", workbook)
 	}
@@ -73,18 +83,30 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("✓ Expense added successfully!")
-	logParsedManualFeedback(item, date, value, subcategory, category)
+
+	appCfg, cfgErr := config.Load()
+	if cfgErr == nil {
+		if addPredictedSubcategory != "" {
+			logPredictedFeedback(appCfg, item, date, value, subcategory, category,
+				addPredictedSubcategory, addPredictedCategory, addClassificationID,
+				addConfidence, addModel)
+		} else {
+			logManualFeedback(appCfg, item, date, value, subcategory, category)
+			logExpense(appCfg, item, date, value, subcategory, category)
+		}
+	}
+
 	return nil
 }
 
 // AddOutput represents the structured output of an add --dry-run command.
 type AddOutput struct {
-	Item        string `json:"item"`
+	Item        string  `json:"item"`
 	Value       float64 `json:"value"`
-	Date        string `json:"date"`
-	Subcategory string `json:"subcategory"`
-	Category    string `json:"category"`
-	Action      string `json:"action"`
+	Date        string  `json:"date"`
+	Subcategory string  `json:"subcategory"`
+	Category    string  `json:"category"`
+	Action      string  `json:"action"`
 }
 
 func runAddDryRun(cmd *cobra.Command, item, date string, value float64, subcategory, category string) error {
@@ -164,4 +186,42 @@ func logManualFeedback(appCfg *config.Config, item, date string, value float64, 
 	if err := feedback.Append(path, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
 	}
+}
+
+// logPredictedFeedback writes a confirmed or corrected feedback entry to classifications.jsonl,
+// depending on whether the user's chosen subcategory matches the model's prediction.
+// Non-fatal: warns on stderr if the classification-id cross-reference misses or if the write fails.
+func logPredictedFeedback(appCfg *config.Config, item, date string, value float64,
+	chosenSubcategory, chosenCategory, predictedSubcategory, predictedCategory, classificationID string,
+	confidence float64, model string) {
+
+	path := appCfg.ClassificationsFilePath()
+
+	if classificationID != "" && path != "" {
+		_, found, err := feedback.FindLatestEntry(path, classificationID)
+		if !found || err != nil {
+			fmt.Fprintf(os.Stderr, "⚠  feedback log: classification-id %q not found, continuing without cross-reference\n", classificationID)
+		}
+	}
+
+	if path != "" {
+		predicted := classifier.Result{
+			Subcategory: predictedSubcategory,
+			Category:    predictedCategory,
+			Confidence:  confidence,
+		}
+
+		var entry feedback.Entry
+		if chosenSubcategory == predictedSubcategory {
+			entry = feedback.NewConfirmedEntry(item, date, value, predicted, model)
+		} else {
+			entry = feedback.NewCorrectedEntry(item, date, value, predicted, model, chosenSubcategory, chosenCategory)
+		}
+
+		if err := feedback.Append(path, entry); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
+		}
+	}
+
+	logExpense(appCfg, item, date, value, chosenSubcategory, chosenCategory)
 }

@@ -180,3 +180,89 @@ func noLogsCreated() []func(*harness.Context) {
 		verify.ExpenseLogNotCreated(),
 	}
 }
+
+// --- Tests: add with prediction flags (MCP-layer corrections) ---
+
+// TestAdd_ConfirmedFeedbackWhenPredictionMatches covers the Telegram flow where the user
+// accepted the model's top candidate — add writes confirmed feedback (same as auto auto-accept).
+func TestAdd_ConfirmedFeedbackWhenPredictionMatches(t *testing.T) {
+	harness.RequireWorkbook(t, testWorkbook)
+
+	fixDir := filepath.Join(fixturesDir(), "add-with-prediction-match")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "add with --predicted-subcategory matching chosen subcategory logs confirmed feedback",
+		Given: expenseClassifiedByModel(),
+		When: actions.RunAdd(
+			"Uber Centro;15/04;35,50;Uber/Taxi",
+			"--predicted-subcategory", "Uber/Taxi",
+			"--predicted-category", "Transporte",
+			"--confidence", "0.92",
+			"--model", "my-classifier-q3",
+		),
+		Then: slices.Concat(
+			commandSucceeded(),
+			classificationsMatchExpected(fixDir),
+			expenseLogMatchesExpected(fixDir),
+		),
+	})
+}
+
+// TestAdd_CorrectedFeedbackWhenPredictionMismatches covers the Telegram flow where the user
+// rejected the top candidate and picked a different subcategory.
+func TestAdd_CorrectedFeedbackWhenPredictionMismatches(t *testing.T) {
+	harness.RequireWorkbook(t, testWorkbook)
+
+	fixDir := filepath.Join(fixturesDir(), "add-with-prediction-mismatch")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "add with --predicted-subcategory differing from chosen subcategory logs corrected feedback",
+		Given: expenseClassifiedByModel(),
+		When: actions.RunAdd(
+			"Uber Centro;15/04;35,50;Combustível",
+			"--predicted-subcategory", "Uber/Taxi",
+			"--predicted-category", "Transporte",
+			"--confidence", "0.92",
+			"--model", "my-classifier-q3",
+		),
+		Then: slices.Concat(
+			commandSucceeded(),
+			classificationsMatchExpected(fixDir),
+			expenseLogMatchesExpected(fixDir),
+		),
+	})
+}
+
+// TestAdd_ManualFeedbackWithoutPredictionFlags is a backwards-compat check:
+// add without prediction flags must continue to write a manual entry, not a confirmed/corrected one.
+// Note: this scenario is also covered by TestAdd_ManualFeedbackLogged in the same file —
+// it is duplicated here as an explicit regression guard for the new flag-branching logic.
+func TestAdd_ManualFeedbackWithoutPredictionFlags(t *testing.T) {
+	harness.RequireWorkbook(t, testWorkbook)
+
+	fixDir := filepath.Join(fixturesDir(), "add-feedback")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "add without prediction flags continues to write manual feedback entry",
+		Given: singleExpenseReadyForManualAdd(),
+		When:  actions.RunAdd("Padaria Maeda;15/03;27,50;Padaria"),
+		Then: slices.Concat(
+			commandSucceeded(),
+			classificationsMatchExpected(fixDir),
+			expenseLogMatchesExpected(fixDir),
+		),
+	})
+}
+
+// expenseClassifiedByModel reflects the system action that creates the precondition:
+// the classify command ran and returned a prediction, now the user is about to add with that context.
+func expenseClassifiedByModel() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
+		}
+		withFeedbackConfig(ctx)
+	}
+}

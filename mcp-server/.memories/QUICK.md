@@ -3,8 +3,10 @@
 *Working memory for the MCP server. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Complete and operational (5.8b, 2026-03-27). Two tools registered and smoke-tested.
-No planned changes — this layer is intentionally thin.
+Complete and operational. Two tools registered and smoke-tested.
+Updated 2026-04-24: `add_expense` accepts 5 optional prediction params
+(`predicted_subcategory`, `predicted_category`, `classification_id`, `confidence`, `model`);
+`classify_expense` response now includes `classification_id` field.
 
 ## Structure
 ```

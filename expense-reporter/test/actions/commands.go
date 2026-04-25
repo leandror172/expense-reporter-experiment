@@ -40,13 +40,17 @@ func RunAuto(args ...string) func(*harness.Context) {
 }
 
 // RunAdd returns a When closure that runs the add command with the given expense string.
-// Passes --workbook from ctx when set.
-func RunAdd(expenseString string) func(*harness.Context) {
+// Passes --data-dir and --workbook from ctx when set. Extra flags (e.g. prediction context) appended last.
+func RunAdd(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"add", expenseString}
+		if ctx.DataDir != "" {
+			args = append(args, "--data-dir", ctx.DataDir)
+		}
 		if ctx.WorkbookPath != "" {
 			args = append(args, "--workbook", ctx.WorkbookPath)
 		}
+		args = append(args, extraFlags...)
 		runCommand(ctx, args...)
 	}
 }
