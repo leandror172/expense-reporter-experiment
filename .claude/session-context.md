@@ -46,15 +46,14 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Layer 5 — Expense Classifier (post-5.8 maintenance & understanding phase)
-- **Last checkpoint:** Session 14 (2026-04-20) — Feedback system documented + CSV reconstruction tool
-  - Discovered & documented feedback system architecture (classifications.jsonl, status types, flows)
-  - Critical gap: `status=corrected` entries readable but nothing writes them
-  - Created CSV reconstruction tool for recovery from batch-auto failures
-  - Bug report filed: batch-auto loses classification output when workbook insertion fails
-  - Branch: `docs/feedback-system-csv-reconstruction` (staged, not yet pushed/PR'd)
-- **Open PRs:** #11–#14 from session 13 (5.8a/5.8b chain, should be merged by now)
-- **Next:** Create PR for this branch; merge to master; then 5.R1 TF-IDF retrieval or correction workflow
+- **Active layer:** Layer 5.9 complete — feedback loop closed via `correct` command; MCP-layer corrections planned (next)
+- **Last checkpoint:** Session 16 (2026-04-23) — MCP-layer corrections plan written to `docs/plans/mcp-layer-corrections.md`
+  - Scoping grep confirmed feedback schema + constructors already exist; gap is `add.go` only
+  - MCP wrapper confirmed to live in `mcp-server/` (this repo, not llm repo)
+  - Locked: signal shape (c) — both `--classification-id` and `--predicted-subcategory` on `add`
+  - Deferred: confirmation logging infra (2.C) — open micro-decision on `chosen == predicted` case
+- **Open PRs:** #16 (docs feedback system) + #17 (5.9 correct command) — still unmerged since session 15
+- **Next:** Execute `docs/plans/mcp-layer-corrections.md` starting with Step 1 (verify no double-count risk) then acceptance tests; revisit 5.R1 TF-IDF as alternative parallel investment
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -105,6 +104,18 @@ Or manually:
 - **TDD:** Write tests red-first before implementation (5.2 was an exception — tests written after)
 - **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it
 - **Ollama timeout policy (session 8):** 1st timeout = retry (cold start), not a rejection. Only treat as 1st rejection if the model responds with wrong output. Two rejections → escalate to Claude.
+- **Ollama parallelization ceiling (session 15):** 3 parallel codegen calls only safe for tiny near-identical prompts. Default to serial for non-trivial codegen — VRAM ceiling causes silent degradation/timeouts.
+
+### Test Conventions (session 15)
+- **Acceptance-first** — discuss scenarios → write acceptance tests → drop into TDD inner loop for unit tests
+- **Given naming** — Event Modeling style, past-tense events that happened (`expenseAutoConfirmed`); state-only exception for empty event streams (`noClassificationsRecorded`)
+- **Then naming** — composable `[]func(*Context)` slices joined via `slices.Concat`; describe the concern, not the scenario
+- **Doc:** `expense-reporter/test/PATTERNS.md` is the spec — send to Ollama as context when delegating test generation
+
+### Correction Workflow (session 15, Layer 5.9)
+- **`correct` is feedback-only** — no `--workbook` flag; user fixes workbook manually
+- **Requires a prior entry** — fails with hint to use `add` if none exists (matches design: corrections always override a prediction)
+- **Telegram-flow corrections deferred** — writing `corrected` at insert time when user picks a non-top candidate needs MCP-layer extension (e.g., `--predicted-subcategory` flag on `add`)
 
 ### Classification Data
 - `confusion_analysis.json` gitignored (may contain real expense descriptions as test cases)

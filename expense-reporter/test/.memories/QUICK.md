@@ -3,9 +3,9 @@
 *Working memory for the acceptance test harness. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Harness operational. 8 fixture directories covering classify, auto, batch-auto, feedback,
-installments, rollover, and exclusion scenarios. Drift tracking active via `test/results/`.
-No immediate planned changes. Future: workbook content assertions (stub exists).
+Harness operational. 10 fixture directories covering classify, auto, batch-auto, feedback,
+correct, installments, rollover, and exclusion scenarios. Drift tracking active via
+`test/results/`. Future: workbook content assertions (stub exists).
 
 ## Structure
 ```
@@ -17,7 +17,7 @@ harness/             # Domain-agnostic BDD engine (extractable to other repos)
 actions/             # When functions — CLI command runners
   commands.go        # RunClassify, RunAuto, RunBatchAuto, RunBatchAutoWithFixture
 verify/              # Then functions — composable assertion helpers
-  csv.go             # Structural: row count, column count, file existence, exit code
+  csv.go             # Structural: row count, column count, file existence, exit code (CommandSucceeded/Failed)
   accuracy.go        # Soft accuracy + JSON drift reports
   feedback.go        # JSONL log verification (classifications + expense log)
   workbook.go        # Stub for future workbook content checks

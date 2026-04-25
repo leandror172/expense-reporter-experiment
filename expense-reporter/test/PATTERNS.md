@@ -23,7 +23,30 @@ Then: slices.Concat(
 
 Each helper returns `[]func(*harness.Context)` scoped to one concern. This allows mixing and matching at the test level without monolithic helpers.
 
-**Naming rule:** helpers describe the concern they assert, not the overall test scenario.
+**Naming rule (Then):** helpers describe the concern they assert, not the overall test scenario.
+
+## Given Naming Pattern
+
+Given helpers use **Event Modeling** style: past-tense events that happened in the system,
+not technical setup descriptions or state predicates.
+
+**Good (event that happened):**
+- `expenseAutoConfirmed(fixDir)`
+- `expenseConfirmedThenCorrected(fixDir)`
+- `paymentReceivedForOrder(orderID)`
+
+**Bad (technical / state):**
+- `setupClassificationsFile(fixDir)` — names the mechanism, not the event
+- `previouslyConfirmedExpenseExists(fixDir)` — state predicate, not event
+- `withFeedbackConfig` — internal plumbing, not a domain event (OK as a private
+  helper called by Given functions; not OK as the Given itself)
+
+**Exception:** absence of any event (an empty event stream) is a state, not an event.
+Name it pragmatically — e.g. `noClassificationsRecorded()`.
+
+**Why:** Given/When/Then reads like a story of what happened in the domain. Event-style
+Given names align with how the system actually evolves over time (a sequence of recorded
+events) and keep the test description domain-focused.
 
 ## JSONL Log Verification
 

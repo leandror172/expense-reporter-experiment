@@ -57,6 +57,15 @@ Each line in `classifications.jsonl` is a JSON entry with:
 - For rows below threshold: no entry (goes to `review.csv` instead)
 - Code: `cmd/batch_auto.go:logBatchFeedback()`
 
+### Command: `correct` (Override Prior Auto-Classification)
+- User overrides a wrong auto-insert: `correct "Uber Centro;15/04;35,50;Combustível"`
+- Looks up the latest entry matching the expense ID via `feedback.FindLatestEntry`
+- Copies `predicted_subcategory`, `predicted_category`, `confidence`, `model` from the prior entry
+- Sets `actual_subcategory` / `actual_category` from the user's correction (resolved via taxonomy)
+- Creates: `status="corrected"` entry
+- Fails with a clear error if no prior entry exists (suggests `add` instead) — does NOT touch the workbook
+- Code: `cmd/correct.go:runCorrect()`
+
 <!-- /ref:feedback-sources -->
 
 <!-- ref:feedback-training -->
@@ -77,30 +86,24 @@ These examples are injected into the classifier prompt as few-shot learning data
 
 <!-- /ref:feedback-training -->
 
-<!-- ref:feedback-missing-feature -->
-## Missing: Correction Workflow (status="corrected")
+<!-- ref:feedback-correction-workflow -->
+## Correction Workflow (status="corrected")
 
-**The problem:**
-- System *can read* corrected entries (loader supports them)
-- System *can use* them for training
-- But **nothing writes them**
+**Closed in Layer 5.9.** The feedback loop now writes corrected entries via the `correct` command.
 
-**What's missing:**
-- No `NewCorrectedEntry()` function
-- No `correct` command to accept user corrections from `review.csv`
-- User has no way to log: "Model predicted X, but actual is Y"
+**Flow when a confirmed auto-insert was wrong:**
+1. User runs `correct "item;DD/MM;value;right_subcategory"`
+2. `feedback.FindLatestEntry` scans `classifications.jsonl` for the most recent entry with the matching ID (last occurrence wins — handles re-classifications across model upgrades)
+3. `feedback.NewCorrectedEntry` builds a new entry: `predicted_*` and `model` carried over from the prior entry, `actual_*` from the user's correction (category resolved via `feature_dictionary_enhanced.json`)
+4. Entry appended to `classifications.jsonl`; workbook is **not** touched
 
-**Current state:**
-- `add` command creates `status="manual"` entries
-- `auto`/`batch-auto` create `status="confirmed"` entries
-- No way to create `status="corrected"` entries
+**Constraint:** `correct` requires a prior entry. If none exists, it fails with a hint to use `add` instead. This matches the Telegram-flow design intent — corrections always override a model prediction; entries with no prediction history are manual entries.
 
-**Impact:**
-- If model mispredicts but user doesn't catch it (auto-inserts), it becomes training data poison
-- Users can't leverage their corrections to improve the model
-- Feedback loop is broken
+**What's still future work:**
+- The Telegram bot equivalent: writing `corrected` entries at insert time when the user picks a non-top candidate from a model's proposals (currently `add` only writes `manual` — needs an MCP/bot-layer extension that accepts a predicted-subcategory parameter)
+- Workbook cell relocation (`correct` does not move the value to the new subcategory cell — user fixes the workbook manually)
 
-<!-- /ref:feedback-missing-feature -->
+<!-- /ref:feedback-correction-workflow -->
 
 <!-- ref:feedback-file-path -->
 ## Feedback File Location

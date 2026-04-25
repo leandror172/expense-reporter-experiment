@@ -3,7 +3,7 @@
 *Working memory for the Go application. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Full CLI operational: add, batch, classify, auto, batch-auto, version commands.
+Full CLI operational: add, batch, classify, auto, batch-auto, correct, version commands.
 190+ unit tests passing. JSON output mode (`--json`) on classify/auto/add.
 Few-shot injection (5.7) complete — keyword-based example selection active.
 Next: TF-IDF retrieval layer (5.R1) for better few-shot example selection.
@@ -12,7 +12,7 @@ Next: TF-IDF retrieval layer (5.R1) for better few-shot example selection.
 ```
 cmd/expense-reporter/
   main.go              # Entry point
-  cmd/                 # Cobra subcommands: add, auto, batch, batch-auto, classify, version
+  cmd/                 # Cobra subcommands: add, auto, batch, batch-auto, classify, correct, version
 internal/
   batch/               # CSV reading, installment expansion, progress bars, report generation
   classifier/          # LLM classification — Ollama client, few-shot, decision logic

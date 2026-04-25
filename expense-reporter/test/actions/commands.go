@@ -51,6 +51,18 @@ func RunAdd(expenseString string) func(*harness.Context) {
 	}
 }
 
+// RunCorrect returns a When closure that runs the correct command.
+// Passes --data-dir from ctx when set. Does NOT pass --workbook (correct is feedback-only).
+func RunCorrect(expenseString string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"correct", expenseString}
+		if ctx.DataDir != "" {
+			args = append(args, "--data-dir", ctx.DataDir)
+		}
+		runCommand(ctx, args...)
+	}
+}
+
 // RunAddDryRun returns a When closure that runs the add command with --dry-run.
 // Passes --data-dir from ctx when set. Extra flags (e.g., "--json") are appended after the expense string.
 func RunAddDryRun(expenseString string, extraFlags ...string) func(*harness.Context) {

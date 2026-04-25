@@ -1,7 +1,75 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-04-23 — Session 16: Planning MCP-Layer Corrections
+
+### Context
+Short planning session. User asked about the "Telegram-flow corrections at MCP layer" item from session 15's "Next" pointer. Read `docs/expense-classifier-vision.md` mid-discussion to ground the plan in the documented Phase 3/4 seam.
+
+### What Was Done
+- Discussed scope, signal shape, and semantics of closing the Telegram correction loop
+- Confirmed MCP wrapper lives in **this repo** at `mcp-server/` (not in the llm repo — user corrected an earlier assumption)
+- Discovered during scoping grep: feedback schema already supports `status: confirmed | corrected | manual`, `predicted_*` / `actual_*` fields, and `GenerateID`; `auto.go` and `batch_auto.go` already write `NewConfirmedEntry`; `correct.go` writes `NewCorrectedEntry`; only `add.go` is the gap (writes `NewManualEntry` with no prediction context)
+- Produced a plan written to `docs/plans/mcp-layer-corrections.md` for execution next session
+
+### Decisions Made
+- **Signal shape (c):** both `--classification-id` AND `--predicted-subcategory` on `add` — ID for linkage per vision's lifecycle model, predicted-subcategory as authoritative signal that survives log rotation
+- **Confirmation logging: deferred** (user choice 2.C) — but `auto`'s existing confirmed-writes keep working. Open question logged for execution: when `add --predicted-subcategory X` has `chosen == X`, write `confirmed` (lean: yes, consistency with `auto`) or skip.
+- **Double-logging is fine:** `expenses_log.jsonl` (insert event) and `classifications.jsonl` (correction event) legitimately record different events, joined by shared ID; no double-count risk since few-shot reads only `classifications.jsonl` (verify at execution start)
+- **Out of scope:** status lifecycle, SQLite migration, Telegram bot implementation, 5.R1 retrieval work
+
+### Next
+- Execute `docs/plans/mcp-layer-corrections.md` — start with Step 1 (verify no double-count risk) then acceptance tests
+- Still open from session 15: PR #17 merge status vs. PR #16; gitignore cleanup for `expense-reporter` binary + `expenses_failed_*.csv`
+
+---
+
+## 2026-04-22 — Session 15: `correct` Command — Closing the Feedback Loop (Layer 5.9)
+
+### Context
+Resumed via `.claude/tools/resume.sh` from session 14's "Next" pointer. Discussed Option B (correction workflow) over Option A (TF-IDF retrieval) because the feedback loop being broken is the bigger value gap. Adopted "acceptance tests first" as a durable workflow rule.
+
+### What Was Done
+- **Acceptance-first workflow established** (saved to memory) — discuss scenarios, write acceptance tests, then drop into TDD inner loop for unit tests
+- **Naming conventions documented in `expense-reporter/test/PATTERNS.md`**:
+  - **Given:** Event Modeling style — past-tense events that happened (e.g., `expenseAutoConfirmed`, `expenseConfirmedThenCorrected`); state-only exception for empty event streams (e.g., `noClassificationsRecorded`)
+  - **Then:** composable `[]func(*Context)` slices joined via `slices.Concat`
+- **Test scaffolding additions:**
+  - `verify.CommandFailed` (inverse of CommandSucceeded)
+  - `harness.SeedFileFromFixture` (copy one named fixture file into WorkDir)
+  - `actions.RunCorrect` (no `--workbook` flag; passes `--data-dir`)
+- **Production code** (TDD: red acceptance → impl → green):
+  - `feedback.NewCorrectedEntry` — predicted from prior, actual from user, status=corrected
+  - `feedback.FindLatestEntry(path, id)` — scans JSONL, returns last matching entry
+  - `cmd/correct.go` cobra command — parses 4-field input, looks up prior, writes corrected entry; fails clearly when no prior entry exists (hint to use `add`); does NOT touch the workbook
+- **2 fixtures + 3 acceptance tests** — overrides-confirmed, fails-when-no-prior, latest-wins-on-duplicate-IDs (all 3 green in <1s, no Ollama needed)
+- **Tooling:** `.claude/tools/lookup-category.py` — subcategory→category lookup against `feature_dictionary_enhanced.json`
+- **Persona/tier-list update:** added `my-go-g3-12b` (gemma3:12b) at #2 in CLAUDE.md Go codegen tier list
+- **Memory updates:**
+  - New: `feedback_acceptance_first.md`
+  - Sharpened `feedback_ollama_timeouts.md` — 3 parallel Ollama codegen calls is too much for non-trivial prompts (VRAM ceiling)
+  - Updated `feedback_system_findings.md` — flipped "missing corrections" section to documented closed gap; added correct command to entry points
+- **Doc sweep:** `expense-reporter/README.md`, root `README.md`, `expense-reporter/.memories/QUICK.md`, `test/.memories/QUICK.md`, `docs/FEEDBACK_SYSTEM.md` (renamed ref block `feedback-missing-feature` → `feedback-correction-workflow`); `.claude/index.md` ref pointer updated
+- **Branch & PRs:**
+  - Created `feature/correct-command` branch (off `docs/feedback-system-csv-reconstruction`)
+  - 2 commits: `3ddd46f` (feat), `4b97c12` (docs)
+  - **PR #17** opened to master: https://github.com/leandror172/expense-reporter-experiment/pull/17 — includes 2 commits from PR #16 (still open) as ancestors
+
+### Decisions Made
+- **`correct` is feedback-only** — no `--workbook` flag, does not move cells. Workbook cell relocation is bundled responsibility; keep `correct` single-purpose. User fixes the workbook manually for now.
+- **`correct` requires a prior entry** — fails with hint to use `add` if none exists. Matches the design: corrections always override a model prediction. `review.csv` items (never auto-inserted) belong to `add`.
+- **Telegram-flow corrections deferred to MCP/bot layer** — writing `corrected` at insert time when user picks a non-top candidate needs an MCP-layer extension (e.g., `--predicted-subcategory` flag on `add`); not part of CLI scope.
+- **Gemma persona used as-is** (`my-go-g3-12b`, role differs from qcoder) rather than copied from qcoder — avoid spec-overwrite when an existing active persona works.
+- **Ollama parallelization ceiling**: 3 parallel codegen calls only safe for tiny near-identical prompts; default to serial otherwise.
+
+### Next
+- Verify PR #17 in CI; merge order with PR #16 (rebase if #17 lands first)
+- After merge: 5.R1 TF-IDF retrieval (better few-shot example selection) OR Telegram-flow `corrected` extension at MCP layer — user pick
+- Consider gitignore cleanup for `expense-reporter/expense-reporter` binary and `expenses_failed_*.csv` artifacts (separate small commit)
 
 ---
 
@@ -65,72 +133,6 @@ Resumed from session 12. Recontextualized, opened PR for 5.8a, then worked throu
 - Merge PR chain: 5.8a → 5.8b-prep → 5.8b → 5.8b-add-data-dir → master
 - Consider deferred task: `TestBatchAuto_SameYearInstallmentsExpanded` scope reduction (tasks.md)
 - Next feature work: 5.R1 TF-IDF retrieval layer or T1 resume context loading
-
----
-
-## 2026-03-23 — Session 12: 5.8a — JSON output for classify/auto
-
-### Context
-Resumed after 5.7 merge to master. Recontextualized via `resume.sh`. Discussed 5.8 architecture extensively — originally planned as MCP thin wrapper in LLM repo, but decided the MCP server belongs in this repo since it's a tool of this app. Reviewed the grand vision (`docs/expense-classifier-vision.md`) which reshaped 5.8 into two sub-tasks: 5.8a (Go-side `--json` flag) and 5.8b (Python MCP wrapper). This session implemented 5.8a.
-
-### What Was Done
-- **5.7 merged** — user merged `feature/5.7-few-shot-injection` to master before session work began
-- **5.8 architecture discussion** — read LLM repo's MCP server (`server.py`, `registry.py`), all Cobra commands, and concurrency control docs; decided MCP server lives in expense-reporter repo, not LLM repo
-- **5.8a implementation** — `--json` persistent flag on root command; new `output.go` with `ClassifyOutput`, `CandidateOutput`, `AutoOutput` structs + `printJSON`/`toCandidates` helpers
-- **classify --json** — outputs structured JSON with item/value/date/candidates array
-- **auto --json** — read-only mode: classifies, evaluates `IsAutoInsertable`, returns recommendation (`would_insert`/`review`/`excluded`) but **never inserts** into workbook. Matches vision flow: classify → user picks → insert
-- **Unit tests** — `output_test.go`: 5 tests (toCandidates, ClassifyOutput serialization, AutoOutput serialization, nil Result omitempty, printJSON stdout capture)
-- **Acceptance tests** — `test/json_output_test.go`: 2 scenarios (classify --json valid JSON with keys, auto --json returns recommendation without inserting); `test/verify/json.go`: `OutputIsValidJSON()`, `OutputJSONHasKey()` verify helpers
-- **All tests pass** — 18 acceptance (16 existing + 2 new), 220+ unit tests, clean build + vet
-- **Deferred task T1** — resume context loading improvement documented in `.claude/ideas/resume-context-loading.md`
-- **Ollama usage** — used `my-go-qcoder` (qwen3-coder:30b) for `output.go` and `output_test.go` generation; identified gap where later files were written without Ollama (feedback saved to memory)
-
-### Decisions Made
-- **MCP server lives in expense-reporter repo** — it's a tool of this app, not generic LLM infra; uses Python/FastMCP (same stack as LLM repo's ollama-bridge)
-- **5.8 split into 5.8a + 5.8b** — vision doc showed MCP is one of several consumers (Telegram next); Go binary `--json` is the real API surface, MCP wrapper becomes trivially thin
-- **auto --json never inserts** — matches vision flow (classify → present → user picks → add); action field is `would_insert` (recommendation), not `inserted`
-- **`--json` is persistent on root** — future commands (batch-auto, add) can adopt without plumbing changes
-- **TDD violation acknowledged** — tests written after implementation instead of red-first; noted for future sessions
-
-### 5.8b Design Decisions (discussed, not yet implemented)
-- **Three tools:** `classify_expense` (candidates only), `add_expense` (insert), `auto_add` (candidates + recommendation) — all three kept; auto_add is superset of classify but both useful
-- **Thin wrapper:** ~150 lines server.py, no OllamaClient/registry/persona reuse from ollama-bridge
-- **Binary path:** `EXPENSE_REPORTER_BIN` env var primary, fallback builds from Go module root
-- **Workbook path:** MCP param forwarded as `--workbook` (not hidden, not env-resolved by MCP)
-- **Exposed params:** `model` and `top` only (caller-meaningful); `data_dir` hidden (infrastructure)
-- **Testing:** Integration tests (build binary, call with `--json`); minimal; use `--dry-run` for add
-- **5.8b-prep task:** Add `--dry-run` flag to Go `add` command before building MCP server
-
-### Next
-- [ ] **Merge `feature/5.8a-json-output`** to master
-- [ ] **5.8b-prep:** Add `--dry-run` to `add` command (Go)
-- [ ] **5.8b:** Python MCP server in `mcp-server/` — `classify_expense`, `add_expense`, `auto_add`
-
----
-
-## 2026-03-18 — Session 11: 5.7 implementation — few-shot injection
-
-### Context
-Resumed immediately after Session 10 (planning session). Plan at `.claude/plans/5.7-few-shot-injection.md` was approved as-is. Full implementation in one session using local Ollama models (qwen3-coder:30b) for code generation.
-
-### What Was Done
-- **Phase 1 — example selection engine** (`internal/classifier/examples.go`): `Example`, `ExampleSource`, `KeywordEntry`, `KeywordIndex` types; `SelectExamples` (keyword lookup → high/ambiguous specificity branching → source priority sort); `tokenize` (unicode-aware, accents preserved)
-- **Phase 2 — data loading** (`internal/classifier/loader.go`): `LoadTrainingExamples` (YYYY-MM-DD → DD/MM normalization, nil,nil on missing), `LoadFeedbackExamples` (JSONL, skips manual entries), `LoadKeywordIndex`, `MergeExamplePools` (feedback wins on item dedup)
-- **Phase 3 — prompt wiring** (`classifier.go`): `buildRequest` accepts `[]Example`; `formatExampleMessages` produces user/assistant pairs (confidence 0.95); `Classify` orchestrates loading from `cfg.DataDir`/`cfg.FeedbackPath`, logs via `logger.Debug("few-shot", ...)`; `Config` gains `DataDir` + `FeedbackPath`; all three commands wired
-- **Phase 3 unit tests** — `TestFormatExampleMessages` + `TestBuildRequest_FewShot` added to existing `classifier_test.go` (testify; no new file — right call)
-- **Phase 4 — acceptance tests** (`test/fewshot_test.go`): 3 scenarios — training data present, training data absent (graceful degradation), batch-auto unchanged; `RunClassify` updated to auto-inject `--data-dir`
-- **Phase 5** — all 16 acceptance tests pass (~15 min total); all 220+ unit tests pass
-- **Phase 6** — `tasks.md` (5.7 → done), `session-context.md`, `index.md` updated
-- **Tooling** — replaced `.claude/tools/ref-lookup.sh` bash calls with `mcp__ollama-bridge__ref_lookup` for doc lookups
-
-### Decisions Made
-- **`FeedbackPath` field in `classifier.Config`** — `classify` command only loads training data; `auto`/`batch-auto` pass `appCfg.ClassificationsFilePath()` as `FeedbackPath`
-- **No new test file for `buildRequest` tests** — added to existing `classifier_test.go`; splitting was only justified by style mixing, not domain/size
-- **Ollama timeouts = cold start** — truly unavailable Ollama fails immediately (connection refused); retry more aggressively before falling back to writing code manually
-
-### Next
-- [ ] **Merge `feature/5.7-few-shot-injection`** to master (PR open)
-- [ ] **Start 5.8** — MCP thin wrapper in LLM repo (`/mnt/i/workspaces/llm/`): 3 tools `classify_expense`, `add_expense`, `auto_add` calling Go binary as subprocess
 
 ---
 
