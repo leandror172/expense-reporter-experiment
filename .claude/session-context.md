@@ -46,14 +46,15 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Layer 5 — Expense Classifier
-- **Last checkpoint:** Session 13 (2026-03-27) — 5.8b complete + data-dir fix
-  - `mcp-server/` Python project: `binary.py` + `server.py` (classify_expense, add_expense)
-  - `add --dry-run` flag + `AddOutput` struct; `add --data-dir` flag (fixes MCP taxonomy lookup)
-  - MCP server registered and smoke-tested live; both tools confirmed working
-  - Open PRs: #11 (5.8a), #12 (5.8b-prep), #13 (5.8b), #14 (5.8b-add-data-dir)
-- **Branch:** `feature/5.8b-add-data-dir` (all committed and pushed)
-- **Next:** Merge PR chain to master; then 5.R1 TF-IDF retrieval or T1 resume context loading
+- **Active layer:** Layer 5 — Expense Classifier (post-5.8 maintenance & understanding phase)
+- **Last checkpoint:** Session 14 (2026-04-20) — Feedback system documented + CSV reconstruction tool
+  - Discovered & documented feedback system architecture (classifications.jsonl, status types, flows)
+  - Critical gap: `status=corrected` entries readable but nothing writes them
+  - Created CSV reconstruction tool for recovery from batch-auto failures
+  - Bug report filed: batch-auto loses classification output when workbook insertion fails
+  - Branch: `docs/feedback-system-csv-reconstruction` (staged, not yet pushed/PR'd)
+- **Open PRs:** #11–#14 from session 13 (5.8a/5.8b chain, should be merged by now)
+- **Next:** Create PR for this branch; merge to master; then 5.R1 TF-IDF retrieval or correction workflow
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 

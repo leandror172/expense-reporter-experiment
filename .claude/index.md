@@ -232,6 +232,30 @@ Source: `data/classification/algorithm_parameters.json` (tracked).
 
 ---
 
+<!-- ref:feedback-system -->
+## Feedback System & Corrections
+
+**File:** `docs/FEEDBACK_SYSTEM.md`
+
+The feedback system logs classification decisions to `classifications.jsonl` for training, tuning, and audit purposes.
+
+**Key ref blocks:**
+- `[ref:feedback-entry-structure]` — JSON entry format, status values (confirmed/corrected/manual)
+- `[ref:feedback-sources]` — Which commands create which feedback entries (add, auto, batch-auto)
+- `[ref:feedback-training]` — How feedback becomes training examples for next run
+- `[ref:feedback-missing-feature]` — Missing correction workflow (status="corrected" not implemented)
+- `[ref:feedback-file-path]` — Configuration and file resolution logic
+- `[ref:feedback-cold-start]` — Behavior when classifications.jsonl doesn't exist
+
+**Quick summary:**
+- `add` command → `status="manual"` (user entered, no model)
+- `auto`/`batch-auto` commands → `status="confirmed"` (model accepted automatically)
+- No way to create → `status="corrected"` (model was wrong; user corrected it) — **feature gap**
+
+<!-- /ref:feedback-system -->
+
+---
+
 ## Retrieval Strategy Docs
 
 | File | Tracked | Purpose |
@@ -331,4 +355,5 @@ Desktop-era planning documents — read for context, do not modify.
 | `resume.sh` | `.claude/tools/resume.sh` | Session-start context summary |
 | `ref-lookup.sh` | `.claude/tools/ref-lookup.sh` | Resolve [ref:KEY] tags |
 | `rotate-session-log.sh` | `.claude/tools/rotate-session-log.sh` | Archive old session log entries |
+| `reconstruct-csvs.py` | `.claude/tools/reconstruct-csvs.py` | Reconstruct classified/review CSVs from batch-auto log + original input CSV (line-matched) |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |
