@@ -221,3 +221,74 @@ func classificationMatchesExpectedWithMinAccuracy(expectedPath, resultsDir strin
 		verify.ClassificationAccuracyAtLeast("classified.csv", expectedPath, 0.5, resultsDir),
 	}
 }
+
+func TestBatchAuto_MissingWorkbook_FailsFastBeforeClassification(t *testing.T) {
+	harness.RequireOllama(t, "")
+
+	fixDir := filepath.Join(fixturesDir(), "batch-auto-corrupt-workbook")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "missing workbook causes fast-fail before classification runs",
+		Given: batchExpensesSubmittedToMissingWorkbook(fixDir),
+		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Then:  commandFailedWithWorkbookHint(),
+	})
+}
+
+func batchExpensesSubmittedToMissingWorkbook(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.FixtureDir = fixDir
+		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+		ctx.WorkbookPath = filepath.Join(ctx.WorkDir, "nonexistent-workbook.xlsx")
+	}
+}
+
+func commandFailedWithWorkbookHint() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandFailed(),
+		verify.OutputContains("Hint:"),
+	}
+}
+
+func TestBatchAuto_InsertFailure_PreservesCSVs(t *testing.T) {
+	harness.RequireOllama(t, "")
+
+	fixDir := filepath.Join(fixturesDir(), "batch-auto-corrupt-workbook")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "classification CSVs preserved when workbook insertion fails",
+		Given: batchExpensesSubmittedToCorruptWorkbook(fixDir),
+		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Then:  classificationCSVsPreservedDespiteInsertFailure(),
+	})
+}
+
+func batchExpensesSubmittedToCorruptWorkbook(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.DataDir = dataDir
+		ctx.FixtureDir = fixDir
+		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
+		}
+		corruptPath := filepath.Join(ctx.WorkDir, "corrupt-workbook.xlsx")
+		if err := os.WriteFile(corruptPath, []byte("not a real xlsx"), 0o644); err != nil {
+			ctx.T.Fatalf("writing corrupt workbook: %v", err)
+		}
+		ctx.WorkbookPath = corruptPath
+	}
+}
+
+func classificationCSVsPreservedDespiteInsertFailure() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.CommandFailed(),
+		verify.OutputFileExists("classified.csv"),
+		verify.OutputFileExists("review.csv"),
+		verify.OutputFileHasAtLeastRows("classified.csv", 1),
+		verify.OutputContains("classification CSVs preserved"),
+	}
+}

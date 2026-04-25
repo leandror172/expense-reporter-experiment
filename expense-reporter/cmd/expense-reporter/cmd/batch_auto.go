@@ -9,6 +9,7 @@ import (
 
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
+	"expense-reporter/internal/excel"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
 	"expense-reporter/internal/models"
@@ -97,14 +98,22 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		TopN:         batchAutoTopN,
 	}
 
+	if !batchAutoDryRun {
+		workbook, err := GetWorkbookPath()
+		if err != nil {
+			return fmt.Errorf("workbook path not configured: %w\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", err)
+		}
+		if _, err := os.Stat(workbook); os.IsNotExist(err) {
+			return fmt.Errorf("workbook not found: %s\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", workbook)
+		}
+	}
+
 	results := classifyLines(lines, taxonomy, appCfg, cfg, batchAutoThreshold)
 
 	var rollovers []workflow.RolloverExpense
+	var insertErr error
 	if !batchAutoDryRun {
-		rollovers, err = insertClassified(results, appCfg, batchAutoModel)
-		if err != nil {
-			return err
-		}
+		rollovers, insertErr = insertClassified(results, appCfg, batchAutoModel)
 	}
 
 	classifiedPath := filepath.Join(outputDir, "classified.csv")
@@ -126,6 +135,9 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 	}
 
 	printBatchSummary(results, rollovers, batchAutoDryRun, classifiedPath, reviewPath, rolloverPath)
+	if insertErr != nil {
+		return fmt.Errorf("workbook insertion failed (classification CSVs preserved at %s): %w", outputDir, insertErr)
+	}
 	return nil
 }
 
@@ -209,6 +221,9 @@ func insertClassified(results []classifiedRow, appCfg *config.Config, model stri
 	}
 	if _, err := os.Stat(workbook); os.IsNotExist(err) {
 		return nil, fmt.Errorf("workbook not found: %s", workbook)
+	}
+	if err := excel.ValidateWorkbook(workbook); err != nil {
+		return nil, fmt.Errorf("workbook cannot be opened: %w", err)
 	}
 
 	if _, err := batch.NewBackupManager().CreateBackup(workbook); err != nil {
