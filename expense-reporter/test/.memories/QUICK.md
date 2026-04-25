@@ -32,6 +32,7 @@ results/             # Gitignored — accuracy drift reports across runs
 - **Composable Then** — helpers return `[]func(*Context)`, combined with `slices.Concat`
 - **Fixture threshold 0.0** — mechanics tests (installments, rollover) use threshold 0.0
   to decouple from classifier non-determinism
+- **Infrastructure timeout gotcha (session 18):** Full 600s acceptance suite times out mid-flight. Basic test ~286s + MixedConfidence ~299s = 585s remaining. New tests should be fast (<5s) or run separately. Run individual test classes, not full suite, during development.
 
 ## Deeper Memory → KNOWLEDGE.md
 - **Harness design** — domain-agnostic engine vs domain-specific actions/verify
