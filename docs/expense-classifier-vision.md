@@ -78,10 +78,12 @@
 - Inject as few-shot examples alongside feature dictionary
 - **Accuracy improves over time without retraining**
 
-### Phase 3: MCP exposure (Layer 5 → 6 bridge)
-- MCP tool in llm repo wraps expense-reporter classify/add
-- Claude Code can manage expenses conversationally
-- Scaffolding pattern documented for future tools
+### Phase 3: MCP exposure (Layer 5 → 6 bridge) — SHIPPED (2026-03)
+- MCP server lives in THIS repo at `mcp-server/` (not the LLM repo as originally planned)
+- Two tools registered: `classify_expense` (read-only) and `add_expense` (insert).
+  An originally-planned `auto_add` tool was dropped — see `mcp-server/.memories/KNOWLEDGE.md`
+  "Two Tools, Not Three" (2026-03-27). The MCP caller composes classify→decide→add itself.
+- Claude Code can manage expenses conversationally via these tools
 
 ### Phase 4: Telegram integration (Layer 6)
 - Chat monitoring (polling or webhook)

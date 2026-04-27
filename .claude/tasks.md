@@ -53,7 +53,7 @@ All work below was done in Claude Desktop before Claude Code was set up for this
 timestamp}` appended on insert (status: confirmed/corrected/manual). Plan: `.claude/plans/polished-knitting-simon.md`
 - [x] **5.6** Expense persistence: hash ID (sha256[:12] of normalized item+date+value), `expenses_log.jsonl` appended on each insert
 - [x] **5.7** Few-shot injection: keyword pre-match against training data, inject top-K examples into classify prompt
-- [ ] **5.8** MCP thin wrapper in LLM repo: `classify_expense` / `add_expense` / `auto_add` tools (calls Go binary as subprocess)
+- [x] **5.8** MCP thin wrapper (lives in THIS repo at `mcp-server/`, not LLM repo): `classify_expense` + `add_expense` tools, calls Go binary as subprocess. `auto_add` dropped by design — see `mcp-server/.memories/KNOWLEDGE.md` "Two Tools, Not Three" (2026-03-27).
 
 ### Deferred Technical Debt
 
