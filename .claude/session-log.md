@@ -1,7 +1,27 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-04-27 — Session 19: Layer 5.8 Doc Reconciliation
+
+### Context
+Post-merge of session-18 PRs. User asked to review next-steps and confirm whether 5.8 had remaining work.
+
+### What Was Done
+- Verified Layer 5.8 is fully shipped: MCP server in `mcp-server/` (this repo, not LLM repo), 2 tools (`classify_expense`, `add_expense`), `auto_add` deliberately dropped per `mcp-server/.memories/KNOWLEDGE.md` "Two Tools, Not Three" (2026-03-27).
+- Reconciled stale docs (commit 3e38fed): `tasks.md` 5.8 → `[x]`, `docs/expense-classifier-vision.md` Phase 3 → SHIPPED, `session-context.md` Domain Boundary collapsed.
+- Saved 2 memory entries: MCP server lives in this repo (corrected user feedback); Layer 5.R1 evaluation procedure (trigger definitions + verified instrumentation prerequisite — `feedback.Entry` lacks keyword-hit field, so existing `classifications.jsonl` cannot be segmented hit-vs-miss without code change first).
+
+### Decisions Made
+- Don't start R1 on speculation. Wait for user's run review; future session uses saved evaluation procedure.
+- Misc planning .txt files moved out of repo root by user (no longer untracked).
+
+### Next
+- User reviewing classification run; may justify R1 in a future session — see memory `project_r1_evaluation_procedure.md`.
+- Otherwise: BUG_REPORT_DEFAULT_WORKBOOK_PATH (small), `TestBatchAuto_SameYearInstallmentsExpanded` test-debt fix (trivial), or acceptance suite timeout split.
 
 ---
 
@@ -89,51 +109,6 @@ Short planning session. User asked about the "Telegram-flow corrections at MCP l
 ### Next
 - Execute `docs/plans/mcp-layer-corrections.md` — start with Step 1 (verify no double-count risk) then acceptance tests
 - Still open from session 15: PR #17 merge status vs. PR #16; gitignore cleanup for `expense-reporter` binary + `expenses_failed_*.csv`
-
----
-
-## 2026-04-22 — Session 15: `correct` Command — Closing the Feedback Loop (Layer 5.9)
-
-### Context
-Resumed via `.claude/tools/resume.sh` from session 14's "Next" pointer. Discussed Option B (correction workflow) over Option A (TF-IDF retrieval) because the feedback loop being broken is the bigger value gap. Adopted "acceptance tests first" as a durable workflow rule.
-
-### What Was Done
-- **Acceptance-first workflow established** (saved to memory) — discuss scenarios, write acceptance tests, then drop into TDD inner loop for unit tests
-- **Naming conventions documented in `expense-reporter/test/PATTERNS.md`**:
-  - **Given:** Event Modeling style — past-tense events that happened (e.g., `expenseAutoConfirmed`, `expenseConfirmedThenCorrected`); state-only exception for empty event streams (e.g., `noClassificationsRecorded`)
-  - **Then:** composable `[]func(*Context)` slices joined via `slices.Concat`
-- **Test scaffolding additions:**
-  - `verify.CommandFailed` (inverse of CommandSucceeded)
-  - `harness.SeedFileFromFixture` (copy one named fixture file into WorkDir)
-  - `actions.RunCorrect` (no `--workbook` flag; passes `--data-dir`)
-- **Production code** (TDD: red acceptance → impl → green):
-  - `feedback.NewCorrectedEntry` — predicted from prior, actual from user, status=corrected
-  - `feedback.FindLatestEntry(path, id)` — scans JSONL, returns last matching entry
-  - `cmd/correct.go` cobra command — parses 4-field input, looks up prior, writes corrected entry; fails clearly when no prior entry exists (hint to use `add`); does NOT touch the workbook
-- **2 fixtures + 3 acceptance tests** — overrides-confirmed, fails-when-no-prior, latest-wins-on-duplicate-IDs (all 3 green in <1s, no Ollama needed)
-- **Tooling:** `.claude/tools/lookup-category.py` — subcategory→category lookup against `feature_dictionary_enhanced.json`
-- **Persona/tier-list update:** added `my-go-g3-12b` (gemma3:12b) at #2 in CLAUDE.md Go codegen tier list
-- **Memory updates:**
-  - New: `feedback_acceptance_first.md`
-  - Sharpened `feedback_ollama_timeouts.md` — 3 parallel Ollama codegen calls is too much for non-trivial prompts (VRAM ceiling)
-  - Updated `feedback_system_findings.md` — flipped "missing corrections" section to documented closed gap; added correct command to entry points
-- **Doc sweep:** `expense-reporter/README.md`, root `README.md`, `expense-reporter/.memories/QUICK.md`, `test/.memories/QUICK.md`, `docs/FEEDBACK_SYSTEM.md` (renamed ref block `feedback-missing-feature` → `feedback-correction-workflow`); `.claude/index.md` ref pointer updated
-- **Branch & PRs:**
-  - Created `feature/correct-command` branch (off `docs/feedback-system-csv-reconstruction`)
-  - 2 commits: `3ddd46f` (feat), `4b97c12` (docs)
-  - **PR #17** opened to master: https://github.com/leandror172/expense-reporter-experiment/pull/17 — includes 2 commits from PR #16 (still open) as ancestors
-
-### Decisions Made
-- **`correct` is feedback-only** — no `--workbook` flag, does not move cells. Workbook cell relocation is bundled responsibility; keep `correct` single-purpose. User fixes the workbook manually for now.
-- **`correct` requires a prior entry** — fails with hint to use `add` if none exists. Matches the design: corrections always override a model prediction. `review.csv` items (never auto-inserted) belong to `add`.
-- **Telegram-flow corrections deferred to MCP/bot layer** — writing `corrected` at insert time when user picks a non-top candidate needs an MCP-layer extension (e.g., `--predicted-subcategory` flag on `add`); not part of CLI scope.
-- **Gemma persona used as-is** (`my-go-g3-12b`, role differs from qcoder) rather than copied from qcoder — avoid spec-overwrite when an existing active persona works.
-- **Ollama parallelization ceiling**: 3 parallel codegen calls only safe for tiny near-identical prompts; default to serial otherwise.
-
-### Next
-- Verify PR #17 in CI; merge order with PR #16 (rebase if #17 lands first)
-- After merge: 5.R1 TF-IDF retrieval (better few-shot example selection) OR Telegram-flow `corrected` extension at MCP layer — user pick
-- Consider gitignore cleanup for `expense-reporter/expense-reporter` binary and `expenses_failed_*.csv` artifacts (separate small commit)
 
 ---
 

@@ -47,7 +47,9 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 18 (2026-04-25) — batch-auto CSV-preservation fix shipped
+- **Last checkpoint:** Session 19 (2026-04-27) — Layer 5.8 doc reconciliation; 5.8 confirmed fully shipped
+  - Saved memory: R1 evaluation procedure (trigger definitions, verified instrumentation prerequisite)
+- **Prior checkpoint:** Session 18 (2026-04-25) — batch-auto CSV-preservation fix shipped
   - Layer 1 (UX): fail-fast workbook validation before expensive classification
   - Layer 2 (durability): reorder CSV writes to always run, even on insertion failure
   - 2 new acceptance tests (missing-workbook fast-fail 0.01s, corrupt-workbook CSVs-preserved)
