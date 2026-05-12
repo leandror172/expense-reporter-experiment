@@ -47,13 +47,14 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 20 (2026-05-12) — workbook path resolution bug fixed; branch `fix/workbook-path-resolution` ready to commit + PR
+- **Last checkpoint:** Session 20 (2026-05-12) — workbook path resolution bug fixed; PR #19 open on `fix/workbook-path-resolution`
   - `WorkbookFilePath()` added to `Config`; `GetWorkbookPath` rewritten (drops `os.Executable` default + Windows fallback)
-  - All 13 unit test packages green; acceptance tests unaffected
+  - `batch_auto.go` duplicate error prefix fixed; all wrappers now use `"failed to get workbook path: %w"`
+  - 417 unit tests green; acceptance tests unaffected
   - Multi-workbook-per-year design deferred (tracked in tasks.md)
 - **Prior checkpoint:** Session 19 (2026-04-27) — Layer 5.8 doc reconciliation; 5.8 confirmed fully shipped
-- **Open PRs:** #16 and #17 merged; `fix/workbook-path-resolution` branch pending commit + PR
-- **Next:** Commit + PR for workbook path fix; then `TestBatchAuto_SameYearInstallmentsExpanded` test-debt, or 5.R1 TF-IDF if classification run data justifies it
+- **Open PRs:** #16 and #17 merged; PR #19 open (`fix/workbook-path-resolution`, ready to merge)
+- **Next:** Merge PR #19; then `TestBatchAuto_SameYearInstallmentsExpanded` test-debt, or 5.R1 TF-IDF if classification run data justifies it
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
