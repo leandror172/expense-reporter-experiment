@@ -31,6 +31,32 @@ func TestExpensesLogFilePath_Relative(t *testing.T) {
 	}
 }
 
+func TestWorkbookFilePath_Empty(t *testing.T) {
+	c := &Config{}
+	if got := c.WorkbookFilePath(); got != "" {
+		t.Errorf("WorkbookFilePath() = %q, want empty string when path is unset", got)
+	}
+}
+
+func TestWorkbookFilePath_Absolute(t *testing.T) {
+	abs := "/tmp/workbook.xlsx"
+	c := &Config{WorkbookPath: abs}
+	if got := c.WorkbookFilePath(); got != abs {
+		t.Errorf("WorkbookFilePath() = %q, want %q", got, abs)
+	}
+}
+
+func TestWorkbookFilePath_Relative(t *testing.T) {
+	c := &Config{WorkbookPath: "workbook.xlsx"}
+	got := c.WorkbookFilePath()
+	if !filepath.IsAbs(got) {
+		t.Errorf("WorkbookFilePath() = %q, want an absolute path for relative input", got)
+	}
+	if filepath.Base(got) != "workbook.xlsx" {
+		t.Errorf("WorkbookFilePath() base = %q, want workbook.xlsx", filepath.Base(got))
+	}
+}
+
 func TestClassificationsFilePath_Empty(t *testing.T) {
 	c := &Config{}
 	if got := c.ClassificationsFilePath(); got != "" {

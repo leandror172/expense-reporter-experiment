@@ -63,7 +63,7 @@ func TestGetWorkbookPath(t *testing.T) {
 		{
 			name:    "empty environment variable",
 			envVar:  "",
-			wantErr: false, // Should use default path
+			wantErr: true, // No flag, no env, no config → error
 		},
 	}
 

@@ -17,6 +17,22 @@ type Config struct {
 	ExpensesLogPath     string   `json:"expenses_log_path"`
 }
 
+// WorkbookFilePath returns the absolute path to the Excel workbook.
+// Same resolution logic as ClassificationsFilePath.
+func (c *Config) WorkbookFilePath() string {
+	if c.WorkbookPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(c.WorkbookPath) {
+		return c.WorkbookPath
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return c.WorkbookPath
+	}
+	return filepath.Join(filepath.Dir(exe), c.WorkbookPath)
+}
+
 // ExpensesLogFilePath returns the absolute path to expenses_log.jsonl.
 // Same resolution logic as ClassificationsFilePath.
 func (c *Config) ExpensesLogFilePath() string {

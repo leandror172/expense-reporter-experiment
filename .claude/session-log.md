@@ -1,7 +1,37 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-05-12 — Session 20: Workbook Path Resolution Bug Fix
+
+### Context
+Resumed from session 19. Discussed next steps; chose to fix the latent `BUG_REPORT_DEFAULT_WORKBOOK_PATH.md` bug. PRs #16 and #17 had already been merged to master.
+
+### What Was Done
+- **Investigated the bug:** Confirmed `GetWorkbookPath` in `root.go` used `os.Executable()` to resolve a default path — broken under `go run` (exe in build cache). Also confirmed `config.json` already has `workbook_path` field and `Config` struct has `WorkbookPath`, but neither was being used by `GetWorkbookPath`.
+- **Designed fix:** Resolution order: `--workbook` flag → `EXPENSE_WORKBOOK_PATH` env → `config.Load()` + `cfg.WorkbookFilePath()` → clear error. Malformed config surfaces; absent config falls through to error. Multi-workbook-per-year design deferred.
+- **Plan written:** `.claude/plans/fix-workbook-path-resolution.md` — advisor-reviewed, covers TDD order, test separation, session-end housekeeping.
+- **TDD implementation (red → green):**
+  - Added `TestWorkbookFilePath_{Empty,Absolute,Relative}` to `internal/config/config_test.go` (mirrors existing `ClassificationsFilePath` test pattern)
+  - Updated `TestGetWorkbookPath/empty_environment_variable` → `wantErr: true`
+  - Added `WorkbookFilePath()` to `Config` in `internal/config/config.go` (exact mirror of `ExpensesLogFilePath`)
+  - Rewrote `GetWorkbookPath` in `cmd/root.go`: dropped `os.Executable()` relative path block and Windows hardcoded fallback; now calls `config.Load()` + `cfg.WorkbookFilePath()`
+- **All 13 unit test packages green.** Call site verification: all 4 callers (`add`, `auto`, `batch`, `batch_auto`) already surface the error.
+- **Branch created:** `fix/workbook-path-resolution`
+
+### Decisions Made
+- **Config as fallback, not elimination:** `WorkbookFilePath()` on Config used as step 3 in resolution — consistent with how `ClassificationsFilePath` and `ExpensesLogFilePath` work.
+- **Multi-workbook-per-year deferred:** Vision is `"workbooks": {"2025": "...", "2026": "..."}` keyed by year from expense date. Tracked in tasks.md for a future session.
+- **No acceptance test changes needed:** Acceptance tests pass `--workbook` explicitly via `ctx.WorkbookPath`; fix is transparent to them.
+- **`SetupBinaryConfig` is acceptance-only:** Could not be used from `main_test.go`. `WorkbookFilePath` tested directly in `config_test.go` instead.
+
+### Next
+- Commit all changes on `fix/workbook-path-resolution`
+- Create PR (base: master)
+- Future options: `TestBatchAuto_SameYearInstallmentsExpanded` test-debt fix (trivial), 5.R1 TF-IDF retrieval (if classification run data justifies it)
 
 ---
 
@@ -86,29 +116,6 @@ Resumed from session 16's plan (`docs/plans/mcp-layer-corrections.md`). Resolved
 - **Open PRs still unmerged:** #16 (docs/feedback-system-csv-reconstruction) and #17 (correct command) — consider creating PR for the MCP-layer corrections on this branch (`feature/correct-command`)
 - **Uncommitted:** `CLAUDE.md`, `.claude/session-context.md`, `docs/FEEDBACK_SYSTEM.md` — commit docs as session close
 - **Next feature investment:** 5.R1 TF-IDF retrieval (better few-shot example selection) — documented in `internal/classifier/.memories/QUICK.md`
-
----
-
-## 2026-04-23 — Session 16: Planning MCP-Layer Corrections
-
-### Context
-Short planning session. User asked about the "Telegram-flow corrections at MCP layer" item from session 15's "Next" pointer. Read `docs/expense-classifier-vision.md` mid-discussion to ground the plan in the documented Phase 3/4 seam.
-
-### What Was Done
-- Discussed scope, signal shape, and semantics of closing the Telegram correction loop
-- Confirmed MCP wrapper lives in **this repo** at `mcp-server/` (not in the llm repo — user corrected an earlier assumption)
-- Discovered during scoping grep: feedback schema already supports `status: confirmed | corrected | manual`, `predicted_*` / `actual_*` fields, and `GenerateID`; `auto.go` and `batch_auto.go` already write `NewConfirmedEntry`; `correct.go` writes `NewCorrectedEntry`; only `add.go` is the gap (writes `NewManualEntry` with no prediction context)
-- Produced a plan written to `docs/plans/mcp-layer-corrections.md` for execution next session
-
-### Decisions Made
-- **Signal shape (c):** both `--classification-id` AND `--predicted-subcategory` on `add` — ID for linkage per vision's lifecycle model, predicted-subcategory as authoritative signal that survives log rotation
-- **Confirmation logging: deferred** (user choice 2.C) — but `auto`'s existing confirmed-writes keep working. Open question logged for execution: when `add --predicted-subcategory X` has `chosen == X`, write `confirmed` (lean: yes, consistency with `auto`) or skip.
-- **Double-logging is fine:** `expenses_log.jsonl` (insert event) and `classifications.jsonl` (correction event) legitimately record different events, joined by shared ID; no double-count risk since few-shot reads only `classifications.jsonl` (verify at execution start)
-- **Out of scope:** status lifecycle, SQLite migration, Telegram bot implementation, 5.R1 retrieval work
-
-### Next
-- Execute `docs/plans/mcp-layer-corrections.md` — start with Step 1 (verify no double-count risk) then acceptance tests
-- Still open from session 15: PR #17 merge status vs. PR #16; gitignore cleanup for `expense-reporter` binary + `expenses_failed_*.csv`
 
 ---
 
