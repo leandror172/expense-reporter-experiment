@@ -21,6 +21,7 @@ Resumed from session 19. Discussed next steps; chose to fix the latent `BUG_REPO
   - Rewrote `GetWorkbookPath` in `cmd/root.go`: dropped `os.Executable()` relative path block and Windows hardcoded fallback; now calls `config.Load()` + `cfg.WorkbookFilePath()`
 - **All 13 unit test packages green.** Call site verification: all 4 callers (`add`, `auto`, `batch`, `batch_auto`) already surface the error.
 - **Branch created:** `fix/workbook-path-resolution`
+- **Advisor post-review fix:** `batch_auto.go:104` was wrapping `GetWorkbookPath` error with `"workbook path not configured: %w"`, producing a duplicate prefix. Fixed to bare `%w` (inner error is now self-sufficient). `batch_auto.go:220` updated to `"failed to get workbook path: %w"` for consistency with all other callers (`add`, `auto`, `batch`). Smoke test confirmed clean message; 417 tests green.
 
 ### Decisions Made
 - **Config as fallback, not elimination:** `WorkbookFilePath()` on Config used as step 3 in resolution — consistent with how `ClassificationsFilePath` and `ExpensesLogFilePath` work.
