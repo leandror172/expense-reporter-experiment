@@ -58,33 +58,53 @@ Then read `.claude/session-log.md` and add a new entry at the top (below the hea
 
 Update the header's "Current Session" date and "Phase" field.
 
-### 3. Update session-context.md
+### 3. Update tasks.md
+
+Read `.claude/tasks.md`. Make two kinds of changes:
+
+**A. Mark completed tasks.** Based on what was done this session (step 1), check off any tasks that are now complete:
+- Change `- [ ]` to `- [x]` for finished items
+- Do not delete completed tasks — keep them for history
+
+**B. Add newly surfaced tasks.** Scan the conversation for tasks that were discussed but not yet stored anywhere. Look for language like:
+- "we should also…", "we'll need to…", "next we should…"
+- "TODO", "will need", "should be done", "let's do X later"
+- Any decision made this session that implies future work, even without an explicit trigger phrase
+- Any follow-up work implied by decisions made this session
+
+Before writing, list the candidates to the user and confirm ("I found N tasks to add — add them?"). This step is judgment-based, so false positives are possible.
+
+Once confirmed, add them as new `- [ ]` items under the appropriate phase or section. If no section fits, find an existing "Deferred", "Backlog", or similar section and append there. Only create a new `## Deferred` section if none exists. Preserve any surrounding `<!-- ref:KEY -->` block boundaries when appending to an existing section.
+
+Do not add tasks that are already captured in the file.
+
+### 4. Update session-context.md
 
 Read `.claude/session-context.md`. Update:
 - The **Current Status** section with latest checkpoint
 - The **Decisions Made** section if new decisions were recorded
 - The **Technical Learnings** section if new gotchas were discovered
 
-### 4. Verify tracking files ARE the handoff
+### 5. Verify tracking files ARE the handoff
 
 The tracking files (session-log.md, tasks.md, session-context.md) serve as the handoff. **Do NOT create separate handoff files** (`.claude/session-handoff-*.md`).
 
-Verify that the updates from steps 2-3 contain everything a new session needs:
+Verify that the updates from steps 2-4 contain everything a new session needs:
 - **session-log.md** has a "Next" pointer saying what to start with
-- **tasks.md** shows which tasks are done and which are pending
+- **tasks.md** has completed tasks checked off and newly surfaced tasks added
 - **session-context.md** has current status and active decisions
 - **index.md** links to any new archive files created this session
 
 If significant research or findings were produced, ensure they're archived in `.claude/archive/` and indexed in `.claude/index.md` (not left only in conversation context).
 
-### 5. Warn about uncommitted changes
+### 6. Warn about uncommitted changes
 
 If `git status` shows uncommitted changes, tell the user:
 - List the changed files
 - Ask if they want to commit before ending
 - Do NOT auto-commit — just inform
 
-### 6. Confirm completion
+### 7. Confirm completion
 
 Show a summary table of what was updated, then confirm the session is ready to close.
 
