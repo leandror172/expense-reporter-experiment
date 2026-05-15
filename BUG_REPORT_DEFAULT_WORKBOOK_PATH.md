@@ -1,7 +1,7 @@
 # Bug: default workbook path resolves against build cache under `go run`
 
 **Date:** 2026-04-24
-**Status:** Reported (latent — surfaced while investigating batch-auto output-loss bug)
+**Status:** Fixed — PR #19 (`fix/workbook-path-resolution`), session 20 (2026-05-12)
 **Severity:** Low (affects UX, not data) — but makes error messages very confusing
 
 ## Issue

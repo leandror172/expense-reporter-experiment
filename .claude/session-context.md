@@ -47,15 +47,14 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 19 (2026-04-27) — Layer 5.8 doc reconciliation; 5.8 confirmed fully shipped
-  - Saved memory: R1 evaluation procedure (trigger definitions, verified instrumentation prerequisite)
-- **Prior checkpoint:** Session 18 (2026-04-25) — batch-auto CSV-preservation fix shipped
-  - Layer 1 (UX): fail-fast workbook validation before expensive classification
-  - Layer 2 (durability): reorder CSV writes to always run, even on insertion failure
-  - 2 new acceptance tests (missing-workbook fast-fail 0.01s, corrupt-workbook CSVs-preserved)
-  - All unit tests green; infrastructure timeout on full acceptance suite (not regression)
-- **Open PRs:** #16 (docs feedback system) + #17 (5.9 correct command) — still unmerged
-- **Next:** Create PR for batch-auto fix (base: master); future options: BUG_REPORT_DEFAULT_WORKBOOK_PATH.md or 5.R1 TF-IDF retrieval
+- **Last checkpoint:** Session 20 (2026-05-12) — workbook path resolution bug fixed; PR #19 open on `fix/workbook-path-resolution`
+  - `WorkbookFilePath()` added to `Config`; `GetWorkbookPath` rewritten (drops `os.Executable` default + Windows fallback)
+  - `batch_auto.go` duplicate error prefix fixed; all wrappers now use `"failed to get workbook path: %w"`
+  - 417 unit tests green; acceptance tests unaffected
+  - Multi-workbook-per-year design deferred (tracked in tasks.md)
+- **Prior checkpoint:** Session 19 (2026-04-27) — Layer 5.8 doc reconciliation; 5.8 confirmed fully shipped
+- **Open PRs:** #16 and #17 merged; PR #19 open (`fix/workbook-path-resolution`, ready to merge)
+- **Next:** Merge PR #19; then `TestBatchAuto_SameYearInstallmentsExpanded` test-debt, or 5.R1 TF-IDF if classification run data justifies it
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 

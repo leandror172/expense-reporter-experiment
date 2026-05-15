@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"expense-reporter/internal/config"
 	"expense-reporter/internal/logger"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -47,28 +47,24 @@ func init() {
 		"Output in JSON format (machine-readable)")
 }
 
-// GetWorkbookPath returns the path to the Excel workbook
-// Uses flag value if set, otherwise environment variable, otherwise default
+// GetWorkbookPath returns the path to the Excel workbook.
+// Resolution order: --workbook flag → EXPENSE_WORKBOOK_PATH env → config.json workbook_path → error.
 func GetWorkbookPath() (string, error) {
-	// Check flag value first
 	if workbookPath != "" {
 		return workbookPath, nil
 	}
 
-	// Check environment variable
 	if path := os.Getenv("EXPENSE_WORKBOOK_PATH"); path != "" {
 		return path, nil
 	}
 
-	// Use default path (relative to executable location)
-	execPath, err := os.Executable()
+	cfg, err := config.Load()
 	if err != nil {
-		// Fallback to hardcoded path
-		return "Z:\\Meu Drive\\controle\\code\\Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx", nil
+		return "", fmt.Errorf("loading config: %w", err)
+	}
+	if p := cfg.WorkbookFilePath(); p != "" {
+		return p, nil
 	}
 
-	execDir := filepath.Dir(execPath)
-	defaultPath := filepath.Join(execDir, "..", "Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx")
-
-	return defaultPath, nil
+	return "", fmt.Errorf("workbook path not configured: use --workbook <path> or set EXPENSE_WORKBOOK_PATH")
 }

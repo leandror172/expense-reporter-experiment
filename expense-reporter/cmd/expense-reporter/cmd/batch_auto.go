@@ -101,7 +101,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 	if !batchAutoDryRun {
 		workbook, err := GetWorkbookPath()
 		if err != nil {
-			return fmt.Errorf("workbook path not configured: %w\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", err)
+			return fmt.Errorf("%w\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", err)
 		}
 		if _, err := os.Stat(workbook); os.IsNotExist(err) {
 			return fmt.Errorf("workbook not found: %s\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", workbook)
@@ -217,7 +217,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 func insertClassified(results []classifiedRow, appCfg *config.Config, model string) ([]workflow.RolloverExpense, error) {
 	workbook, err := GetWorkbookPath()
 	if err != nil {
-		return nil, fmt.Errorf("getting workbook path: %w", err)
+		return nil, fmt.Errorf("failed to get workbook path: %w", err)
 	}
 	if _, err := os.Stat(workbook); os.IsNotExist(err) {
 		return nil, fmt.Errorf("workbook not found: %s", workbook)
