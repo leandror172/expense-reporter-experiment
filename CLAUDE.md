@@ -34,6 +34,13 @@ archive navigation. Do not use `ref:KEY` for content that is only occasionally n
 The full indexing convention (examples, block format, § pointer usage) is documented in
 `.claude/index.md` under the "Indexing Conventions" section.
 <!-- /overlay:ref-indexing -->
+<!-- overlay:session-tracking v2 -->
+## Resuming Multi-Session Work
+
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, key files, active decisions, and recent commits in ~80-100 lines.
+For deeper context: `ref-lookup.sh current-status` | `ref-lookup.sh active-decisions` | `ref-lookup.sh quick-pointers` | `ref-lookup.sh user-prefs`
+**Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
+<!-- /overlay:session-tracking -->
 ## Project Identity
 
 **Go CLI expense reporter** — reads CSV expense exports, classifies them, and inserts rows into an Excel workbook.
@@ -183,18 +190,6 @@ For destructive git operations: explain → backup → dry-run → execute → v
 - **Currency:** BRL (Brazilian Real)
 - **Categories:** hierarchical (Category → Subcategory). See `data/classification/` for taxonomy.
 - **Sensitive data:** Training JSONs contain real expense descriptions — always gitignore, never commit
-
-## Resuming Multi-Session Work
-
-**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~40 lines.
-
-For deeper context:
-- `ref-lookup.sh current-status` — active layer, next task
-- `ref-lookup.sh active-decisions` — key architectural choices
-- `.claude/index.md` — map of all files
-
-**Knowledge index:** `.claude/index.md`
-**Sensitive data:** `.claude/local/` (gitignored)
 
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
