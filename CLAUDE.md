@@ -34,6 +34,13 @@ archive navigation. Do not use `ref:KEY` for content that is only occasionally n
 The full indexing convention (examples, block format, § pointer usage) is documented in
 `.claude/index.md` under the "Indexing Conventions" section.
 <!-- /overlay:ref-indexing -->
+<!-- overlay:session-tracking v2 -->
+## Resuming Multi-Session Work
+
+**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, key files, active decisions, and recent commits in ~80-100 lines.
+For deeper context: `ref-lookup.sh current-status` | `ref-lookup.sh active-decisions` | `ref-lookup.sh quick-pointers` | `ref-lookup.sh user-prefs`
+**Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
+<!-- /overlay:session-tracking -->
 ## Project Identity
 
 **Go CLI expense reporter** — reads CSV expense exports, classifies them, and inserts rows into an Excel workbook.
@@ -109,9 +116,9 @@ No Makefile magic needed for normal work. Tests use standard `go test` with tabl
 ## Local Model Usage (Layer 5+)
 
 **Default: always try local model first for any code generation task.**
-If the first call gets a REJECTED verdict, and there is a next model in the tier list
+If the first call gets a 0 (rejected) verdict, and there is a next model in the tier list
 (below), try that model before escalating.
-Escalate to Claude only after a second REJECTED verdict, or when the task explicitly requires
+Escalate to Claude only after a second 0 (rejected) verdict, or when the task explicitly requires
 architectural reasoning across 3+ files simultaneously.
 
 **Local model tier list for Go codegen** (benchmark in progress — use in priority order):
@@ -121,7 +128,7 @@ architectural reasoning across 3+ files simultaneously.
 4. `my-go-q35-27b` (qwen3.5:27b) — benchmark candidate vs 14B baseline
 5. `my-go-q35` (qwen3.5:9b) — VRAM-only, fastest, for simple tasks
 
-**Local model tier list for classification** (for `classify`/`auto` commands — same cascade rule: try next on REJECTED):
+**Local model tier list for classification** (for `classify`/`auto` commands — same cascade rule: try next on 0 (rejected)):
 1. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — primary; required for 5.7+ (few-shot injection)
 2. `my-classifier-q35` (qwen3.5:9b) — VRAM-only, fast, for standard classification
 3. `my-classifier-q3` (qwen3:8b) — proven baseline
@@ -135,20 +142,20 @@ architectural reasoning across 3+ files simultaneously.
 - Send necessary context - a list of files and the specific lines can be sent through the MCP call
 
 **Escalate to Claude (frontier) only when:**
-- Second model in tier also returned REJECTED
+- Second model in tier also returned 0 (rejected)
 - The task requires reasoning across 4+ files simultaneously
 
 <!-- overlay:ollama-scaffolding v1 -->
 ## Local Model Verdict & Retry Policy
 
 **You MUST read `.claude/overlays/local-model-retry-patterns.md` before evaluating
-any local model output.** It defines the verdict protocol (ACCEPTED/IMPROVED/REJECTED),
+any local model output.** It defines the verdict protocol (0/1/2),
 the decision tree for handling imperfect output, and the cold-start grace period.
 
 Key rules (detail in the reference file):
 - Evaluate every local model response with an explicit verdict
 - Classify imperfect output by defect type, fix scope, and prompt cost — not line count
-- First-call timeouts are `TIMEOUT_COLD_START`, not REJECTED — retry immediately
+- First-call timeouts are `TIMEOUT_COLD_START`, not 0 (rejected) — retry immediately
 <!-- /overlay:ollama-scaffolding -->
 
 ## Documentation Rules (HARD REQUIREMENTS)
@@ -183,18 +190,6 @@ For destructive git operations: explain → backup → dry-run → execute → v
 - **Currency:** BRL (Brazilian Real)
 - **Categories:** hierarchical (Category → Subcategory). See `data/classification/` for taxonomy.
 - **Sensitive data:** Training JSONs contain real expense descriptions — always gitignore, never commit
-
-## Resuming Multi-Session Work
-
-**On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, recent commits in ~40 lines.
-
-For deeper context:
-- `ref-lookup.sh current-status` — active layer, next task
-- `ref-lookup.sh active-decisions` — key architectural choices
-- `.claude/index.md` — map of all files
-
-**Knowledge index:** `.claude/index.md`
-**Sensitive data:** `.claude/local/` (gitignored)
 
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
