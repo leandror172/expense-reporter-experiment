@@ -1,6 +1,6 @@
 # Task Progress — Expense Reporter
 
-**Last Updated:** 2026-03-13 (session 6)
+**Last Updated:** 2026-05-15 (session 21)
 **Active Layer:** Layer 5 — Expense Classifier
 **Full history:** `.claude/session-log.md` (session log), `docs/archive/` (Desktop-era docs)
 
@@ -101,6 +101,25 @@ These items are not blocking for Layer 5.1–5.8 but should be revisited after t
 - [ ] **5.D3** Vendor database: canonical vendor name list to normalize inconsistent spellings
 - [ ] **5.D4** Seasonal/temporal patterns: day-of-month and month-of-year features for recurring bills
 - [ ] **5.D5** ML model experiment: train Random Forest or fine-tune a small BERT on labeled data once enough corrections accumulate (see `data/classification/research_insights.md` § 5 for approach)
+
+### Review UI & `review` Command (session 21)
+
+Local-first review surface — supersedes the Lovable cloud plan
+(`docs/plans/lovable-suggestion-plan.md`).
+
+- [ ] **RUI-1** Implement `expense-reporter review` command — CSV + workbook taxonomy
+  baked into a self-contained `review.html`. Full plan: `.claude/plans/review-command.md`
+  (phased, acceptance-test-first; resolve open questions O1–O3 in that session).
+- [ ] **RUI-2** Build the `review.html` template via claude.ai/design — brief:
+  `docs/plans/review-ui-design-brief.md` + fixtures in `docs/plans/review-ui-fixtures/`.
+  Done in a separate (non-Claude-Code) session; drop the result into
+  `internal/review/template/review.html`.
+- [ ] **RUI-3** `apply` command: ingest the UI's `reviewed.json` back into the workbook
+  + feedback logs (`feedback.Entry` confirmed/corrected, `expenses_log.jsonl`). Needs
+  its own plan. Out of scope for RUI-1.
+- [ ] **RUI-4** Emit the full 3-level path (sheet,category,subcategory) into the
+  classified CSV. When done, `review`'s `ReadQueue` populates `Predicted.Sheet` and the
+  UI pre-fill becomes unambiguous (the `Predicted` struct already has the optional field).
 
 ### Key Decisions (from LLM repo session 32 design)
 - Classification logic in **expense-reporter** (Go) — product feature, not LLM infrastructure

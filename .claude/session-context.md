@@ -47,14 +47,15 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 20 (2026-05-12) — workbook path resolution bug fixed; PR #19 open on `fix/workbook-path-resolution`
+- **Last checkpoint:** Session 21 (2026-05-15) — Review UI design brief + `review` command plan (docs only, no code)
+  - Rejected the Lovable cloud architecture; chose local-first: CLI bakes data into a single self-contained `review.html`
+  - `docs/plans/review-ui-design-brief.md` + fixtures (for claude.ai/design); `.claude/plans/review-command.md` (impl plan)
+  - New tasks RUI-1..RUI-4 in tasks.md
+- **Prior checkpoint:** Session 20 (2026-05-12) — workbook path resolution bug fixed; PR #19 on `fix/workbook-path-resolution`
   - `WorkbookFilePath()` added to `Config`; `GetWorkbookPath` rewritten (drops `os.Executable` default + Windows fallback)
-  - `batch_auto.go` duplicate error prefix fixed; all wrappers now use `"failed to get workbook path: %w"`
-  - 417 unit tests green; acceptance tests unaffected
-  - Multi-workbook-per-year design deferred (tracked in tasks.md)
-- **Prior checkpoint:** Session 19 (2026-04-27) — Layer 5.8 doc reconciliation; 5.8 confirmed fully shipped
-- **Open PRs:** #16 and #17 merged; PR #19 open (`fix/workbook-path-resolution`, ready to merge)
-- **Next:** Merge PR #19; then `TestBatchAuto_SameYearInstallmentsExpanded` test-debt, or 5.R1 TF-IDF if classification run data justifies it
+  - 417 unit tests green; acceptance tests unaffected; multi-workbook-per-year deferred
+- **Open PRs:** #16/#17 merged; PR #19 (`fix/workbook-path-resolution`); session-21 docs PR (`worktree-review-ui-brief`)
+- **Next:** Execute `.claude/plans/review-command.md` (RUI-1); resolve open questions O1–O3
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -82,6 +83,16 @@ Or manually:
 - **MCP thin wrapper in this repo** (`mcp-server/`) — 2 tools: `classify_expense` (→ `auto --json`), `add_expense` (→ `add --json`); calls Go binary as subprocess; registered with Claude Code. **Layer 5.8 fully shipped** (5.8a Go `--json` + 5.8b Python MCP server, plus follow-ups: `add --data-dir`, `classification_id` surfaced, prediction flags on `add`). `auto_add` tool was dropped by design — see `mcp-server/.memories/KNOWLEDGE.md` "Two Tools, Not Three".
 - **Training data strategy:** hybrid — feature dictionary as system context + top-K few-shot examples per request
 - **Structured output:** Ollama `format` param (proven reliable in LLM infra work)
+
+### Review UI (session 21)
+- **Local-first, not cloud** — review UI is a single self-contained HTML file the CLI
+  bakes data into. Lovable cloud plan (`docs/plans/lovable-suggestion-plan.md`) superseded.
+- **`review` is a producer, not a server** — bakes queue + 3-level taxonomy into an HTML
+  template via `__REVIEW_DATA__` placeholder replacement; no HTTP server, no endpoints.
+- **Workbook write out of scope for `review`** — UI emits `reviewed.json`; a separate
+  future `apply` command (RUI-3) ingests it into workbook + feedback logs.
+- **Taxonomy source** — workbook's "Referência de Categorias" sheet via
+  `excel.LoadReferenceSheet`, grouped sheet→category→subcategory at runtime.
 
 ### Classification Strategy
 - **Model candidates:** `my-classifier-q3` (Qwen3-8B) vs Qwen2.5-Coder-7B (speed). Benchmark deferred.

@@ -1,7 +1,54 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-05-15 — Session 21: Review UI Design Brief + `review` Command Plan
+
+### Context
+User wants a web-ish UI to review classified expenses with a full-tree category
+picker (sheet → category → subcategory), instead of eyeballing a CSV. They had
+tested Lovable (`docs/plans/lovable-suggestion-plan.md`) but disliked its
+cloud-first architecture (CLI HMAC-pushing to Lovable Postgres).
+
+### What Was Done
+- **Rejected the Lovable cloud architecture** in favour of local-first: the review
+  UI is a single self-contained HTML file the CLI bakes data into. No cloud, no
+  HMAC, no CLI-to-cloud push.
+- **Wrote the design brief** `docs/plans/review-ui-design-brief.md` — for
+  claude.ai/design (builds the HTML in a separate session). Specifies the
+  `__REVIEW_DATA__` injection contract, three JSON data contracts as TS types, the
+  3-level cascading picker, the pre-fill rule (1/>1/0 taxonomy matches), export
+  format, offline/single-file hard constraints.
+- **Wrote fixtures** `docs/plans/review-ui-fixtures/{review-data,reviewed}.sample.json`
+  — input + output samples; taxonomy deliberately includes a category under two
+  sheets to exercise the ambiguity case.
+- **Wrote the implementation plan** `.claude/plans/review-command.md` — detailed,
+  phased plan for `expense-reporter review` (CSV + workbook taxonomy → review.html),
+  acceptance-test-first, with open questions O1–O3 flagged. To be executed in a new
+  session.
+- Indexed all new docs in `.claude/index.md`.
+
+### Decisions Made
+- **Local, CLI-served, not cloud.** Single user, desk-only review — confirmed no
+  multi-device need. Lovable plan is superseded.
+- **CLI is the producer of a self-contained file, not a server.** `review` bakes
+  queue + taxonomy into an HTML template; the browser's file-download is the only
+  "output" channel. No `review` HTTP server, no endpoints.
+- **Workbook write is out of scope for `review`.** The UI emits `reviewed.json`; a
+  separate future `apply` command ingests it into the workbook + feedback logs.
+- **Taxonomy source = workbook's "Referência de Categorias" sheet** via
+  `excel.LoadReferenceSheet` → grouped into the 3-level tree at runtime.
+- **`Predicted.sheet` is optional** in the contract — forward-compat for a planned
+  CSV change that emits the full 3-level path.
+
+### Next
+- Execute `.claude/plans/review-command.md` in a new session (Phase 0 → 5).
+- Resolve open questions O1 (installment value notation), O2 (test workbook
+  fixture), O3 (`id` hash without year) before/while coding.
+- Hand the brief + fixtures to claude.ai/design to build `review.html`.
 
 ---
 
@@ -89,34 +136,6 @@ Resumed from session 17's handoff. User: "We'll work on batch-auto-preserve-csvs
 ### Gotchas
 - **Acceptance suite timeout:** Full 600s is tight (Basic 286s + MixedConfidence 299s = 585s remaining). New tests fast (<5s) but suite times out mid-flight. Infrastructure constraint for future sessions.
 - **Ollama context_files paths:** Must be absolute from module root, not repo root or symlinks. Early attempts failed silently.
-
----
-
-## 2026-04-24 — Session 17: MCP-Layer Corrections Shipped
-
-### Context
-Resumed from session 16's plan (`docs/plans/mcp-layer-corrections.md`). Resolved two open micro-decisions before starting: `chosen == predicted` → write `confirmed` (training signal, consistency with auto); ID miss → warn-and-continue (insert is primary, feedback is best-effort).
-
-### What Was Done
-- **Step 1:** Grepped `internal/classifier/` — zero references to `expenses_log.jsonl`, confirming no double-count risk.
-- **Step 2:** Wrote 3 acceptance tests in `feedback_test.go` (prediction match → confirmed, mismatch → corrected, no flags → manual/backwards-compat). Extended `RunAdd` with variadic `extraFlags` and `--data-dir` forwarding. Fixed Given naming per PATTERNS.md: `expenseClassifiedByModel` (past-tense action, not state).
-- **Step 3:** TDD inner loop — `TestLogPredictedFeedback` (4 cases: confirmed, corrected, ID-miss-warn, no-path no-op) red first; then implemented `logPredictedFeedback` + 5 new cobra flags in `add.go`. All 190+ unit tests green.
-- **Step 4:** `AutoOutput` gains `classification_id` (sha256[:12] of item|date|value); `auto --json` populates it. `add_expense` MCP tool in `server.py` extended with 5 optional prediction params forwarded as CLI flags. 7 MCP tests green.
-- **Step 5:** `docs/FEEDBACK_SYSTEM.md` updated — new `add` prediction-flags source documented, "future work" bullet removed. `session-context.md` current-status + Telegram-flow line updated.
-- **2 commits:** `15a8082` (feat: add flags + feedback branching) + `6ef3e5b` (feat: MCP layer).
-
-### Decisions Made
-- **`chosen == predicted` → write `confirmed`:** Training signal; consistent with `auto`'s existing confirmed-writes; no double-count risk since `add` is the only writer in the MCP path.
-- **ID miss → warn-and-continue:** Insert must not be blocked by a log concern. Feedback is best-effort; all predicted context is already in the flags.
-- **MCP Python changes done by Claude directly:** No Python persona in tier list; change was purely mechanical pattern-repetition — no benefit to delegating to Ollama.
-- **Ollama prompt style correction (saved to memory):** Prompts must describe behavior, not spell out implementation code line-by-line. Prior sessions were passing if-else logic as literal code.
-- **Parallel model calls reinforced as bad:** Calling two different-sized models simultaneously causes VRAM contention worse than same-model parallel. Always serial, always tier 1 first.
-- **RunAdd extended with variadic extraFlags:** Cleaner than creating multiple named actions; backwards-compatible; --data-dir forwarding was the missing piece for taxonomy resolution in acceptance tests.
-
-### Next
-- **Open PRs still unmerged:** #16 (docs/feedback-system-csv-reconstruction) and #17 (correct command) — consider creating PR for the MCP-layer corrections on this branch (`feature/correct-command`)
-- **Uncommitted:** `CLAUDE.md`, `.claude/session-context.md`, `docs/FEEDBACK_SYSTEM.md` — commit docs as session close
-- **Next feature investment:** 5.R1 TF-IDF retrieval (better few-shot example selection) — documented in `internal/classifier/.memories/QUICK.md`
 
 ---
 

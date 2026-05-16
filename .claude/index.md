@@ -39,6 +39,7 @@
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
 | Session log archive (session 7 — 2026-03-11) | `.claude/archive/session-log-2026-03-11-to-2026-03-11.md` |
 | Session log archive (session 17 — 2026-04-23) | `.claude/archive/session-log-2026-04-23-to-2026-04-23.md` |
+| Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
