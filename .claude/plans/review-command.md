@@ -173,6 +173,14 @@ valid stub: a real `<html>` doc containing only the `__REVIEW_DATA__` placeholde
 script tag. Lets the command be built and tested before claude.ai/design delivers the
 real template. The real template replaces this file later — no code change needed.
 
+> **Template ownership.** Once the claude.ai/design output lands,
+> `internal/review/template/review.html` becomes a **hand-maintained committed
+> artifact** — it has no build step and no test beyond `render.go`'s placeholder
+> check. Treat it like vendored source: a regenerated template is a reviewable diff
+> (commit it whole, note in the commit message which claude.ai/design session
+> produced it), and any UI behaviour change should be re-checked against the brief's
+> acceptance criteria by hand. See Open Question O4.
+
 **Phase 1 — acceptance test (first, per `feedback_acceptance_first`).** Add a scenario
 under `expense-reporter/test/` (build tag `acceptance`). Fixture: a small classified
 CSV + a tiny test workbook (or reuse an existing test workbook fixture — check
@@ -216,3 +224,8 @@ and confirm the output HTML opens.
 - **O3 — `id` and the `apply` step.** `GenerateID` hashes `DD/MM` (no year). Confirm
   the future `apply` command can still correlate; if year matters, the CSV may need a
   full date first.
+- **O4 — template versioning.** `internal/review/template/review.html` is a
+  hand-maintained artifact with no test of its own (see Phase 0 note). Decide whether
+  that is acceptable long-term or whether the template needs a smoke test (e.g. a
+  headless-browser check that the rendered HTML parses the injected JSON and renders
+  the expected row count). Low priority until the UI starts changing often.
