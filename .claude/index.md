@@ -31,6 +31,8 @@
 | Implementation plan (session 6 — 5.5) | `.claude/plans/polished-knitting-simon.md` |
 | Implementation plan (session 10 — 5.7) | `.claude/plans/5.7-few-shot-injection.md` |
 | Implementation plan (session 20 — workbook path fix) | `.claude/plans/fix-workbook-path-resolution.md` |
+| Review UI design brief (for claude.ai/design) | `docs/plans/review-ui-design-brief.md` + `docs/plans/review-ui-fixtures/` |
+| Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |

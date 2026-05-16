@@ -1,0 +1,36 @@
+{
+  "reviewedAt": "2026-05-15T13:30:00Z",
+  "source": "classified.csv",
+  "entries": [
+    {
+      "id": "a1b2c3d4e5f6",
+      "item": "Delivery brod's",
+      "date": "01/05",
+      "value": 53.98,
+      "confidence": 0.95,
+      "predicted": { "category": "Alimentação", "subcategory": "Delivery" },
+      "action": "confirmed",
+      "reviewed": { "sheet": "Variáveis", "category": "Alimentação", "subcategory": "Delivery" }
+    },
+    {
+      "id": "b2c3d4e5f6a1",
+      "item": "Unimed vencimento 2025-05",
+      "date": "02/05",
+      "value": 731.97,
+      "confidence": 0.95,
+      "predicted": { "category": "Saúde", "subcategory": "Consultas" },
+      "action": "corrected",
+      "reviewed": { "sheet": "Fixas", "category": "Saúde", "subcategory": "Plano de saúde" }
+    },
+    {
+      "id": "c3d4e5f6a1b2",
+      "item": "Layla",
+      "date": "23/05",
+      "value": 270.0,
+      "confidence": 0.8,
+      "predicted": { "category": "Diversos", "subcategory": "Laya" },
+      "action": "skipped",
+      "reviewed": null
+    }
+  ]
+}
