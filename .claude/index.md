@@ -31,11 +31,15 @@
 | Implementation plan (session 6 — 5.5) | `.claude/plans/polished-knitting-simon.md` |
 | Implementation plan (session 10 — 5.7) | `.claude/plans/5.7-few-shot-injection.md` |
 | Implementation plan (session 20 — workbook path fix) | `.claude/plans/fix-workbook-path-resolution.md` |
+| Implementation plan (`review` command) | `.claude/plans/review-command.md` |
+| Review UI design brief (for claude.ai/design) | `docs/plans/review-ui-design-brief.md` + `docs/plans/review-ui-fixtures/` |
+| Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
 | Session log archive (session 7 — 2026-03-11) | `.claude/archive/session-log-2026-03-11-to-2026-03-11.md` |
 | Session log archive (session 17 — 2026-04-23) | `.claude/archive/session-log-2026-04-23-to-2026-04-23.md` |
+| Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
