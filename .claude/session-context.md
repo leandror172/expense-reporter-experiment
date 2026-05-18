@@ -21,7 +21,7 @@
 - **Try local models first** for Go boilerplate, simple functions, test stubs
 - **Preferred model:** `my-go-q25c14` (qwen2.5-coder:14b via ollama-bridge MCP)
 - **Speed vs cost:** 30s for correct 14B output beats 6s for wrong 8B output. Local inference cost is latency only.
-- **Verdict pattern:** Always record ACCEPTED / IMPROVED / REJECTED after local model output
+- **Verdict pattern:** Always record verdict **2/1/0** after local model output (2=accepted, 1=improved, 0=rejected)
 
 ### Shell Scripts
 - Always use `./script.sh` not `bash script.sh` — `./` form is whitelistable per-script in Claude Code
@@ -47,15 +47,15 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 21 (2026-05-15) — Review UI design brief + `review` command plan (docs only, no code)
-  - Rejected the Lovable cloud architecture; chose local-first: CLI bakes data into a single self-contained `review.html`
-  - `docs/plans/review-ui-design-brief.md` + fixtures (for claude.ai/design); `.claude/plans/review-command.md` (impl plan)
-  - New tasks RUI-1..RUI-4 in tasks.md
-- **Prior checkpoint:** Session 20 (2026-05-12) — workbook path resolution bug fixed; PR #19 on `fix/workbook-path-resolution`
-  - `WorkbookFilePath()` added to `Config`; `GetWorkbookPath` rewritten (drops `os.Executable` default + Windows fallback)
-  - 417 unit tests green; acceptance tests unaffected; multi-workbook-per-year deferred
-- **Open PRs:** #16/#17 merged; PR #19 (`fix/workbook-path-resolution`); session-21 docs PR (`worktree-review-ui-brief`)
-- **Next:** Execute `.claude/plans/review-command.md` (RUI-1); resolve open questions O1–O3
+- **Last checkpoint:** Session 22 (2026-05-18) — `review` command implementation Phase 0–2 partial
+  - Phase 0 ✓: template at `internal/review/template/review.html` (`__REVIEW_DATA__` placeholder)
+  - Phase 1 ✓: acceptance test red (`TestReview_ProducesHTMLWithQueueAndTaxonomy`)
+  - Phase 2 partial ✓: `types.go` + `queue.go`; `taxonomy.go` (Ollama verdict 0) + `render.go` pending
+  - Worktree: `.claude/worktrees/feat+review-command` (branch `worktree-feat+review-command`)
+  - RUI-2 complete; O1/O2/O3 resolved
+- **Prior checkpoint:** Session 21 (2026-05-15) — Review UI design brief + `review` command plan (docs only)
+- **Open PRs:** PR #19 (`fix/workbook-path-resolution`); session-21 docs PR (`worktree-review-ui-brief`)
+- **Next:** Resume Phase 2 in worktree — write `taxonomy.go` + `render.go`, then Phase 3–5
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 

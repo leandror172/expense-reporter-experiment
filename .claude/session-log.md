@@ -1,7 +1,55 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-05-18 — Session 22: `review` Command Implementation (Phase 0–2 partial)
+
+### Context
+Resumed from Session 21 plan. Resolved open questions O1–O3 before coding. New
+directives established this session: implementation in worktree (`feat/review-command`),
+tasks.md updated only at handoff (internal task list during session), stop at 150k/75%
+context for handoff.
+
+### What Was Done
+- **Resolved O1** — raw installment notation (`300,00/24`) kept in `QueueEntry.RawValue`;
+  parsed per-installment float in `Value` via `ParseCurrencyWithInstallments`.
+- **Resolved O2** — `Planilha_Normalized_Final.xlsx` confirmed has "Referência de
+  Categorias" sheet; used via `EXPENSE_WORKBOOK_PATH` env var in acceptance tests.
+- **Resolved O3** — `GenerateID` stays DD/MM (no year); document constraint in code;
+  `apply` will use full date column for correlation, not the hash alone.
+- **Phase 0** — `internal/review/template/review.html` placed (claude.ai/design output
+  with sample data replaced by `__REVIEW_DATA__` placeholder); root `review.html`
+  kept as dev preview.
+- **Phase 1** — acceptance test red:
+  - `test/fixtures/review-basic/input.csv` (5 rows: 4 auto-inserted, 1 needs review, 1 installment)
+  - `test/verify/html.go` — `HTMLFileEmbeddedJSON` + `HTMLFileContainsScript`
+  - `test/actions/commands.go` — `RunReview` appended
+  - `test/review_test.go` — `TestReview_ProducesHTMLWithQueueAndTaxonomy` (confirmed red)
+- **Phase 2 partial** — `internal/review/types.go` + `queue.go` written and committed.
+  `taxonomy.go` Ollama output rejected (verdict 0 — type mismatches throughout);
+  `render.go` not started. Both pending next session.
+- **RUI-2 complete** — template built by claude.ai/design and placed.
+
+### Decisions Made
+- **tasks.md = handoff-only artifact.** Use `TaskCreate`/`TaskUpdate` during session;
+  update tasks.md only when running session-handoff skill.
+- **Stop at 150k/75% context.** Trigger session-handoff before context degrades.
+- **Worktree per feature.** Implementation work lives in `feat/review-command` worktree
+  (`worktree-feat+review-command` branch).
+- **Verdict scale confirmed as 0/1/2** (not ACCEPTED/IMPROVED/REJECTED — stale reference
+  in user-prefs corrected this session).
+- **O3 design** — `GenerateID` no-year constraint is acceptable; `apply` uses full date.
+
+### Next
+- Phase 2 resume: write `taxonomy.go` (last Ollama attempt verdict 0 — type mismatches
+  with intermediate map types; retry with better context or write directly). Then `render.go`.
+- Phase 3: `cmd/review.go` cobra wiring.
+- Phase 4: unit tests (testify, table-driven).
+- Phase 5: build/vet/test/smoke + run against real classified.csv.
+- **Worktree:** `.claude/worktrees/feat+review-command`, branch `worktree-feat+review-command`.
 
 ---
 
@@ -100,42 +148,6 @@ Post-merge of session-18 PRs. User asked to review next-steps and confirm whethe
 ### Next
 - User reviewing classification run; may justify R1 in a future session — see memory `project_r1_evaluation_procedure.md`.
 - Otherwise: BUG_REPORT_DEFAULT_WORKBOOK_PATH (small), `TestBatchAuto_SameYearInstallmentsExpanded` test-debt fix (trivial), or acceptance suite timeout split.
-
----
-
-## 2026-04-25 — Session 18: Batch-Auto CSV Preservation Fix
-
-### Context
-Resumed from session 17's handoff. User: "We'll work on batch-auto-preserve-csvs-on-insert-failure.md to solve BUG_REPORT.md" with strict advisor rules (conflict resolution, response format). Started by reading bug report, plan, current code to ground understanding before calling advisor on test strategy.
-
-### What Was Done
-- **Analyzed bug root cause:** `runBatchAuto` orders work (classify → insert → CSV-write). Early return on insert failure discards CSV writes, but classification is already in memory. Plan is two-layer fix: Layer 1 (fail-fast), Layer 2 (reorder).
-- **Acceptance-test design forced option B (both layers):** Advisor reconciliation call resolved premise conflict — Layer 2 is *not* dead code if we strengthen `insertClassified` to return error on unopenable workbook, making reorder meaningful for corrupt files.
-- **Implementation (TDD: red → green):**
-  - `ValidateWorkbook(path) error` in `excel/` — opens + closes xlsx, returns parse error if corrupt
-  - `insertClassified` — calls `ValidateWorkbook` after `os.Stat`, returns wrapped error
-  - `runBatchAuto` rewrote — captures `insertErr` instead of early-returning, always runs CSV writes
-  - Layer 1 UX: workbook path validation before `classifyLines` with actionable hint
-- **Acceptance tests (both green, no Ollama):**
-  - `TestBatchAuto_MissingWorkbook_FailsFastBeforeClassification` — Layer 1, exits in 0.01s
-  - `TestBatchAuto_InsertFailure_PreservesCSVs` — Layer 2, corrupt xlsx, CSVs written, exit 1
-- **Testing:** All 13 unit tests green; new acceptance tests green; full acceptance suite hits 600s infrastructure timeout (not regression)
-- **Memory saved:** Ollama context_files base path (Go module root, not repo root)
-- **1 commit:** `8f838a6` on `fix/batch-auto-preserve-csvs-on-insert-failure`
-
-### Decisions Made
-- **Acceptance-first workflow validated again** — test scenarios revealed implementation correctness (Layer 1 fast-fail only observable via elapsed time, Layer 2 CSV+error both visible in acceptance context)
-- **Conflict resolution pattern successful:** Advisor's reconciliation call on Layer 2 premise prevented unnecessary code
-- **ValidateWorkbook in excel package** — workbook-validation concern belongs with workbook code; orchestrators delegate file ops
-
-### Next
-- Create PR for batch-auto fix (base: master)
-- BUG_REPORT_DEFAULT_WORKBOOK_PATH.md deferred — latent bug, out-of-scope. Option 1 recommended: remove executable-relative default.
-- Two open PRs from session 15: #16, #17 — post-merge order TBD
-
-### Gotchas
-- **Acceptance suite timeout:** Full 600s is tight (Basic 286s + MixedConfidence 299s = 585s remaining). New tests fast (<5s) but suite times out mid-flight. Infrastructure constraint for future sessions.
-- **Ollama context_files paths:** Must be absolute from module root, not repo root or symlinks. Early attempts failed silently.
 
 ---
 
