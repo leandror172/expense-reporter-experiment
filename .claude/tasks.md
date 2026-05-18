@@ -107,13 +107,14 @@ These items are not blocking for Layer 5.1–5.8 but should be revisited after t
 Local-first review surface — supersedes the Lovable cloud plan
 (`docs/plans/lovable-suggestion-plan.md`).
 
-- [ ] **RUI-1** Implement `expense-reporter review` command — CSV + workbook taxonomy
+- [~] **RUI-1** Implement `expense-reporter review` command — CSV + workbook taxonomy
   baked into a self-contained `review.html`. Full plan: `.claude/plans/review-command.md`
   (phased, acceptance-test-first; resolve open questions O1–O3 in that session).
-- [ ] **RUI-2** Build the `review.html` template via claude.ai/design — brief:
+  **In progress (session 22):** worktree `feat/review-command`. Phase 0 done (template placed).
+- [x] **RUI-2** Build the `review.html` template via claude.ai/design — brief:
   `docs/plans/review-ui-design-brief.md` + fixtures in `docs/plans/review-ui-fixtures/`.
-  Done in a separate (non-Claude-Code) session; drop the result into
-  `internal/review/template/review.html`.
+  Done (session 22): template at `expense-reporter/internal/review/template/review.html`;
+  dev-preview copy with sample data kept at repo root `review.html`.
 - [ ] **RUI-3** `apply` command: ingest the UI's `reviewed.json` back into the workbook
   + feedback logs (`feedback.Entry` confirmed/corrected, `expenses_log.jsonl`). Needs
   its own plan. Out of scope for RUI-1.

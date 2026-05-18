@@ -216,3 +216,16 @@ func runCommand(ctx *harness.Context, args ...string) {
 		ctx.T.Fatalf("runCommand %v: unexpected error: %v", args, err)
 	}
 }
+
+func RunReview(csvPath string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"review", csvPath}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
+		}
+		outputPath := filepath.Join(ctx.WorkDir, "review.html")
+		args = append(args, "--output", outputPath)
+		runCommand(ctx, args...)
+		ctx.Artifacts["review.html"] = outputPath
+	}
+}
