@@ -22,6 +22,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 	reader := csv.NewReader(file)
 	reader.Comma = ';'
 	reader.LazyQuotes = true
+	reader.FieldsPerRecord = -1 // disable auto-check; we validate length explicitly below
 
 	var entries []QueueEntry
 	lineNumber := 0
