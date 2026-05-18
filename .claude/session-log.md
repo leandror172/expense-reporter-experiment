@@ -1,7 +1,34 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-05-18 — Session 23: `review` Command Implementation (Phase 2–5 complete)
+
+### Context
+Resumed directly from session 22 handoff. Phase 2 was partially done (types.go + queue.go committed); taxonomy.go had a prior Ollama 0-verdict. User said "proceed" after task list was created.
+
+### What Was Done
+- **Phase 2 complete** — wrote `taxonomy.go` (BuildTaxonomy: 3-level tree, deterministic sort), `render.go` (placeholder guard + JSON injection), `embed.go` (go:embed TemplateHTML export). taxonomy.go + render.go written directly (escalation after prior 0-verdict); embed.go trivial 3-liner.
+- **Phase 3** — `cmd/review.go` cobra command via `my-go-qcoder` (verdict 1; fixed: import alias not needed, `0644`→`0o644`).
+- **Phase 4** — 17 unit tests via `my-go-qcoder`: `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1; fixed: `FieldsPerRecord=-1` in queue.go so our explicit field-count error fires). All green.
+- **Phase 5** — `go build/vet/test` all clean; acceptance test `TestReview_ProducesHTMLWithQueueAndTaxonomy` passes; smoke: 349 rows, 23 need review.
+- **PR #22 opened** — `worktree-feat+review-command` → `master`.
+- **Tracking updates** — `index.md` go-structure table updated (internal/review row added); `session-context.md` updated with `my-go-qcoder` benchmark data and preferred model change.
+- **Read `local-model-conventions.md`** per user request; noted that taxonomy.go/render.go were escalations (written directly) and should be retried with pre-defined stubs in future.
+
+### Decisions Made
+- **`my-go-qcoder` is now the preferred codegen model** — 4 calls, verdicts 2/2/1/1; replaces `my-go-q25c14` as default. Falls back to `my-go-q25c14` if unavailable.
+- **`my-go-qcoder` weakness identified** — struggles with Go intermediate map types when types are NOT pre-defined in context; passes cleanly when types are available as context files.
+- **`FieldsPerRecord = -1` pattern** — when you want custom field-count error messages in Go CSV parsing, disable the library's built-in check.
+- **tasks.md updated at handoff** — Claude Code TaskCreate/TaskUpdate used during session; tasks.md reflects final state only at session-handoff.
+
+### Next
+- Merge PR #22 (RUI-1a).
+- Decide next feature: RUI-3 (`apply` command), RUI-4 (emit 3-level path into classified CSV), or deferred retrieval work (5.R1 TF-IDF).
+- **Worktree:** `.claude/worktrees/feat+review-command` — clean, can be removed after merge.
 
 ---
 
@@ -128,26 +155,6 @@ Resumed from session 19. Discussed next steps; chose to fix the latent `BUG_REPO
 - Commit all changes on `fix/workbook-path-resolution`
 - Create PR (base: master)
 - Future options: `TestBatchAuto_SameYearInstallmentsExpanded` test-debt fix (trivial), 5.R1 TF-IDF retrieval (if classification run data justifies it)
-
----
-
-## 2026-04-27 — Session 19: Layer 5.8 Doc Reconciliation
-
-### Context
-Post-merge of session-18 PRs. User asked to review next-steps and confirm whether 5.8 had remaining work.
-
-### What Was Done
-- Verified Layer 5.8 is fully shipped: MCP server in `mcp-server/` (this repo, not LLM repo), 2 tools (`classify_expense`, `add_expense`), `auto_add` deliberately dropped per `mcp-server/.memories/KNOWLEDGE.md` "Two Tools, Not Three" (2026-03-27).
-- Reconciled stale docs (commit 3e38fed): `tasks.md` 5.8 → `[x]`, `docs/expense-classifier-vision.md` Phase 3 → SHIPPED, `session-context.md` Domain Boundary collapsed.
-- Saved 2 memory entries: MCP server lives in this repo (corrected user feedback); Layer 5.R1 evaluation procedure (trigger definitions + verified instrumentation prerequisite — `feedback.Entry` lacks keyword-hit field, so existing `classifications.jsonl` cannot be segmented hit-vs-miss without code change first).
-
-### Decisions Made
-- Don't start R1 on speculation. Wait for user's run review; future session uses saved evaluation procedure.
-- Misc planning .txt files moved out of repo root by user (no longer untracked).
-
-### Next
-- User reviewing classification run; may justify R1 in a future session — see memory `project_r1_evaluation_procedure.md`.
-- Otherwise: BUG_REPORT_DEFAULT_WORKBOOK_PATH (small), `TestBatchAuto_SameYearInstallmentsExpanded` test-debt fix (trivial), or acceptance suite timeout split.
 
 ---
 

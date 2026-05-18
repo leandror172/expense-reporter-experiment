@@ -19,7 +19,7 @@
 
 ### Local Model Usage
 - **Try local models first** for Go boilerplate, simple functions, test stubs
-- **Preferred model:** `my-go-q25c14` (qwen2.5-coder:14b via ollama-bridge MCP)
+- **Preferred model:** `my-go-qcoder` (qwen3-coder:30b via ollama-bridge MCP) — benchmarked session 23 (2026-05-18); verdicts 2/2/1/1 on test + cobra generation. Fallback: `my-go-q25c14` (qwen2.5-coder:14b) if qcoder unavailable.
 - **Speed vs cost:** 30s for correct 14B output beats 6s for wrong 8B output. Local inference cost is latency only.
 - **Verdict pattern:** Always record verdict **2/1/0** after local model output (2=accepted, 1=improved, 0=rejected)
 
@@ -47,15 +47,14 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 22 (2026-05-18) — `review` command implementation Phase 0–2 partial
-  - Phase 0 ✓: template at `internal/review/template/review.html` (`__REVIEW_DATA__` placeholder)
-  - Phase 1 ✓: acceptance test red (`TestReview_ProducesHTMLWithQueueAndTaxonomy`)
-  - Phase 2 partial ✓: `types.go` + `queue.go`; `taxonomy.go` (Ollama verdict 0) + `render.go` pending
-  - Worktree: `.claude/worktrees/feat+review-command` (branch `worktree-feat+review-command`)
-  - RUI-2 complete; O1/O2/O3 resolved
-- **Prior checkpoint:** Session 21 (2026-05-15) — Review UI design brief + `review` command plan (docs only)
-- **Open PRs:** PR #19 (`fix/workbook-path-resolution`); session-21 docs PR (`worktree-review-ui-brief`)
-- **Next:** Resume Phase 2 in worktree — write `taxonomy.go` + `render.go`, then Phase 3–5
+- **Last checkpoint:** Session 23 (2026-05-18) — `review` command fully implemented, PR #22 open
+  - All phases complete: Phase 0–5 done. 17 unit tests + acceptance test green.
+  - Smoke: 349 rows, 23 need review against real `classified.csv`.
+  - PR #22: `worktree-feat+review-command` → `master` (pending merge).
+  - Worktree: `.claude/worktrees/feat+review-command` — clean, removable after merge.
+- **Prior checkpoint:** Session 22 (2026-05-18) — Phase 0–2 partial
+- **Open PRs:** PR #19 (`fix/workbook-path-resolution`); PR #22 (`review` command)
+- **Next:** Merge PR #22 (RUI-1a), then decide: RUI-3 (`apply`), RUI-4 (3-level path in CSV), or 5.R1 (TF-IDF)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -116,6 +115,8 @@ Or manually:
 - **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it
 - **Ollama timeout policy (session 8):** 1st timeout = retry (cold start), not a rejection. Only treat as 1st rejection if the model responds with wrong output. Two rejections → escalate to Claude.
 - **Ollama parallelization ceiling (session 15):** 3 parallel codegen calls only safe for tiny near-identical prompts. Default to serial for non-trivial codegen — VRAM ceiling causes silent degradation/timeouts.
+- **`my-go-qcoder` first benchmark (session 23, 2026-05-18):** Used for `cmd/review.go` (verdict 1), `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1). Struggled with intermediate Go map types in a prior session (verdict 0 on `taxonomy.go`) — passes cleanly when types are pre-defined in context files. Test generation is its strongest use; cobra command wiring is solid. Preferred over `my-go-q25c14` going forward for single-file codegen tasks.
+- **Files written directly this session (no Ollama):** `taxonomy.go`, `render.go`, `embed.go` — escalation after prior `0` verdict on `taxonomy.go`. Files written directly should still be retried with Ollama next time with richer context (pre-defined type stubs).
 
 ### Test Conventions (session 15)
 - **Acceptance-first** — discuss scenarios → write acceptance tests → drop into TDD inner loop for unit tests

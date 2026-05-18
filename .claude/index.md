@@ -66,6 +66,7 @@
 | `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic; `examples.go` (SelectExamples, KeywordIndex, tokenization); `loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools) |
 | `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` |
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`) |
+| `internal/review` | `expense-reporter/internal/review/` | Review command package: `ReadQueue` (7-field CSV reader), `BuildTaxonomy` (3-level tree from workbook mappings), `Render` (placeholder injection), `TemplateHTML` (go:embed); types in `types.go` |
 | `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check, SetupBinaryConfig) |
 | `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd |
 | `test/verify` | `expense-reporter/test/verify/` | Then-closures: ExitCodeZero, RowCount, AllConfidencesInRange, SoftAccuracy, FeedbackFile* |

@@ -107,12 +107,12 @@ These items are not blocking for Layer 5.1–5.8 but should be revisited after t
 Local-first review surface — supersedes the Lovable cloud plan
 (`docs/plans/lovable-suggestion-plan.md`).
 
-- [~] **RUI-1** Implement `expense-reporter review` command — CSV + workbook taxonomy
+- [x] **RUI-1** Implement `expense-reporter review` command — CSV + workbook taxonomy
   baked into a self-contained `review.html`. Full plan: `.claude/plans/review-command.md`
-  **In progress (session 22, worktree `worktree-feat+review-command`):**
-  Phase 0 (template stub) ✓, Phase 1 (acceptance test, red) ✓,
-  Phase 2 partial (types.go + queue.go ✓; taxonomy.go + render.go pending).
-  Next: finish Phase 2, then Phase 3 (cmd/review.go), Phase 4 (unit tests), Phase 5 (verify).
+  **Complete (session 23, 2026-05-18):** All phases done. PR #22 open
+  (`worktree-feat+review-command` → `master`). 17 unit tests + acceptance test green.
+  Smoke: 349 rows, 23 need review against real classified.csv.
+- [ ] **RUI-1a** Merge PR #22 (`worktree-feat+review-command` → `master`).
 - [x] **RUI-2** Build the `review.html` template via claude.ai/design — brief:
   `docs/plans/review-ui-design-brief.md` + fixtures in `docs/plans/review-ui-fixtures/`.
   Done (session 22): template at `expense-reporter/internal/review/template/review.html`;
