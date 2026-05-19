@@ -31,7 +31,11 @@ func BuildTaxonomy(mappings map[string][]resolver.SubcategoryMapping) Taxonomy {
 		sheetNames = append(sheetNames, name)
 	}
 	sort.Slice(sheetNames, func(i, j int) bool {
-		return sheetRank(sheetNames[i]) < sheetRank(sheetNames[j])
+		ri, rj := sheetRank(sheetNames[i]), sheetRank(sheetNames[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return sheetNames[i] < sheetNames[j] // alphabetical tiebreak for unknown sheets
 	})
 
 	sheets := make([]Sheet, 0, len(sheetNames))
