@@ -257,7 +257,8 @@
     grid-template-columns: 76px 1fr 150px auto;
     grid-template-areas:
       "date meta    confidence actions"
-      "date pickers pickers    actions";
+      "date pickers pickers    actions"
+      "date ambig   ambig      actions";
     gap: 10px 18px;
     align-items: start;
     transition: border-color .12s ease, background .12s ease;
@@ -483,6 +484,113 @@
     margin-right: 4px;
   }
 
+  /* ---------- progress bar (#10) ---------- */
+  .progress {
+    height: 3px;
+    width: 100%;
+    background: var(--rule-soft);
+    display: flex;
+    overflow: hidden;
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    transition: width .25s ease;
+  }
+  .progress .seg-reviewed { background: var(--accent); }
+  .progress .seg-skipped  { background: var(--ink-mute); opacity: 0.55; }
+
+  /* ---------- bulk-accept count pill (#2) ---------- */
+  .btn .count-pill {
+    background: var(--bg-sunken);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    margin-left: 4px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .btn[disabled]:hover { background: var(--bg-elev); }
+
+  /* ---------- ambiguous-sheet hint (#3) ---------- */
+  .ambig-hint {
+    grid-area: ambig;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--warn-ink);
+    padding-top: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ambig-hint::before {
+    content: "↑";
+    color: var(--warn);
+    font-weight: 700;
+  }
+  .ambig-hint b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- correction diff (#5) ---------- */
+  .diff {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-mute);
+    line-height: 1.35;
+    text-align: right;
+    max-width: 230px;
+  }
+  .diff .old {
+    color: var(--ink-mute);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--ink-mute);
+  }
+  .diff .new { color: var(--corr-ink); font-weight: 500; }
+  .diff .same { color: var(--ink-mute); opacity: 0.7; }
+  .diff .arrow { color: var(--ink-mute); margin: 0 3px; }
+  .diff .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---------- drag-drop overlay (#6) ---------- */
+  .drop-overlay {
+    position: fixed; inset: 0;
+    background: oklch(0.22 0.012 260 / 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 80;
+    pointer-events: none;
+  }
+  .drop-overlay.show { display: flex; }
+  .drop-overlay .panel {
+    background: var(--bg-elev);
+    border: 2px dashed var(--accent);
+    border-radius: var(--r-lg);
+    padding: 32px 48px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent-ink);
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+  .drop-overlay .panel .small {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink-mute);
+    font-size: 11.5px;
+  }
+
+  /* ---------- group toggle / headers (#4) ---------- */
+  .group-head:first-child { margin-top: 4px; }
+  .group-head .meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.03em;
+  }
+
   /* ---------- toast ---------- */
   .toast {
     position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
@@ -516,6 +624,11 @@
     </div>
   </div>
 
+  <div class="progress" id="progress" aria-hidden="true">
+    <span class="seg-reviewed" id="progress-reviewed" style="width: 0%"></span>
+    <span class="seg-skipped"  id="progress-skipped"  style="width: 0%"></span>
+  </div>
+
   <div class="toolbar">
     <div class="field">
       <label for="q">search</label>
@@ -528,6 +641,20 @@
       <button data-filter="all"    aria-pressed="false">All</button>
     </div>
 
+    <div class="field" style="padding: 4px 6px 4px 10px;">
+      <label for="group-by">group</label>
+      <select id="group-by" style="appearance:none; -webkit-appearance:none; border:none; background:transparent; font: inherit; font-size:12.5px; color: var(--ink); padding: 3px 18px 3px 4px; cursor:pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-mute) 50%), linear-gradient(135deg, var(--ink-mute) 50%, transparent 50%); background-position: calc(100% - 8px) 50%, calc(100% - 4px) 50%; background-size: 4px 4px, 4px 4px; background-repeat: no-repeat;">
+        <option value="queue">Queue order</option>
+        <option value="category">Predicted category</option>
+        <option value="sheet">Predicted sheet</option>
+        <option value="status">Status</option>
+      </select>
+    </div>
+
+    <button class="btn" id="bulk-accept" title="Mark every auto-inserted row whose pre-fill has all 3 levels set as reviewed. Operates on all such rows, regardless of the current filter.">
+      Accept auto-inserted <span class="count-pill" id="bulk-count">0</span>
+    </button>
+
     <div class="field" style="min-width: 230px;">
       <label>conf.</label>
       <input type="range" id="conf-min" min="0" max="100" value="0" step="5" style="width: 70px;" />
@@ -539,7 +666,7 @@
 
     <div class="grow"></div>
 
-    <button class="btn" id="reset-btn" title="Reset all classifications to the pre-fill state">Reset</button>
+    <button class="btn" id="reset-btn" title="Reset all classifications to the pre-fill state and clear any saved progress">Reset</button>
     <button class="btn primary" id="export-btn">Export reviewed file <span class="kbd">⇧E</span></button>
   </div>
 </header>
@@ -554,11 +681,20 @@
     <span><kbd>s</kbd> skip</span>
     <span><kbd>e</kbd> edit category</span>
     <span><kbd>↵</kbd> mark reviewed &amp; next</span>
+    <span><kbd>esc</kbd> blur picker</span>
     <span><kbd>⇧</kbd>+<kbd>E</kbd> export</span>
+    <span style="opacity: 0.6;">drop a review-data.json anywhere to load a different queue</span>
   </div>
 </main>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="drop-overlay" id="drop-overlay" aria-hidden="true">
+  <div class="panel">
+    Drop a review-data.json file to replace the queue
+    <span class="small">your current in-progress state will be saved under its data identity</span>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -606,18 +742,22 @@ function prefillFor(entry) {
   const p = entry.predicted;
   // case 1
   if (p.sheet && categoryHasSub(p.sheet, p.category, p.subcategory)) {
-    return { sheet: p.sheet, category: p.category, subcategory: p.subcategory, needsSheet: false, noMatch: false };
+    return { sheet: p.sheet, category: p.category, subcategory: p.subcategory,
+             needsSheet: false, noMatch: false, sheetOptions: [] };
   }
   // case 2: search
   const k = p.category + "||" + p.subcategory;
   const matches = SHEETS_FOR.get(k) || [];
   if (matches.length === 1) {
-    return { sheet: matches[0], category: p.category, subcategory: p.subcategory, needsSheet: false, noMatch: false };
+    return { sheet: matches[0], category: p.category, subcategory: p.subcategory,
+             needsSheet: false, noMatch: false, sheetOptions: [] };
   }
   if (matches.length > 1) {
-    return { sheet: null, category: p.category, subcategory: p.subcategory, needsSheet: true, noMatch: false };
+    return { sheet: null, category: p.category, subcategory: p.subcategory,
+             needsSheet: true, noMatch: false, sheetOptions: matches.slice() };
   }
-  return { sheet: null, category: null, subcategory: null, needsSheet: false, noMatch: true };
+  return { sheet: null, category: null, subcategory: null,
+           needsSheet: false, noMatch: true, sheetOptions: [] };
 }
 
 const STATE = DATA.queue.map(entry => {
@@ -629,20 +769,102 @@ const STATE = DATA.queue.map(entry => {
     subcategory: pre.subcategory,
     initialAmbiguousSheet: pre.needsSheet,   // ambiguous sheet at load
     initialNoMatch: pre.noMatch,             // could not find anything
+    ambiguousSheetOptions: pre.sheetOptions, // sheets that could host this cat/sub
     status: "pending",                       // "pending" | "reviewed" | "skipped"
   };
 });
 
 /* ============================================================================
-   3. UI state (filters, selection)
+   3. UI state (filters, selection, grouping)
    ========================================================================== */
 const UI = {
   filter: "needs",      // "needs" | "auto" | "all"
   query: "",
   confMin: 0,
   confMax: 100,
+  grouping: "queue",    // "queue" | "category" | "sheet" | "status"
   selectedId: null,
 };
+
+/* ============================================================================
+   3b. localStorage persistence (#1 resume + #8 filter persistence)
+   ========================================================================== */
+const STORAGE_VERSION = "v1";
+const STORAGE_FILTERS_KEY = "expense-review:" + STORAGE_VERSION + ":filters";
+function storageKey() {
+  // Key includes source + generatedAt so a new generation does not collide.
+  return "expense-review:" + STORAGE_VERSION + ":rows:" + DATA.source + ":" + DATA.generatedAt;
+}
+
+function safeLS(fn, fallback) {
+  try { return fn(); } catch (_) { return fallback; }
+}
+
+function loadSavedRows() {
+  return safeLS(() => {
+    const raw = localStorage.getItem(storageKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && parsed.rows) ? parsed : null;
+  }, null);
+}
+
+function loadSavedFilters() {
+  return safeLS(() => {
+    const raw = localStorage.getItem(STORAGE_FILTERS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }, null);
+}
+
+let _saveT = null;
+function scheduleSaveRows() {
+  if (_saveT) clearTimeout(_saveT);
+  _saveT = setTimeout(() => {
+    safeLS(() => {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        rows: Object.fromEntries(STATE.map(s => [s.entry.id, {
+          sheet: s.sheet, category: s.category, subcategory: s.subcategory, status: s.status,
+        }])),
+      };
+      localStorage.setItem(storageKey(), JSON.stringify(payload));
+    });
+  }, 200);
+}
+function scheduleSaveFilters() {
+  safeLS(() => {
+    localStorage.setItem(STORAGE_FILTERS_KEY, JSON.stringify({
+      filter: UI.filter, query: UI.query,
+      confMin: UI.confMin, confMax: UI.confMax,
+      grouping: UI.grouping,
+    }));
+  });
+}
+function clearSavedRows() {
+  safeLS(() => { localStorage.removeItem(storageKey()); });
+}
+
+// Apply saved row state onto STATE, validating against the current taxonomy.
+// Returns count of rows restored from save.
+function applySavedRows(saved) {
+  if (!saved || !saved.rows) return 0;
+  let restored = 0;
+  for (const s of STATE) {
+    const r = saved.rows[s.entry.id];
+    if (!r) continue;
+    // validate sheet/cat/sub: drop downstream if any link is now invalid
+    let sheet = r.sheet, category = r.category, subcategory = r.subcategory;
+    if (sheet && !sheetByName(sheet)) sheet = category = subcategory = null;
+    if (sheet && category && !sheetHasCategory(sheet, category)) category = subcategory = null;
+    if (sheet && category && subcategory && !categoryHasSub(sheet, category, subcategory)) subcategory = null;
+    s.sheet = sheet;
+    s.category = category;
+    s.subcategory = subcategory;
+    s.status = (r.status === "reviewed" || r.status === "skipped") ? r.status : "pending";
+    restored++;
+  }
+  return restored;
+}
 
 /* ============================================================================
    4. Helpers
@@ -658,6 +880,46 @@ function fmtPct(c) { return Math.round(c * 100) + "%"; }
 function fmtUTC(iso) {
   // "2026-05-15T12:00:00Z" → "2026-05-15 12:00 UTC"
   return iso.replace("T", " ").replace(/:\d\d(?:\.\d+)?Z$/, " UTC");
+}
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => (
+    { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]
+  ));
+}
+
+// (#5) Build a compact "predicted → reviewed" diff element for corrected rows.
+// Renders as 3 lines (Sheet/Cat/Sub), each either dimmed (matches) or
+// strikethrough-old → new-bold (differs). Sheet line only renders if predicted.sheet
+// existed AND differs — disambiguation alone isn't a "correction".
+function buildDiffEl(s) {
+  const p = s.entry.predicted;
+  const wrap = document.createElement("div");
+  wrap.className = "diff";
+  const lines = [];
+
+  function line(predVal, revVal, withPredictedSheet) {
+    if (predVal === undefined) {
+      // predicted side absent (sheet); show only reviewed value as added
+      lines.push('<div class="line"><span class="new">' + escapeHtml(revVal) + '</span></div>');
+      return;
+    }
+    if (predVal === revVal) {
+      lines.push('<div class="line same">' + escapeHtml(revVal) + '</div>');
+    } else {
+      lines.push(
+        '<div class="line"><span class="old">' + escapeHtml(predVal) +
+        '</span><span class="arrow">→</span><span class="new">' + escapeHtml(revVal) + '</span></div>'
+      );
+    }
+  }
+
+  // Sheet line: only show if predicted.sheet was provided
+  if (p.sheet !== undefined) line(p.sheet, s.sheet);
+  line(p.category, s.category);
+  line(p.subcategory, s.subcategory);
+
+  wrap.innerHTML = lines.join("");
+  return wrap;
 }
 
 function deriveAction(s) {
@@ -697,7 +959,7 @@ const listEl = document.getElementById("list");
 
 function visibleStates() {
   const q = UI.query.trim().toLowerCase();
-  return STATE.filter(s => {
+  const filtered = STATE.filter(s => {
     if (UI.filter === "needs" && s.entry.autoInserted) return false;
     if (UI.filter === "auto"  && !s.entry.autoInserted) return false;
     const cPct = s.entry.confidence * 100;
@@ -705,6 +967,29 @@ function visibleStates() {
     if (q && !s.entry.item.toLowerCase().includes(q)) return false;
     return true;
   });
+
+  // (#9) Sticky needs-attention: in the "All" filter, float rows that loaded
+  // unmatched or ambiguous-sheet to the top, preserving original order otherwise.
+  // We sort by INITIAL flags (not current) so resolving a row doesn't make it jump.
+  if (UI.filter === "all") {
+    const indexOf = new Map(STATE.map((s, i) => [s.entry.id, i]));
+    return filtered.slice().sort((a, b) => {
+      const aw = (a.initialNoMatch || a.initialAmbiguousSheet) ? 0 : 1;
+      const bw = (b.initialNoMatch || b.initialAmbiguousSheet) ? 0 : 1;
+      if (aw !== bw) return aw - bw;
+      return indexOf.get(a.entry.id) - indexOf.get(b.entry.id);
+    });
+  }
+  return filtered;
+}
+
+// Eligible-for-bulk-accept: autoInserted, all 3 prefilled, still pending.
+function bulkAcceptCandidates() {
+  return STATE.filter(s =>
+    s.entry.autoInserted &&
+    s.status === "pending" &&
+    s.sheet && s.category && s.subcategory
+  );
 }
 
 function renderCounts() {
@@ -719,6 +1004,22 @@ function renderCounts() {
   document.getElementById("c-reviewed").textContent = reviewed;
   document.getElementById("c-skipped").textContent = skipped;
   document.getElementById("c-remaining").textContent = remaining;
+
+  // (#10) Progress bar — stacked: reviewed in accent, skipped in mute.
+  const reviewedPct = total ? (reviewed / total) * 100 : 0;
+  const skippedPct  = total ? (skipped  / total) * 100 : 0;
+  document.getElementById("progress-reviewed").style.width = reviewedPct + "%";
+  document.getElementById("progress-skipped").style.width  = skippedPct  + "%";
+
+  // (#2) Bulk-accept button — count and disabled state.
+  const bulkBtn = document.getElementById("bulk-accept");
+  const bulkN = bulkAcceptCandidates().length;
+  document.getElementById("bulk-count").textContent = bulkN;
+  bulkBtn.disabled = (bulkN === 0);
+
+  // (#1) Persist the (possibly mutated) row state. Debounced internally.
+  // We treat renderCounts() as the single canonical "state may have changed" hook.
+  scheduleSaveRows();
 }
 
 function buildSelect(opts, value, placeholder, disabled) {
@@ -872,6 +1173,15 @@ function rowEl(s) {
   pickers.append(sheetWrap, arrow1, catWrap, arrow2, subWrap);
   row.appendChild(pickers);
 
+  // (#3) Ambiguous-sheet hint — only when sheet is still empty AND prefill flagged ambiguity
+  if (!s.sheet && s.initialAmbiguousSheet && s.ambiguousSheetOptions && s.ambiguousSheetOptions.length > 1) {
+    const hint = document.createElement("div");
+    hint.className = "ambig-hint";
+    const optsText = s.ambiguousSheetOptions.slice(0, -1).join(", ") + " + " + s.ambiguousSheetOptions[s.ambiguousSheetOptions.length - 1];
+    hint.innerHTML = '<b>' + escapeHtml(s.category) + " / " + escapeHtml(s.subcategory) + '</b> exists in ' + escapeHtml(optsText) + ' — pick one.';
+    row.appendChild(hint);
+  }
+
   // actions / badge / buttons
   const actions = document.createElement("div");
   actions.className = "actions";
@@ -880,6 +1190,11 @@ function rowEl(s) {
   badge.className = "badge " + b.cls;
   badge.textContent = b.text;
   actions.appendChild(badge);
+
+  // (#5) Diff display when corrected
+  if (s.status === "reviewed" && deriveAction(s) === "corrected") {
+    actions.appendChild(buildDiffEl(s));
+  }
 
   const btns = document.createElement("div");
   btns.className = "row-buttons";
@@ -901,6 +1216,63 @@ function rowEl(s) {
 }
 
 let _rowEls = new Map(); // id → DOM element
+
+// (#4) Group helpers: produce ordered list of { groupKey, label, items, meta } from visibleStates.
+function groupedView(items) {
+  if (UI.grouping === "queue") {
+    return [{ key: "", label: "", items, meta: "" }];
+  }
+  const buckets = new Map();
+  const keyFor = (s) => {
+    if (UI.grouping === "category") return s.entry.predicted.category || "(no category)";
+    if (UI.grouping === "sheet")    return s.sheet || (s.initialAmbiguousSheet ? "(ambiguous sheet)" : "(no sheet)");
+    if (UI.grouping === "status") {
+      if (s.status === "reviewed") {
+        const a = deriveAction(s);
+        return a === "confirmed" ? "Confirmed" : a === "corrected" ? "Corrected" : "Incomplete";
+      }
+      if (s.status === "skipped") return "Skipped";
+      if (s.initialNoMatch || (s.initialAmbiguousSheet && !s.sheet)) return "Needs attention";
+      return "Pending";
+    }
+    return "";
+  };
+  for (const s of items) {
+    const k = keyFor(s);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(s);
+  }
+
+  // Order groups
+  let orderedKeys = Array.from(buckets.keys());
+  if (UI.grouping === "status") {
+    const order = ["Needs attention", "Pending", "Corrected", "Confirmed", "Incomplete", "Skipped"];
+    orderedKeys.sort((a, b) => {
+      const ai = order.indexOf(a); const bi = order.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  } else if (UI.grouping === "sheet") {
+    const sheetOrder = TAX.sheets.map(x => x.name);
+    orderedKeys.sort((a, b) => {
+      const ai = sheetOrder.indexOf(a); const bi = sheetOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  } else {
+    orderedKeys.sort();
+  }
+
+  return orderedKeys.map(k => {
+    const list = buckets.get(k);
+    const sum = list.reduce((m, s) => m + s.entry.value, 0);
+    return {
+      key: k,
+      label: k,
+      items: list,
+      meta: list.length + " row" + (list.length === 1 ? "" : "s") + " · " + fmtBRL(sum),
+    };
+  });
+}
+
 function renderList() {
   listEl.innerHTML = "";
   _rowEls.clear();
@@ -912,10 +1284,19 @@ function renderList() {
     listEl.appendChild(empty);
     return;
   }
-  for (const s of items) {
-    const el = rowEl(s);
-    _rowEls.set(s.entry.id, el);
-    listEl.appendChild(el);
+  const groups = groupedView(items);
+  for (const g of groups) {
+    if (g.label) {
+      const head = document.createElement("div");
+      head.className = "group-head";
+      head.innerHTML = '<span>' + escapeHtml(g.label) + '</span><span class="meta">' + escapeHtml(g.meta) + '</span><span class="hr"></span>';
+      listEl.appendChild(head);
+    }
+    for (const s of g.items) {
+      const el = rowEl(s);
+      _rowEls.set(s.entry.id, el);
+      listEl.appendChild(el);
+    }
   }
 }
 
@@ -1028,6 +1409,44 @@ document.addEventListener("keydown", (ev) => {
     return;
   }
   if (isTypingTarget(ev.target)) return;
+
+  // (#7) Esc on a focused <select> blurs it so j/k work again.
+  if (ev.target && ev.target.tagName === "SELECT" && ev.key === "Escape") {
+    ev.preventDefault();
+    ev.target.blur();
+    return;
+  }
+  // (#7) Enter on a focused <select> inside the selected row:
+  //  - if all 3 are set → mark reviewed + advance + focus next row's Sheet
+  //  - otherwise → focus the next still-empty picker in the row
+  if (ev.target && ev.target.tagName === "SELECT" && ev.key === "Enter") {
+    const ownRow = ev.target.closest(".row");
+    if (ownRow && ownRow.dataset.id) {
+      ev.preventDefault();
+      const id = ownRow.dataset.id;
+      const s = STATE.find(x => x.entry.id === id);
+      if (!s) return;
+      if (s.sheet && s.category && s.subcategory) {
+        s.status = "reviewed";
+        renderRow(id);
+        renderCounts();
+        advanceFromSelected();
+        // Focus the new row's Sheet picker for continuous keyboarding
+        const newSel = _rowEls.get(UI.selectedId);
+        if (newSel) {
+          const firstSel = newSel.querySelector(".pickers select");
+          if (firstSel && !firstSel.disabled) firstSel.focus();
+        }
+      } else {
+        // Find next empty picker and focus it
+        const sels = ownRow.querySelectorAll(".pickers select");
+        for (const sel of sels) {
+          if (!sel.disabled && !sel.value) { sel.focus(); break; }
+        }
+      }
+      return;
+    }
+  }
   // Don't hijack while a <select> is focused — let arrow keys work normally
   if (ev.target && ev.target.tagName === "SELECT") {
     if (["j","k","a","s","e","1","2","3","4"].includes(ev.key)) {
@@ -1114,7 +1533,7 @@ function toast(msg) {
 }
 
 /* ============================================================================
-   10. Wire toolbar
+   10. Wire toolbar + drag-drop + bulk-accept + filter persistence
    ========================================================================== */
 document.getElementById("src-name").textContent = DATA.source;
 document.getElementById("gen-at").textContent = "generated " + fmtUTC(DATA.generatedAt);
@@ -1123,12 +1542,13 @@ document.querySelectorAll(".seg button").forEach(btn => {
   btn.addEventListener("click", () => {
     UI.filter = btn.dataset.filter;
     document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+    scheduleSaveFilters();
     renderList();
   });
 });
 
 const qEl = document.getElementById("q");
-qEl.addEventListener("input", () => { UI.query = qEl.value; renderList(); });
+qEl.addEventListener("input", () => { UI.query = qEl.value; scheduleSaveFilters(); renderList(); });
 
 const cMin = document.getElementById("conf-min");
 const cMax = document.getElementById("conf-max");
@@ -1140,10 +1560,29 @@ function syncConf() {
   UI.confMin = +cMin.value; UI.confMax = +cMax.value;
   cMinL.textContent = UI.confMin + "%";
   cMaxL.textContent = UI.confMax + "%";
+  scheduleSaveFilters();
   renderList();
 }
 cMin.addEventListener("input", syncConf);
 cMax.addEventListener("input", syncConf);
+
+// (#4) Group selector
+const groupSel = document.getElementById("group-by");
+groupSel.addEventListener("change", () => {
+  UI.grouping = groupSel.value;
+  scheduleSaveFilters();
+  renderList();
+});
+
+// (#2) Bulk-accept handler
+document.getElementById("bulk-accept").addEventListener("click", () => {
+  const cands = bulkAcceptCandidates();
+  if (cands.length === 0) return;
+  for (const s of cands) s.status = "reviewed";
+  renderList();
+  renderCounts();
+  toast("Accepted " + cands.length + " auto-inserted row" + (cands.length === 1 ? "" : "s") + ".");
+});
 
 document.getElementById("export-btn").addEventListener("click", exportReviewed);
 document.getElementById("reset-btn").addEventListener("click", () => {
@@ -1155,21 +1594,147 @@ document.getElementById("reset-btn").addEventListener("click", () => {
     s.subcategory = pre.subcategory;
     s.initialAmbiguousSheet = pre.needsSheet;
     s.initialNoMatch = pre.noMatch;
+    s.ambiguousSheetOptions = pre.sheetOptions;
     s.status = "pending";
   }
+  clearSavedRows(); // (#1) also wipe the saved state, otherwise next save undoes us
   renderList();
   renderCounts();
   toast("Reset to initial pre-fill state");
 });
 
 /* ============================================================================
-   11. Initial render + initial selection
+   10b. Drag-drop another review-data.json (#6)
    ========================================================================== */
+const dropOverlay = document.getElementById("drop-overlay");
+let _dragDepth = 0;
+window.addEventListener("dragenter", (ev) => {
+  if (ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes("Files")) {
+    ev.preventDefault();
+    _dragDepth++;
+    dropOverlay.classList.add("show");
+  }
+});
+window.addEventListener("dragover", (ev) => {
+  if (ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes("Files")) {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "copy";
+  }
+});
+window.addEventListener("dragleave", () => {
+  _dragDepth = Math.max(0, _dragDepth - 1);
+  if (_dragDepth === 0) dropOverlay.classList.remove("show");
+});
+window.addEventListener("drop", async (ev) => {
+  ev.preventDefault();
+  _dragDepth = 0;
+  dropOverlay.classList.remove("show");
+  const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!parsed || !Array.isArray(parsed.queue) || !parsed.taxonomy || !Array.isArray(parsed.taxonomy.sheets)) {
+      toast("That JSON doesn't match the ReviewData shape.");
+      return;
+    }
+    // Replace data + reload page-side state via a soft reset
+    replaceData(parsed);
+    toast("Loaded " + parsed.queue.length + " rows from " + file.name);
+  } catch (err) {
+    toast("Could not parse JSON: " + (err.message || err));
+  }
+});
+
+// Hard refresh of DATA/STATE/UI when a new file is dropped.
+function replaceData(newData) {
+  // Mutate the global DATA + TAX objects in-place so all const-bound closures
+  // (and the storage key, which reads DATA.source/generatedAt) stay valid.
+  for (const k of Object.keys(DATA)) delete DATA[k];
+  for (const k of Object.keys(newData)) {
+    if (k !== "taxonomy") DATA[k] = newData[k];
+  }
+  Object.keys(TAX).forEach(k => delete TAX[k]);
+  Object.assign(TAX, newData.taxonomy);
+  DATA.taxonomy = TAX;
+  // Rebuild the taxonomy index
+  SHEETS_FOR.clear();
+  for (const sheet of TAX.sheets) {
+    for (const cat of sheet.categories) {
+      for (const sub of cat.subcategories) {
+        const k = cat.name + "||" + sub;
+        if (!SHEETS_FOR.has(k)) SHEETS_FOR.set(k, []);
+        SHEETS_FOR.get(k).push(sheet.name);
+      }
+    }
+  }
+  // Rebuild STATE
+  STATE.length = 0;
+  for (const entry of DATA.queue) {
+    const pre = prefillFor(entry);
+    STATE.push({
+      entry,
+      sheet: pre.sheet, category: pre.category, subcategory: pre.subcategory,
+      initialAmbiguousSheet: pre.needsSheet,
+      initialNoMatch: pre.noMatch,
+      ambiguousSheetOptions: pre.sheetOptions,
+      status: "pending",
+    });
+  }
+  // Restore saved progress for this NEW data identity if any
+  const saved = loadSavedRows();
+  if (saved) applySavedRows(saved);
+
+  document.getElementById("src-name").textContent = DATA.source;
+  document.getElementById("gen-at").textContent = "generated " + fmtUTC(DATA.generatedAt);
+  UI.selectedId = null;
+  renderList();
+  renderCounts();
+  const vis = visibleStates();
+  if (vis.length > 0) selectRow(vis[0].entry.id);
+}
+
+/* ============================================================================
+   11. Initial restore + initial render
+   ========================================================================== */
+// (#8) Apply saved filters first so initial render uses them.
+{
+  const sf = loadSavedFilters();
+  if (sf) {
+    if (sf.filter && ["needs", "auto", "all"].includes(sf.filter)) {
+      UI.filter = sf.filter;
+      document.querySelectorAll(".seg button").forEach(b =>
+        b.setAttribute("aria-pressed", b.dataset.filter === UI.filter ? "true" : "false"));
+    }
+    if (typeof sf.query === "string") { UI.query = sf.query; qEl.value = sf.query; }
+    if (typeof sf.confMin === "number") { UI.confMin = sf.confMin; cMin.value = String(sf.confMin); cMinL.textContent = sf.confMin + "%"; }
+    if (typeof sf.confMax === "number") { UI.confMax = sf.confMax; cMax.value = String(sf.confMax); cMaxL.textContent = sf.confMax + "%"; }
+    if (sf.grouping && ["queue", "category", "sheet", "status"].includes(sf.grouping)) {
+      UI.grouping = sf.grouping;
+      groupSel.value = sf.grouping;
+    }
+  }
+}
+
+// (#1) Restore in-progress rows for THIS source/generatedAt.
+let _restoredCount = 0;
+{
+  const saved = loadSavedRows();
+  if (saved) _restoredCount = applySavedRows(saved);
+}
+
 renderCounts();
 renderList();
 {
   const vis = visibleStates();
   if (vis.length > 0) selectRow(vis[0].entry.id);
+}
+
+if (_restoredCount > 0) {
+  // Defer slightly so it doesn't compete with initial layout
+  setTimeout(() => {
+    toast("Restored " + _restoredCount + " in-progress row" + (_restoredCount === 1 ? "" : "s") + " from a previous session.");
+  }, 300);
 }
 </script>
 
