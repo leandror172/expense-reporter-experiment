@@ -53,6 +53,12 @@ func TestReadQueue(t *testing.T) {
 			},
 		},
 		{
+			name:          "malformed confidence value",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted\nTest Item;15/05;35,50;Taxi;Transporte;abc;1",
+			wantError:     true,
+			errorContains: "confidence",
+		},
+		{
 			name:          "bad auto_inserted",
 			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted\nTest Item;15/05;35,50;Taxi;Transporte;0.95;X",
 			wantError:     true,

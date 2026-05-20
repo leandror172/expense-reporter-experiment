@@ -93,6 +93,21 @@ func TestBuildTaxonomy(t *testing.T) {
 		assert.Equal(t, []string{"Alpha", "Mango", "Zebra"}, result.Sheets[0].Categories[0].Subcategories)
 	})
 
+	t.Run("multiple unknown sheets sort alphabetically after known ones", func(t *testing.T) {
+		mappings := map[string][]resolver.SubcategoryMapping{
+			"a": {{SheetName: "Zeta", Category: "c", Subcategory: "s"}},
+			"b": {{SheetName: "Fixas", Category: "c", Subcategory: "s"}},
+			"c": {{SheetName: "Alpha", Category: "c", Subcategory: "s"}},
+		}
+
+		result := BuildTaxonomy(mappings)
+
+		assert.Len(t, result.Sheets, 3)
+		assert.Equal(t, "Fixas", result.Sheets[0].Name)
+		assert.Equal(t, "Alpha", result.Sheets[1].Name)
+		assert.Equal(t, "Zeta", result.Sheets[2].Name)
+	})
+
 	t.Run("categories sorted alphabetically within sheet", func(t *testing.T) {
 		mappings := map[string][]resolver.SubcategoryMapping{
 			"s": {

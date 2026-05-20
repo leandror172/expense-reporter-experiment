@@ -24,7 +24,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 	reader.LazyQuotes = true
 	reader.FieldsPerRecord = -1 // disable auto-check; we validate length explicitly below
 
-	var entries []QueueEntry
+	entries := []QueueEntry{}
 	lineNumber := 0
 	headerSeen := false
 
@@ -79,6 +79,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 			return nil, fmt.Errorf("line %d: invalid auto_inserted value %q", lineNumber, autoInsertedStr)
 		}
 
+		// ID uses DD/MM date (no year) — stable within a review-to-apply cycle only
 		entries = append(entries, QueueEntry{
 			ID:           feedback.GenerateID(item, date, perInstallment),
 			Item:         item,
