@@ -4,11 +4,13 @@ package acceptance_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/xuri/excelize/v2"
 
 	"expense-reporter/test/actions"
 	"expense-reporter/test/harness"
@@ -16,8 +18,6 @@ import (
 )
 
 func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
-	harness.RequireWorkbook(t, testWorkbook)
-
 	fixDir := filepath.Join(fixturesDir(), "review-basic")
 	csvPath := filepath.Join(fixDir, "input.csv")
 
@@ -39,10 +39,42 @@ func setupReviewScenario(fixDir string) func(*harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
 		ctx.DataDir = dataDir
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
+		ctx.WorkbookPath = createSyntheticWorkbook(ctx.T, ctx.WorkDir)
+	}
+}
+
+func createSyntheticWorkbook(t testing.TB, dir string) string {
+	t.Helper()
+
+	path := filepath.Join(dir, "test-workbook.xlsx")
+	f := excelize.NewFile()
+
+	if err := f.RenameSheet("Sheet1", "Referência de Categorias"); err != nil {
+		t.Fatalf("failed to rename sheet: %v", err)
+	}
+
+	dataRows := [][]string{
+		{"Fixas", "Habitação", "Diarista"},
+		{"Variáveis", "Transporte", "Uber/Taxi"},
+		{"Extras", "Lazer", "Restaurante"},
+		{"Adicionais", "Saúde", "Farmácia"},
+	}
+
+	for i, row := range dataRows {
+		rowNum := i + 5 // rows 1-4 are skipped as headers by LoadReferenceSheet
+		for j, value := range row {
+			cell := fmt.Sprintf("%c%d", 'A'+j, rowNum)
+			if err := f.SetCellValue("Referência de Categorias", cell, value); err != nil {
+				t.Fatalf("failed to set cell %s: %v", cell, err)
+			}
 		}
 	}
+
+	if err := f.SaveAs(path); err != nil {
+		t.Fatalf("failed to save workbook: %v", err)
+	}
+
+	return path
 }
 
 func thenReviewHTMLExists() []func(*harness.Context) {
