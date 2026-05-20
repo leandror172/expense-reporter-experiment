@@ -16,6 +16,7 @@ import (
 var (
 	reviewOutput   string
 	reviewWorkbook string
+	reviewForce    bool
 )
 
 var reviewCmd = &cobra.Command{
@@ -24,10 +25,14 @@ var reviewCmd = &cobra.Command{
 	Long: `Generate an interactive HTML review page from a classified CSV file.
 The output file contains the full expense queue and taxonomy, ready to open in a browser.
 
+The output file is NOT overwritten without --force. Use --force to replace an existing file.
+Use -o - to write to stdout; the summary line is written to stderr in that case.
+
 Examples:
   expense-reporter review classified.csv
   expense-reporter review classified.csv --output review.html
-  expense-reporter review classified.csv --workbook /path/to/workbook.xlsx`,
+  expense-reporter review classified.csv --workbook /path/to/workbook.xlsx
+  expense-reporter review classified.csv -o -`,
 	Args: cobra.ExactArgs(1),
 	RunE: runReview,
 }
@@ -36,6 +41,7 @@ func init() {
 	rootCmd.AddCommand(reviewCmd)
 	reviewCmd.Flags().StringVarP(&reviewOutput, "output", "o", "review.html", "Output HTML file path")
 	reviewCmd.Flags().StringVar(&reviewWorkbook, "workbook", "", "Workbook path (overrides config)")
+	reviewCmd.Flags().BoolVarP(&reviewForce, "force", "f", false, "Overwrite output file if it exists")
 }
 
 func runReview(cmd *cobra.Command, args []string) error {
@@ -83,10 +89,6 @@ func runReview(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("rendering HTML: %w", err)
 	}
 
-	if err := os.WriteFile(reviewOutput, []byte(html), 0o644); err != nil {
-		return fmt.Errorf("writing output file: %w", err)
-	}
-
 	needsReview := 0
 	for _, entry := range queue {
 		if !entry.AutoInserted {
@@ -94,6 +96,20 @@ func runReview(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "wrote %s — %d rows (%d need review)\n", reviewOutput, len(queue), needsReview)
+	if reviewOutput == "-" {
+		if _, err := fmt.Fprint(cmd.OutOrStdout(), html); err != nil {
+			return fmt.Errorf("writing to stdout: %w", err)
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "wrote to stdout — %d rows (%d need review)\n", len(queue), needsReview)
+	} else {
+		if _, err := os.Stat(reviewOutput); err == nil && !reviewForce {
+			return fmt.Errorf("output file %q already exists (use --force to overwrite)", reviewOutput)
+		}
+		if err := os.WriteFile(reviewOutput, []byte(html), 0o644); err != nil {
+			return fmt.Errorf("writing output file: %w", err)
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "wrote %s — %d rows (%d need review)\n", reviewOutput, len(queue), needsReview)
+	}
+
 	return nil
 }
