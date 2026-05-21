@@ -12,7 +12,7 @@ Classification runs entirely on local Ollama models — no cloud API calls, keep
 financial data private.
 
 **Current version:** 2.1.0  
-**Tests:** 190+ unit tests, 8 acceptance test fixtures  
+**Tests:** 220+ unit tests, 9 acceptance test fixtures  
 **Go version:** 1.25.5
 
 ## Commands
@@ -102,6 +102,37 @@ Flags:
 - `--dry-run` — classify only, skip workbook insertion
 - `--threshold` — confidence threshold (default: 0.85)
 - `--model`, `--data-dir`, `--output-dir`, `--top`
+
+### `review` — Generate an interactive HTML review page
+
+```bash
+expense-reporter review classified.csv
+expense-reporter review classified.csv --output review.html --workbook /path/to/workbook.xlsx
+# wrote review.html — 349 rows (23 need review)
+```
+
+Takes the `classified.csv` output from `batch-auto` and bakes it into a self-contained
+`review.html` file. The HTML contains the full expense queue and workbook taxonomy as
+embedded JSON — open it directly in a browser, no server needed.
+
+**Workflow position:** `batch-auto` → `classified.csv` → **`review`** → `review.html`
+→ (browser review) → `reviewed.json` → future `apply` command
+
+In the browser:
+
+- Rows are pre-filled with the classifier's predicted Sheet / Category / Subcategory
+- "Needs review" filter (default) shows only rows that weren't auto-inserted
+- Three cascading dropdowns per row — changing Sheet resets Category/Subcategory if
+  incompatible; an amber hint flags subcategories that exist in multiple sheets
+- Accept (`a`) or Skip (`s`) each row; `j`/`k` navigate; `1`–`4` set sheet by hotkey
+- "Accept auto-inserted" bulk-confirms all already-classified rows at once
+- Progress auto-saves to `localStorage` — reloading the file resumes where you left off
+- **Shift+E** exports `reviewed.json` with every row's final action (`confirmed` /
+  `corrected` / `skipped`) and the resolved Sheet / Category / Subcategory
+
+Flags:
+- `--output` / `-o` — output path (default: `review.html`)
+- `--workbook` — workbook path override (for taxonomy; uses config/env otherwise)
 
 ### `correct` — Override a prior auto-classification
 
@@ -240,6 +271,8 @@ internal/
   models/                  # Domain types: Expense, BatchError, ClassifiedExpense
   parser/                  # Semicolon-delimited expense string parser
   resolver/                # Fuzzy subcategory matching against reference sheet
+  review/                  # review command: CSV reader, taxonomy builder, HTML renderer,
+                           #   go:embed template; types: QueueEntry, Taxonomy, ReviewData
   workflow/                # Orchestration: parse → resolve → expand → insert pipeline
 pkg/utils/                 # Currency parsing, date formatting, string building
 config/config.json         # Runtime config (workbook path, exclusion list, log paths)
@@ -282,9 +315,9 @@ Requires a live Ollama instance.
 cd expense-reporter && ./run-acceptance.sh
 ```
 
-10 fixture directories: classify-basic, auto-basic, batch-auto-basic, batch-auto-exclusions,
+11 fixture directories: classify-basic, auto-basic, batch-auto-basic, batch-auto-exclusions,
 batch-auto-feedback, batch-auto-installments, batch-auto-rollover, add-feedback,
-correct-overrides-confirmed, correct-uses-latest-entry.
+correct-overrides-confirmed, correct-uses-latest-entry, review-basic.
 
 Soft accuracy assertions track classification drift across model/prompt updates
 without requiring exact reproducibility.
@@ -315,7 +348,8 @@ require (
 **Layer 5.6:** Feedback persistence — classifications.jsonl + expenses_log.jsonl  
 **Layer 5.7:** Few-shot injection — keyword-based example selection from training + feedback data  
 **Layer 5.8:** JSON output + MCP server — machine-readable output, Python MCP wrapper
-**Layer 5.9:** Correction workflow — `correct` command closes the feedback loop by writing `status="corrected"` entries that take priority in few-shot retrieval
+**Layer 5.9:** Correction workflow — `correct` command closes the feedback loop by writing `status="corrected"` entries that take priority in few-shot retrieval  
+**RUI-1:** Review command — `review` bakes `classified.csv` + workbook taxonomy into a self-contained `review.html`; browser UI with cascading pickers, localStorage persistence, and `reviewed.json` export
 
 ## License
 

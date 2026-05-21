@@ -1,12 +1,15 @@
 # Makefile for expense-reporter
-# Usage:  make            – build the binary
-#         make test       – run all tests (works around Kaspersky blocking resolver)
-#         make clean      – remove build artefacts
+# Usage:  make             – build the binary
+#         make test        – run all tests (works around Kaspersky blocking resolver)
+#         make open-review – open review.html in the default browser (WSL2: wslview)
+#         make clean       – remove build artefacts
 
 BINARY   = expense-reporter.exe
 RESOLVER_TEST = .resolver.test.exe   # dot-prefix keeps it out of the way; .gitignore covers it
 
-.PHONY: build test clean
+REVIEW_FILE ?= review.html
+
+.PHONY: build test open-review clean
 
 # ── default target ─────────────────────────────────────────────────────────
 build:
@@ -55,6 +58,11 @@ test:
 	@echo ""
 	@echo "=== Cleaning up resolver test binary ==="
 	rm -f $(RESOLVER_TEST)
+
+# ── open-review ────────────────────────────────────────────────────────────
+open-review:
+	@test -f $(REVIEW_FILE) || (echo "$(REVIEW_FILE) not found — generate it first: expense-reporter review classified.csv" && exit 1)
+	wslview $(REVIEW_FILE)
 
 # ── clean ──────────────────────────────────────────────────────────────────
 clean:

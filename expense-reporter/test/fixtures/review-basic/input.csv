@@ -1,0 +1,6 @@
+item;date;value;subcategory;category;confidence;auto_inserted
+Delivery brod's;01/05;53,98;Delivery;Alimentação;0.95;1
+Uber Centro;15/04;35,50;Uber/Taxi;Transporte;0.91;1
+Diarista Letícia;10/05;160,00;Diarista;Habitação;0.87;1
+Academia Smart Fit;05/05;99,90;Academia;Saúde;0.62;0
+Financiamento carro;15/06;2400,00/24;Empréstimos;Habitação;0.88;1

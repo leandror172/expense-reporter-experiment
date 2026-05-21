@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Expense review</title>
+
+<!--
+  ============================================================================
+   EMBEDDED DATA — integration point.
+   At generation time, the external tool replaces the *contents* of this
+   <script> with the real ReviewData JSON. For development, the sample
+   contents of review-data.sample.json are pasted here verbatim so the page
+   works when opened via file://.
+  ============================================================================
+-->
+<script id="review-data" type="application/json">__REVIEW_DATA__</script>
+
+<style>
+  /* ---------- tokens ---------- */
+  :root {
+    --bg:           oklch(0.985 0.003 250);
+    --bg-elev:     #ffffff;
+    --bg-sunken:   oklch(0.965 0.004 250);
+    --ink:         oklch(0.22 0.012 260);
+    --ink-soft:    oklch(0.45 0.012 260);
+    --ink-mute:    oklch(0.62 0.010 260);
+    --rule:        oklch(0.91 0.005 250);
+    --rule-soft:   oklch(0.945 0.004 250);
+
+    --accent:      oklch(0.55 0.13 260);   /* indigo  — confirmed / focus */
+    --accent-soft: oklch(0.95 0.04 260);
+    --accent-ink:  oklch(0.36 0.12 260);
+
+    --warn:        oklch(0.62 0.13 70);    /* amber   — needs attention */
+    --warn-soft:   oklch(0.96 0.05 80);
+    --warn-ink:    oklch(0.45 0.10 60);
+
+    --corr:        oklch(0.55 0.13 200);   /* teal    — corrected (third hue, same C/L) */
+    --corr-soft:   oklch(0.95 0.04 200);
+    --corr-ink:    oklch(0.36 0.10 200);
+
+    --skip:        oklch(0.55 0.005 260);  /* desaturated — skipped */
+    --skip-soft:   oklch(0.95 0.003 260);
+
+    --r-sm: 4px;
+    --r-md: 6px;
+    --r-lg: 10px;
+
+    --shadow-1: 0 1px 0 oklch(0.94 0.004 250);
+    --shadow-2: 0 1px 2px oklch(0.85 0.005 250 / 0.5), 0 0 0 1px var(--rule);
+
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection { background: var(--accent-soft); }
+
+  /* ---------- layout ---------- */
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 28px 80px; }
+
+  /* ---------- header ---------- */
+  header.app {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
+    padding-top: 22px;
+  }
+  .head-row {
+    max-width: 1180px; margin: 0 auto;
+    padding: 0 28px 14px;
+    display: flex; align-items: flex-start; gap: 32px;
+    flex-wrap: wrap;
+  }
+  .title-block { flex: 1 1 auto; min-width: 0; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    margin: 0 0 4px;
+  }
+  h1.title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .title .src {
+    font-family: var(--mono);
+    font-weight: 500;
+    background: var(--bg-sunken);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sm);
+    padding: 1px 6px;
+    font-size: 13px;
+  }
+  .gen-at {
+    color: var(--ink-mute);
+    font-size: 12px;
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  .counts {
+    display: flex; gap: 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    background: var(--bg-elev);
+    overflow: hidden;
+  }
+  .count {
+    padding: 10px 18px;
+    display: flex; flex-direction: column; align-items: flex-start;
+    border-right: 1px solid var(--rule);
+    min-width: 76px;
+  }
+  .count:last-child { border-right: none; }
+  .count .n {
+    font-size: 20px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .count .lbl {
+    font-size: 10.5px;
+    font-family: var(--mono);
+    color: var(--ink-mute);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .count.reviewed .n { color: var(--accent-ink); }
+  .count.skipped  .n { color: var(--ink-soft); }
+  .count.remaining .n { color: var(--warn-ink); }
+
+  /* ---------- toolbar ---------- */
+  .toolbar {
+    max-width: 1180px; margin: 0 auto;
+    padding: 12px 28px 14px;
+    display: flex; gap: 10px; align-items: center;
+    flex-wrap: wrap;
+  }
+  .field {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 6px 10px;
+    min-height: 30px;
+  }
+  .field label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .field input[type="text"],
+  .field input[type="search"] {
+    border: none; outline: none; background: transparent;
+    font: inherit; color: var(--ink);
+    min-width: 220px;
+  }
+  .field input[type="range"] { accent-color: var(--accent); }
+  .seg {
+    display: inline-flex;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 2px;
+  }
+  .seg button {
+    border: none; background: transparent;
+    font: inherit; color: var(--ink-soft);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .seg button[aria-pressed="true"] {
+    background: var(--ink);
+    color: white;
+  }
+  .grow { flex: 1 1 auto; }
+
+  .btn {
+    border: 1px solid var(--rule);
+    background: var(--bg-elev);
+    color: var(--ink);
+    border-radius: var(--r-md);
+    padding: 7px 14px;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .btn:hover { background: var(--bg-sunken); }
+  .btn.primary {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+  .btn.primary:hover { background: oklch(0.32 0.015 260); }
+  .btn.primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn .kbd {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    background: rgba(255,255,255,0.18);
+    color: inherit;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  .btn:not(.primary) .kbd {
+    background: var(--bg-sunken);
+    color: var(--ink-mute);
+    border-color: var(--rule);
+  }
+
+  /* ---------- list ---------- */
+  .list { padding-top: 18px; }
+
+  .group-head {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 18px 4px 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .group-head .hr {
+    flex: 1 1 auto; height: 1px; background: var(--rule);
+  }
+
+  .row {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: 76px 1fr 150px auto;
+    grid-template-areas:
+      "date meta    confidence actions"
+      "date pickers pickers    actions"
+      "date ambig   ambig      actions";
+    gap: 10px 18px;
+    align-items: start;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .row.selected {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 1px var(--ink), 0 4px 12px oklch(0.7 0.01 260 / 0.12);
+  }
+  .row.skipped { background: var(--bg-sunken); opacity: 0.85; }
+  .row.skipped .meta-item { text-decoration: line-through; text-decoration-color: var(--ink-mute); text-decoration-thickness: 1px; }
+
+  .row .date {
+    grid-area: date;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding-top: 1px;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .meta {
+    grid-area: meta;
+    display: flex; flex-direction: column; gap: 2px;
+    min-width: 0;
+  }
+  .meta-item {
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .meta-sub {
+    display: flex; gap: 12px; align-items: center;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-mute);
+  }
+  .value {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .row .confidence {
+    grid-area: confidence;
+    display: flex; flex-direction: column; gap: 4px;
+    padding-top: 2px;
+  }
+  .conf-bar {
+    width: 100%;
+    height: 5px;
+    background: var(--bg-sunken);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--rule-soft);
+  }
+  .conf-bar > span {
+    display: block; height: 100%;
+    background: var(--ink-soft);
+    transition: width .2s ease;
+  }
+  .conf-bar.low > span { background: var(--warn); }
+  .conf-bar.mid > span { background: var(--ink-soft); }
+  .conf-bar.high > span { background: var(--accent); }
+  .conf-text {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-mute);
+    letter-spacing: 0.03em;
+  }
+  .conf-text .auto {
+    text-transform: uppercase;
+  }
+
+  .row .pickers {
+    grid-area: pickers;
+    display: grid;
+    grid-template-columns: 1fr 12px 1fr 12px 1fr;
+    gap: 0;
+    align-items: center;
+  }
+  .arrow {
+    color: var(--ink-mute);
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    user-select: none;
+  }
+
+  /* select wrapper to allow chevron + needs-attention ring */
+  .sel {
+    position: relative;
+    display: flex;
+  }
+  .sel > select {
+    appearance: none; -webkit-appearance: none;
+    width: 100%;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: 7px 28px 7px 10px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .sel > select:hover { border-color: oklch(0.8 0.008 260); }
+  .sel > select:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .sel::after {
+    content: "";
+    position: absolute;
+    right: 10px; top: 50%;
+    width: 7px; height: 7px;
+    border-right: 1.5px solid var(--ink-mute);
+    border-bottom: 1.5px solid var(--ink-mute);
+    transform: translateY(-65%) rotate(45deg);
+    pointer-events: none;
+  }
+  .sel.needs > select {
+    border-color: var(--warn);
+    background: var(--warn-soft);
+    color: var(--warn-ink);
+    font-weight: 500;
+  }
+  .sel.needs::after { border-color: var(--warn-ink); }
+  .sel.empty > select { color: var(--ink-mute); }
+  .sel.disabled > select {
+    background: var(--bg-sunken);
+    color: var(--ink-mute);
+    cursor: not-allowed;
+  }
+
+  /* ---------- per-row actions ---------- */
+  .row .actions {
+    grid-area: actions;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    min-width: 132px;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .badge.pending  { color: var(--ink-mute);  border-color: var(--rule); background: var(--bg); }
+  .badge.needs    { color: var(--warn-ink);  border-color: var(--warn); background: var(--warn-soft); }
+  .badge.confirmed { color: var(--accent-ink); border-color: var(--accent); background: var(--accent-soft); }
+  .badge.corrected { color: var(--corr-ink); border-color: var(--corr); background: var(--corr-soft); }
+  .badge.skipped  { color: var(--ink-soft);  border-color: var(--rule); background: var(--skip-soft); }
+
+  .row-buttons { display: flex; gap: 6px; }
+  .row-buttons button {
+    border: 1px solid var(--rule);
+    background: var(--bg-elev);
+    color: var(--ink-soft);
+    border-radius: var(--r-sm);
+    padding: 4px 9px;
+    font: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .row-buttons button .kbd {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: var(--bg-sunken);
+    color: var(--ink-mute);
+    padding: 1px 4px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+  }
+  .row-buttons button:hover { border-color: var(--ink-soft); color: var(--ink); }
+  .row-buttons button.confirm:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+
+  /* ---------- empty state ---------- */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-mute);
+    font-size: 14px;
+  }
+  .empty .glyph {
+    font-family: var(--mono);
+    font-size: 24px;
+    color: var(--ink-mute);
+    margin-bottom: 10px;
+  }
+
+  /* ---------- shortcuts footer ---------- */
+  .shortcuts {
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--rule);
+    display: flex; flex-wrap: wrap; gap: 14px 22px;
+    font-size: 11.5px;
+    color: var(--ink-mute);
+    font-family: var(--mono);
+  }
+  .shortcuts span kbd {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-right: 4px;
+  }
+
+  /* ---------- progress bar (#10) ---------- */
+  .progress {
+    height: 3px;
+    width: 100%;
+    background: var(--rule-soft);
+    display: flex;
+    overflow: hidden;
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    transition: width .25s ease;
+  }
+  .progress .seg-reviewed { background: var(--accent); }
+  .progress .seg-skipped  { background: var(--ink-mute); opacity: 0.55; }
+
+  /* ---------- bulk-accept count pill (#2) ---------- */
+  .btn .count-pill {
+    background: var(--bg-sunken);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    margin-left: 4px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .btn[disabled]:hover { background: var(--bg-elev); }
+
+  /* ---------- ambiguous-sheet hint (#3) ---------- */
+  .ambig-hint {
+    grid-area: ambig;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--warn-ink);
+    padding-top: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ambig-hint::before {
+    content: "↑";
+    color: var(--warn);
+    font-weight: 700;
+  }
+  .ambig-hint b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- correction diff (#5) ---------- */
+  .diff {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-mute);
+    line-height: 1.35;
+    text-align: right;
+    max-width: 230px;
+  }
+  .diff .old {
+    color: var(--ink-mute);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--ink-mute);
+  }
+  .diff .new { color: var(--corr-ink); font-weight: 500; }
+  .diff .same { color: var(--ink-mute); opacity: 0.7; }
+  .diff .arrow { color: var(--ink-mute); margin: 0 3px; }
+  .diff .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ---------- drag-drop overlay (#6) ---------- */
+  .drop-overlay {
+    position: fixed; inset: 0;
+    background: oklch(0.22 0.012 260 / 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 80;
+    pointer-events: none;
+  }
+  .drop-overlay.show { display: flex; }
+  .drop-overlay .panel {
+    background: var(--bg-elev);
+    border: 2px dashed var(--accent);
+    border-radius: var(--r-lg);
+    padding: 32px 48px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent-ink);
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+  .drop-overlay .panel .small {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink-mute);
+    font-size: 11.5px;
+  }
+
+  /* ---------- group toggle / headers (#4) ---------- */
+  .group-head:first-child { margin-top: 4px; }
+  .group-head .meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.03em;
+  }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: white;
+    padding: 8px 14px; border-radius: var(--r-md);
+    font-size: 12.5px;
+    font-family: var(--mono);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease;
+    z-index: 50;
+    box-shadow: 0 6px 16px oklch(0.3 0.01 260 / 0.18);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-2px); }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="head-row">
+    <div class="title-block">
+      <p class="eyebrow">Expense classification · review</p>
+      <h1 class="title">Reviewing <span class="src" id="src-name">classified.csv</span></h1>
+      <div class="gen-at" id="gen-at">generated 2026-05-15 12:00 UTC</div>
+    </div>
+    <div class="counts" id="counts">
+      <div class="count total">    <span class="n" id="c-total">0</span><span class="lbl">total</span></div>
+      <div class="count reviewed"> <span class="n" id="c-reviewed">0</span><span class="lbl">reviewed</span></div>
+      <div class="count skipped">  <span class="n" id="c-skipped">0</span><span class="lbl">skipped</span></div>
+      <div class="count remaining"><span class="n" id="c-remaining">0</span><span class="lbl">remaining</span></div>
+    </div>
+  </div>
+
+  <div class="progress" id="progress" aria-hidden="true">
+    <span class="seg-reviewed" id="progress-reviewed" style="width: 0%"></span>
+    <span class="seg-skipped"  id="progress-skipped"  style="width: 0%"></span>
+  </div>
+
+  <div class="toolbar">
+    <div class="field">
+      <label for="q">search</label>
+      <input type="search" id="q" placeholder="item description…" autocomplete="off" />
+    </div>
+
+    <div class="seg" role="group" aria-label="filter by status">
+      <button data-filter="needs"  aria-pressed="true">Needs review</button>
+      <button data-filter="auto"   aria-pressed="false">Auto-inserted</button>
+      <button data-filter="all"    aria-pressed="false">All</button>
+    </div>
+
+    <div class="field" style="padding: 4px 6px 4px 10px;">
+      <label for="group-by">group</label>
+      <select id="group-by" style="appearance:none; -webkit-appearance:none; border:none; background:transparent; font: inherit; font-size:12.5px; color: var(--ink); padding: 3px 18px 3px 4px; cursor:pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-mute) 50%), linear-gradient(135deg, var(--ink-mute) 50%, transparent 50%); background-position: calc(100% - 8px) 50%, calc(100% - 4px) 50%; background-size: 4px 4px, 4px 4px; background-repeat: no-repeat;">
+        <option value="queue">Queue order</option>
+        <option value="category">Predicted category</option>
+        <option value="sheet">Predicted sheet</option>
+        <option value="status">Status</option>
+      </select>
+    </div>
+
+    <button class="btn" id="bulk-accept" title="Mark every auto-inserted row whose pre-fill has all 3 levels set as reviewed. Operates on all such rows, regardless of the current filter.">
+      Accept auto-inserted <span class="count-pill" id="bulk-count">0</span>
+    </button>
+
+    <div class="field" style="min-width: 230px;">
+      <label>conf.</label>
+      <input type="range" id="conf-min" min="0" max="100" value="0" step="5" style="width: 70px;" />
+      <span id="conf-min-lbl" style="font-family: var(--mono); font-size: 11px; color: var(--ink-mute); width: 28px;">0%</span>
+      <span style="color: var(--ink-mute); font-family: var(--mono); font-size: 11px;">–</span>
+      <input type="range" id="conf-max" min="0" max="100" value="100" step="5" style="width: 70px;" />
+      <span id="conf-max-lbl" style="font-family: var(--mono); font-size: 11px; color: var(--ink-mute); width: 32px;">100%</span>
+    </div>
+
+    <div class="grow"></div>
+
+    <button class="btn" id="reset-btn" title="Reset all classifications to the pre-fill state and clear any saved progress">Reset</button>
+    <button class="btn primary" id="export-btn">Export reviewed file <span class="kbd">⇧E</span></button>
+  </div>
+</header>
+
+<main class="shell">
+  <div class="list" id="list"></div>
+
+  <div class="shortcuts" aria-label="keyboard shortcuts">
+    <span><kbd>j</kbd><kbd>k</kbd> move</span>
+    <span><kbd>1</kbd>–<kbd>4</kbd> set sheet</span>
+    <span><kbd>a</kbd> accept</span>
+    <span><kbd>s</kbd> skip</span>
+    <span><kbd>e</kbd> edit category</span>
+    <span><kbd>↵</kbd> mark reviewed &amp; next</span>
+    <span><kbd>esc</kbd> blur picker</span>
+    <span><kbd>⇧</kbd>+<kbd>E</kbd> export</span>
+    <span style="opacity: 0.6;">drop a review-data.json anywhere to load a different queue</span>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="drop-overlay" id="drop-overlay" aria-hidden="true">
+  <div class="panel">
+    Drop a review-data.json file to replace the queue
+    <span class="small">your current in-progress state will be saved under its data identity</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================================
+   1. Load data + build taxonomy index
+   ========================================================================== */
+const DATA = JSON.parse(document.getElementById("review-data").textContent);
+const TAX = DATA.taxonomy;
+
+// Index: cat+sub → array of sheet names that contain it.
+const SHEETS_FOR = new Map(); // key "cat||sub" → [sheetName]
+for (const sheet of TAX.sheets) {
+  for (const cat of sheet.categories) {
+    for (const sub of cat.subcategories) {
+      const k = cat.name + "||" + sub;
+      if (!SHEETS_FOR.has(k)) SHEETS_FOR.set(k, []);
+      SHEETS_FOR.get(k).push(sheet.name);
+    }
+  }
+}
+function sheetByName(n) { return TAX.sheets.find(s => s.name === n) || null; }
+function catByName(sheetName, n) {
+  const s = sheetByName(sheetName); if (!s) return null;
+  return s.categories.find(c => c.name === n) || null;
+}
+function sheetHasCategory(sheetName, catName) {
+  return !!catByName(sheetName, catName);
+}
+function categoryHasSub(sheetName, catName, sub) {
+  const c = catByName(sheetName, catName);
+  return !!(c && c.subcategories.includes(sub));
+}
+
+/* ============================================================================
+   2. Per-entry state (sheet/cat/sub + status)
+      Pre-fill rule from the brief:
+       (1) predicted.sheet present + valid → all 3
+       (2) else: search taxonomy for sheets matching (cat, sub)
+            - exactly 1 → all 3
+            - >1        → cat+sub, sheet empty + flagged
+            -  0        → all empty, flagged
+   ========================================================================== */
+function prefillFor(entry) {
+  const p = entry.predicted;
+  // case 1
+  if (p.sheet && categoryHasSub(p.sheet, p.category, p.subcategory)) {
+    return { sheet: p.sheet, category: p.category, subcategory: p.subcategory,
+             needsSheet: false, noMatch: false, sheetOptions: [] };
+  }
+  // case 2: search
+  const k = p.category + "||" + p.subcategory;
+  const matches = SHEETS_FOR.get(k) || [];
+  if (matches.length === 1) {
+    return { sheet: matches[0], category: p.category, subcategory: p.subcategory,
+             needsSheet: false, noMatch: false, sheetOptions: [] };
+  }
+  if (matches.length > 1) {
+    return { sheet: null, category: p.category, subcategory: p.subcategory,
+             needsSheet: true, noMatch: false, sheetOptions: matches.slice() };
+  }
+  return { sheet: null, category: null, subcategory: null,
+           needsSheet: false, noMatch: true, sheetOptions: [] };
+}
+
+const STATE = DATA.queue.map(entry => {
+  const pre = prefillFor(entry);
+  return {
+    entry,
+    sheet: pre.sheet,
+    category: pre.category,
+    subcategory: pre.subcategory,
+    initialAmbiguousSheet: pre.needsSheet,   // ambiguous sheet at load
+    initialNoMatch: pre.noMatch,             // could not find anything
+    ambiguousSheetOptions: pre.sheetOptions, // sheets that could host this cat/sub
+    status: "pending",                       // "pending" | "reviewed" | "skipped"
+  };
+});
+
+/* ============================================================================
+   3. UI state (filters, selection, grouping)
+   ========================================================================== */
+const UI = {
+  filter: "needs",      // "needs" | "auto" | "all"
+  query: "",
+  confMin: 0,
+  confMax: 100,
+  grouping: "queue",    // "queue" | "category" | "sheet" | "status"
+  selectedId: null,
+};
+
+/* ============================================================================
+   3b. localStorage persistence (#1 resume + #8 filter persistence)
+   ========================================================================== */
+const STORAGE_VERSION = "v1";
+const STORAGE_FILTERS_KEY = "expense-review:" + STORAGE_VERSION + ":filters";
+function storageKey() {
+  // Key includes source + generatedAt so a new generation does not collide.
+  return "expense-review:" + STORAGE_VERSION + ":rows:" + DATA.source + ":" + DATA.generatedAt;
+}
+
+function safeLS(fn, fallback) {
+  try { return fn(); } catch (_) { return fallback; }
+}
+
+function loadSavedRows() {
+  return safeLS(() => {
+    const raw = localStorage.getItem(storageKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && parsed.rows) ? parsed : null;
+  }, null);
+}
+
+function loadSavedFilters() {
+  return safeLS(() => {
+    const raw = localStorage.getItem(STORAGE_FILTERS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }, null);
+}
+
+let _saveT = null;
+function scheduleSaveRows() {
+  if (_saveT) clearTimeout(_saveT);
+  _saveT = setTimeout(() => {
+    safeLS(() => {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        rows: Object.fromEntries(STATE.map(s => [s.entry.id, {
+          sheet: s.sheet, category: s.category, subcategory: s.subcategory, status: s.status,
+        }])),
+      };
+      localStorage.setItem(storageKey(), JSON.stringify(payload));
+    });
+  }, 200);
+}
+function scheduleSaveFilters() {
+  safeLS(() => {
+    localStorage.setItem(STORAGE_FILTERS_KEY, JSON.stringify({
+      filter: UI.filter, query: UI.query,
+      confMin: UI.confMin, confMax: UI.confMax,
+      grouping: UI.grouping,
+    }));
+  });
+}
+function clearSavedRows() {
+  safeLS(() => { localStorage.removeItem(storageKey()); });
+}
+
+// Apply saved row state onto STATE, validating against the current taxonomy.
+// Returns count of rows restored from save.
+function applySavedRows(saved) {
+  if (!saved || !saved.rows) return 0;
+  let restored = 0;
+  for (const s of STATE) {
+    const r = saved.rows[s.entry.id];
+    if (!r) continue;
+    // validate sheet/cat/sub: drop downstream if any link is now invalid
+    let sheet = r.sheet, category = r.category, subcategory = r.subcategory;
+    if (sheet && !sheetByName(sheet)) sheet = category = subcategory = null;
+    if (sheet && category && !sheetHasCategory(sheet, category)) category = subcategory = null;
+    if (sheet && category && subcategory && !categoryHasSub(sheet, category, subcategory)) subcategory = null;
+    s.sheet = sheet;
+    s.category = category;
+    s.subcategory = subcategory;
+    s.status = (r.status === "reviewed" || r.status === "skipped") ? r.status : "pending";
+    restored++;
+  }
+  return restored;
+}
+
+/* ============================================================================
+   4. Helpers
+   ========================================================================== */
+function fmtBRL(n) {
+  // R$ 1.234,56  — dot thousands, comma decimal
+  const s = n.toFixed(2);
+  const [intp, dec] = s.split(".");
+  const grouped = intp.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return "R$ " + grouped + "," + dec;
+}
+function fmtPct(c) { return Math.round(c * 100) + "%"; }
+function fmtUTC(iso) {
+  // "2026-05-15T12:00:00Z" → "2026-05-15 12:00 UTC"
+  return iso.replace("T", " ").replace(/:\d\d(?:\.\d+)?Z$/, " UTC");
+}
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => (
+    { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]
+  ));
+}
+
+// (#5) Build a compact "predicted → reviewed" diff element for corrected rows.
+// Renders as 3 lines (Sheet/Cat/Sub), each either dimmed (matches) or
+// strikethrough-old → new-bold (differs). Sheet line only renders if predicted.sheet
+// existed AND differs — disambiguation alone isn't a "correction".
+function buildDiffEl(s) {
+  const p = s.entry.predicted;
+  const wrap = document.createElement("div");
+  wrap.className = "diff";
+  const lines = [];
+
+  function line(predVal, revVal, withPredictedSheet) {
+    if (predVal === undefined) {
+      // predicted side absent (sheet); show only reviewed value as added
+      lines.push('<div class="line"><span class="new">' + escapeHtml(revVal) + '</span></div>');
+      return;
+    }
+    if (predVal === revVal) {
+      lines.push('<div class="line same">' + escapeHtml(revVal) + '</div>');
+    } else {
+      lines.push(
+        '<div class="line"><span class="old">' + escapeHtml(predVal) +
+        '</span><span class="arrow">→</span><span class="new">' + escapeHtml(revVal) + '</span></div>'
+      );
+    }
+  }
+
+  // Sheet line: only show if predicted.sheet was provided
+  if (p.sheet !== undefined) line(p.sheet, s.sheet);
+  line(p.category, s.category);
+  line(p.subcategory, s.subcategory);
+
+  wrap.innerHTML = lines.join("");
+  return wrap;
+}
+
+function deriveAction(s) {
+  if (s.status === "skipped") return "skipped";
+  if (s.status !== "reviewed") return "pending";
+
+  // reviewed: must have all 3 to actually be exportable as confirmed/corrected
+  if (!s.sheet || !s.category || !s.subcategory) return "skipped";
+
+  const p = s.entry.predicted;
+  const catMatch = s.category === p.category;
+  const subMatch = s.subcategory === p.subcategory;
+  const sheetMatch = p.sheet ? (s.sheet === p.sheet) : true;
+  return (catMatch && subMatch && sheetMatch) ? "confirmed" : "corrected";
+}
+
+// Visible action *label* (what we render as the row badge — includes pending nuance)
+function rowBadge(s) {
+  if (s.status === "skipped") return { cls: "skipped", text: "Skipped" };
+  if (s.status === "reviewed") {
+    const a = deriveAction(s);
+    if (a === "confirmed") return { cls: "confirmed", text: "Confirmed" };
+    if (a === "corrected") return { cls: "corrected", text: "Corrected" };
+    return { cls: "skipped",  text: "Skipped (incomplete)" };
+  }
+  // pending
+  if (s.initialNoMatch)         return { cls: "needs",  text: "Unmatched — needs all 3" };
+  if (s.initialAmbiguousSheet
+      && !s.sheet)              return { cls: "needs",  text: "Pick a sheet" };
+  return { cls: "pending", text: "Pending" };
+}
+
+/* ============================================================================
+   5. Render
+   ========================================================================== */
+const listEl = document.getElementById("list");
+
+function visibleStates() {
+  const q = UI.query.trim().toLowerCase();
+  const filtered = STATE.filter(s => {
+    if (UI.filter === "needs" && s.entry.autoInserted) return false;
+    if (UI.filter === "auto"  && !s.entry.autoInserted) return false;
+    const cPct = s.entry.confidence * 100;
+    if (cPct < UI.confMin || cPct > UI.confMax) return false;
+    if (q && !s.entry.item.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // (#9) Sticky needs-attention: in the "All" filter, float rows that loaded
+  // unmatched or ambiguous-sheet to the top, preserving original order otherwise.
+  // We sort by INITIAL flags (not current) so resolving a row doesn't make it jump.
+  if (UI.filter === "all") {
+    const indexOf = new Map(STATE.map((s, i) => [s.entry.id, i]));
+    return filtered.slice().sort((a, b) => {
+      const aw = (a.initialNoMatch || a.initialAmbiguousSheet) ? 0 : 1;
+      const bw = (b.initialNoMatch || b.initialAmbiguousSheet) ? 0 : 1;
+      if (aw !== bw) return aw - bw;
+      return indexOf.get(a.entry.id) - indexOf.get(b.entry.id);
+    });
+  }
+  return filtered;
+}
+
+// Eligible-for-bulk-accept: autoInserted, all 3 prefilled, still pending.
+function bulkAcceptCandidates() {
+  return STATE.filter(s =>
+    s.entry.autoInserted &&
+    s.status === "pending" &&
+    s.sheet && s.category && s.subcategory
+  );
+}
+
+function renderCounts() {
+  let reviewed = 0, skipped = 0;
+  for (const s of STATE) {
+    if (s.status === "reviewed") reviewed++;
+    else if (s.status === "skipped") skipped++;
+  }
+  const total = STATE.length;
+  const remaining = total - reviewed - skipped;
+  document.getElementById("c-total").textContent = total;
+  document.getElementById("c-reviewed").textContent = reviewed;
+  document.getElementById("c-skipped").textContent = skipped;
+  document.getElementById("c-remaining").textContent = remaining;
+
+  // (#10) Progress bar — stacked: reviewed in accent, skipped in mute.
+  const reviewedPct = total ? (reviewed / total) * 100 : 0;
+  const skippedPct  = total ? (skipped  / total) * 100 : 0;
+  document.getElementById("progress-reviewed").style.width = reviewedPct + "%";
+  document.getElementById("progress-skipped").style.width  = skippedPct  + "%";
+
+  // (#2) Bulk-accept button — count and disabled state.
+  const bulkBtn = document.getElementById("bulk-accept");
+  const bulkN = bulkAcceptCandidates().length;
+  document.getElementById("bulk-count").textContent = bulkN;
+  bulkBtn.disabled = (bulkN === 0);
+
+  // (#1) Persist the (possibly mutated) row state. Debounced internally.
+  // We treat renderCounts() as the single canonical "state may have changed" hook.
+  scheduleSaveRows();
+}
+
+function buildSelect(opts, value, placeholder, disabled) {
+  const sel = document.createElement("select");
+  sel.disabled = !!disabled;
+  const ph = document.createElement("option");
+  ph.value = ""; ph.textContent = placeholder;
+  if (value == null) ph.selected = true;
+  sel.appendChild(ph);
+  for (const o of opts) {
+    const opt = document.createElement("option");
+    opt.value = o; opt.textContent = o;
+    if (o === value) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  return sel;
+}
+
+function rowEl(s) {
+  const e = s.entry;
+  const row = document.createElement("article");
+  row.className = "row";
+  row.dataset.id = e.id;
+  if (UI.selectedId === e.id) row.classList.add("selected");
+  if (s.status === "skipped") row.classList.add("skipped");
+
+  // date
+  const dateEl = document.createElement("div");
+  dateEl.className = "date";
+  dateEl.textContent = e.date;
+  row.appendChild(dateEl);
+
+  // meta
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const mItem = document.createElement("div");
+  mItem.className = "meta-item";
+  mItem.textContent = e.item;
+  mItem.title = e.item;
+  const mSub = document.createElement("div");
+  mSub.className = "meta-sub";
+  const mVal = document.createElement("span");
+  mVal.className = "value";
+  mVal.textContent = fmtBRL(e.value);
+  const mId = document.createElement("span");
+  mId.textContent = "#" + e.id.slice(0, 8);
+  mId.style.opacity = "0.6";
+  mSub.append(mVal, mId);
+  meta.append(mItem, mSub);
+  row.appendChild(meta);
+
+  // confidence
+  const conf = document.createElement("div");
+  conf.className = "confidence";
+  const bar = document.createElement("div");
+  bar.className = "conf-bar";
+  if (e.confidence < 0.75) bar.classList.add("low");
+  else if (e.confidence < 0.9) bar.classList.add("mid");
+  else bar.classList.add("high");
+  const fill = document.createElement("span");
+  fill.style.width = (e.confidence * 100) + "%";
+  bar.appendChild(fill);
+  const text = document.createElement("div");
+  text.className = "conf-text";
+  text.innerHTML =
+    '<span>confidence ' + fmtPct(e.confidence) + '</span>' +
+    '<span class="auto">' + (e.autoInserted ? "auto" : "review") + '</span>';
+  conf.append(bar, text);
+  row.appendChild(conf);
+
+  // pickers
+  const pickers = document.createElement("div");
+  pickers.className = "pickers";
+
+  // — Sheet
+  const sheetNames = TAX.sheets.map(x => x.name);
+  const sheetWrap = document.createElement("div");
+  sheetWrap.className = "sel";
+  const sheetSel = buildSelect(sheetNames, s.sheet, "Sheet…", false);
+  if (!s.sheet && s.initialAmbiguousSheet) sheetWrap.classList.add("needs");
+  else if (!s.sheet) sheetWrap.classList.add("empty");
+  sheetWrap.appendChild(sheetSel);
+  sheetSel.addEventListener("change", () => {
+    s.sheet = sheetSel.value || null;
+    // changing parent must clear children if no longer valid under it
+    if (s.category && !sheetHasCategory(s.sheet, s.category)) {
+      s.category = null; s.subcategory = null;
+    } else if (s.category && s.subcategory && !categoryHasSub(s.sheet, s.category, s.subcategory)) {
+      s.subcategory = null;
+    }
+    s.initialAmbiguousSheet = false;
+    if (s.status === "skipped") s.status = "pending";
+    selectRow(e.id);
+    renderRow(e.id);
+    renderCounts();
+  });
+
+  const arrow1 = document.createElement("div"); arrow1.className = "arrow"; arrow1.textContent = "›";
+
+  // — Category
+  const catWrap = document.createElement("div");
+  catWrap.className = "sel";
+  let catNames;
+  if (s.sheet) {
+    catNames = sheetByName(s.sheet).categories.map(c => c.name);
+  } else if (s.category) {
+    // Ambiguous-sheet case: keep the pre-filled category visible until a sheet is picked.
+    catNames = [s.category];
+  } else {
+    catNames = [];
+  }
+  const catSel = buildSelect(catNames, s.category, s.sheet ? "Category…" : (s.category ? "" : "—"), !s.sheet);
+  if (!s.sheet) catWrap.classList.add("disabled");
+  else if (!s.category) catWrap.classList.add("empty");
+  catWrap.appendChild(catSel);
+  catSel.addEventListener("change", () => {
+    s.category = catSel.value || null;
+    if (s.category && s.subcategory && !categoryHasSub(s.sheet, s.category, s.subcategory)) {
+      s.subcategory = null;
+    }
+    if (s.status === "skipped") s.status = "pending";
+    renderRow(e.id);
+    renderCounts();
+  });
+
+  const arrow2 = document.createElement("div"); arrow2.className = "arrow"; arrow2.textContent = "›";
+
+  // — Subcategory
+  const subWrap = document.createElement("div");
+  subWrap.className = "sel";
+  let subNames;
+  if (s.sheet && s.category) {
+    subNames = catByName(s.sheet, s.category).subcategories;
+  } else if (s.subcategory) {
+    // Ambiguous-sheet case: keep the pre-filled subcategory visible until a sheet is picked.
+    subNames = [s.subcategory];
+  } else {
+    subNames = [];
+  }
+  const subSel = buildSelect(subNames, s.subcategory, (s.sheet && s.category) ? "Subcategory…" : (s.subcategory ? "" : "—"), !(s.sheet && s.category));
+  if (!(s.sheet && s.category)) subWrap.classList.add("disabled");
+  else if (!s.subcategory) subWrap.classList.add("empty");
+  subWrap.appendChild(subSel);
+  subSel.addEventListener("change", () => {
+    s.subcategory = subSel.value || null;
+    if (s.status === "skipped") s.status = "pending";
+    renderRow(e.id);
+    renderCounts();
+  });
+
+  pickers.append(sheetWrap, arrow1, catWrap, arrow2, subWrap);
+  row.appendChild(pickers);
+
+  // (#3) Ambiguous-sheet hint — only when sheet is still empty AND prefill flagged ambiguity
+  if (!s.sheet && s.initialAmbiguousSheet && s.ambiguousSheetOptions && s.ambiguousSheetOptions.length > 1) {
+    const hint = document.createElement("div");
+    hint.className = "ambig-hint";
+    const optsText = s.ambiguousSheetOptions.slice(0, -1).join(", ") + " + " + s.ambiguousSheetOptions[s.ambiguousSheetOptions.length - 1];
+    hint.innerHTML = '<b>' + escapeHtml(s.category) + " / " + escapeHtml(s.subcategory) + '</b> exists in ' + escapeHtml(optsText) + ' — pick one.';
+    row.appendChild(hint);
+  }
+
+  // actions / badge / buttons
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const b = rowBadge(s);
+  const badge = document.createElement("span");
+  badge.className = "badge " + b.cls;
+  badge.textContent = b.text;
+  actions.appendChild(badge);
+
+  // (#5) Diff display when corrected
+  if (s.status === "reviewed" && deriveAction(s) === "corrected") {
+    actions.appendChild(buildDiffEl(s));
+  }
+
+  const btns = document.createElement("div");
+  btns.className = "row-buttons";
+  const acceptBtn = document.createElement("button");
+  acceptBtn.className = "confirm";
+  acceptBtn.innerHTML = 'Accept <span class="kbd">a</span>';
+  acceptBtn.title = "Accept current 3-level selection";
+  acceptBtn.addEventListener("click", (ev) => { ev.stopPropagation(); selectRow(e.id); acceptRow(e.id); });
+  const skipBtn = document.createElement("button");
+  skipBtn.innerHTML = 'Skip <span class="kbd">s</span>';
+  skipBtn.addEventListener("click", (ev) => { ev.stopPropagation(); selectRow(e.id); skipRow(e.id); });
+  btns.append(acceptBtn, skipBtn);
+  actions.appendChild(btns);
+  row.appendChild(actions);
+
+  row.addEventListener("mousedown", () => { selectRow(e.id); });
+
+  return row;
+}
+
+let _rowEls = new Map(); // id → DOM element
+
+// (#4) Group helpers: produce ordered list of { groupKey, label, items, meta } from visibleStates.
+function groupedView(items) {
+  if (UI.grouping === "queue") {
+    return [{ key: "", label: "", items, meta: "" }];
+  }
+  const buckets = new Map();
+  const keyFor = (s) => {
+    if (UI.grouping === "category") return s.entry.predicted.category || "(no category)";
+    if (UI.grouping === "sheet")    return s.sheet || (s.initialAmbiguousSheet ? "(ambiguous sheet)" : "(no sheet)");
+    if (UI.grouping === "status") {
+      if (s.status === "reviewed") {
+        const a = deriveAction(s);
+        return a === "confirmed" ? "Confirmed" : a === "corrected" ? "Corrected" : "Incomplete";
+      }
+      if (s.status === "skipped") return "Skipped";
+      if (s.initialNoMatch || (s.initialAmbiguousSheet && !s.sheet)) return "Needs attention";
+      return "Pending";
+    }
+    return "";
+  };
+  for (const s of items) {
+    const k = keyFor(s);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(s);
+  }
+
+  // Order groups
+  let orderedKeys = Array.from(buckets.keys());
+  if (UI.grouping === "status") {
+    const order = ["Needs attention", "Pending", "Corrected", "Confirmed", "Incomplete", "Skipped"];
+    orderedKeys.sort((a, b) => {
+      const ai = order.indexOf(a); const bi = order.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  } else if (UI.grouping === "sheet") {
+    const sheetOrder = TAX.sheets.map(x => x.name);
+    orderedKeys.sort((a, b) => {
+      const ai = sheetOrder.indexOf(a); const bi = sheetOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  } else {
+    orderedKeys.sort();
+  }
+
+  return orderedKeys.map(k => {
+    const list = buckets.get(k);
+    const sum = list.reduce((m, s) => m + s.entry.value, 0);
+    return {
+      key: k,
+      label: k,
+      items: list,
+      meta: list.length + " row" + (list.length === 1 ? "" : "s") + " · " + fmtBRL(sum),
+    };
+  });
+}
+
+function renderList() {
+  listEl.innerHTML = "";
+  _rowEls.clear();
+  const items = visibleStates();
+  if (items.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.innerHTML = '<div class="glyph">∅</div>No rows match the current filters.';
+    listEl.appendChild(empty);
+    return;
+  }
+  const groups = groupedView(items);
+  for (const g of groups) {
+    if (g.label) {
+      const head = document.createElement("div");
+      head.className = "group-head";
+      head.innerHTML = '<span>' + escapeHtml(g.label) + '</span><span class="meta">' + escapeHtml(g.meta) + '</span><span class="hr"></span>';
+      listEl.appendChild(head);
+    }
+    for (const s of g.items) {
+      const el = rowEl(s);
+      _rowEls.set(s.entry.id, el);
+      listEl.appendChild(el);
+    }
+  }
+}
+
+function renderRow(id) {
+  const oldEl = _rowEls.get(id);
+  if (!oldEl) return;
+  const s = STATE.find(x => x.entry.id === id);
+  const newEl = rowEl(s);
+  _rowEls.set(id, newEl);
+  oldEl.replaceWith(newEl);
+}
+
+/* ============================================================================
+   6. Row actions
+   ========================================================================== */
+function selectRow(id) {
+  if (UI.selectedId === id) return;
+  const prev = UI.selectedId;
+  UI.selectedId = id;
+  if (prev) {
+    const pe = _rowEls.get(prev);
+    if (pe) pe.classList.remove("selected");
+  }
+  const ne = _rowEls.get(id);
+  if (ne) ne.classList.add("selected");
+}
+
+function acceptRow(id) {
+  const s = STATE.find(x => x.entry.id === id);
+  if (!s) return;
+  if (!s.sheet || !s.category || !s.subcategory) {
+    toast("Need all 3 selected — pick a " + (!s.sheet ? "sheet" : !s.category ? "category" : "subcategory"));
+    return;
+  }
+  s.status = "reviewed";
+  renderRow(id);
+  renderCounts();
+}
+
+function skipRow(id) {
+  const s = STATE.find(x => x.entry.id === id);
+  if (!s) return;
+  s.status = "skipped";
+  renderRow(id);
+  renderCounts();
+}
+
+function advanceFromSelected() {
+  const vis = visibleStates();
+  const idx = vis.findIndex(s => s.entry.id === UI.selectedId);
+  if (idx === -1) return;
+  const next = vis[idx + 1] || vis[idx]; // stay on last
+  selectRow(next.entry.id);
+  const el = _rowEls.get(next.entry.id);
+  if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function moveSelection(delta) {
+  const vis = visibleStates();
+  if (vis.length === 0) return;
+  let idx = vis.findIndex(s => s.entry.id === UI.selectedId);
+  if (idx === -1) idx = 0;
+  else idx = Math.max(0, Math.min(vis.length - 1, idx + delta));
+  selectRow(vis[idx].entry.id);
+  const el = _rowEls.get(vis[idx].entry.id);
+  if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function setSheetOnSelected(sheetName) {
+  const s = STATE.find(x => x.entry.id === UI.selectedId);
+  if (!s) return;
+  if (!sheetByName(sheetName)) return;
+  s.sheet = sheetName;
+  if (s.category && !sheetHasCategory(s.sheet, s.category)) {
+    s.category = null; s.subcategory = null;
+  } else if (s.category && s.subcategory && !categoryHasSub(s.sheet, s.category, s.subcategory)) {
+    s.subcategory = null;
+  }
+  s.initialAmbiguousSheet = false;
+  if (s.status === "skipped") s.status = "pending";
+  renderRow(s.entry.id);
+  renderCounts();
+}
+
+function focusCategoryOfSelected() {
+  if (!UI.selectedId) return;
+  const el = _rowEls.get(UI.selectedId);
+  if (!el) return;
+  const sels = el.querySelectorAll(".pickers select");
+  if (sels.length >= 2) sels[1].focus();
+}
+
+/* ============================================================================
+   7. Keyboard
+   ========================================================================== */
+function isTypingTarget(t) {
+  if (!t) return false;
+  const tag = t.tagName;
+  if (tag === "INPUT" && (t.type === "text" || t.type === "search")) return true;
+  if (tag === "TEXTAREA") return true;
+  if (t.isContentEditable) return true;
+  return false;
+}
+
+document.addEventListener("keydown", (ev) => {
+  // Shift+E export — works even from inputs
+  if (ev.shiftKey && (ev.key === "E" || ev.key === "e") && !ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+    ev.preventDefault();
+    exportReviewed();
+    return;
+  }
+  if (isTypingTarget(ev.target)) return;
+
+  // (#7) Esc on a focused <select> blurs it so j/k work again.
+  if (ev.target && ev.target.tagName === "SELECT" && ev.key === "Escape") {
+    ev.preventDefault();
+    ev.target.blur();
+    return;
+  }
+  // (#7) Enter on a focused <select> inside the selected row:
+  //  - if all 3 are set → mark reviewed + advance + focus next row's Sheet
+  //  - otherwise → focus the next still-empty picker in the row
+  if (ev.target && ev.target.tagName === "SELECT" && ev.key === "Enter") {
+    const ownRow = ev.target.closest(".row");
+    if (ownRow && ownRow.dataset.id) {
+      ev.preventDefault();
+      const id = ownRow.dataset.id;
+      const s = STATE.find(x => x.entry.id === id);
+      if (!s) return;
+      if (s.sheet && s.category && s.subcategory) {
+        s.status = "reviewed";
+        renderRow(id);
+        renderCounts();
+        advanceFromSelected();
+        // Focus the new row's Sheet picker for continuous keyboarding
+        const newSel = _rowEls.get(UI.selectedId);
+        if (newSel) {
+          const firstSel = newSel.querySelector(".pickers select");
+          if (firstSel && !firstSel.disabled) firstSel.focus();
+        }
+      } else {
+        // Find next empty picker and focus it
+        const sels = ownRow.querySelectorAll(".pickers select");
+        for (const sel of sels) {
+          if (!sel.disabled && !sel.value) { sel.focus(); break; }
+        }
+      }
+      return;
+    }
+  }
+  // Don't hijack while a <select> is focused — let arrow keys work normally
+  if (ev.target && ev.target.tagName === "SELECT") {
+    if (["j","k","a","s","e","1","2","3","4"].includes(ev.key)) {
+      ev.target.blur();
+    } else return;
+  }
+
+  const k = ev.key;
+  if (k === "j") { ev.preventDefault(); moveSelection(1); }
+  else if (k === "k") { ev.preventDefault(); moveSelection(-1); }
+  else if (k === "a") { ev.preventDefault(); if (UI.selectedId) acceptRow(UI.selectedId); }
+  else if (k === "s") { ev.preventDefault(); if (UI.selectedId) skipRow(UI.selectedId); }
+  else if (k === "e") { ev.preventDefault(); focusCategoryOfSelected(); }
+  else if (k === "Enter") {
+    ev.preventDefault();
+    if (UI.selectedId) {
+      const s = STATE.find(x => x.entry.id === UI.selectedId);
+      if (s && s.sheet && s.category && s.subcategory) {
+        s.status = "reviewed";
+        renderRow(s.entry.id);
+        renderCounts();
+        advanceFromSelected();
+      } else {
+        toast("Can't mark reviewed — need all 3 selected");
+      }
+    }
+  }
+  else if (k === "1") { ev.preventDefault(); setSheetOnSelected("Fixas"); }
+  else if (k === "2") { ev.preventDefault(); setSheetOnSelected("Variáveis"); }
+  else if (k === "3") { ev.preventDefault(); setSheetOnSelected("Extras"); }
+  else if (k === "4") { ev.preventDefault(); setSheetOnSelected("Adicionais"); }
+});
+
+/* ============================================================================
+   8. Export
+   ========================================================================== */
+function exportReviewed() {
+  const out = {
+    reviewedAt: new Date().toISOString(),
+    source: DATA.source,
+    entries: STATE.map(s => {
+      const action = deriveAction(s);
+      const base = {
+        id: s.entry.id,
+        item: s.entry.item,
+        date: s.entry.date,
+        value: s.entry.value,
+        confidence: s.entry.confidence,
+        predicted: Object.assign({}, s.entry.predicted),  // verbatim
+        action,
+      };
+      if (action === "skipped") {
+        base.reviewed = null;
+      } else {
+        base.reviewed = { sheet: s.sheet, category: s.category, subcategory: s.subcategory };
+      }
+      return base;
+    }),
+  };
+
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "reviewed.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  const counts = out.entries.reduce((m, e) => { m[e.action] = (m[e.action]||0) + 1; return m; }, {});
+  toast("Exported reviewed.json — " + (counts.confirmed||0) + " confirmed · " + (counts.corrected||0) + " corrected · " + (counts.skipped||0) + " skipped");
+}
+
+/* ============================================================================
+   9. Toast
+   ========================================================================== */
+let _toastT = null;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  if (_toastT) clearTimeout(_toastT);
+  _toastT = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ============================================================================
+   10. Wire toolbar + drag-drop + bulk-accept + filter persistence
+   ========================================================================== */
+document.getElementById("src-name").textContent = DATA.source;
+document.getElementById("gen-at").textContent = "generated " + fmtUTC(DATA.generatedAt);
+
+document.querySelectorAll(".seg button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    UI.filter = btn.dataset.filter;
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+    scheduleSaveFilters();
+    renderList();
+  });
+});
+
+const qEl = document.getElementById("q");
+qEl.addEventListener("input", () => { UI.query = qEl.value; scheduleSaveFilters(); renderList(); });
+
+const cMin = document.getElementById("conf-min");
+const cMax = document.getElementById("conf-max");
+const cMinL = document.getElementById("conf-min-lbl");
+const cMaxL = document.getElementById("conf-max-lbl");
+function syncConf() {
+  let lo = +cMin.value, hi = +cMax.value;
+  if (lo > hi) { if (this === cMin) cMax.value = String(lo); else cMin.value = String(hi); }
+  UI.confMin = +cMin.value; UI.confMax = +cMax.value;
+  cMinL.textContent = UI.confMin + "%";
+  cMaxL.textContent = UI.confMax + "%";
+  scheduleSaveFilters();
+  renderList();
+}
+cMin.addEventListener("input", syncConf);
+cMax.addEventListener("input", syncConf);
+
+// (#4) Group selector
+const groupSel = document.getElementById("group-by");
+groupSel.addEventListener("change", () => {
+  UI.grouping = groupSel.value;
+  scheduleSaveFilters();
+  renderList();
+});
+
+// (#2) Bulk-accept handler
+document.getElementById("bulk-accept").addEventListener("click", () => {
+  const cands = bulkAcceptCandidates();
+  if (cands.length === 0) return;
+  for (const s of cands) s.status = "reviewed";
+  renderList();
+  renderCounts();
+  toast("Accepted " + cands.length + " auto-inserted row" + (cands.length === 1 ? "" : "s") + ".");
+});
+
+document.getElementById("export-btn").addEventListener("click", exportReviewed);
+document.getElementById("reset-btn").addEventListener("click", () => {
+  if (!confirm("Reset all rows to the original pre-fill state? Your in-progress edits will be lost.")) return;
+  for (const s of STATE) {
+    const pre = prefillFor(s.entry);
+    s.sheet = pre.sheet;
+    s.category = pre.category;
+    s.subcategory = pre.subcategory;
+    s.initialAmbiguousSheet = pre.needsSheet;
+    s.initialNoMatch = pre.noMatch;
+    s.ambiguousSheetOptions = pre.sheetOptions;
+    s.status = "pending";
+  }
+  clearSavedRows(); // (#1) also wipe the saved state, otherwise next save undoes us
+  renderList();
+  renderCounts();
+  toast("Reset to initial pre-fill state");
+});
+
+/* ============================================================================
+   10b. Drag-drop another review-data.json (#6)
+   ========================================================================== */
+const dropOverlay = document.getElementById("drop-overlay");
+let _dragDepth = 0;
+window.addEventListener("dragenter", (ev) => {
+  if (ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes("Files")) {
+    ev.preventDefault();
+    _dragDepth++;
+    dropOverlay.classList.add("show");
+  }
+});
+window.addEventListener("dragover", (ev) => {
+  if (ev.dataTransfer && Array.from(ev.dataTransfer.types || []).includes("Files")) {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "copy";
+  }
+});
+window.addEventListener("dragleave", () => {
+  _dragDepth = Math.max(0, _dragDepth - 1);
+  if (_dragDepth === 0) dropOverlay.classList.remove("show");
+});
+window.addEventListener("drop", async (ev) => {
+  ev.preventDefault();
+  _dragDepth = 0;
+  dropOverlay.classList.remove("show");
+  const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if (!parsed || !Array.isArray(parsed.queue) || !parsed.taxonomy || !Array.isArray(parsed.taxonomy.sheets)) {
+      toast("That JSON doesn't match the ReviewData shape.");
+      return;
+    }
+    // Replace data + reload page-side state via a soft reset
+    replaceData(parsed);
+    toast("Loaded " + parsed.queue.length + " rows from " + file.name);
+  } catch (err) {
+    toast("Could not parse JSON: " + (err.message || err));
+  }
+});
+
+// Hard refresh of DATA/STATE/UI when a new file is dropped.
+function replaceData(newData) {
+  // Mutate the global DATA + TAX objects in-place so all const-bound closures
+  // (and the storage key, which reads DATA.source/generatedAt) stay valid.
+  for (const k of Object.keys(DATA)) delete DATA[k];
+  for (const k of Object.keys(newData)) {
+    if (k !== "taxonomy") DATA[k] = newData[k];
+  }
+  Object.keys(TAX).forEach(k => delete TAX[k]);
+  Object.assign(TAX, newData.taxonomy);
+  DATA.taxonomy = TAX;
+  // Rebuild the taxonomy index
+  SHEETS_FOR.clear();
+  for (const sheet of TAX.sheets) {
+    for (const cat of sheet.categories) {
+      for (const sub of cat.subcategories) {
+        const k = cat.name + "||" + sub;
+        if (!SHEETS_FOR.has(k)) SHEETS_FOR.set(k, []);
+        SHEETS_FOR.get(k).push(sheet.name);
+      }
+    }
+  }
+  // Rebuild STATE
+  STATE.length = 0;
+  for (const entry of DATA.queue) {
+    const pre = prefillFor(entry);
+    STATE.push({
+      entry,
+      sheet: pre.sheet, category: pre.category, subcategory: pre.subcategory,
+      initialAmbiguousSheet: pre.needsSheet,
+      initialNoMatch: pre.noMatch,
+      ambiguousSheetOptions: pre.sheetOptions,
+      status: "pending",
+    });
+  }
+  // Restore saved progress for this NEW data identity if any
+  const saved = loadSavedRows();
+  if (saved) applySavedRows(saved);
+
+  document.getElementById("src-name").textContent = DATA.source;
+  document.getElementById("gen-at").textContent = "generated " + fmtUTC(DATA.generatedAt);
+  UI.selectedId = null;
+  renderList();
+  renderCounts();
+  const vis = visibleStates();
+  if (vis.length > 0) selectRow(vis[0].entry.id);
+}
+
+/* ============================================================================
+   11. Initial restore + initial render
+   ========================================================================== */
+// (#8) Apply saved filters first so initial render uses them.
+{
+  const sf = loadSavedFilters();
+  if (sf) {
+    if (sf.filter && ["needs", "auto", "all"].includes(sf.filter)) {
+      UI.filter = sf.filter;
+      document.querySelectorAll(".seg button").forEach(b =>
+        b.setAttribute("aria-pressed", b.dataset.filter === UI.filter ? "true" : "false"));
+    }
+    if (typeof sf.query === "string") { UI.query = sf.query; qEl.value = sf.query; }
+    if (typeof sf.confMin === "number") { UI.confMin = sf.confMin; cMin.value = String(sf.confMin); cMinL.textContent = sf.confMin + "%"; }
+    if (typeof sf.confMax === "number") { UI.confMax = sf.confMax; cMax.value = String(sf.confMax); cMaxL.textContent = sf.confMax + "%"; }
+    if (sf.grouping && ["queue", "category", "sheet", "status"].includes(sf.grouping)) {
+      UI.grouping = sf.grouping;
+      groupSel.value = sf.grouping;
+    }
+  }
+}
+
+// (#1) Restore in-progress rows for THIS source/generatedAt.
+let _restoredCount = 0;
+{
+  const saved = loadSavedRows();
+  if (saved) _restoredCount = applySavedRows(saved);
+}
+
+renderCounts();
+renderList();
+{
+  const vis = visibleStates();
+  if (vis.length > 0) selectRow(vis[0].entry.id);
+}
+
+if (_restoredCount > 0) {
+  // Defer slightly so it doesn't compete with initial layout
+  setTimeout(() => {
+    toast("Restored " + _restoredCount + " in-progress row" + (_restoredCount === 1 ? "" : "s") + " from a previous session.");
+  }, 300);
+}
+</script>
+
+</body>
+</html>
