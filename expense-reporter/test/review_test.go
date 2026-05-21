@@ -23,18 +23,18 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "review command produces HTML with queue and taxonomy",
-		Given: setupReviewScenario(fixDir),
+		Given: expensesReceivedForReview(fixDir),
 		When:  actions.RunReview(csvPath),
 		Then: slices.Concat(
-			thenReviewHTMLExists(),
-			thenReviewDataScriptPresent(),
-			thenReviewQueueHasRows(5),
-			thenReviewTaxonomyHasSheets([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
+			reviewHTMLProduced(),
+			reviewDataEmbedded(),
+			pendingExpensesQueued(5),
+			workbookSheetsInTaxonomy([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
 		),
 	})
 }
 
-func setupReviewScenario(fixDir string) func(*harness.Context) {
+func expensesReceivedForReview(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
@@ -77,14 +77,14 @@ func createSyntheticWorkbook(t testing.TB, dir string) string {
 	return path
 }
 
-func thenReviewHTMLExists() []func(*harness.Context) {
+func reviewHTMLProduced() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
 		verify.OutputFileExists("review.html"),
 	}
 }
 
-func thenReviewDataScriptPresent() []func(*harness.Context) {
+func reviewDataEmbedded() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.HTMLFileContainsScript("review.html", "review-data"),
 	}
@@ -94,7 +94,7 @@ type reviewQueueOnly struct {
 	Queue []json.RawMessage `json:"queue"`
 }
 
-func thenReviewQueueHasRows(expectedCount int) []func(*harness.Context) {
+func pendingExpensesQueued(expectedCount int) []func(*harness.Context) {
 	return []func(*harness.Context){
 		func(ctx *harness.Context) {
 			ctx.T.Helper()
@@ -113,7 +113,7 @@ type reviewTaxonomyOnly struct {
 	} `json:"taxonomy"`
 }
 
-func thenReviewTaxonomyHasSheets(expectedSheets []string) []func(*harness.Context) {
+func workbookSheetsInTaxonomy(expectedSheets []string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		func(ctx *harness.Context) {
 			ctx.T.Helper()

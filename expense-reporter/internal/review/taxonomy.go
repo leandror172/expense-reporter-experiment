@@ -10,9 +10,20 @@ import (
 var sheetOrder = []string{"Fixas", "Variáveis", "Extras", "Adicionais"}
 
 func BuildTaxonomy(mappings map[string][]resolver.SubcategoryMapping) Taxonomy {
-	// Intermediate: sheetName → categoryName → set of subcategories
-	tree := map[string]map[string]map[string]struct{}{}
+	tree := buildTree(mappings)
+	names := sortedSheetNames(tree)
 
+	sheets := make([]Sheet, 0, len(names))
+	for _, name := range names {
+		sheets = append(sheets, buildSheet(name, tree[name]))
+	}
+	return Taxonomy{Sheets: sheets}
+}
+
+// buildTree converts flat SubcategoryMappings into a 3-level nested set:
+// sheetName → categoryName → set of subcategories.
+func buildTree(mappings map[string][]resolver.SubcategoryMapping) map[string]map[string]map[string]struct{} {
+	tree := map[string]map[string]map[string]struct{}{}
 	for _, list := range mappings {
 		for _, m := range list {
 			if _, ok := tree[m.SheetName]; !ok {
@@ -24,53 +35,44 @@ func BuildTaxonomy(mappings map[string][]resolver.SubcategoryMapping) Taxonomy {
 			tree[m.SheetName][m.Category][m.Subcategory] = struct{}{}
 		}
 	}
+	return tree
+}
 
-	// Collect and sort sheet names
-	sheetNames := make([]string, 0, len(tree))
+// sortedSheetNames returns sheet names ordered by sheetOrder, then alphabetically.
+func sortedSheetNames(tree map[string]map[string]map[string]struct{}) []string {
+	names := make([]string, 0, len(tree))
 	for name := range tree {
-		sheetNames = append(sheetNames, name)
+		names = append(names, name)
 	}
-	sort.Slice(sheetNames, func(i, j int) bool {
-		ri, rj := sheetRank(sheetNames[i]), sheetRank(sheetNames[j])
+	sort.Slice(names, func(i, j int) bool {
+		ri, rj := sheetRank(names[i]), sheetRank(names[j])
 		if ri != rj {
 			return ri < rj
 		}
-		return sheetNames[i] < sheetNames[j] // alphabetical tiebreak for unknown sheets
+		return names[i] < names[j]
 	})
+	return names
+}
 
-	sheets := make([]Sheet, 0, len(sheetNames))
-	for _, sheetName := range sheetNames {
-		catMap := tree[sheetName]
+// buildSheet converts one sheet's category map into a Sheet with sorted categories and subcategories.
+func buildSheet(name string, catMap map[string]map[string]struct{}) Sheet {
+	catNames := make([]string, 0, len(catMap))
+	for n := range catMap {
+		catNames = append(catNames, n)
+	}
+	sort.Strings(catNames)
 
-		catNames := make([]string, 0, len(catMap))
-		for name := range catMap {
-			catNames = append(catNames, name)
+	categories := make([]Category, 0, len(catNames))
+	for _, catName := range catNames {
+		subs := make([]string, 0, len(catMap[catName]))
+		for sub := range catMap[catName] {
+			subs = append(subs, sub)
 		}
-		sort.Strings(catNames)
-
-		categories := make([]Category, 0, len(catNames))
-		for _, catName := range catNames {
-			subMap := catMap[catName]
-
-			subs := make([]string, 0, len(subMap))
-			for sub := range subMap {
-				subs = append(subs, sub)
-			}
-			sort.Strings(subs)
-
-			categories = append(categories, Category{
-				Name:          catName,
-				Subcategories: subs,
-			})
-		}
-
-		sheets = append(sheets, Sheet{
-			Name:       sheetName,
-			Categories: categories,
-		})
+		sort.Strings(subs)
+		categories = append(categories, Category{Name: catName, Subcategories: subs})
 	}
 
-	return Taxonomy{Sheets: sheets}
+	return Sheet{Name: name, Categories: categories}
 }
 
 func sheetRank(name string) int {
