@@ -49,7 +49,7 @@ func createSyntheticWorkbook(t testing.TB, dir string) string {
 	path := filepath.Join(dir, "test-workbook.xlsx")
 	f := excelize.NewFile()
 
-	if err := f.RenameSheet("Sheet1", "Referência de Categorias"); err != nil {
+	if err := f.SetSheetName("Sheet1", "Referência de Categorias"); err != nil {
 		t.Fatalf("failed to rename sheet: %v", err)
 	}
 

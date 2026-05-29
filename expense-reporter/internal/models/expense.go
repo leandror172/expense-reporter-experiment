@@ -124,6 +124,7 @@ type ClassifiedExpense struct {
 	Subcategory string
 	Category    string
 	Confidence  float64
+	SheetName   string // Optional: explicit sheet override (e.g. from reviewed.json). Empty = resolve via PathIndex.
 }
 
 // SheetLocation represents where an expense should be inserted in the Excel file

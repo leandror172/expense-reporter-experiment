@@ -1,0 +1,36 @@
+{
+  "reviewedAt": "2026-05-29T10:00:00Z",
+  "source": "classified.csv",
+  "entries": [
+    {
+      "id": "f0c3bf1293f3",
+      "item": "Uber Centro",
+      "date": "15/04",
+      "value": 35.50,
+      "confidence": 0.91,
+      "predicted": {"category": "Transporte", "subcategory": "Uber/Taxi"},
+      "action": "confirmed",
+      "reviewed": {"sheet": "Variáveis", "category": "Transporte", "subcategory": "Uber/Taxi"}
+    },
+    {
+      "id": "733224d39e01",
+      "item": "Diarista Letícia",
+      "date": "10/05",
+      "value": 160.00,
+      "confidence": 0.87,
+      "predicted": {"category": "Habitação", "subcategory": "Diarista"},
+      "action": "corrected",
+      "reviewed": {"sheet": "Fixas", "category": "Habitação", "subcategory": "Aluguel"}
+    },
+    {
+      "id": "24c75fff9223",
+      "item": "Academia Smart Fit",
+      "date": "05/05",
+      "value": 99.90,
+      "confidence": 0.62,
+      "predicted": {"category": "Saúde", "subcategory": "Academia"},
+      "action": "pending",
+      "reviewed": null
+    }
+  ]
+}
