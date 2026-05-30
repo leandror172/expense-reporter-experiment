@@ -150,14 +150,14 @@ func insertNewRows(newRows []apply.ReviewedEntry, workbookPath, classifPath, exp
 		return 0, 0, fmt.Errorf("allocating empty rows: %w", err)
 	}
 
-	batch, writtenIndices := buildExpenseBatch(newRows, parsedDates, subcatRows, targetRows)
+	batch, writtenIndices := buildExpenseBatch(newRows, parsedDates, subcatRows, emptyReqs, targetRows)
 	if !dryRun && len(batch) > 0 {
 		if err := excel.WriteBatchExpenses(workbookPath, batch); err != nil {
 			return 0, 0, fmt.Errorf("writing batch expenses: %w", err)
 		}
+		return writeFeedbackForNewRows(newRows, writtenIndices, classifPath, expensesLogPath)
 	}
-
-	return writeFeedbackForNewRows(newRows, writtenIndices, classifPath, expensesLogPath)
+	return 0, 0, nil
 }
 
 func buildSubcatRequests(newRows []apply.ReviewedEntry) []excel.SubcategoryLookupRequest {
@@ -200,14 +200,20 @@ func buildEmptyRowRequests(newRows []apply.ReviewedEntry, subcatRows map[string]
 	return reqs, dates, nil
 }
 
-func buildExpenseBatch(newRows []apply.ReviewedEntry, dates []time.Time, subcatRows map[string]map[string]int, targetRows map[int]int) ([]excel.ExpenseWithLocation, []int) {
+// buildExpenseBatch iterates by emptyReqs position (matching AllocateEmptyRows key space)
+// and uses req.ExpenseIndex to retrieve the original newRows entry and its parsed date.
+// This is necessary because buildEmptyRowRequests may skip rows (subcategory not in
+// workbook), making emptyReqs shorter than newRows and shifting AllocateEmptyRows keys.
+func buildExpenseBatch(newRows []apply.ReviewedEntry, dates []time.Time, subcatRows map[string]map[string]int, emptyReqs []excel.EmptyRowRequest, targetRows map[int]int) ([]excel.ExpenseWithLocation, []int) {
 	var batch []excel.ExpenseWithLocation
 	var indices []int
-	for i, entry := range newRows {
-		targetRow, ok := targetRows[i]
+	for pos, req := range emptyReqs {
+		targetRow, ok := targetRows[pos] // pos = position in emptyReqs (AllocateEmptyRows key)
 		if !ok {
 			continue
 		}
+		i := req.ExpenseIndex // original index into newRows
+		entry := newRows[i]
 		subcatRow := subcatRows[entry.Reviewed.Sheet][entry.Reviewed.Subcategory]
 		itemCol, _, _, _ := excel.GetMonthColumns(dates[i].Month())
 		exp := &models.Expense{
