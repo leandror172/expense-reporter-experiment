@@ -26,9 +26,14 @@ Resumed from `.claude/handoff-apply-phase3.md` (written same day — Phases 0–
 - **`insertNewRows` is a blind spot** — zero test coverage on the insertion path; Phase 4 smoke against real `reviewed.json` is the only behavioral check.
 - **Ollama context lesson** — 30b model + 14 large context files exceeds 300s. For complex multi-function files: prefer stubs-then-Ollama or accept Claude escalation early. Also: including `review.go` as context caused g3-12b to misidentify the `apply` package as `review` — disambiguate explicitly in the prompt when package names are similar.
 
+### Post-handoff fixes (same session, second advisor review)
+- **Bug 1 (high)** — index-aliasing in `buildExpenseBatch`: looked up `targetRows[newRowsIndex]` but `AllocateEmptyRows` keys by emptyReqs position. When any row is skipped in `buildEmptyRowRequests`, indices diverge → wrong row written, valid row silently dropped. Fixed: iterate emptyReqs by position, use `req.ExpenseIndex` to get back to the original entry.
+- **Bug 2 (medium)** — `--dry-run` still wrote both JSONL logs; `writeFeedbackForNewRows` ran unconditionally. Fixed: gate behind `!dryRun`.
+- PR #23 description updated with insertion-path caveat and bug-fix notes.
+
 ### Next
-- **Phase 4 smoke**: run `expense-reporter apply` against real `reviewed.json` from a prior review session if available (exercises `insertNewRows` → workbook insertion path).
-- **Review PR #23** and merge when ready.
+- **Phase 4 smoke**: run `apply` against real `reviewed.json` from a prior review session (index bug fixed; exercises the now-correct insertion path).
+- **Review/merge PR #23**.
 - **Decide next feature**: RUI-4 (emit 3-level path into classified CSV) or 5.R1 (TF-IDF retrieval layer).
 
 ---

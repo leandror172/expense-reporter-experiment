@@ -124,6 +124,7 @@ Local-first review surface — supersedes the Lovable cloud plan
 - [ ] **RUI-3a** Phase 4 smoke: run `apply` against a real `reviewed.json` from a prior
   review session. Exercises `insertNewRows` (workbook insertion path), which has zero
   acceptance test coverage — the fixture only covers already-inserted and pending entries.
+  Index-aliasing bug and dry-run leak already fixed (see commit after Phase 3).
 - [ ] **RUI-4** Emit the full 3-level path (sheet,category,subcategory) into the
   classified CSV. When done, `review`'s `ReadQueue` populates `Predicted.Sheet` and the
   UI pre-fill becomes unambiguous (the `Predicted` struct already has the optional field).
