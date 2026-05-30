@@ -1,7 +1,35 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`, `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
+
+---
+
+## 2026-05-29 — Session 24: `apply` Command Phase 3 (implementation complete, PR #23)
+
+### Context
+Resumed from `.claude/handoff-apply-phase3.md` (written same day — Phases 0–2 done, Phase 3 cut short by limits). Full orientation read before coding: all key context files + advisor call (output at `.claude/advisor-apply-phase3.md`).
+
+### What Was Done
+- **Advisor review** — key findings: lazy workbook validation required (test has no workbook), model-from-prior critical for corrected+found path, no taxonomy loading needed, `insertNewRows` is entirely uncovered by the acceptance test.
+- **Ollama codegen for cmd/apply.go:**
+  - `my-go-qcoder`: 3× TIMEOUT_COLD_START (30b + 14 context files exceeded 300s window)
+  - `my-go-g3-12b`: verdict 0 — wrong package refs throughout (`review.*` instead of `apply.*`), broken decision table, early workbook validation
+  - Escalated to Claude (beyond retry budget: 3 timeouts + 1 rejected)
+- **cmd/apply.go written directly** — 287 lines, 9 functions; correct decision table, lazy workbook validation, batch excel APIs, `prior.Model` for corrected+found feedback entries, "review" sentinel only for new rows.
+- `go build + go vet` — clean; `go test ./...` — 452 tests passing.
+- `TestApply_IdempotencyAndFeedback` — PASS (4/4 assertions, 10ms).
+- **PR #23 opened** — `feat/apply-command` → `master`.
+
+### Decisions Made
+- **Lazy workbook validation** — validate/open workbook only when `len(newRows) > 0`; error clearly if workbookPath empty in that case. Required by acceptance test (no workbook path configured).
+- **`insertNewRows` is a blind spot** — zero test coverage on the insertion path; Phase 4 smoke against real `reviewed.json` is the only behavioral check.
+- **Ollama context lesson** — 30b model + 14 large context files exceeds 300s. For complex multi-function files: prefer stubs-then-Ollama or accept Claude escalation early. Also: including `review.go` as context caused g3-12b to misidentify the `apply` package as `review` — disambiguate explicitly in the prompt when package names are similar.
+
+### Next
+- **Phase 4 smoke**: run `expense-reporter apply` against real `reviewed.json` from a prior review session if available (exercises `insertNewRows` → workbook insertion path).
+- **Review PR #23** and merge when ready.
+- **Decide next feature**: RUI-4 (emit 3-level path into classified CSV) or 5.R1 (TF-IDF retrieval layer).
 
 ---
 
@@ -124,37 +152,6 @@ cloud-first architecture (CLI HMAC-pushing to Lovable Postgres).
 - Resolve open questions O1 (installment value notation), O2 (test workbook
   fixture), O3 (`id` hash without year) before/while coding.
 - Hand the brief + fixtures to claude.ai/design to build `review.html`.
-
----
-
-## 2026-05-12 — Session 20: Workbook Path Resolution Bug Fix
-
-### Context
-Resumed from session 19. Discussed next steps; chose to fix the latent `BUG_REPORT_DEFAULT_WORKBOOK_PATH.md` bug. PRs #16 and #17 had already been merged to master.
-
-### What Was Done
-- **Investigated the bug:** Confirmed `GetWorkbookPath` in `root.go` used `os.Executable()` to resolve a default path — broken under `go run` (exe in build cache). Also confirmed `config.json` already has `workbook_path` field and `Config` struct has `WorkbookPath`, but neither was being used by `GetWorkbookPath`.
-- **Designed fix:** Resolution order: `--workbook` flag → `EXPENSE_WORKBOOK_PATH` env → `config.Load()` + `cfg.WorkbookFilePath()` → clear error. Malformed config surfaces; absent config falls through to error. Multi-workbook-per-year design deferred.
-- **Plan written:** `.claude/plans/fix-workbook-path-resolution.md` — advisor-reviewed, covers TDD order, test separation, session-end housekeeping.
-- **TDD implementation (red → green):**
-  - Added `TestWorkbookFilePath_{Empty,Absolute,Relative}` to `internal/config/config_test.go` (mirrors existing `ClassificationsFilePath` test pattern)
-  - Updated `TestGetWorkbookPath/empty_environment_variable` → `wantErr: true`
-  - Added `WorkbookFilePath()` to `Config` in `internal/config/config.go` (exact mirror of `ExpensesLogFilePath`)
-  - Rewrote `GetWorkbookPath` in `cmd/root.go`: dropped `os.Executable()` relative path block and Windows hardcoded fallback; now calls `config.Load()` + `cfg.WorkbookFilePath()`
-- **All 13 unit test packages green.** Call site verification: all 4 callers (`add`, `auto`, `batch`, `batch_auto`) already surface the error.
-- **Branch created:** `fix/workbook-path-resolution`
-- **Advisor post-review fix:** `batch_auto.go:104` was wrapping `GetWorkbookPath` error with `"workbook path not configured: %w"`, producing a duplicate prefix. Fixed to bare `%w` (inner error is now self-sufficient). `batch_auto.go:220` updated to `"failed to get workbook path: %w"` for consistency with all other callers (`add`, `auto`, `batch`). Smoke test confirmed clean message; 417 tests green.
-
-### Decisions Made
-- **Config as fallback, not elimination:** `WorkbookFilePath()` on Config used as step 3 in resolution — consistent with how `ClassificationsFilePath` and `ExpensesLogFilePath` work.
-- **Multi-workbook-per-year deferred:** Vision is `"workbooks": {"2025": "...", "2026": "..."}` keyed by year from expense date. Tracked in tasks.md for a future session.
-- **No acceptance test changes needed:** Acceptance tests pass `--workbook` explicitly via `ctx.WorkbookPath`; fix is transparent to them.
-- **`SetupBinaryConfig` is acceptance-only:** Could not be used from `main_test.go`. `WorkbookFilePath` tested directly in `config_test.go` instead.
-
-### Next
-- Commit all changes on `fix/workbook-path-resolution`
-- Create PR (base: master)
-- Future options: `TestBatchAuto_SameYearInstallmentsExpanded` test-debt fix (trivial), 5.R1 TF-IDF retrieval (if classification run data justifies it)
 
 ---
 
