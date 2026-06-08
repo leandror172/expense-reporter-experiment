@@ -165,7 +165,7 @@ func FindNextEmptyRow(workbookPath, sheetName, columnLetter string, startRow int
 
 			logger.Debug("FindNextEmptyRow: empty cell found", "row", row, "colB", nextSubcat)
 
-			if nextSubcat != "" && nextSubcat != subcategoryName {
+			if nextSubcat != "" && strings.TrimSpace(nextSubcat) != strings.TrimSpace(subcategoryName) {
 				logger.Debug("FindNextEmptyRow: boundary hit", "row", row, "expected", subcategoryName, "got", nextSubcat)
 				return 0, fmt.Errorf("no empty cells available in this subcategory section")
 			}
@@ -288,7 +288,7 @@ func FindNextEmptyRowBatch(workbookPath string, requests []EmptyRowRequest) (map
 					nextSubcatRef := fmt.Sprintf("B%d", row)
 					nextSubcat, _ := f.GetCellValue(sheetName, nextSubcatRef)
 
-					if nextSubcat != "" && nextSubcat != req.SubcategoryName {
+					if nextSubcat != "" && strings.TrimSpace(nextSubcat) != strings.TrimSpace(req.SubcategoryName) {
 						return nil, fmt.Errorf("no empty cells available in subcategory section for %s", req.SubcategoryName)
 					}
 
@@ -365,7 +365,7 @@ func AllocateEmptyRows(workbookPath string, requests []EmptyRowRequest) (map[int
 
 				logger.Debug("AllocateEmptyRows: empty cell", "row", row, "colB", bVal)
 
-				if bVal != "" && bVal != req.SubcategoryName {
+				if bVal != "" && strings.TrimSpace(bVal) != strings.TrimSpace(req.SubcategoryName) {
 					// Hit the boundary — section is full for this month
 					logger.Debug("AllocateEmptyRows: section full", "subcategory", req.SubcategoryName,
 						"boundary", bVal, "row", row)
