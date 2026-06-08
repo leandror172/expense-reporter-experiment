@@ -229,3 +229,13 @@ func RunReview(csvPath string) func(*harness.Context) {
 		ctx.Artifacts["review.html"] = outputPath
 	}
 }
+
+func RunApply(reviewedPath string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"apply", reviewedPath, "--year", "2026"}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
+		}
+		runCommand(ctx, args...)
+	}
+}

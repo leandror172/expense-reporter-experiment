@@ -98,6 +98,7 @@ No Makefile magic needed for normal work. Tests use standard `go test` with tabl
 2. **Step-by-step configuration** — Build config files incrementally, explaining each setting
 3. **Explanatory mode active** — Use "Explanatory" output style with Insight boxes
 4. **Licensing compliance** — When using or referencing external code/projects, check and honor their license. Track attributions in `docs/ATTRIBUTIONS.md`.
+5. **Ask before calling `advisor()`** — Say "I'd like to call advisor()" and wait for the user to confirm. This is not a permission gate — call frequency stays the same. It exists so the user can copy the response and rewind the session if the advisor call triggers a context duplication bug.
 
 ## Troubleshooting Approach
 

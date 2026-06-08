@@ -47,14 +47,13 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 23 (2026-05-18) — `review` command fully implemented, PR #22 open
-  - All phases complete: Phase 0–5 done. 17 unit tests + acceptance test green.
-  - Smoke: 349 rows, 23 need review against real `classified.csv`.
-  - PR #22: `worktree-feat+review-command` → `master` (pending merge).
-  - Worktree: `.claude/worktrees/feat+review-command` — clean, removable after merge.
-- **Prior checkpoint:** Session 22 (2026-05-18) — Phase 0–2 partial
-- **Open PRs:** PR #19 (`fix/workbook-path-resolution`); PR #22 (`review` command)
-- **Next:** Merge PR #22 (RUI-1a), then decide: RUI-3 (`apply`), RUI-4 (3-level path in CSV), or 5.R1 (TF-IDF)
+- **Last checkpoint:** Session 24 (2026-05-29) — `apply` command fully implemented, PR #23 open
+  - Phases 0–3 complete. 452 unit tests + acceptance test (`TestApply_IdempotencyAndFeedback`) green.
+  - PR #23: `feat/apply-command` → `master` (pending review).
+  - Known gap: `insertNewRows` (workbook insertion path) untested — Phase 4 smoke needed.
+- **Prior checkpoint:** Session 23 (2026-05-18) — `review` command complete, PR #22 open
+- **Open PRs:** PR #19 (`fix/workbook-path-resolution`); PR #22 (`review` command); PR #23 (`apply` command)
+- **Next:** Phase 4 smoke for `apply` (RUI-3a), then merge PRs, then decide: RUI-4 (3-level path in CSV) or 5.R1 (TF-IDF)
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -147,3 +146,12 @@ Or manually:
 - Fallback category "Diversos" at high confidence is a real risk — now blocked via exclusion list
 - `Transporte` appearing as subcategory at 90% in Uber case — taxonomy oddity, not urgent
 <!-- /ref:active-decisions -->
+
+<!-- ref:session-reading-guide -->
+## Pre-Session Reading Guide
+
+*What to read before each pending work item.*
+
+| Task | Read first | Notes |
+|------|-----------|-------|
+<!-- /ref:session-reading-guide -->

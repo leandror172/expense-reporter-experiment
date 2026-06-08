@@ -166,3 +166,47 @@ func TestTimeToExcelDate(t *testing.T) {
 		})
 	}
 }
+
+func TestParseDateWithYear(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		year      int
+		wantDay   int
+		wantMonth time.Month
+		wantYear  int
+		wantErr   bool
+	}{
+		{name: "valid 2026", input: "15/03", year: 2026, wantDay: 15, wantMonth: time.March, wantYear: 2026},
+		{name: "valid 2025", input: "01/01", year: 2025, wantDay: 1, wantMonth: time.January, wantYear: 2025},
+		{name: "invalid month", input: "15/13", year: 2026, wantErr: true},
+		{name: "invalid day", input: "32/01", year: 2026, wantErr: true},
+		{name: "impossible date feb 30", input: "30/02", year: 2026, wantErr: true},
+		{name: "empty string", input: "", year: 2026, wantErr: true},
+		{name: "bad format", input: "15-03", year: 2026, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseDateWithYear(tt.input, tt.year)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("ParseDateWithYear() error = nil, wantErr true")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("ParseDateWithYear() unexpected error: %v", err)
+				return
+			}
+			if got.Day() != tt.wantDay {
+				t.Errorf("ParseDateWithYear() day = %v, want %v", got.Day(), tt.wantDay)
+			}
+			if got.Month() != tt.wantMonth {
+				t.Errorf("ParseDateWithYear() month = %v, want %v", got.Month(), tt.wantMonth)
+			}
+			if got.Year() != tt.wantYear {
+				t.Errorf("ParseDateWithYear() year = %v, want %v", got.Year(), tt.wantYear)
+			}
+		})
+	}
+}

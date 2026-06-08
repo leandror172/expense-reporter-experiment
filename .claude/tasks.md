@@ -117,9 +117,14 @@ Local-first review surface — supersedes the Lovable cloud plan
   `docs/plans/review-ui-design-brief.md` + fixtures in `docs/plans/review-ui-fixtures/`.
   Done (session 22): template at `expense-reporter/internal/review/template/review.html`;
   dev-preview copy with sample data kept at repo root `review.html`.
-- [ ] **RUI-3** `apply` command: ingest the UI's `reviewed.json` back into the workbook
-  + feedback logs (`feedback.Entry` confirmed/corrected, `expenses_log.jsonl`). Needs
-  its own plan. Out of scope for RUI-1.
+- [x] **RUI-3** `apply` command: ingest the UI's `reviewed.json` back into the workbook
+  + feedback logs (`feedback.Entry` confirmed/corrected, `expenses_log.jsonl`).
+  **Complete (session 24, 2026-05-29):** Phases 0–3 done. Acceptance test green.
+  PR #23 (`feat/apply-command` → `master`). Plan: `.claude/plans/apply-command.md`.
+- [ ] **RUI-3a** Phase 4 smoke: run `apply` against a real `reviewed.json` from a prior
+  review session. Exercises `insertNewRows` (workbook insertion path), which has zero
+  acceptance test coverage — the fixture only covers already-inserted and pending entries.
+  Index-aliasing bug and dry-run leak already fixed (see commit after Phase 3).
 - [ ] **RUI-4** Emit the full 3-level path (sheet,category,subcategory) into the
   classified CSV. When done, `review`'s `ReadQueue` populates `Predicted.Sheet` and the
   UI pre-fill becomes unambiguous (the `Predicted` struct already has the optional field).
@@ -131,3 +136,8 @@ Local-first review surface — supersedes the Lovable cloud plan
 - Structured output via Ollama `format` param — already proven reliable in LLM infra work
 - Model to benchmark: Qwen3-8B (`my-classifier-q3`) vs Qwen2.5-Coder-7B (speed)
 - Confidence threshold: HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (present candidates)
+
+<!-- ref:deferred -->
+## Deferred / Backlog
+
+<!-- /ref:deferred -->

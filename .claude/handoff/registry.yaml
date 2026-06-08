@@ -1,0 +1,132 @@
+# Session-handoff register — per-repo source of truth for WHERE/HOW the pipeline writes.
+#
+# Shared by two consumers (design: ref:handoff-pipeline-design):
+#   - resume.sh           READ side  — reads some regions at session start.
+#   - the handoff pipeline WRITE side — writes/updates regions at session end.
+#
+# SAFETY BOUNDARY: this register enumerates the *handoff-owned* regions. Every OTHER
+# ref:KEY in the repo is a content / LTG anchor the pipeline MUST NOT touch. The
+# pipeline only writes regions listed here; the verifier (F4) hashes everything else
+# and rejects any edit that changed bytes outside a listed region.
+#
+# Locator kinds:
+#   ref_block   region between <!-- ref:KEY --> and <!-- /ref:KEY -->            (needs: key)
+#   structural  an insertion anchor: a regex line + which occurrence + position  (needs: pattern, occurrence, position)
+#   field       a single "**Label:** ..." header line, identified by Label       (needs: label)
+#   checklist   markdown task lines ("- [ ] **id:** ...") matched by id          (needs: scope)
+#
+# Write modes:
+#   replace   swap the region interior with the authored block
+#   prepend   insert the authored block at the top of the region (newest-first)
+#   append    add the authored block at the bottom of the region
+#   checkoff  flip "[ ]" -> "[x]" for a task matched by id (no prose change)
+#   nomodel   script/rotation-managed ONLY — never written from the handoff payload
+#
+# used_by: which consumer(s) reference the region — [read], [write], or [read, write].
+
+version: 1
+
+roles:
+
+  # ---- .claude/session-log.md ------------------------------------------------
+
+  log-entry:
+    description: New per-session log entry, inserted newest-first.
+    file: .claude/session-log.md
+    locator:
+      type: structural
+      pattern: '^---$'      # the horizontal rule directly under the header block
+      occurrence: 1         # first rule in the file
+      position: after       # insert immediately after this line
+    write_mode: prepend
+    used_by: [write]
+
+  header-current-session:
+    description: '"**Current Session:**" header field — bumped by the script, never the payload.'
+    file: .claude/session-log.md
+    locator:
+      type: field
+      label: Current Session
+    write_mode: nomodel
+    used_by: [write]
+
+  header-current-layer:
+    description: '"**Current Layer:**" header field.'
+    file: .claude/session-log.md
+    locator:
+      type: field
+      label: Current Layer
+    write_mode: nomodel
+    used_by: [write]
+
+  header-previous-logs:
+    description: '"**Previous logs:**" field — owned by rotate-session-log.sh on rotation.'
+    file: .claude/session-log.md
+    locator:
+      type: field
+      label: Previous logs
+    write_mode: nomodel
+    used_by: [write]
+
+  # ---- .claude/session-context.md (existing ref blocks; verified present) ----
+
+  current-status:
+    description: Current checkpoint shown first by resume.sh.
+    file: .claude/session-context.md
+    locator:
+      type: ref_block
+      key: current-status
+    write_mode: replace
+    used_by: [read, write]
+
+  active-decisions:
+    description: Curated snapshot of live cross-cutting decisions.
+    file: .claude/session-context.md
+    locator:
+      type: ref_block
+      key: active-decisions
+    write_mode: replace
+    used_by: [read, write]
+
+  user-prefs:
+    description: User interaction/style preferences (rarely changes).
+    file: .claude/session-context.md
+    locator:
+      type: ref_block
+      key: user-prefs
+    write_mode: replace
+    used_by: [read, write]
+
+  reading-guide:
+    description: Per-task "read first" guide for the next session.
+    file: .claude/session-context.md
+    locator:
+      type: ref_block
+      key: session-reading-guide
+    write_mode: replace
+    used_by: [read, write]
+
+  # ---- .claude/tasks.md ------------------------------------------------------
+
+  tasks-checkoff:
+    description: Flip a task to done by id, wherever it lives in the file.
+    file: .claude/tasks.md
+    locator:
+      type: checklist
+      scope: file           # tasks span several sections; match by id across the whole file
+    write_mode: checkoff
+    used_by: [write]
+
+  tasks-append:
+    description: Add newly-discovered tasks; default home is the deferred block.
+    file: .claude/tasks.md
+    locator:
+      type: ref_block
+      key: deferred
+    write_mode: append
+    used_by: [write]
+
+# Deferred (resume.sh refactor): read-only regions resume.sh also consumes — e.g.
+# ref:quick-pointers (lives in .claude/index.md in THIS repo, not session-context.md).
+# Add them here when resume.sh is migrated onto this register, so a renamed/moved block
+# updates both read and write in one place.
