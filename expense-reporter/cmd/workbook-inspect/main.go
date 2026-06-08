@@ -1,32 +1,37 @@
-// workbook-inspect: dumps the structural map of an expense workbook to markdown.
-// Usage: go run ./cmd/workbook-inspect <workbook.xlsx> [output.md]
-// If output path is omitted, prints to stdout.
+// workbook-inspect: dumps the full structural map of an expense workbook to JSON.
+// Usage: workbook-inspect <workbook.xlsx> <output-dir>
+// Produces <output-dir>/manifest.json plus one <SheetName>.json per sheet.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: workbook-inspect <workbook.xlsx> [output.md]")
+	if len(os.Args) != 3 {
+		fmt.Fprintln(os.Stderr, "usage: workbook-inspect <workbook.xlsx> <output-dir>")
 		os.Exit(1)
 	}
-	workbookPath := os.Args[1]
 
-	out := os.Stdout
-	if len(os.Args) >= 3 {
-		f, err := os.Create(os.Args[2])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "cannot create output file: %v\n", err)
-			os.Exit(1)
-		}
-		defer f.Close()
-		out = f
+	workbookPath := os.Args[1]
+	outputDir := os.Args[2]
+
+	if _, err := os.Stat(workbookPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "workbook does not exist: %s\n", workbookPath)
+		os.Exit(1)
+	}
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "cannot create output directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	wb, err := excelize.OpenFile(workbookPath)
@@ -36,216 +41,466 @@ func main() {
 	}
 	defer wb.Close()
 
+	if err := dumpWorkbook(wb, workbookPath, outputDir); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func dumpWorkbook(wb *excelize.File, workbookPath, outputDir string) error {
 	sheets := wb.GetSheetList()
-	fmt.Fprintf(out, "# Workbook Structure Map\n\n")
-	fmt.Fprintf(out, "Source: `%s`\n\n", workbookPath)
-	fmt.Fprintf(out, "## Sheet Inventory\n\n")
-	for i, s := range sheets {
-		fmt.Fprintf(out, "%d. `%s`\n", i+1, s)
-	}
-	fmt.Fprintln(out)
+	manifest := Manifest{Source: workbookPath, Sheets: make([]SheetInfo, 0, len(sheets))}
 
-	for _, sheet := range sheets {
-		if sheet == "Referência de Categorias" {
-			inspectReferenceSheet(out, wb, sheet)
-		} else {
-			inspectDataSheet(out, wb, sheet)
+	for _, sheetName := range sheets {
+		dump, err := buildSheetDump(wb, sheetName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error building dump for sheet %s: %v\n", sheetName, err)
+			continue
 		}
+
+		filename := sanitizeFilename(sheetName) + ".json"
+		if err := writeJSON(filepath.Join(outputDir, filename), dump); err != nil {
+			fmt.Fprintf(os.Stderr, "error writing file %s: %v\n", filename, err)
+			continue
+		}
+
+		manifest.Sheets = append(manifest.Sheets, SheetInfo{
+			Name: sheetName,
+			File: filename,
+			Rows: dump.Dimensions.Rows,
+			Cols: dump.Dimensions.Cols,
+		})
 	}
+
+	if err := writeJSON(filepath.Join(outputDir, "manifest.json"), manifest); err != nil {
+		return fmt.Errorf("write manifest: %w", err)
+	}
+	return nil
 }
 
-// ── Data sheets (Adicionais, Fixas, …) ─────────────────────────────────────
-
-func inspectDataSheet(out *os.File, wb *excelize.File, sheet string) {
-	rows, err := wb.GetRows(sheet)
+func buildSheetDump(wb *excelize.File, sheetName string) (*SheetDump, error) {
+	rows, err := wb.GetRows(sheetName)
 	if err != nil {
-		fmt.Fprintf(out, "## Sheet: `%s`\n\nERROR reading rows: %v\n\n", sheet, err)
-		return
-	}
-	if len(rows) == 0 {
-		fmt.Fprintf(out, "## Sheet: `%s`\n\n(empty)\n\n", sheet)
-		return
+		return nil, fmt.Errorf("get rows: %w", err)
 	}
 
-	fmt.Fprintf(out, "## Sheet: `%s`\n\n", sheet)
-	fmt.Fprintf(out, "Rows: %d\n\n", len(rows))
-
-	// Header rows: dump first 5 rows verbatim (trimmed)
-	fmt.Fprintf(out, "### Header rows (first 5)\n\n")
-	fmt.Fprintf(out, "| Row | A | B | C | D | E | F | G | H |\n")
-	fmt.Fprintf(out, "|-----|---|---|---|---|---|---|---|---|\n")
-	for i := 0; i < min(5, len(rows)); i++ {
-		row := rows[i]
-		fmt.Fprintf(out, "| %d | %s | %s | %s | %s | %s | %s | %s | %s |\n",
-			i+1,
-			cell(row, 0), cell(row, 1), cell(row, 2), cell(row, 3),
-			cell(row, 4), cell(row, 5), cell(row, 6), cell(row, 7),
-		)
-	}
-	fmt.Fprintln(out)
-
-	// Month header row: scan rows 1-8 for a row containing month names
-	fmt.Fprintf(out, "### Month column detection\n\n")
-	months := []string{"jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"}
-	for i := 0; i < min(8, len(rows)); i++ {
-		row := rows[i]
-		rowText := strings.ToLower(strings.Join(row, " "))
-		hits := 0
-		for _, m := range months {
-			if strings.Contains(rowText, m) {
-				hits++
-			}
-		}
-		if hits >= 3 {
-			fmt.Fprintf(out, "Month header at row %d (%d month names found):\n\n", i+1, hits)
-			fmt.Fprintf(out, "```\n")
-			for ci, val := range row {
-				if val != "" {
-					colName, _ := excelize.ColumnNumberToName(ci + 1)
-					fmt.Fprintf(out, "  col %-4s = %s\n", colName, val)
-				}
-			}
-			fmt.Fprintf(out, "```\n\n")
-		}
+	dim := sheetDimensions(rows)
+	dump := &SheetDump{
+		Sheet:          sheetName,
+		Dimensions:     dim,
+		ColumnWidths:   collectColumnWidths(wb, sheetName, dim.Cols),
+		RowHeights:     collectRowHeights(wb, sheetName, dim.Rows),
+		MergedCells:    collectMergedCells(wb, sheetName),
+		CrossSheetRefs: []string{},
+		Rows:           []RowDump{},
 	}
 
-	// Subcategory blocks: scan column B for non-empty values
-	fmt.Fprintf(out, "### Subcategory blocks (column B)\n\n")
-	fmt.Fprintf(out, "| Row | Name | Total row | Formula sample |\n")
-	fmt.Fprintf(out, "|-----|------|-----------|----------------|\n")
-
-	type block struct {
-		name     string
-		headerRow int
-		totalRow  int
-		formula  string
-	}
-	var blocks []block
-
-	for i, row := range rows {
-		bVal := strings.TrimSpace(cell(row, 1))
-		if bVal == "" {
-			continue
-		}
-		// Skip rows that look like sheet-level headers (row <= 5 or all-caps short label)
-		if i < 5 {
-			continue
-		}
-		b := block{name: bVal, headerRow: i + 1}
-		blocks = append(blocks, b)
-	}
-
-	// For each block, find its TOTAL row (scan forward for "total" in any cell)
-	for bi := range blocks {
-		start := blocks[bi].headerRow
-		end := len(rows)
-		if bi+1 < len(blocks) {
-			end = blocks[bi+1].headerRow - 1
-		}
-		for r := start; r < min(end+5, len(rows)); r++ {
-			row := rows[r]
-			for _, val := range row {
-				if strings.Contains(strings.ToLower(val), "total") {
-					blocks[bi].totalRow = r + 1
-					// Grab a formula from this row (first non-empty formula cell)
-					for ci := range row {
-						colName, _ := excelize.ColumnNumberToName(ci + 1)
-						ref := fmt.Sprintf("%s%d", colName, r+1)
-						formula, _ := wb.GetCellFormula(sheet, ref)
-						if formula != "" {
-							blocks[bi].formula = fmt.Sprintf("`%s`: `=%s`", ref, formula)
-							break
-						}
-					}
-					break
-				}
-			}
-			if blocks[bi].totalRow > 0 {
-				break
-			}
-		}
-		fmt.Fprintf(out, "| %d | %s | %d | %s |\n",
-			blocks[bi].headerRow, blocks[bi].name, blocks[bi].totalRow, blocks[bi].formula)
-	}
-	fmt.Fprintln(out)
-
-	// Merged cells
-	merges, err := wb.GetMergeCells(sheet)
-	if err == nil && len(merges) > 0 {
-		fmt.Fprintf(out, "### Merged cells (%d regions)\n\n", len(merges))
-		fmt.Fprintf(out, "| Range | Value |\n|-------|-------|\n")
-		for _, m := range merges {
-			fmt.Fprintf(out, "| %s | %s |\n", m.GetStartAxis()+":"+m.GetEndAxis(), truncate(m.GetCellValue(), 40))
-		}
-		fmt.Fprintln(out)
-	}
-
-	// Formula inventory: sample one formula per column in a TOTAL row
-	if len(blocks) > 0 && blocks[0].totalRow > 0 {
-		r := blocks[0].totalRow - 1
-		if r < len(rows) {
-			fmt.Fprintf(out, "### Formula samples (from first TOTAL row, row %d)\n\n", r+1)
-			fmt.Fprintf(out, "```\n")
-			for ci := range rows[r] {
-				colName, _ := excelize.ColumnNumberToName(ci + 1)
-				ref := fmt.Sprintf("%s%d", colName, r+1)
-				formula, _ := wb.GetCellFormula(sheet, ref)
-				if formula != "" {
-					fmt.Fprintf(out, "  %s = %s\n", ref, formula)
-				}
-			}
-			fmt.Fprintf(out, "```\n\n")
-		}
-	}
+	dump.Rows = collectRowDumps(wb, sheetName, rows)
+	dump.CrossSheetRefs = collectCrossSheetRefs(dump.Rows, sheetName)
+	classifyRowTypes(dump.Rows)
+	return dump, nil
 }
 
-// ── Reference sheet ─────────────────────────────────────────────────────────
+func sheetDimensions(rows [][]string) Dim {
+	cols := 0
+	for _, row := range rows {
+		if len(row) > cols {
+			cols = len(row)
+		}
+	}
+	return Dim{Rows: len(rows), Cols: cols}
+}
 
-func inspectReferenceSheet(out *os.File, wb *excelize.File, sheet string) {
-	rows, err := wb.GetRows(sheet)
+func collectColumnWidths(wb *excelize.File, sheetName string, cols int) map[string]float64 {
+	widths := make(map[string]float64)
+	for ci := 0; ci < cols; ci++ {
+		colName, _ := excelize.ColumnNumberToName(ci + 1)
+		if w, err := wb.GetColWidth(sheetName, colName); err == nil {
+			widths[colName] = w
+		}
+	}
+	return widths
+}
+
+func collectRowHeights(wb *excelize.File, sheetName string, rowCount int) map[string]float64 {
+	heights := make(map[string]float64)
+	for r := 1; r <= rowCount; r++ {
+		if h, err := wb.GetRowHeight(sheetName, r); err == nil {
+			heights[strconv.Itoa(r)] = h
+		}
+	}
+	return heights
+}
+
+func collectMergedCells(wb *excelize.File, sheetName string) []Merge {
+	merges, err := wb.GetMergeCells(sheetName)
 	if err != nil {
-		fmt.Fprintf(out, "## Sheet: `%s`\n\nERROR: %v\n\n", sheet, err)
-		return
+		return []Merge{}
 	}
-	fmt.Fprintf(out, "## Sheet: `%s`\n\n", sheet)
-	fmt.Fprintf(out, "Rows: %d\n\n", len(rows))
-	fmt.Fprintf(out, "### Full content\n\n")
-	fmt.Fprintf(out, "| Row | A (Sheet) | B (Category) | C (Subcategory) | D (Row#) | E | F (Total row) |\n")
-	fmt.Fprintf(out, "|-----|-----------|--------------|-----------------|----------|---|---------------|\n")
-	for i, row := range rows {
-		a := cell(row, 0)
-		b := cell(row, 1)
-		c := cell(row, 2)
-		d := cell(row, 3)
-		e := cell(row, 4)
-		f := cell(row, 5)
-		if a == "" && b == "" && c == "" {
-			continue
-		}
-		fmt.Fprintf(out, "| %d | %s | %s | %s | %s | %s | %s |\n", i+1, a, b, c, d, e, f)
+	result := make([]Merge, 0, len(merges))
+	for _, m := range merges {
+		result = append(result, Merge{
+			Range: m.GetStartAxis() + ":" + m.GetEndAxis(),
+			Value: m.GetCellValue(),
+		})
 	}
-	fmt.Fprintln(out)
+	return result
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+func collectRowDumps(wb *excelize.File, sheetName string, rows [][]string) []RowDump {
+	dumps := []RowDump{}
+	for ri, row := range rows {
+		if rd := buildRowDump(wb, sheetName, ri, row); len(rd.Cells) > 0 {
+			dumps = append(dumps, rd)
+		}
+	}
+	return dumps
+}
 
-func cell(row []string, idx int) string {
-	if idx >= len(row) {
+func buildRowDump(wb *excelize.File, sheetName string, ri int, row []string) RowDump {
+	rd := RowDump{Row: ri + 1, Cells: []Cell{}}
+	for ci, value := range row {
+		ref, err := excelize.CoordinatesToCellName(ci+1, ri+1)
+		if err != nil {
+			continue
+		}
+		if cell, include := buildCell(wb, sheetName, ref, ci, value); include {
+			rd.Cells = append(rd.Cells, cell)
+		}
+	}
+	return rd
+}
+
+func buildCell(wb *excelize.File, sheetName, ref string, ci int, value string) (Cell, bool) {
+	formula, _ := wb.GetCellFormula(sheetName, ref)
+	style := extractCellStyle(wb, sheetName, ref)
+	if value == "" && formula == "" && isDefaultStyle(style) {
+		return Cell{}, false
+	}
+	colName, _ := excelize.ColumnNumberToName(ci + 1)
+	return Cell{
+		Col:     colName,
+		Value:   strings.TrimSpace(value),
+		Formula: formula,
+		Style:   style,
+	}, true
+}
+
+func extractCellStyle(wb *excelize.File, sheetName, ref string) Style {
+	styleIdx, err := wb.GetCellStyle(sheetName, ref)
+	if err != nil || styleIdx == 0 {
+		return Style{}
+	}
+	st, err := wb.GetStyle(styleIdx)
+	if err != nil {
+		return Style{}
+	}
+	return styleFromExcelize(st)
+}
+
+func styleFromExcelize(st *excelize.Style) Style {
+	style := Style{Bold: st.Font != nil && st.Font.Bold}
+	if st.Fill.Pattern > 0 && len(st.Fill.Color) > 0 {
+		style.BgColor = st.Fill.Color[0]
+	}
+	for _, b := range st.Border {
+		if b.Style <= 0 {
+			continue
+		}
+		switch b.Type {
+		case "top":
+			style.BorderTop = true
+		case "bottom":
+			style.BorderBottom = true
+		case "left":
+			style.BorderLeft = true
+		case "right":
+			style.BorderRight = true
+		}
+	}
+	return style
+}
+
+func isDefaultStyle(s Style) bool {
+	return s.BgColor == "" && !s.Bold &&
+		!s.BorderTop && !s.BorderBottom && !s.BorderLeft && !s.BorderRight
+}
+
+// collectCrossSheetRefs scans formulas captured in the dumped rows for
+// references to other sheets (SheetName!Ref, sheet name optionally single-quoted),
+// returning the distinct, sorted set of referenced sheet names excluding self.
+func collectCrossSheetRefs(rows []RowDump, selfSheet string) []string {
+	seen := map[string]bool{}
+	for _, rd := range rows {
+		for _, c := range rd.Cells {
+			if c.Formula == "" {
+				continue
+			}
+			for _, name := range sheetNamesInFormula(c.Formula) {
+				if name != "" && name != selfSheet {
+					seen[name] = true
+				}
+			}
+		}
+	}
+	result := make([]string, 0, len(seen))
+	for name := range seen {
+		result = append(result, name)
+	}
+	sort.Strings(result)
+	return result
+}
+
+// sheetNamesInFormula extracts every sheet name appearing before a '!' in a
+// formula. Handles both 'Quoted Name'!A1 and BareName!A1 forms.
+func sheetNamesInFormula(formula string) []string {
+	var names []string
+	for i := 0; i < len(formula); i++ {
+		if formula[i] != '!' {
+			continue
+		}
+		if name := sheetNameBefore(formula, i); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// sheetNameBefore returns the sheet-name token immediately preceding the '!'
+// at index bang. A quoted token ends at the '!' and is delimited by a matching
+// single quote; a bare token is a run of letters/digits/underscore (incl. accents).
+func sheetNameBefore(formula string, bang int) string {
+	if bang == 0 {
 		return ""
 	}
-	return strings.TrimSpace(row[idx])
+	if formula[bang-1] == '\'' {
+		open := strings.LastIndexByte(formula[:bang-1], '\'')
+		if open < 0 {
+			return ""
+		}
+		return formula[open+1 : bang-1]
+	}
+	start := bang
+	for start > 0 && isSheetNameByte(formula[start-1]) {
+		start--
+	}
+	return formula[start:bang]
 }
 
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
+func isSheetNameByte(b byte) bool {
+	switch {
+	case b >= 'a' && b <= 'z', b >= 'A' && b <= 'Z':
+		return true
+	case b >= '0' && b <= '9':
+		return true
+	case b == '_', b == '.', b >= 0x80: // underscore, dot, UTF-8 continuation/accents
+		return true
 	}
-	return s[:n] + "…"
+	return false
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+func writeJSON(path string, data interface{}) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create file %s: %w", path, err)
 	}
-	return b
+	defer file.Close()
+
+	enc := json.NewEncoder(file)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(data); err != nil {
+		return fmt.Errorf("encode JSON to %s: %w", path, err)
+	}
+	return nil
+}
+
+func sanitizeFilename(name string) string {
+	return strings.ReplaceAll(name, "/", "_")
+}
+
+// ── Row-type classification ──────────────────────────────────────────────────
+//
+// The five data-entry sheets (Fixas, Variáveis, Extras, Adicionais, Receitas)
+// share one palette: a month banner (C0C0C0), an Item/Data/Valor column-label
+// band (D8D8D8), and per-block Total rows (F2F2F2 + a SUM formula). Categories
+// (col A, bold) and subcategories (col B) are filled down on every data row;
+// blocks are delimited by Total rows rather than separate header rows.
+// Listas de itens and Referência de Categorias use other palettes, so the
+// classifier leads with text/formula signals and treats fill as corroboration.
+
+const (
+	fillMonthBand = "C0C0C0" // month banner row
+	fillColHeader = "D8D8D8" // Item / Data / Valor label row
+	fillTotalRow  = "F2F2F2" // per-block Total row
+)
+
+var monthNames = []string{
+	"janeiro", "fevereiro", "março", "abril", "maio", "junho",
+	"julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+}
+
+func classifyRowTypes(rows []RowDump) {
+	for i := range rows {
+		rows[i].RowType = classifyRow(rows[i])
+	}
+}
+
+func classifyRow(rd RowDump) string {
+	switch {
+	case monthNameCount(rd) >= 3 || dominantBg(rd) == fillMonthBand:
+		return "header-month"
+	case hasColumnLabels(rd) || dominantBg(rd) == fillColHeader:
+		return "header-col"
+	case isTotalRow(rd):
+		return "total-row"
+	case isCategoryLabel(rd):
+		return "category-label"
+	case hasSubcategory(rd) || hasDataValues(rd):
+		return "data-row"
+	default:
+		return "unknown"
+	}
+}
+
+func dominantBg(rd RowDump) string {
+	counts := map[string]int{}
+	for _, c := range rd.Cells {
+		if c.Style.BgColor != "" {
+			counts[c.Style.BgColor]++
+		}
+	}
+	best, bestN := "", 0
+	for color, n := range counts {
+		if n > bestN {
+			best, bestN = color, n
+		}
+	}
+	return best
+}
+
+func monthNameCount(rd RowDump) int {
+	seen := map[string]bool{}
+	for _, c := range rd.Cells {
+		v := strings.ToLower(c.Value)
+		for _, m := range monthNames {
+			if v == m {
+				seen[m] = true
+			}
+		}
+	}
+	return len(seen)
+}
+
+func hasColumnLabels(rd RowDump) bool {
+	hasItem, hasValor := false, false
+	for _, c := range rd.Cells {
+		switch strings.ToLower(c.Value) {
+		case "item":
+			hasItem = true
+		case "valor":
+			hasValor = true
+		}
+	}
+	return hasItem && hasValor
+}
+
+func isTotalRow(rd RowDump) bool {
+	hasTotalLabel, hasSum := false, false
+	for _, c := range rd.Cells {
+		if strings.EqualFold(strings.TrimSpace(c.Value), "total") {
+			hasTotalLabel = true
+		}
+		if strings.HasPrefix(strings.ToUpper(c.Formula), "SUM(") {
+			hasSum = true
+		}
+	}
+	return hasTotalLabel || (hasSum && dominantBg(rd) == fillTotalRow)
+}
+
+// isCategoryLabel matches a standalone grouping row: col A populated, every
+// other cell empty (no subcategory, no data, no formula).
+func isCategoryLabel(rd RowDump) bool {
+	hasA := false
+	for _, c := range rd.Cells {
+		if c.Col == "A" {
+			if c.Value == "" {
+				return false
+			}
+			hasA = true
+			continue
+		}
+		if c.Value != "" || c.Formula != "" {
+			return false
+		}
+	}
+	return hasA
+}
+
+func hasSubcategory(rd RowDump) bool {
+	for _, c := range rd.Cells {
+		if c.Col == "B" && c.Value != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasDataValues(rd RowDump) bool {
+	for _, c := range rd.Cells {
+		if num, err := excelize.ColumnNameToNumber(c.Col); err == nil && num >= 4 {
+			if c.Value != "" || c.Formula != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ── JSON schema types ────────────────────────────────────────────────────────
+
+type Manifest struct {
+	Source string      `json:"source"`
+	Sheets []SheetInfo `json:"sheets"`
+}
+type SheetInfo struct {
+	Name string `json:"name"`
+	File string `json:"file"`
+	Rows int    `json:"rows"`
+	Cols int    `json:"cols"`
+}
+type SheetDump struct {
+	Sheet          string             `json:"sheet"`
+	Dimensions     Dim                `json:"dimensions"`
+	ColumnWidths   map[string]float64 `json:"columnWidths"`
+	RowHeights     map[string]float64 `json:"rowHeights"`
+	MergedCells    []Merge            `json:"mergedCells"`
+	CrossSheetRefs []string           `json:"crossSheetRefs"`
+	Rows           []RowDump          `json:"rows"`
+}
+type Dim struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
+}
+type Merge struct {
+	Range string `json:"range"`
+	Value string `json:"value"`
+}
+type RowDump struct {
+	Row     int    `json:"row"`
+	RowType string `json:"rowType,omitempty"`
+	Cells   []Cell `json:"cells"`
+}
+type Cell struct {
+	Col     string `json:"col"`
+	Value   string `json:"value"`
+	Formula string `json:"formula,omitempty"`
+	Style   Style  `json:"style"`
+}
+type Style struct {
+	BgColor      string `json:"bgColor,omitempty"`
+	Bold         bool   `json:"bold"`
+	BorderTop    bool   `json:"borderTop"`
+	BorderBottom bool   `json:"borderBottom"`
+	BorderLeft   bool   `json:"borderLeft"`
+	BorderRight  bool   `json:"borderRight"`
 }
