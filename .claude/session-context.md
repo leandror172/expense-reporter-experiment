@@ -47,13 +47,15 @@
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 24 (2026-05-29) — `apply` command fully implemented, PR #23 open
-  - Phases 0–3 complete. 452 unit tests + acceptance test (`TestApply_IdempotencyAndFeedback`) green.
-  - PR #23: `feat/apply-command` → `master` (pending review).
-  - Known gap: `insertNewRows` (workbook insertion path) untested — Phase 4 smoke needed.
-- **Prior checkpoint:** Session 23 (2026-05-18) — `review` command complete, PR #22 open
-- **Open PRs:** PR #19 (`fix/workbook-path-resolution`); PR #22 (`review` command); PR #23 (`apply` command)
-- **Next:** Phase 4 smoke for `apply` (RUI-3a), then merge PRs, then decide: RUI-4 (3-level path in CSV) or 5.R1 (TF-IDF)
+- **Last checkpoint:** Session 25 (2026-06-08) — `apply` command Phase 4 smoke complete; 347 rows
+  inserted live. Branch `fix/apply-dry-run-unallocated` open with 5 fixes/features (dry-run counts,
+  uninsertable surfacing, whitespace trim, --backup, --verbose). Formula recalc fix shipped.
+- **Prior checkpoint:** Session 24 (2026-05-29) — `apply` command fully implemented, PR #23 merged
+- **Open PRs:** `fix/apply-dry-run-unallocated` (dry-run + uninsertable + backup + verbose + formula recalc)
+- **Next:** Merge open PR → execute workbook mapping (3-layer plan at `.claude/plans/workbook-mapping-plan.md`)
+  → use claude.ai 2× usage (expires 2026-07-05) for Layer 3 spec synthesis
+- **Workbook mapping plan:** `.claude/plans/workbook-mapping-plan.md` — Layer 1 (JSON+styles),
+  Layer 2 (Chrome screenshots), Layer 3 (claude.ai generator spec). Start with Layer 1.
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -154,4 +156,9 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
+| Workbook mapping Layer 1 | `.claude/plans/workbook-mapping-plan.md` § Layer 1; `expense-reporter/cmd/workbook-inspect/main.go`; `internal/excel/.memories/QUICK.md` | Rewrite inspector to output JSON + cell styles |
+| Workbook mapping Layer 2 | Layer 1 JSON output (block start/end rows); `.claude/plans/workbook-mapping-plan.md` § Layer 2 | Use Chrome automation; need block list from Layer 1 first |
+| Workbook mapping Layer 3 | Layer 1 JSON + Layer 2 screenshots + `.claude/workbook-map.md` | Do on claude.ai before 2026-07-05 |
+| RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
+| 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->

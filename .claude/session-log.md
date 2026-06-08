@@ -1,11 +1,76 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`, `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`, `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
-**Current Session:** 2026-05-29 — Session 24: `apply` Command Phase 3 (implementation complete, PR #23)
-**Current Layer:** Layer 5 — Expense Classifier
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`
+, `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
+, `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
+, `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
+, `.claude/archive/session-log-2026-03-11-to-2026-03-11.md`
+, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
+, `.claude/archive/session-log-2026-03-13-to-2026-03-13.md`
+, `.claude/archive/session-log-2026-03-14-to-2026-03-14.md`
+, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`
+, `.claude/archive/session-log-2026-03-18-to-2026-03-18.md`
+, `.claude/archive/session-log-2026-03-23-to-2026-03-23.md`
+, `.claude/archive/session-log-2026-03-27-to-2026-03-27.md`
+, `.claude/archive/session-log-2026-04-20-to-2026-04-20.md`
+, `.claude/archive/session-log-2026-04-22-to-2026-04-22.md`
+, `.claude/archive/session-log-2026-04-23-to-2026-04-23.md`
+, `.claude/archive/session-log-2026-04-24-to-2026-04-24.md`
+, `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
+, `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
+, `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
+**Current Session:** 2026-06-08 — Session 25: apply command Phase 4 smoke + workbook fixes + mapping plan
+**Current Layer:** Layer 5.9 — apply command complete; workbook mapping planned
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
+
+## 2026-06-08 - Session 25: apply Phase 4 smoke, workbook fixes, mapping plan
+
+### Context
+Started by merging PR #23 (apply command). Ran Phase 4 smoke against a real `reviewed.json`
+(349 entries from May–Dec 2025). Iteratively fixed issues surfaced by the smoke test.
+
+### What Was Done
+- **Phase 4 smoke completed** — 347 rows inserted live into `Planilha_Normalized_Final.xlsx`
+- **PR branch `fix/apply-dry-run-unallocated`** opened with 5 commits:
+  1. `fix(apply)`: dry-run now reports correct counts (was always 0/0)
+  2. `fix(apply)`: surface uninsertable rows in summary (two silent drop points surfaced)
+  3. `fix(excel)`: trim whitespace in subcategory boundary comparisons — trailing spaces
+     in workbook cells (e.g. `"Escritório "`) caused false "section full" errors
+  4. `feat(apply)`: `--backup` flag added (uses `batch.BackupManager`, same as `batch`)
+  5. `feat(apply)`: `--verbose` lists skipped and pending entries with item/date/value
+- **Formula recalculation fix** — `setFullCalcOnLoad` now also calls `f.UpdateLinkedValue()`
+  before save; `FullCalcOnLoad` was Excel-only, LibreOffice/Google Sheets were showing
+  stale cached values
+- **`workbook-inspect` tool** created at `expense-reporter/cmd/workbook-inspect/main.go`;
+  initial structural map saved to `.claude/workbook-map.md` (1,237 lines, all 7 sheets)
+- **3-layer workbook mapping plan** written to `.claude/plans/workbook-mapping-plan.md`
+- **`internal/excel/.memories/QUICK.md`** created — documents reference sheet columns,
+  boundary trim fix, and two-reader.go disambiguation
+
+### Decisions Made
+- **Workbook-generate direction confirmed** — long-term: treat `classifications.jsonl` +
+  `expenses_log.jsonl` as source of truth, generate workbook from scratch. Insertions
+  kept for now as fallback.
+- **3-layer mapping approach:** Layer 1 = full JSON dump with cell styles; Layer 2 =
+  Chrome screenshots via Google Sheets; Layer 3 = claude.ai synthesis (2× usage expires
+  2026-07-05 — prioritise before then)
+- **`Referência de Categorias` columns D and F are dead** — `RowNumber`/`TotalRow` loaded
+  but never read back in any command. New entries only need columns A, B, C.
+
+### Next
+- Open PR for `fix/apply-dry-run-unallocated` and merge
+- Execute workbook mapping: Layer 1 first (JSON dump drives Layer 2 screenshot targeting)
+- Use claude.ai 2× usage (expires 2026-07-05) for Layer 3 spec synthesis
+- Decide: RUI-4 (3-level path in CSV) or 5.R1 (TF-IDF) after mapping work
+
+### Gotchas
+- `go run ./cmd/expense-reporter` fails to load config — binary must be built first
+  (`go build -o expense-reporter ./cmd/expense-reporter`) so it sits alongside `config/`
+- `backupFlag` is a package-level var in `batch.go`; `apply.go` uses `applyBackup` to avoid collision
+- Two `reader.go` files: `internal/excel/reader.go` (workbook I/O) vs `internal/apply/reader.go`
+  (reviewed.json parser) — always disambiguate
 
 ## 2026-05-29 — Session 24: `apply` Command Phase 3 (implementation complete, PR #23)
 
@@ -64,101 +129,6 @@ Resumed directly from session 22 handoff. Phase 2 was partially done (types.go +
 - Merge PR #22 (RUI-1a).
 - Decide next feature: RUI-3 (`apply` command), RUI-4 (emit 3-level path into classified CSV), or deferred retrieval work (5.R1 TF-IDF).
 - **Worktree:** `.claude/worktrees/feat+review-command` — clean, can be removed after merge.
-
----
-
-## 2026-05-18 — Session 22: `review` Command Implementation (Phase 0–2 partial)
-
-### Context
-Resumed from Session 21 plan. Resolved open questions O1–O3 before coding. New
-directives established this session: implementation in worktree (`feat/review-command`),
-tasks.md updated only at handoff (internal task list during session), stop at 150k/75%
-context for handoff.
-
-### What Was Done
-- **Resolved O1** — raw installment notation (`300,00/24`) kept in `QueueEntry.RawValue`;
-  parsed per-installment float in `Value` via `ParseCurrencyWithInstallments`.
-- **Resolved O2** — `Planilha_Normalized_Final.xlsx` confirmed has "Referência de
-  Categorias" sheet; used via `EXPENSE_WORKBOOK_PATH` env var in acceptance tests.
-- **Resolved O3** — `GenerateID` stays DD/MM (no year); document constraint in code;
-  `apply` will use full date column for correlation, not the hash alone.
-- **Phase 0** — `internal/review/template/review.html` placed (claude.ai/design output
-  with sample data replaced by `__REVIEW_DATA__` placeholder); root `review.html`
-  kept as dev preview.
-- **Phase 1** — acceptance test red:
-  - `test/fixtures/review-basic/input.csv` (5 rows: 4 auto-inserted, 1 needs review, 1 installment)
-  - `test/verify/html.go` — `HTMLFileEmbeddedJSON` + `HTMLFileContainsScript`
-  - `test/actions/commands.go` — `RunReview` appended
-  - `test/review_test.go` — `TestReview_ProducesHTMLWithQueueAndTaxonomy` (confirmed red)
-- **Phase 2 partial** — `internal/review/types.go` + `queue.go` written and committed.
-  `taxonomy.go` Ollama output rejected (verdict 0 — type mismatches throughout);
-  `render.go` not started. Both pending next session.
-- **RUI-2 complete** — template built by claude.ai/design and placed.
-
-### Decisions Made
-- **tasks.md = handoff-only artifact.** Use `TaskCreate`/`TaskUpdate` during session;
-  update tasks.md only when running session-handoff skill.
-- **Stop at 150k/75% context.** Trigger session-handoff before context degrades.
-- **Worktree per feature.** Implementation work lives in `feat/review-command` worktree
-  (`worktree-feat+review-command` branch).
-- **Verdict scale confirmed as 0/1/2** (not ACCEPTED/IMPROVED/REJECTED — stale reference
-  in user-prefs corrected this session).
-- **O3 design** — `GenerateID` no-year constraint is acceptable; `apply` uses full date.
-
-### Next
-- Phase 2 resume: write `taxonomy.go` (last Ollama attempt verdict 0 — type mismatches
-  with intermediate map types; retry with better context or write directly). Then `render.go`.
-- Phase 3: `cmd/review.go` cobra wiring.
-- Phase 4: unit tests (testify, table-driven).
-- Phase 5: build/vet/test/smoke + run against real classified.csv.
-- **Worktree:** `.claude/worktrees/feat+review-command`, branch `worktree-feat+review-command`.
-
----
-
-## 2026-05-15 — Session 21: Review UI Design Brief + `review` Command Plan
-
-### Context
-User wants a web-ish UI to review classified expenses with a full-tree category
-picker (sheet → category → subcategory), instead of eyeballing a CSV. They had
-tested Lovable (`docs/plans/lovable-suggestion-plan.md`) but disliked its
-cloud-first architecture (CLI HMAC-pushing to Lovable Postgres).
-
-### What Was Done
-- **Rejected the Lovable cloud architecture** in favour of local-first: the review
-  UI is a single self-contained HTML file the CLI bakes data into. No cloud, no
-  HMAC, no CLI-to-cloud push.
-- **Wrote the design brief** `docs/plans/review-ui-design-brief.md` — for
-  claude.ai/design (builds the HTML in a separate session). Specifies the
-  `__REVIEW_DATA__` injection contract, three JSON data contracts as TS types, the
-  3-level cascading picker, the pre-fill rule (1/>1/0 taxonomy matches), export
-  format, offline/single-file hard constraints.
-- **Wrote fixtures** `docs/plans/review-ui-fixtures/{review-data,reviewed}.sample.json`
-  — input + output samples; taxonomy deliberately includes a category under two
-  sheets to exercise the ambiguity case.
-- **Wrote the implementation plan** `.claude/plans/review-command.md` — detailed,
-  phased plan for `expense-reporter review` (CSV + workbook taxonomy → review.html),
-  acceptance-test-first, with open questions O1–O3 flagged. To be executed in a new
-  session.
-- Indexed all new docs in `.claude/index.md`.
-
-### Decisions Made
-- **Local, CLI-served, not cloud.** Single user, desk-only review — confirmed no
-  multi-device need. Lovable plan is superseded.
-- **CLI is the producer of a self-contained file, not a server.** `review` bakes
-  queue + taxonomy into an HTML template; the browser's file-download is the only
-  "output" channel. No `review` HTTP server, no endpoints.
-- **Workbook write is out of scope for `review`.** The UI emits `reviewed.json`; a
-  separate future `apply` command ingests it into the workbook + feedback logs.
-- **Taxonomy source = workbook's "Referência de Categorias" sheet** via
-  `excel.LoadReferenceSheet` → grouped into the 3-level tree at runtime.
-- **`Predicted.sheet` is optional** in the contract — forward-compat for a planned
-  CSV change that emits the full 3-level path.
-
-### Next
-- Execute `.claude/plans/review-command.md` in a new session (Phase 0 → 5).
-- Resolve open questions O1 (installment value notation), O2 (test workbook
-  fixture), O3 (`id` hash without year) before/while coding.
-- Hand the brief + fixtures to claude.ai/design to build `review.html`.
 
 ---
 

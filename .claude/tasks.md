@@ -140,4 +140,8 @@ Local-first review surface — supersedes the Lovable cloud plan
 <!-- ref:deferred -->
 ## Deferred / Backlog
 
+- [ ] (RUI-WM1) **Workbook mapping Layer 1** — Rewrite `cmd/workbook-inspect/main.go` to output full JSON per sheet: all cells, formulas, cell styles (fill color, bold, borders). Schema in `.claude/plans/workbook-mapping-plan.md`.
+- [ ] (RUI-WM2) **Workbook mapping Layer 2** — Chrome automation screenshot pass via Google Sheets. Use Layer 1 block list to target sections. See plan.
+- [ ] (RUI-WM3) **Workbook mapping Layer 3** — claude.ai synthesis of Layer 1+2 into `workbook-generator-spec.md`. Must complete before 2026-07-05 (2× usage expires).
+- [ ] (RUI-WG) **Workbook generator command** — Implement `generate` command that produces workbook from `classifications.jsonl` + `expenses_log.jsonl`. Blocked on RUI-WM3 (spec).
 <!-- /ref:deferred -->
