@@ -136,3 +136,8 @@ Local-first review surface — supersedes the Lovable cloud plan
 - Structured output via Ollama `format` param — already proven reliable in LLM infra work
 - Model to benchmark: Qwen3-8B (`my-classifier-q3`) vs Qwen2.5-Coder-7B (speed)
 - Confidence threshold: HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (present candidates)
+
+<!-- ref:deferred -->
+## Deferred / Backlog
+
+<!-- /ref:deferred -->

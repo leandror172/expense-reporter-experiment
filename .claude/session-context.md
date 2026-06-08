@@ -146,3 +146,12 @@ Or manually:
 - Fallback category "Diversos" at high confidence is a real risk — now blocked via exclusion list
 - `Transporte` appearing as subcategory at 90% in Uber case — taxonomy oddity, not urgent
 <!-- /ref:active-decisions -->
+
+<!-- ref:session-reading-guide -->
+## Pre-Session Reading Guide
+
+*What to read before each pending work item.*
+
+| Task | Read first | Notes |
+|------|-----------|-------|
+<!-- /ref:session-reading-guide -->
