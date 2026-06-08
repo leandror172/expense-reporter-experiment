@@ -63,7 +63,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 		workbookPath = cfg.WorkbookFilePath()
 	}
 
-	newRows, corrections, pending, skipped, err := processEntries(rf.Entries, classifPath)
+	newRows, corrections, pendingEntries, skippedEntries, err := processEntries(rf.Entries, classifPath)
 	if err != nil {
 		return fmt.Errorf("processing entries: %w", err)
 	}
@@ -83,24 +83,24 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pending, skipped, insertedConfirmed, insertedCorrected, corrections, uninsertable)
+	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pendingEntries, skippedEntries, insertedConfirmed, insertedCorrected, corrections, uninsertable)
 	return nil
 }
 
-func processEntries(entries []apply.ReviewedEntry, classifPath string) (newRows, corrections []apply.ReviewedEntry, pending, skipped int, err error) {
+func processEntries(entries []apply.ReviewedEntry, classifPath string) (newRows, corrections, pendingEntries, skippedEntries []apply.ReviewedEntry, err error) {
 	for _, entry := range entries {
 		switch entry.Action {
 		case apply.ActionPending:
-			pending++
+			pendingEntries = append(pendingEntries, entry)
 		case apply.ActionSkipped:
-			skipped++
+			skippedEntries = append(skippedEntries, entry)
 		case apply.ActionConfirmed, apply.ActionCorrected:
 			if hErr := handleActiveEntry(entry, classifPath, &newRows, &corrections); hErr != nil {
-				return nil, nil, 0, 0, hErr
+				return nil, nil, nil, nil, hErr
 			}
 		}
 	}
-	return newRows, corrections, pending, skipped, nil
+	return newRows, corrections, pendingEntries, skippedEntries, nil
 }
 
 func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, newRows, corrections *[]apply.ReviewedEntry) error {
@@ -294,13 +294,28 @@ func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {
 		entry.Reviewed.Subcategory, entry.Reviewed.Category), false
 }
 
-func printSummary(w io.Writer, source string, total, pending, skipped, insertedConfirmed, insertedCorrected int, corrections, uninsertable []apply.ReviewedEntry) {
+func printSummary(w io.Writer, source string, total int, pendingEntries, skippedEntries []apply.ReviewedEntry, insertedConfirmed, insertedCorrected int, corrections, uninsertable []apply.ReviewedEntry) {
 	inserted := insertedConfirmed + insertedCorrected
 	fmt.Fprintf(w, "Applied %s (%d entries)\n\n", source, total)
 	fmt.Fprintf(w, "Inserted:     %d rows (%d confirmed, %d corrected)\n", inserted, insertedConfirmed, insertedCorrected)
 	fmt.Fprintf(w, "Uninsertable: %d rows\n", len(uninsertable))
-	fmt.Fprintf(w, "Skipped:      %d rows\n", skipped)
-	fmt.Fprintf(w, "Pending:      %d rows\n", pending)
+	fmt.Fprintf(w, "Skipped:      %d rows\n", len(skippedEntries))
+	fmt.Fprintf(w, "Pending:      %d rows\n", len(pendingEntries))
+
+	if verbose {
+		if len(skippedEntries) > 0 {
+			fmt.Fprintf(w, "\nSkipped:\n")
+			for _, e := range skippedEntries {
+				fmt.Fprintf(w, "   %s (%s, R$%.2f)\n", e.Item, e.Date, e.Value)
+			}
+		}
+		if len(pendingEntries) > 0 {
+			fmt.Fprintf(w, "\nPending:\n")
+			for _, e := range pendingEntries {
+				fmt.Fprintf(w, "   %s (%s, R$%.2f)\n", e.Item, e.Date, e.Value)
+			}
+		}
+	}
 
 	if len(uninsertable) > 0 {
 		fmt.Fprintf(w, "\n⚠  %d rows could not be inserted (subcategory not found or no empty slot):\n", len(uninsertable))
