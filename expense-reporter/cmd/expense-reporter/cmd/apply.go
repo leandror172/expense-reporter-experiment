@@ -151,7 +151,18 @@ func insertNewRows(newRows []apply.ReviewedEntry, workbookPath, classifPath, exp
 	}
 
 	batch, writtenIndices := buildExpenseBatch(newRows, parsedDates, subcatRows, emptyReqs, targetRows)
-	if !dryRun && len(batch) > 0 {
+	if dryRun {
+		confirmed, corrected := 0, 0
+		for _, i := range writtenIndices {
+			if newRows[i].Action == apply.ActionConfirmed {
+				confirmed++
+			} else {
+				corrected++
+			}
+		}
+		return confirmed, corrected, nil
+	}
+	if len(batch) > 0 {
 		if err := excel.WriteBatchExpenses(workbookPath, batch); err != nil {
 			return 0, 0, fmt.Errorf("writing batch expenses: %w", err)
 		}
