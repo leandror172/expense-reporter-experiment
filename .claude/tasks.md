@@ -112,7 +112,7 @@ Local-first review surface — supersedes the Lovable cloud plan
   **Complete (session 23, 2026-05-18):** All phases done. PR #22 open
   (`worktree-feat+review-command` → `master`). 17 unit tests + acceptance test green.
   Smoke: 349 rows, 23 need review against real classified.csv.
-- [ ] **RUI-1a** Merge PR #22 (`worktree-feat+review-command` → `master`).
+- [x] **RUI-1a** Merge PR #22 (`worktree-feat+review-command` → `master`).
 - [x] **RUI-2** Build the `review.html` template via claude.ai/design — brief:
   `docs/plans/review-ui-design-brief.md` + fixtures in `docs/plans/review-ui-fixtures/`.
   Done (session 22): template at `expense-reporter/internal/review/template/review.html`;
@@ -121,7 +121,7 @@ Local-first review surface — supersedes the Lovable cloud plan
   + feedback logs (`feedback.Entry` confirmed/corrected, `expenses_log.jsonl`).
   **Complete (session 24, 2026-05-29):** Phases 0–3 done. Acceptance test green.
   PR #23 (`feat/apply-command` → `master`). Plan: `.claude/plans/apply-command.md`.
-- [ ] **RUI-3a** Phase 4 smoke: run `apply` against a real `reviewed.json` from a prior
+- [x] **RUI-3a** Phase 4 smoke: run `apply` against a real `reviewed.json` from a prior
   review session. Exercises `insertNewRows` (workbook insertion path), which has zero
   acceptance test coverage — the fixture only covers already-inserted and pending entries.
   Index-aliasing bug and dry-run leak already fixed (see commit after Phase 3).

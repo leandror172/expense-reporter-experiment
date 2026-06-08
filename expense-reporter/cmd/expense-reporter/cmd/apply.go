@@ -3,11 +3,13 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"expense-reporter/internal/apply"
+	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	internalconfig "expense-reporter/internal/config"
 	"expense-reporter/internal/excel"
@@ -20,6 +22,7 @@ var (
 	applyWorkbook string
 	applyYear     int
 	applyDryRun   bool
+	applyBackup   bool
 )
 
 var applyCmd = &cobra.Command{
@@ -39,6 +42,7 @@ func init() {
 	applyCmd.Flags().StringVar(&applyWorkbook, "workbook", "", "Workbook path (overrides config)")
 	applyCmd.Flags().IntVar(&applyYear, "year", time.Now().Year(), "Year for parsing DD/MM dates")
 	applyCmd.Flags().BoolVar(&applyDryRun, "dry-run", false, "Print what would be inserted without writing")
+	applyCmd.Flags().BoolVar(&applyBackup, "backup", false, "Create a timestamped backup of the workbook before writing")
 }
 
 func runApply(cmd *cobra.Command, args []string) error {
@@ -76,6 +80,14 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 		if err := excel.ValidateWorkbook(workbookPath); err != nil {
 			return fmt.Errorf("validating workbook: %w", err)
+		}
+		if applyBackup {
+			backupMgr := batch.NewBackupManager()
+			backupPath, err := backupMgr.CreateBackup(workbookPath)
+			if err != nil {
+				return fmt.Errorf("backup failed: %w", err)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "✓ Backup created: %s\n", filepath.Base(backupPath))
 		}
 		insertedConfirmed, insertedCorrected, uninsertable, err = insertNewRows(newRows, workbookPath, classifPath, expensesLogPath, applyYear, applyDryRun)
 		if err != nil {
