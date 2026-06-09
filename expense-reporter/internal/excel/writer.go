@@ -12,11 +12,14 @@ import (
 // boolPtr is a tiny helper because excelize CalcPropsOptions fields are *bool.
 func boolPtr(b bool) *bool { return &b }
 
-// setFullCalcOnLoad marks the workbook so that Excel / LibreOffice will
-// recalculate all formulas (e.g. SUM totals) the next time it is opened.
-// excelize does not update cached formula values when cells change; this is the
-// correct, lightweight fix — it costs nothing at runtime and is idempotent.
+// setFullCalcOnLoad strips cached formula values and marks the workbook for
+// full recalculation on open. UpdateLinkedValue removes stale caches so that
+// LibreOffice and Google Sheets (which ignore FullCalcOnLoad) are also forced
+// to recalculate; FullCalcOnLoad covers Excel.
 func setFullCalcOnLoad(f *excelize.File) {
+	if err := f.UpdateLinkedValue(); err != nil {
+		logger.Warn("setFullCalcOnLoad: failed to clear cached values", "error", err)
+	}
 	if err := f.SetCalcProps(&excelize.CalcPropsOptions{
 		FullCalcOnLoad: boolPtr(true),
 	}); err != nil {
