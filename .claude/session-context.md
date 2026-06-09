@@ -54,8 +54,7 @@
   knowledge captured in `internal/excel/.memories/KNOWLEDGE.md`. PR #25 (stacked on #24).
 - **Prior checkpoint:** Session 25 (2026-06-08) — `apply` Phase 4 smoke; 347 rows inserted; branch
   `fix/apply-dry-run-unallocated` (PR #24).
-- **Open PRs:** #24 `fix/apply-dry-run-unallocated` (apply dry-run fixes); #25
-  `feat/workbook-inspect-json-dump` (workbook-inspect JSON dump + memories, stacked on #24).
+- **Merged PRs:** #24 `fix/apply-dry-run-unallocated` and #25 `feat/workbook-inspect-json-dump` — both merged 2026-06-09; master is current.
 - **Next:** Workbook mapping Layer 3 — generator spec synthesis. Follow
   `.claude/plans/workbook-layer3-instructions.md` (recommends running locally in Claude Code, not
   claude.ai, to keep financial data private). Output: `.claude/plans/workbook-generator-spec.md`.

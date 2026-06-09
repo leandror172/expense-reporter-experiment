@@ -28,7 +28,6 @@
 | Project rules & constraints | `CLAUDE.md` (repo root) |
 | Cross-repo context (LLM infra) | `/mnt/i/workspaces/llm/.claude/` |
 | Implementation plan (session 4) | `.claude/plans/acceptance-harness-batch-auto.md` |
-| Implementation plan (session 6 — 5.5) | `.claude/plans/polished-knitting-simon.md` |
 | Implementation plan (session 10 — 5.7) | `.claude/plans/5.7-few-shot-injection.md` |
 | Implementation plan (session 20 — workbook path fix) | `.claude/plans/fix-workbook-path-resolution.md` |
 | Implementation plan (`review` command) | `.claude/plans/review-command.md` |
@@ -36,6 +35,8 @@
 | Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
 | Workbook mapping plan (3-layer, session 26) | `.claude/plans/workbook-mapping-plan.md` |
 | Workbook mapping Layer 3 cowork brief | `.claude/plans/workbook-layer3-instructions.md` |
+| Workbook structural map (JSON + cell notes, session 25) | `.claude/workbook-map.md` |
+| Workbook visual notes (annotated screenshots, session 26) | `.claude/workbook-visual-notes.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -347,6 +348,7 @@ Desktop-era planning documents — read for context, do not modify.
 | `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
 | `expense-reporter/internal/excel/.memories/` | QUICK.md, KNOWLEDGE.md | Reference-sheet columns, boundary detection, and the workbook structural map (sheet families, palette, fill-down vs merge, separators, cross-sheet wiring) |
 | `expense-reporter/cmd/workbook-inspect/.memories/` | QUICK.md | workbook-inspect tool: usage, output schema, classifier + row-fill design |
+| `.claude/workbook-dump/` | *.json (gitignored) | Raw JSON dumps from workbook-inspect; input for Layer 2 visual annotation and Layer 3 spec |
 
 ---
 

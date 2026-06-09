@@ -1,7 +1,7 @@
 # Task Progress — Expense Reporter
 
-**Last Updated:** 2026-05-15 (session 21)
-**Active Layer:** Layer 5 — Expense Classifier
+**Last Updated:** 2026-06-09 (session 27)
+**Active Layer:** Workbook Mapping
 **Full history:** `.claude/session-log.md` (session log), `docs/archive/` (Desktop-era docs)
 
 ---

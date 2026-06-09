@@ -8,7 +8,7 @@ Layer 5 milestones done: classifier (5.2), decision logic (5.3), auto/batch-auto
 feedback persistence (5.6), few-shot injection (5.7), JSON output + MCP server (5.8a/b).
 Since: 5.9 MCP feedback, `apply` command, `review` UI, and workbook-mapping Layers 1+2 done
 (session 26: `cmd/workbook-inspect` JSON dump + visual notes; see `internal/excel/.memories/KNOWLEDGE.md`).
-Open PRs: #24 (apply dry-run fixes), #25 (workbook-inspect, stacked on #24).
+PRs #24 (apply dry-run fixes) and #25 (workbook-inspect) merged 2026-06-09. Master is current.
 Next: workbook-mapping Layer 3 (`.claude/plans/workbook-layer3-instructions.md`), TF-IDF (5.R1).
 
 ## Repo Structure
