@@ -99,7 +99,7 @@ block including headroom rows, so manual additions stay counted.
 
 | Cell | Content | Style |
 |---|---|---|
-| A, B (, C) | categoria / subcategoria filled down | no fill; C gets **B7B7B7** fill iff 3-label sheet AND sub-item empty (Variáveis rule; never on Adicionais today since its col C is unpopulated) |
+| A, B (, C) | categoria / subcategoria *values* repeated (background fill: none) | C: no fill (B7B7B7 dropped — see §9 Q10) |
 | each month Item col | literal `Total` | F2F2F2 |
 | each month Data col | literal `–` | F2F2F2 |
 | each month Valor col | `=SUM(<ValorCol><firstDataRow>:<ValorCol><lastDataRow>)` | F2F2F2 |
@@ -112,7 +112,7 @@ block including headroom rows, so manual additions stay counted.
 | header-month | C0C0C0 | C0C0C0 | A/B yes | box on A; box on each triple-start col |
 | header-col | none | D8D8D8 | no | full thin borders per cell |
 | data-row | none | none | A only | top border on first row of block (D+) |
-| total-row | none (C: B7B7B7 conditional) | F2F2F2 | no | top+bottom on D+ |
+| total-row | none | F2F2F2 | no | top+bottom on D+ |
 | separator | row-level fill 000000, no cells | | | |
 
 ### 3.5 What is NOT reproduced from the source
@@ -138,7 +138,7 @@ canonical formats) is identical:
 | Row 2 | Item/Data/Valor from col C; D8D8D8 |
 | Block labels | col B **merged** vertically across the block's rows (B<start>:B<total>) with the block label; col A merged or filled with the income category |
 | Total row | `Total` in each month's Item col (C, F, …), `–` in Data col, `=SUM(E<start>:E<end>)` etc. in Valor cols (all 12 months — verified) |
-| Separators | same blank + 000000 + blank band between categories |
+| Separators | same blank + 000000 + blank band — between **income categories only**, never between blocks of the same category (e.g. no separator between Salário and 13°, both category "Receita") |
 | Frozen panes | rows 1–2, cols A–B |
 | Row heights | row 1: 17.25; body 15; total rows 15.75 |
 
@@ -178,10 +178,16 @@ Row 5     "Valor" repeated in F..Q (no fill)
       for each categoria in S (col C merged vertically with categoria name; A–B 333399):
          pull rows: one per subcategory; D = subcategoria;
             F..Q = ='<S>'!<ValorCol_k><subcatTotalRow>   (ValorCol per §3.1/§4 maps)
-         subcategory-group total row (fill CCCCFF): F..Q = SUM(F<firstPull>:F<lastPull>)
-         "% sobre Despesas <S>" row (CCCCFF):  =IF(F<tot> >0, F<tot>/F<sheetGrandTotal>, 0)
-         "% sobre Receitas" row (C0C0C0):      =F<pctRow> * F<receitasPctRow>
+         categoria-group total row (fill CCCCFF): F..Q = SUM(F<firstPull>:F<lastPull>)
+         "% sobre Despesas <S>" row (CCCCFF):  =IF(F<grpTot> >0, F<grpTot>/F<sheetGrandTotal>, 0)
+         "% sobre Receitas" row (C0C0C0):      =IF(F<receitasTotal> >0, F<grpTot>/F<receitasTotal>, 0)
          separator (333399)
+   NOTE: <sheetGrandTotal> and <receitasTotal> are cells BELOW/ABOVE these rows — forward
+   references are legal in Excel and expected here; the generator knows all positions before
+   writing formulas, so emit them in one pass. The "% sobre Receitas" formula above is the
+   direct algebraic form of the source's chained `=F<pctRow>*F<receitasPctRow>` — same value,
+   no dependency on other percent cells. Both per-group percent rows ARE required (decision
+   2026-06-09; the Phase-A template predates this and omits them — see ambiguities.md A2/C1).
       sheet grand-total row (C0C0C0): C = "Total despesas <s>";
          F..Q = SUM(<each CCCCFF group-total cell for S>)
       separator; "% sobre Receita" row: =IF(F<grand> >0, F<grand>/F<receitasTotal>, 0)
@@ -252,6 +258,11 @@ So template diffs aren't mistaken for generator errors:
    always-merge**.
 10. Listas row-277 mislabel, row-300 missing cells — **corrected**.
 11. Referência sheet — **omitted entirely**.
+12. B7B7B7 col-C patch on total rows — **dropped entirely** (decision 2026-06-09, provisional;
+    full analysis in §9 Q10). Source applied it only on Variáveis, only from Transporte onward —
+    style drift, not a rule.
+13. Receitas separators — **between income categories only** (source/template drift put one
+    between same-category blocks).
 
 ## 9. Open questions
 
@@ -275,7 +286,22 @@ So template diffs aren't mistaken for generator errors:
    the template build is the catch-all for these (diff by eye once).
 8. **Headroom default:** 3 rows assumed — confirm, and whether per-sheet overrides needed
    (e.g. Variáveis Supermercado/Luz blocks are much larger than typical).
-9. **D9E1F2 render discrepancy:** moot (Referência omitted) — recorded here for history;
+9a. **Q10 — B7B7B7 col-C patch on total rows: REVIEW LATER (currently dropped, deviation #12).**
+   Background for the future review: B7B7B7 is a medium-gray patch on col C of total rows whose
+   visual job is to "close" the F2F2F2 total band into the frozen label area when col C carries
+   no sub-item label. Source behavior is drift, not a rule: on Variáveis it appears only from
+   Transporte onward (16/38 total rows — Alimentação totals like Gás/Supermercado have empty
+   col C but NO patch); on Adicionais (also 3-label, col C never populated) it appears nowhere.
+   Options considered 2026-06-09:
+   (1) Uniform rule — any 3-label sheet total row with empty sub-item → B7B7B7. Consistent, but
+       gives Adicionais all-gray totals, a look the source never had. (Phase-A template shipped
+       this; render reviewed and rejected for now.)
+   (2) "Column in use" rule — apply only on sheets where ≥1 subcategory has a sub-item
+       (Variáveis yes, Adicionais no; auto-adopts if Adicionais gains sub-items). Closest to
+       source intent; backfills Alimentação totals the author never painted.
+   (3) Drop entirely — total rows keep a white A–C gap. **← current decision (provisional).**
+   Revisit after Phase B render comparison; if reinstated, prefer option (2).
+10. **D9E1F2 render discrepancy:** moot (Referência omitted) — recorded here for history;
    resolve only if the slim Referência sheet is ever added with alternating fills.
 
 ## 10. Source references
