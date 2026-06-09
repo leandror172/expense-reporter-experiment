@@ -37,6 +37,8 @@
 | Workbook mapping Layer 3 cowork brief | `.claude/plans/workbook-layer3-instructions.md` |
 | Workbook structural map (JSON + cell notes, session 25) | `.claude/workbook-map.md` |
 | Workbook visual notes (annotated screenshots, session 26) | `.claude/workbook-visual-notes.md` |
+| Workbook generator spec (Layer 3 output, session 27) | `.claude/plans/workbook-generator-spec.md` |
+| Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
