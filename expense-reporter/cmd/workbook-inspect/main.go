@@ -150,11 +150,31 @@ func collectMergedCells(wb *excelize.File, sheetName string) []Merge {
 func collectRowDumps(wb *excelize.File, sheetName string, rows [][]string) []RowDump {
 	dumps := []RowDump{}
 	for ri, row := range rows {
-		if rd := buildRowDump(wb, sheetName, ri, row); len(rd.Cells) > 0 {
+		rd := buildRowDump(wb, sheetName, ri, row)
+		if len(rd.Cells) > 0 {
 			dumps = append(dumps, rd)
+			continue
+		}
+		// Resurrect otherwise-empty rows that carry a row-level fill — these are
+		// the black separator bands GetRows yields as empty slices and the
+		// cell-level dump would drop. GetCellStyle on an empty cell falls back to
+		// the row's style, so an empty probe cell reveals the row fill.
+		if fill := probeRowFill(wb, sheetName, ri+1); fill != "" {
+			dumps = append(dumps, RowDump{Row: ri + 1, RowType: "separator", RowFill: fill})
 		}
 	}
 	return dumps
+}
+
+// probeRowFill returns the row-level fill color for a row by reading the style
+// of an empty cell (col A), which resolves to the row style when the cell has
+// none of its own. Empty string means no row-level fill.
+func probeRowFill(wb *excelize.File, sheetName string, rowNum int) string {
+	ref, err := excelize.CoordinatesToCellName(1, rowNum)
+	if err != nil {
+		return ""
+	}
+	return extractCellStyle(wb, sheetName, ref).BgColor
 }
 
 func buildRowDump(wb *excelize.File, sheetName string, ri int, row []string) RowDump {
@@ -341,7 +361,9 @@ var monthNames = []string{
 
 func classifyRowTypes(rows []RowDump) {
 	for i := range rows {
-		rows[i].RowType = classifyRow(rows[i])
+		if rows[i].RowType == "" { // keep pre-assigned types (e.g. "separator")
+			rows[i].RowType = classifyRow(rows[i])
+		}
 	}
 }
 
@@ -488,6 +510,7 @@ type Merge struct {
 type RowDump struct {
 	Row     int    `json:"row"`
 	RowType string `json:"rowType,omitempty"`
+	RowFill string `json:"rowFill,omitempty"` // row-level fill on otherwise-empty rows (e.g. black separator bands)
 	Cells   []Cell `json:"cells"`
 }
 type Cell struct {
