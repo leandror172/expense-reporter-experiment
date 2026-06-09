@@ -1,6 +1,6 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`
 , `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
@@ -19,11 +19,62 @@
 , `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
 , `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
 , `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
-**Current Session:** 2026-06-08 — Session 25: apply command Phase 4 smoke + workbook fixes + mapping plan
-**Current Layer:** Layer 5.9 — apply command complete; workbook mapping planned
+**Current Session:** 2026-06-08 — Session 26: Workbook mapping Layers 1+2 — JSON dump, visual notes, memories
+**Current Layer:** Workbook Mapping — Layers 1+2 complete; Layer 3 (generator spec) next
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
+
+## 2026-06-08 - Session 26: Workbook mapping Layers 1+2 (JSON dump, visual notes, memories)
+
+### Context
+Resumed from session 25 to execute the workbook-mapping plan. Ran as TWO parallel Claude Code
+sessions: this one owned Layer 1 (JSON dump) + coordination + memories; a parallel session owned
+Layer 2 (visual notes). Entry point: `.claude/plans/workbook-mapping-plan.md`.
+
+### What Was Done
+- **Layer 1 — `cmd/workbook-inspect` rewritten to JSON** (PR #25, branch
+  `feat/workbook-inspect-json-dump`, stacked on #24). Emits `manifest.json` + per-sheet JSON into
+  `.claude/workbook-dump/` (gitignored — real expense values). Per cell: value, formula, style
+  (bgColor/bold/4 borders). Per sheet: dims, col widths, row heights, merged cells, cross-sheet
+  refs (parsed from formulas, handles `'Quoted Name'!Ref`). Per row: `rowType` classifier
+  (header-month/header-col/total-row/data-row/category-label/separator). Extraction core via
+  `my-go-qcoder` (verdict 1); cross-ref parser, classifier, and fixes written directly.
+- **Row-level black separator fills** (commit `906a99d`) — otherwise-empty rows with a row-level
+  fill (solid-black category dividers) were a cell-level blind spot; now probed via the
+  GetCellStyle→row-style fallback and emitted as `rowType:"separator"` + `rowFill`. Verified
+  against catalogued gaps; corrected two visual inferences (Fixas has one black band not seven;
+  Receitas has two the visual pass missed).
+- **Layer 2 — visual notes** for all 7 sheets in `.claude/workbook-visual-notes.md` (gitignored):
+  frozen panes, rendered-vs-hex colors, fonts, number/date formatting.
+- **Memories** — new `internal/excel/.memories/KNOWLEDGE.md` (workbook structural map), new
+  `cmd/workbook-inspect/.memories/QUICK.md`, refreshed excel/repo/root QUICK pointers,
+  `.claude/index.md` registration. Project memory `project_workbook_mapping.md` updated.
+- **Layer 3 cowork brief** — `.claude/plans/workbook-layer3-instructions.md`.
+
+### Decisions Made
+- **Merges are sheet-specific** (corrected an earlier wrong "no merges anywhere"): expense sheets
+  (Fixas/Variáveis/Extras/Adicionais) are merge-free fill-down; Receitas/Listas/Referência merge.
+- **Two sheet families, per-sheet palette + fonts** — not workbook-wide. Generator must branch.
+- **Listas de itens PULLS, not SUMs** (references source totals directly, e.g. `Fixas!F19`);
+  **Referência is the row-mapping source of truth** (ODS dot-notation reference strings inside
+  CONCATENATE, not real `!` refs).
+- **Layer 3 should run locally in Claude Code, not claude.ai** — feeding the raw dump to the web
+  would upload real financial data; local keeps the project's local-first privacy. claude.ai is a
+  fallback requiring a sanitized (values-stripped) dump.
+
+### Next
+- Workbook mapping Layer 3 — produce `.claude/plans/workbook-generator-spec.md` per
+  `.claude/plans/workbook-layer3-instructions.md`.
+- Resolve the Referência `D9E1F2` render-vs-hex discrepancy (theme remap or conditional format).
+
+### Gotchas
+- `.claude/workbook-dump/`, `.claude/workbook-visual-notes.md`, `.claude/workbook-screenshots/`
+  are all gitignored (real expense values) — never commit; Layer 3 inputs stay local.
+- The dump iterates `GetRows`, so it is a faithful style map only up to the last valued cell per
+  row (trailing empties dropped); row-level fills are captured separately via the separator probe.
+- `cmd/workbook-inspect` takes the workbook path as an arg and does NOT read config.json.
+- PR #25 is stacked on #24 — retarget to `master` once #24 merges.
 
 ## 2026-06-08 - Session 25: apply Phase 4 smoke, workbook fixes, mapping plan
 
@@ -102,33 +153,6 @@ Resumed from `.claude/handoff-apply-phase3.md` (written same day — Phases 0–
 - **Phase 4 smoke**: run `apply` against real `reviewed.json` from a prior review session (index bug fixed; exercises the now-correct insertion path).
 - **Review/merge PR #23**.
 - **Decide next feature**: RUI-4 (emit 3-level path into classified CSV) or 5.R1 (TF-IDF retrieval layer).
-
----
-
-## 2026-05-18 — Session 23: `review` Command Implementation (Phase 2–5 complete)
-
-### Context
-Resumed directly from session 22 handoff. Phase 2 was partially done (types.go + queue.go committed); taxonomy.go had a prior Ollama 0-verdict. User said "proceed" after task list was created.
-
-### What Was Done
-- **Phase 2 complete** — wrote `taxonomy.go` (BuildTaxonomy: 3-level tree, deterministic sort), `render.go` (placeholder guard + JSON injection), `embed.go` (go:embed TemplateHTML export). taxonomy.go + render.go written directly (escalation after prior 0-verdict); embed.go trivial 3-liner.
-- **Phase 3** — `cmd/review.go` cobra command via `my-go-qcoder` (verdict 1; fixed: import alias not needed, `0644`→`0o644`).
-- **Phase 4** — 17 unit tests via `my-go-qcoder`: `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1; fixed: `FieldsPerRecord=-1` in queue.go so our explicit field-count error fires). All green.
-- **Phase 5** — `go build/vet/test` all clean; acceptance test `TestReview_ProducesHTMLWithQueueAndTaxonomy` passes; smoke: 349 rows, 23 need review.
-- **PR #22 opened** — `worktree-feat+review-command` → `master`.
-- **Tracking updates** — `index.md` go-structure table updated (internal/review row added); `session-context.md` updated with `my-go-qcoder` benchmark data and preferred model change.
-- **Read `local-model-conventions.md`** per user request; noted that taxonomy.go/render.go were escalations (written directly) and should be retried with pre-defined stubs in future.
-
-### Decisions Made
-- **`my-go-qcoder` is now the preferred codegen model** — 4 calls, verdicts 2/2/1/1; replaces `my-go-q25c14` as default. Falls back to `my-go-q25c14` if unavailable.
-- **`my-go-qcoder` weakness identified** — struggles with Go intermediate map types when types are NOT pre-defined in context; passes cleanly when types are available as context files.
-- **`FieldsPerRecord = -1` pattern** — when you want custom field-count error messages in Go CSV parsing, disable the library's built-in check.
-- **tasks.md updated at handoff** — Claude Code TaskCreate/TaskUpdate used during session; tasks.md reflects final state only at session-handoff.
-
-### Next
-- Merge PR #22 (RUI-1a).
-- Decide next feature: RUI-3 (`apply` command), RUI-4 (emit 3-level path into classified CSV), or deferred retrieval work (5.R1 TF-IDF).
-- **Worktree:** `.claude/worktrees/feat+review-command` — clean, can be removed after merge.
 
 ---
 
