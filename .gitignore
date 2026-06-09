@@ -56,3 +56,11 @@ expense-reporter/*.bak
 # Acceptance test results (drift tracking JSON)
 expense-reporter/test/results/
 expense-reporter/expense-reporter
+
+# Workbook structural dump — contains real expense cell values (sensitive)
+.claude/workbook-dump/
+# Layer 2 visual notes — may contain rendered expense values (sensitive)
+.claude/workbook-visual-notes.md
+.claude/workbook-screenshots/
+# workbook-inspect build output
+expense-reporter/workbook-inspect

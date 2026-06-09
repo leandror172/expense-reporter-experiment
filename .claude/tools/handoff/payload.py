@@ -142,5 +142,5 @@ def _checkoff_errors(payload: HandoffPayload) -> List[str]:
     return [
         f"malformed checkoff id: {cid}"
         for cid in payload.checkoffs
-        if not re.match(r"^T-\d+$", cid)
+        if not re.match(r"^[A-Za-z\d][A-Za-z\d.\-]*$", cid)
     ]

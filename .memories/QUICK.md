@@ -6,7 +6,10 @@
 Layer 5 (Expense Classifier) active. Phases 1–4 complete (CLI: add/batch/version, 190+ unit tests, v2.1.0).
 Layer 5 milestones done: classifier (5.2), decision logic (5.3), auto/batch-auto commands (5.4–5.5),
 feedback persistence (5.6), few-shot injection (5.7), JSON output + MCP server (5.8a/b).
-Open PRs: #11–#14 (5.8 chain). Next: merge PR chain, then TF-IDF retrieval (5.R1).
+Since: 5.9 MCP feedback, `apply` command, `review` UI, and workbook-mapping Layers 1+2 done
+(session 26: `cmd/workbook-inspect` JSON dump + visual notes; see `internal/excel/.memories/KNOWLEDGE.md`).
+Open PRs: #24 (apply dry-run fixes), #25 (workbook-inspect, stacked on #24).
+Next: workbook-mapping Layer 3 (`.claude/plans/workbook-layer3-instructions.md`), TF-IDF (5.R1).
 
 ## Repo Structure
 ```

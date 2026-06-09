@@ -34,6 +34,8 @@
 | Implementation plan (`review` command) | `.claude/plans/review-command.md` |
 | Review UI design brief (for claude.ai/design) | `docs/plans/review-ui-design-brief.md` + `docs/plans/review-ui-fixtures/` |
 | Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
+| Workbook mapping plan (3-layer, session 26) | `.claude/plans/workbook-mapping-plan.md` |
+| Workbook mapping Layer 3 cowork brief | `.claude/plans/workbook-layer3-instructions.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -53,6 +55,7 @@
 |---------|------|---------|
 | `main` | `expense-reporter/cmd/expense-reporter/main.go` | Entry point |
 | `cmd` | `expense-reporter/cmd/expense-reporter/cmd/` | Cobra CLI subcommands (add, batch, version; +classify/auto/batch-auto in Layer 5) |
+| `workbook-inspect` | `expense-reporter/cmd/workbook-inspect/` | Standalone tool — JSON structural dump of a workbook (workbook mapping L1); see its `.memories/QUICK.md` |
 | `internal/batch` | `expense-reporter/internal/batch/` | Batch import orchestration |
 | `internal/cli` | `expense-reporter/internal/cli/` | CLI output helpers |
 | `internal/excel` | `expense-reporter/internal/excel/` | Excel workbook read/write (excelize library) |
@@ -342,6 +345,8 @@ Desktop-era planning documents — read for context, do not modify.
 | `expense-reporter/internal/classifier/.memories/` | QUICK.md, KNOWLEDGE.md | Few-shot algorithm, prompt architecture, empirical findings |
 | `expense-reporter/test/.memories/` | QUICK.md, KNOWLEDGE.md | BDD harness design, fixture format, soft/hard assertions |
 | `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
+| `expense-reporter/internal/excel/.memories/` | QUICK.md, KNOWLEDGE.md | Reference-sheet columns, boundary detection, and the workbook structural map (sheet families, palette, fill-down vs merge, separators, cross-sheet wiring) |
+| `expense-reporter/cmd/workbook-inspect/.memories/` | QUICK.md | workbook-inspect tool: usage, output schema, classifier + row-fill design |
 
 ---
 

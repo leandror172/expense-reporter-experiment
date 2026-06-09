@@ -110,14 +110,21 @@ def _locate_checklist(role: Dict[str, Any], text: str, *, task_id: Optional[str]
     if not task_id:
         raise ValueError("task_id is required for checklist locator")
 
-    pattern = re.compile(rf'^- \[\s\]\s*\({re.escape(task_id)}\)\s*(.*)$', re.MULTILINE)
-    matches = list(pattern.finditer(text))
+    id_boundary = re.compile(
+        rf'(?<![A-Za-z0-9.]){re.escape(task_id)}(?![A-Za-z0-9.])'
+    )
+    # Search only within the first 40 chars of each candidate line: task IDs
+    # always appear immediately after '- [ ]'; description text that happens
+    # to mention another ID is never within that prefix.
+    matches = [
+        m for m in re.finditer(r'^- \[ \].*$', text, re.MULTILINE)
+        if id_boundary.search(m.group()[:40])
+    ]
 
     if len(matches) != 1:
         raise LocatorError("Checklist item not found or duplicated")
 
-    match = matches[0]
-    start, end = match.span(0)
+    start, end = matches[0].span()
     return Region(
         kind="checklist",
         mode=role["write_mode"],

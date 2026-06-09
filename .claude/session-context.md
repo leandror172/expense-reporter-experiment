@@ -46,17 +46,22 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Layer 5.9 + MCP-layer corrections complete — full feedback loop closed
-- **Last checkpoint:** Session 25 (2026-06-08) — `apply` command Phase 4 smoke complete; 347 rows
-  inserted live. Branch `fix/apply-dry-run-unallocated` open with 5 fixes/features (dry-run counts,
-  uninsertable surfacing, whitespace trim, --backup, --verbose). Formula recalc fix shipped.
-- **Prior checkpoint:** Session 24 (2026-05-29) — `apply` command fully implemented, PR #23 merged
-- **Open PRs:** `fix/apply-dry-run-unallocated` (dry-run + uninsertable + backup + verbose + formula recalc)
-- **Next:** Merge open PR → execute workbook mapping (3-layer plan at `.claude/plans/workbook-mapping-plan.md`)
-  → use claude.ai 2× usage (expires 2026-07-05) for Layer 3 spec synthesis
-- **Workbook mapping plan:** `.claude/plans/workbook-mapping-plan.md` — Layer 1 (JSON+styles),
-  Layer 2 (Chrome screenshots), Layer 3 (claude.ai generator spec). Start with Layer 1.
-- **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — contains personas, MCP server, platform docs
+- **Active layer:** Workbook Mapping — Layers 1+2 complete; Layer 3 (generator spec) next
+- **Last checkpoint:** Session 26 (2026-06-08) — workbook mapping Layers 1+2 done across parallel
+  sessions. L1: `cmd/workbook-inspect` rewritten to dump the workbook to JSON (styles, merges,
+  cross-sheet refs, rowType classification, row-level black-separator fills) → `.claude/workbook-dump/`
+  (gitignored). L2: visual notes for all 7 sheets → `.claude/workbook-visual-notes.md`. Structural
+  knowledge captured in `internal/excel/.memories/KNOWLEDGE.md`. PR #25 (stacked on #24).
+- **Prior checkpoint:** Session 25 (2026-06-08) — `apply` Phase 4 smoke; 347 rows inserted; branch
+  `fix/apply-dry-run-unallocated` (PR #24).
+- **Open PRs:** #24 `fix/apply-dry-run-unallocated` (apply dry-run fixes); #25
+  `feat/workbook-inspect-json-dump` (workbook-inspect JSON dump + memories, stacked on #24).
+- **Next:** Workbook mapping Layer 3 — generator spec synthesis. Follow
+  `.claude/plans/workbook-layer3-instructions.md` (recommends running locally in Claude Code, not
+  claude.ai, to keep financial data private). Output: `.claude/plans/workbook-generator-spec.md`.
+- **Open question:** Referência `D9E1F2` renders warm orange-yellow not blue — theme remap or
+  conditional formatting; resolve before the generator trusts that hex.
+- **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
 ---
@@ -156,9 +161,8 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| Workbook mapping Layer 1 | `.claude/plans/workbook-mapping-plan.md` § Layer 1; `expense-reporter/cmd/workbook-inspect/main.go`; `internal/excel/.memories/QUICK.md` | Rewrite inspector to output JSON + cell styles |
-| Workbook mapping Layer 2 | Layer 1 JSON output (block start/end rows); `.claude/plans/workbook-mapping-plan.md` § Layer 2 | Use Chrome automation; need block list from Layer 1 first |
-| Workbook mapping Layer 3 | Layer 1 JSON + Layer 2 screenshots + `.claude/workbook-map.md` | Do on claude.ai before 2026-07-05 |
+| **Workbook mapping Layer 3 (START HERE)** | `.claude/plans/workbook-layer3-instructions.md` (cowork brief); `internal/excel/.memories/KNOWLEDGE.md`; one expense-sheet dump (`.claude/workbook-dump/Extras.json`) + `.claude/workbook-visual-notes.md` | Layers 1+2 done. Produce `.claude/plans/workbook-generator-spec.md`. Brief recommends running locally (no cloud upload of financial data). Resolve the D9E1F2 render discrepancy. |
+| Workbook generator implementation (after L3) | the generator spec; `internal/excel/`; `expenses_log.jsonl` as source of truth | New `cmd/` command; replaces insert-into-existing-workbook long-term |
 | RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->

@@ -1,5 +1,12 @@
 # excel package — quick notes
 
+## Workbook structural map → KNOWLEDGE.md
+Full structure of `Planilha_Normalized_Final.xlsx` mapped session 26 via `cmd/workbook-inspect`
+(JSON dump in `.claude/workbook-dump/`, gitignored). See `KNOWLEDGE.md` for the distilled facts:
+two sheet families, per-sheet palette/fonts, fill-down vs merge, block/total-formula pattern,
+black separator rows, and cross-sheet wiring (Listas pulls; Referência is the row-map). This
+feeds the future "generate workbook from database" command.
+
 ## Reference sheet columns (Referência de Categorias)
 
 `LoadReferenceSheet` reads 6 columns:
