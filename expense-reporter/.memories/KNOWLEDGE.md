@@ -88,3 +88,27 @@ history (data queries). The shared hash enables joins without a database.
 not code. The exclusion list was added after discovering "Diversos" false positives.
 **Implication:** Year rollover requires updating `date_year` in config (and likely the
 workbook path). No code changes needed.
+
+## Workbook Generator Design (2026-06, sessions 26–27)
+Spec v2 at `.claude/plans/workbook-generator-spec.md` is the single design authority; it is a
+REDESIGN — where it disagrees with the original workbook, the spec wins.
+Key decisions:
+- **Derived layout** — row positions computed from taxonomy + entry counts; the original
+  workbook's dump is only a historical reference. The source's fixed layout contained drift
+  (June SUMs over the wrong column, single-cell SUM collapse, fill-down gaps) precisely
+  because it was hand-maintained.
+- **Merges, not fill-down** — the source filled labels down because hand-inserting rows into
+  merges is painful; generated workbooks don't care, so v2 merges col A per category section
+  and col B per block (both include total rows).
+- **2 label columns everywhere** — sub-item level eliminated ("Orion - Consultas" composed
+  strings); months start at col C on all data sheets including Receitas.
+- **Referência sheet omitted** — it existed to support manual insertion; the generator knows
+  all positions. If `add`/`batch` resolver compat is ever needed, emit a slim A/B/C taxonomy sheet.
+- **Golden-master validation** — `.claude/workbook-template/template-reviewed.xlsx`
+  (user-curated, fake data) is the convergence target; compare via `workbook-inspect` dumps +
+  openpyxl pass (`diff.py`). Never claim convergence by eyeballing.
+**Rationale:** generation inverts the dependency — taxonomy input becomes the source of truth,
+sheets become projections.
+**Implication:** the scratch builder (`.claude/scratch/template-builder/`) is the reference
+implementation to port into `internal/generate`; excelize gotchas learned: SetCellFormula takes
+no leading `=`; stale-formula fix = UpdateLinkedValue() + SetCalcProps(FullCalcOnLoad).

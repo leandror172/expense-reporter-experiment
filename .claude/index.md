@@ -37,8 +37,12 @@
 | Workbook mapping Layer 3 cowork brief | `.claude/plans/workbook-layer3-instructions.md` |
 | Workbook structural map (JSON + cell notes, session 25) | `.claude/workbook-map.md` |
 | Workbook visual notes (annotated screenshots, session 26) | `.claude/workbook-visual-notes.md` |
-| Workbook generator spec (Layer 3 output, session 27) | `.claude/plans/workbook-generator-spec.md` |
+| Workbook generator spec v2 (Layer 3 + hand-review, session 27) | `.claude/plans/workbook-generator-spec.md` |
+| Workbook generator implementation plan + next-session brief | `.claude/plans/workbook-generator-implementation-plan.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
+| Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
+| Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
+| Template builder (scratch reference impl of spec v2) | `.claude/scratch/template-builder/` (standalone Go module) |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |

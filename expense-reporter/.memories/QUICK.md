@@ -9,10 +9,11 @@ Few-shot injection (5.7) complete — keyword-based example selection active.
 MCP prediction feedback (5.9+) complete — `add` accepts `--predicted-subcategory` and related
 flags; writes `confirmed`/`corrected` instead of `manual` when prediction context is present.
 `auto --json` emits `classification_id` for the caller to pass back to `add`.
-Workbook-mapping Layers 1+2 done (session 26): `cmd/workbook-inspect` dumps the workbook to JSON
-(`.claude/workbook-dump/`, gitignored) + visual notes — see `internal/excel/.memories/KNOWLEDGE.md`.
-Next: workbook-mapping Layer 3 (generator spec, see `.claude/plans/workbook-layer3-instructions.md`);
-TF-IDF retrieval layer (5.R1).
+Workbook-mapping done (sessions 26-27): `cmd/workbook-inspect` JSON dump -> generator spec v2
+(`.claude/plans/workbook-generator-spec.md`) + scratch builder converged to golden master.
+Next: `generate-workbook` command - port `.claude/scratch/template-builder/` into
+`internal/generate` + `cmd/`, lift inspect core into `internal/inspect`, acceptance tests first;
+brief: `.claude/plans/workbook-generator-implementation-plan.md`. Then TF-IDF (5.R1).
 
 ## Structure
 ```
