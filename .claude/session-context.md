@@ -46,20 +46,24 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Workbook Mapping — Layers 1+2 complete; Layer 3 (generator spec) next
-- **Last checkpoint:** Session 26 (2026-06-08) — workbook mapping Layers 1+2 done across parallel
-  sessions. L1: `cmd/workbook-inspect` rewritten to dump the workbook to JSON (styles, merges,
-  cross-sheet refs, rowType classification, row-level black-separator fills) → `.claude/workbook-dump/`
-  (gitignored). L2: visual notes for all 7 sheets → `.claude/workbook-visual-notes.md`. Structural
-  knowledge captured in `internal/excel/.memories/KNOWLEDGE.md`. PR #25 (stacked on #24).
-- **Prior checkpoint:** Session 25 (2026-06-08) — `apply` Phase 4 smoke; 347 rows inserted; branch
-  `fix/apply-dry-run-unallocated` (PR #24).
-- **Merged PRs:** #24 `fix/apply-dry-run-unallocated` and #25 `feat/workbook-inspect-json-dump` — both merged 2026-06-09; master is current.
-- **Next:** Workbook mapping Layer 3 — generator spec synthesis. Follow
-  `.claude/plans/workbook-layer3-instructions.md` (recommends running locally in Claude Code, not
-  claude.ai, to keep financial data private). Output: `.claude/plans/workbook-generator-spec.md`.
-- **Open question:** Referência `D9E1F2` renders warm orange-yellow not blue — theme remap or
-  conditional formatting; resolve before the generator trusts that hex.
+- **Active layer:** Workbook Generator — mapping L1–L3 complete; Phase A (template
+  convergence) complete on branch `feat/workbook-generator`
+- **Last checkpoint:** Session 27 (2026-06-10) — Layer 3 spec synthesized locally via Sonnet
+  digest fan-out, hardened by an Opus dogfood build, patched to **v2** after user hand-review
+  (`.claude/plans/workbook-generator-spec.md` — redesign: merges not fill-down, months at
+  col C, no sub-item column, Referência omitted). Scratch builder
+  (`.claude/scratch/template-builder/`) CONVERGED to the user-curated golden master
+  `.claude/workbook-template/template-reviewed.xlsx` (41 justified residuals —
+  `convergence-report.md`).
+- **Prior checkpoint:** Session 26 (2026-06-08) — workbook mapping Layers 1+2 (JSON dump +
+  visual notes). PRs #24/#25 merged 2026-06-09.
+- **Next:** `.claude/plans/workbook-generator-implementation-plan.md` is the next-session
+  brief (prep reading in its §0). Phase B blocks on the user hand-filling
+  `template-data.xlsx` + adding per-group percent rows. Then Phase G: `internal/inspect`
+  lift, `generate-workbook` command, acceptance-first.
+- **Open questions:** spec §7 (headroom default, per-group percent rows into golden master,
+  merged-headroom render, Dólar semantics, taxonomy source for the real generator).
+  D9E1F2 is moot (Referência omitted).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -81,6 +85,19 @@ Or manually:
 
 <!-- ref:active-decisions -->
 ## Active Decisions
+
+### Workbook Generator (session 27)
+- **Spec v2 is the design authority** (`.claude/plans/workbook-generator-spec.md`) — a
+  REDESIGN; where it disagrees with the original workbook, the spec wins.
+- **Derived layout** — row positions computed from taxonomy + entry counts; never copied
+  from the source. 14 deliberate deviations catalogued in spec §6.
+- **Merges, not fill-down; 2 label cols everywhere; months start col C; Referência omitted**
+  — hand-review reversals of source behavior (rationale: a generated workbook never suffers
+  insert-into-merge pain; sub-item level composed into col-B strings).
+- **Golden-master validation** — `template-reviewed.xlsx` is the convergence target;
+  judge ONLY via workbook-inspect dumps + `diff.py`, never eyeballing.
+- **Generated workbook is not an insertion target for now** — `apply`/`add` keep working
+  against hand-maintained workbooks; slim Referência + resolver-taxonomy question deferred.
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
@@ -122,6 +139,8 @@ Or manually:
 - **Ollama parallelization ceiling (session 15):** 3 parallel codegen calls only safe for tiny near-identical prompts. Default to serial for non-trivial codegen — VRAM ceiling causes silent degradation/timeouts.
 - **`my-go-qcoder` first benchmark (session 23, 2026-05-18):** Used for `cmd/review.go` (verdict 1), `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1). Struggled with intermediate Go map types in a prior session (verdict 0 on `taxonomy.go`) — passes cleanly when types are pre-defined in context files. Test generation is its strongest use; cobra command wiring is solid. Preferred over `my-go-q25c14` going forward for single-file codegen tasks.
 - **Files written directly this session (no Ollama):** `taxonomy.go`, `render.go`, `embed.go` — escalation after prior `0` verdict on `taxonomy.go`. Files written directly should still be retried with Ollama next time with richer context (pre-defined type stubs).
+- **Excelize formula APIs (session 27):** `SetCellFormula` takes the formula WITHOUT a leading
+  `=`; stale-formula display fix = `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
 
 ### Test Conventions (session 15)
 - **Acceptance-first** — discuss scenarios → write acceptance tests → drop into TDD inner loop for unit tests
@@ -160,8 +179,7 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Workbook mapping Layer 3 (START HERE)** | `.claude/plans/workbook-layer3-instructions.md` (cowork brief); `internal/excel/.memories/KNOWLEDGE.md`; one expense-sheet dump (`.claude/workbook-dump/Extras.json`) + `.claude/workbook-visual-notes.md` | Layers 1+2 done. Produce `.claude/plans/workbook-generator-spec.md`. Brief recommends running locally (no cloud upload of financial data). Resolve the D9E1F2 render discrepancy. |
-| Workbook generator implementation (after L3) | the generator spec; `internal/excel/`; `expenses_log.jsonl` as source of truth | New `cmd/` command; replaces insert-into-existing-workbook long-term |
+| **Workbook generator Phase B + G (START HERE)** | `.claude/plans/workbook-generator-implementation-plan.md` §0 (full prep list); then spec v2 + `convergence-report.md` | Do NOT re-read raw dumps/digests — the spec distills them. Phase B blocks on user hand-filling `template-data.xlsx`. Builder = reference impl to port. |
 | RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->

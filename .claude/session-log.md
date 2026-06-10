@@ -1,6 +1,6 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`
 , `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
@@ -19,11 +19,71 @@
 , `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
 , `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
 , `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
-**Current Session:** 2026-06-08 — Session 26: Workbook mapping Layers 1+2 — JSON dump, visual notes, memories
-**Current Layer:** Workbook Mapping — Layers 1+2 complete; Layer 3 (generator spec) next
+**Current Session:** 2026-06-10 — Session 27: Workbook generator — Layer 3 spec v2 + Phase A template convergence
+**Current Layer:** Workbook Generator — spec v2 + Phase A done; Phase B (data) + generate-workbook command next
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
+
+## 2026-06-10 - Session 27: Workbook generator — Layer 3 spec + Phase A golden-master convergence
+
+### Context
+Started from session 26 handoff: execute workbook-mapping Layer 3 locally per
+`.claude/plans/workbook-layer3-instructions.md`. Grew into Phase A of the generator itself.
+Branch `feat/workbook-generator`.
+
+### What Was Done
+- **Layer 3 executed locally** (claude.ai 2× usage not needed): 7 parallel Sonnet subagents
+  produced per-sheet structural digests (`.claude/workbook-dump/digests/`, gitignored);
+  main session synthesized `.claude/plans/workbook-generator-spec.md`. Digests surfaced
+  source bugs the reconciled findings missed (systematic June SUM-over-Data-column bug;
+  Adicionais single-cell SUMs that only count the LAST data row — its totals are wrong).
+- **Dogfood template build (Opus subagent, spec-only context):** standalone builder at
+  `.claude/scratch/template-builder/` → `.claude/workbook-template/template.xlsx` +
+  `ambiguities.md` (14 decisions, 2 spec contradictions found by building).
+- **User hand-reviewed the template** → `template-reviewed.xlsx` (golden master). Sonnet
+  subagent diffed it → `review-diff.md` (14 correction patterns).
+- **Spec v2:** folds in the hand-review. Redesign stances: vertical MERGES replace
+  fill-down; months start col C; sub-item level eliminated ("Orion - Consultas" composed
+  strings); Mês A1:B2; freeze C3/D4; Listas 3-col label area, months D–O; Referência
+  sheet OMITTED (not an insertion target); B7B7B7 moot. Spec wins over original workbook.
+- **Convergence (Opus subagent):** builder rewritten to v2; output matches the golden
+  master — 41 residuals, all justified golden-master hand-edit artifacts
+  (`convergence-report.md`; diff harness `diff.py`).
+- **Implementation plan written:** `.claude/plans/workbook-generator-implementation-plan.md`
+  — prep reading list, Phase B, Phase G (generate-workbook command), open questions. Sized
+  for a Sonnet executor.
+- Memories updated (repo + expense-reporter QUICK, expense-reporter KNOWLEDGE generator
+  entry, auto-memory workbook-mapping rewritten); index.md registered all artifacts.
+- 4 commits on `feat/workbook-generator`.
+
+### Decisions Made
+- **Derived layout** — positions computed from taxonomy + entries; dump is validation
+  reference only. Source drift/bugs deliberately normalized (spec §6, 14 deviations).
+- **Golden-master validation** — convergence judged ONLY by workbook-inspect dump diff +
+  openpyxl pass (`diff.py`), never eyeballing.
+- **Per-group percent rows required** but absent from golden master — enter in Phase B
+  (builder `perGroupPctRows` switch off until then).
+- **Subagent fan-out pattern endorsed** — digests/reports to FILES, main session
+  synthesizes; Sonnet for extraction/diffing, Opus for build/convergence.
+- excelize gotchas: `SetCellFormula` takes no leading `=`; stale-formula fix =
+  `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
+
+### Next
+- Follow `.claude/plans/workbook-generator-implementation-plan.md` §0 prep list.
+- Phase B first step BLOCKS ON USER: copy golden master → `template-data.xlsx`, hand-fill
+  fake entries, add per-group percent rows to Listas.
+- Then Phase G: lift inspect core into `internal/inspect`; port builder into
+  `internal/generate` + `cmd/generate.go`; acceptance tests FIRST.
+
+### Gotchas
+- Templates/builder are tracked (fake data only); dump-* dirs gitignored via
+  `.claude/workbook-template/.gitignore`. Source dumps/digests/visual notes stay gitignored.
+- Golden master has 6 hand-edit inconsistencies (convergence-report.md) — builder follows
+  the spec rule; do NOT "fix" the builder toward them.
+- No `jq` on this machine — use python3 (openpyxl available).
+- Long-running subagents (>5 min) expire the main session's prompt cache — one full
+  re-read per agent return; acceptable, not a bug.
 
 ## 2026-06-08 - Session 26: Workbook mapping Layers 1+2 (JSON dump, visual notes, memories)
 
@@ -122,37 +182,4 @@ Started by merging PR #23 (apply command). Ran Phase 4 smoke against a real `rev
 - `backupFlag` is a package-level var in `batch.go`; `apply.go` uses `applyBackup` to avoid collision
 - Two `reader.go` files: `internal/excel/reader.go` (workbook I/O) vs `internal/apply/reader.go`
   (reviewed.json parser) — always disambiguate
-
-## 2026-05-29 — Session 24: `apply` Command Phase 3 (implementation complete, PR #23)
-
-### Context
-Resumed from `.claude/handoff-apply-phase3.md` (written same day — Phases 0–2 done, Phase 3 cut short by limits). Full orientation read before coding: all key context files + advisor call (output at `.claude/advisor-apply-phase3.md`).
-
-### What Was Done
-- **Advisor review** — key findings: lazy workbook validation required (test has no workbook), model-from-prior critical for corrected+found path, no taxonomy loading needed, `insertNewRows` is entirely uncovered by the acceptance test.
-- **Ollama codegen for cmd/apply.go:**
-  - `my-go-qcoder`: 3× TIMEOUT_COLD_START (30b + 14 context files exceeded 300s window)
-  - `my-go-g3-12b`: verdict 0 — wrong package refs throughout (`review.*` instead of `apply.*`), broken decision table, early workbook validation
-  - Escalated to Claude (beyond retry budget: 3 timeouts + 1 rejected)
-- **cmd/apply.go written directly** — 287 lines, 9 functions; correct decision table, lazy workbook validation, batch excel APIs, `prior.Model` for corrected+found feedback entries, "review" sentinel only for new rows.
-- `go build + go vet` — clean; `go test ./...` — 452 tests passing.
-- `TestApply_IdempotencyAndFeedback` — PASS (4/4 assertions, 10ms).
-- **PR #23 opened** — `feat/apply-command` → `master`.
-
-### Decisions Made
-- **Lazy workbook validation** — validate/open workbook only when `len(newRows) > 0`; error clearly if workbookPath empty in that case. Required by acceptance test (no workbook path configured).
-- **`insertNewRows` is a blind spot** — zero test coverage on the insertion path; Phase 4 smoke against real `reviewed.json` is the only behavioral check.
-- **Ollama context lesson** — 30b model + 14 large context files exceeds 300s. For complex multi-function files: prefer stubs-then-Ollama or accept Claude escalation early. Also: including `review.go` as context caused g3-12b to misidentify the `apply` package as `review` — disambiguate explicitly in the prompt when package names are similar.
-
-### Post-handoff fixes (same session, second advisor review)
-- **Bug 1 (high)** — index-aliasing in `buildExpenseBatch`: looked up `targetRows[newRowsIndex]` but `AllocateEmptyRows` keys by emptyReqs position. When any row is skipped in `buildEmptyRowRequests`, indices diverge → wrong row written, valid row silently dropped. Fixed: iterate emptyReqs by position, use `req.ExpenseIndex` to get back to the original entry.
-- **Bug 2 (medium)** — `--dry-run` still wrote both JSONL logs; `writeFeedbackForNewRows` ran unconditionally. Fixed: gate behind `!dryRun`.
-- PR #23 description updated with insertion-path caveat and bug-fix notes.
-
-### Next
-- **Phase 4 smoke**: run `apply` against real `reviewed.json` from a prior review session (index bug fixed; exercises the now-correct insertion path).
-- **Review/merge PR #23**.
-- **Decide next feature**: RUI-4 (emit 3-level path into classified CSV) or 5.R1 (TF-IDF retrieval layer).
-
----
 
