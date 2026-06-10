@@ -147,28 +147,49 @@ Row 5   "Valor" repeated D..O (no fill)
       for each categoria (B merged with categoria name across its group):
          pull rows: C = subcategoria; D..O = ='<S>'!<ValorCol(k)><subcatTotalRow>
          categoria-group total row (CCCCFF): D..O = SUM(D<firstPull>:D<lastPull>)
-         "% sobre Despesas <S>" row (CCCCFF): =IF(D<grpTot>>0, D<grpTot>/D<sheetGrand>, 0)
-         "% sobre Receitas" row (CCCCFF): =IF(D<recTot>>0, D<grpTot>/D<recTot>, 0)
+         "% sobre despesas" row (CCCCFF): =IF(D<grpTot>>0, D<grpTot>/D<sheetGrand>, 0)
+         "% sobre receita" row (CCCCFF): =IF(D<recTot>>0, D<grpTot>/D<recTot>, 0)
       sheet grand-total row (C0C0C0): C = "Total despesas <s>"; D..O = SUM(group totals)
-      separator; "% sobre Receita" row (fill CCCCFF, numFmt 0.00%)
+      separator; "% sobre receita" row (fill CCCCFF, numFmt 0.00%)
 — Saldo block — A merged "Saldo" (333399); labels in col A-adjacent layout per golden master:
    Receita (=receitas total) | Investimentos (=inv total)        [C0C0C0]
-   Total Renda = SUM of the two                                   [333333]
+   Total renda = SUM of the two                                   [333333]
    4 rows: Despesas fixas/variáveis/extras/adicionais (= grand totals) [C0C0C0]
-   Total Despesas = SUM of the four                               [333333]
-   "Porcentagen da Despesa" label row [333333]; 4 percent rows (sheet/TotalDespesas) [CCCCFF, 0.00%]
-   "Porcentagen da Renda" label row [333333]; 4 percent rows (sheet/TotalRenda) [CCCCFF, 0.00%]
+   Total despesas = SUM of the four                               [333333]
+   "Porcentagem da despesa" label row [333333]; 4 percent rows (sheet/TotalDespesas) [CCCCFF, 0.00%]
+   "Porcentagem da renda" label row [333333]; 4 percent rows (sheet/TotalRenda) [CCCCFF, 0.00%]
    Saldo = TotalRenda − TotalDespesas                             [333333]
 — Dólar — single merged labelled row (333399), manual value
 ```
 
 White font (FFFFFF) on all 333399 and 333333 cells — set explicitly.
 
-⚠ **Golden-master gap:** `template-reviewed.xlsx` does NOT contain the per-group
-"% sobre Despesas <S>" / "% sobre Receitas" rows (decision 2026-06-10: they ARE required;
-the Phase-A template omitted them and the hand-review didn't re-add them). Phase A
-convergence targets the golden master as-is; the rows enter in Phase B when the golden
-master is next edited. Until then the builder has a `perGroupPctRows` switch (off).
+**Per-group percent rows — RESOLVED (2026-06-10, Phase B).** The two rows above (now labelled
+`% sobre despesas` and `% sobre receita`) are required and enter in Phase B: `perGroupPctRows`
+flips ON in the builder, and a scripted edit adds the matching rows to the convergence target
+`template-data.xlsx` (both derive from this spec rule independently, so the diff still catches
+a transcription error in either). Forward reference to the sheet grand total below is legal
+(§2). Closes §7 Q2.
+
+### 4.4 Label conventions & i18n
+
+All **generic** user-visible strings are normalized and centralized; **taxonomy-supplied**
+names (categoria, subcategoria, sheet names) keep the casing of the taxonomy input.
+
+- **Normalization (pt-BR default):** sentence case — first word capitalized, common nouns
+  lowercase; `% sobre …` labels stay fully lowercase; singular/plural unified (`receita`).
+  Examples applied: `% sobre receita` (was `% sobre Receita`); per-group `% sobre despesas`
+  (sheet-name suffix dropped — col A already shows the sheet, keeps the string reusable
+  across all four sheets); `Total renda`/`Total despesas`/`Porcentagem da despesa`/
+  `Porcentagem da renda` (was Title-cased / `Porcentagen` typo).
+- **Centralization:** a `Labels` struct holds every generic string. **Field names are English
+  semantic roles** (`PctOfExpenses`, `Investments`, `TotalIncome`); only the VALUES are
+  localized. This forces the Receita-vs-Renda distinction into the naming:
+  **Receita → Revenue** (Receitas-sheet total), **Renda → Income** (Revenue + Investments).
+- **Month names** live in `Labels` too (language-specific).
+- **i18n:** values are hardcoded now via a `newPtBRLabels()` constructor; a `loadLabels(path)`
+  config reader (per-language YAML, same family as the taxonomy file) is deferred but is a
+  drop-in replacement for the constructor — call sites unchanged.
 
 ### 4.3 Pull formula templates
 
@@ -212,13 +233,17 @@ Known golden-master self-inconsistencies (normalize toward the spec, flag in dif
     merged not filled-down; Mês spans A1:B2; freeze C3; sub-item level composed into col B;
     Listas label area 5→3 cols (months D–O), sheet-section labels in col A; percent-row fill
     CCCCFF + numFmt 0.00%; merged category labels Arial 14 bold centered.
+15. **Label normalization + i18n (Phase B):** generic labels sentence-cased, singular/plural
+    unified, sheet suffix dropped from per-group percent rows; all generic strings centralized
+    in an English-identifier `Labels` struct (pt-BR values), month names included, config
+    loader deferred. See §4.4.
 
 ## 7. Open questions
 
 1. **Headroom default 3** — Phase B pressure-tests (real blocks like Luz/Supermercado are
    much larger; per-sheet/per-subcategory override may be needed).
-2. **Per-group percent rows** — required but absent from the golden master (see §4.2 ⚠);
-   add to golden master + builder in Phase B.
+2. **Per-group percent rows** — ✅ RESOLVED (Phase B, 2026-06-10): added with normalized
+   labels `% sobre despesas` / `% sobre receita`; see §4.2.
 3. **Q-B7 (B7B7B7), for the record only:** medium-gray patch the source put on col C of
    some Variáveis total rows (16/38, Transporte onward only; never Adicionais). Moot in v2
    since col C no longer exists. If a sub-item column ever returns, prefer the "column in
