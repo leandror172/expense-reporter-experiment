@@ -11,8 +11,11 @@ and L3 + generator Phase A (session 27, branch `feat/workbook-generator`): spec 
 (`.claude/plans/workbook-generator-spec.md` — redesign: merges not fill-down, months at col C,
 no sub-item col, Referência omitted) + scratch builder converged to user-curated golden master
 (`.claude/workbook-template/`).
-Next: generator Phase B + real `generate-workbook` command —
-`.claude/plans/workbook-generator-implementation-plan.md` is the next-session brief. Then TF-IDF (5.R1).
+Phase B (data validation) IN PROGRESS — design settled + committed to spec §4.4: per-group
+`% sobre despesas`/`% sobre receita` rows added; labels normalized + centralized in an
+English-identifier `Labels` struct (pt-BR values, i18n config deferred); convergence target
+moved to `template-data.xlsx`. Build/convergence pending.
+Next: real `generate-workbook` command — `.claude/plans/workbook-generator-implementation-plan.md`. Then TF-IDF (5.R1).
 
 ## Repo Structure
 ```

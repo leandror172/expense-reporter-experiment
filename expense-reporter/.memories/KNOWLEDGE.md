@@ -112,3 +112,14 @@ sheets become projections.
 **Implication:** the scratch builder (`.claude/scratch/template-builder/`) is the reference
 implementation to port into `internal/generate`; excelize gotchas learned: SetCellFormula takes
 no leading `=`; stale-formula fix = UpdateLinkedValue() + SetCalcProps(FullCalcOnLoad).
+
+### Phase B updates (2026-06-10)
+- **Convergence target moved** `template-reviewed.xlsx` → `template-data.xlsx` (adds entries,
+  typed values) for the data/formula validation pass.
+- **Per-group percent rows resolved** (spec §7 Q2): `% sobre despesas` / `% sobre receita`
+  emit per categoria group; `perGroupPctRows` ON.
+- **Labels centralized + normalized for i18n** (spec §4.4): all generic strings live in a
+  `Labels` struct with **English field names** (`PctOfExpenses`, `Investments`, `TotalIncome`)
+  and localized pt-BR values; month names included; a `loadLabels(path)` config reader is a
+  deferred drop-in. Forces Receita→Revenue / Renda→Income naming. Carry this struct into
+  `internal/generate` when porting.

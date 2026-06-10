@@ -11,8 +11,12 @@ flags; writes `confirmed`/`corrected` instead of `manual` when prediction contex
 `auto --json` emits `classification_id` for the caller to pass back to `add`.
 Workbook-mapping done (sessions 26-27): `cmd/workbook-inspect` JSON dump -> generator spec v2
 (`.claude/plans/workbook-generator-spec.md`) + scratch builder converged to golden master.
+Phase B (data validation) IN PROGRESS — scratch builder gains entries, typed values, per-group
+percent rows, and a centralized English-identifier `Labels` struct (pt-BR values; i18n config
+loader deferred); converges against `template-data.xlsx`. Spec §4.4.
 Next: `generate-workbook` command - port `.claude/scratch/template-builder/` into
-`internal/generate` + `cmd/`, lift inspect core into `internal/inspect`, acceptance tests first;
+`internal/generate` + `cmd/` (carry the `Labels` struct over), lift inspect core into
+`internal/inspect`, acceptance tests first;
 brief: `.claude/plans/workbook-generator-implementation-plan.md`. Then TF-IDF (5.R1).
 
 ## Structure

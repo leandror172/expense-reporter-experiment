@@ -14,6 +14,14 @@ prerequisite.
 **Implication:** Anyone touching read/write column logic should consult this map first — it
 documents layout rules the old dynamic-detection code only partially encodes.
 
+> ⚠ **These are SOURCE-workbook facts. The GENERATOR is a redesign — spec v2 + Phase B
+> (`.claude/plans/workbook-generator-spec.md`) REVERSE several of them:** generator MERGES on
+> expense sheets (NOT fill-down); Receitas is unified into the data-sheet family; months start
+> at col C (no sub-item col, so no `B7B7B7`); Referência is OMITTED; category-level open-
+> allocation/total rows are dropped (headroom + Listas totals instead); labels normalized +
+> centralized (spec §4.4). Where a section below says "Generator must/fills down …", defer to
+> the spec. The structural facts (palette, separator positions, cross-sheet wiring) still hold.
+
 ## Two Sheet Families (2026-06-08)
 The 7 sheets split into two families with DIFFERENT rules:
 - **Expense-entry sheets** (Fixas, Variáveis, Extras, Adicionais, Receitas): per-month
