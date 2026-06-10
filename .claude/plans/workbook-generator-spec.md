@@ -1,313 +1,239 @@
-# Workbook Generator Spec
+# Workbook Generator Spec — v2
 
 **Goal:** spec for a Go command that generates the expense workbook from scratch, given
 (a) a taxonomy (Tipo Principal → Categoria → Sub-categoria) and (b) expense/income entries
-per subcategory. Synthesized from the Layer 1 JSON dump (`.claude/workbook-dump/`), the
-Layer 2 visual notes, and 7 per-sheet digests (`.claude/workbook-dump/digests/`).
+per subcategory.
 
-**Design stance — DERIVED LAYOUT:** row positions are *computed* from the taxonomy and entry
-counts, never copied from the source workbook. The source dump is a validation reference
-only. Where the source contains hand-maintenance drift or bugs, this spec deliberately
-deviates (see §8).
+**Provenance:** v1 was synthesized from the Layer 1 JSON dump (`.claude/workbook-dump/`),
+Layer 2 visual notes, and 7 per-sheet digests (`.claude/workbook-dump/digests/`). v2 folds in
+the user's hand-corrections to the Phase-A template (diff catalogue:
+`.claude/workbook-template/review-diff.md`; golden master:
+`.claude/workbook-template/template-reviewed.xlsx`). **Where v2 and the original workbook
+disagree, v2 wins — the generated workbook is a redesign, not a replica.**
 
-**Sheets generated (6):** Listas de itens, Receitas, Fixas, Variáveis, Extras, Adicionais.
-**Referência de Categorias is OMITTED** — its machinery (row mappings, audit formulas)
-exists to support manual insertion, which the generated workbook does not serve for now.
-If the generated workbook must later support the existing `add`/`batch` CLI resolver, add a
-slim sheet (title + header + the A/B/C taxonomy columns) — see the Referência digest §4 for
-that slim spec.
+**Design stances:**
+- **DERIVED LAYOUT:** row positions are computed from taxonomy + entry counts, never copied.
+- **MERGES, not fill-down:** v2 reversal — labels are written once and merged vertically.
+  (The source used fill-down because hand-inserting rows into merges is painful; a generated
+  workbook doesn't care.)
+- **2 label columns everywhere:** the sub-item level is eliminated; composed subcategories
+  become one string in col B (`Orion - Consultas`, dash-separated).
+
+**Sheets generated (6, tab order):** Listas de itens, Receitas, Fixas, Variáveis, Extras,
+Adicionais. **Referência de Categorias is OMITTED** (insertion-support machinery; the
+generated workbook is not an insertion target for now). If CLI `add`/`batch` compatibility
+is ever needed, add a slim taxonomy sheet — see Referência digest §4.
 
 ---
 
 ## 1. Inputs (contract)
 
 ```
-Taxonomy: ordered list of (tipoPrincipal, categoria, subcategoria [, subItem])
+Taxonomy: ordered list of (tipoPrincipal, categoria, subcategoria)
   - tipoPrincipal ∈ {Fixas, Variáveis, Extras, Adicionais} → selects the expense sheet
-  - subItem applies only on 3-label sheets (Variáveis; Adicionais reserved)
+  - subcategoria may be a composed string ("Orion - Consultas") — no separate sub-item field
 Income taxonomy: ordered list of (incomeCategoria, blockLabel) for Receitas
 Entries: per subcategory, per month: list of (item, date, value)
-Config: year, headroomRows (default 3), canonical formats (§2)
+Config: year, headroomRows (default 3)
 ```
 
-Ordering in the taxonomy input is the ordering in the workbook (categories contiguous,
-subcategories in listed order). The current taxonomy (113 subcategories: Fixas 39,
-Variáveis 34, Extras 13, Adicionais 27) is recorded in the Referência digest §2.
+Taxonomy order = workbook order (categories contiguous, subcategories in listed order).
+Current full taxonomy (113 subcategories): Referência digest §2 — sub-item splits must be
+composed into col-B strings when imported.
 
 ## 2. Workbook-wide canonical conventions
 
-These normalize the source's inconsistencies (mixed `R$ 200,00` / bare `209,80`; mixed
-`17/1` / `21/03` / `1/1/2025` dates; text-typed numbers):
-
-| Concern | Canonical rule |
+| Concern | Rule |
 |---|---|
-| Currency cells | true numeric values + number format `R$ #,##0.00` (renders `R$ 1.234,56` in pt-BR locale) |
-| Date cells | true date values + format `DD/MM` (year implied by workbook year) |
-| Fonts | Header rows (header-month, header-col): Open Sans 14pt. Everything else: Arial 10pt |
-| Total-row Data col placeholder | `–` (en dash) everywhere (source mixes `""` and `–`) |
-| SUM formulas | always range form `SUM(X<first>:X<last>)`, always over the **Valor** column (fixes source June bug, single-cell collapse) |
-| Column widths | one width per column role (see per-sheet tables); source per-column drift is NOT reproduced |
-| Row heights | header-month 18pt; all body rows 12.75pt (expense sheets), 15pt (Receitas, Listas) |
-| Merges | expense sheets: NONE (labels fill down / values repeat). Receitas + Listas: merges per §5/§6 |
+| Currency cells | numeric values + numFmt `R$ #,##0.00` |
+| Date cells | date values + numFmt `DD/MM` |
+| Fonts | header rows: Open Sans 14 bold. Merged category labels (col A): Arial 14 bold, centered both axes, wrap. Body: Arial 10. |
+| Total-row Data col placeholder | `–` (en dash) |
+| SUM formulas | always range form over the **Valor** column |
+| Labels | vertical merges (category col A across its whole section incl. total rows; subcategory col B across its block **including the total row**) |
+| "Mês" corner | merged `A1:B2` (spans both header rows), centered |
+| Freeze panes | `C3` on data sheets (both header rows + both label cols); `D4` on Listas |
+| Number formats | applied to all headroom cells too, so Phase-B data types correctly |
+| Forward references | legal and expected (percent rows reference totals below them) |
 
-## 3. Expense-sheet family (Fixas, Extras = 2-label; Variáveis, Adicionais = 3-label)
+## 3. Data-sheet family (Fixas, Variáveis, Extras, Adicionais, **and Receitas** — v2 unifies them)
 
-### 3.1 Column model (39 cols, A–AM)
+### 3.1 Column model (38 cols, A–AL)
 
-| Col | Role | Width |
+| Col | Role | Notes |
 |---|---|---|
-| A | Categoria label (filled down every row of block, **bold**) | 20.6 |
-| B | Subcategoria label (filled down, not bold) | 15.75 |
-| C | 2-label sheets: unused spacer (width 1.52). 3-label sheets: sub-item label (width 8.9) |
-| D + 3k | month k Item | 14.25 |
-| E + 3k | month k Data | 8.0 |
-| F + 3k | month k Valor | 12.13 |
+| A | Categoria (expense) / income category (Receitas) | merged vertically per section; Arial 14 bold centered wrap |
+| B | Subcategoria / income block label | merged vertically per block incl. total row |
+| C + 3k | month k Item | numFmt General |
+| D + 3k | month k Data | numFmt `DD/MM` |
+| E + 3k | month k Valor | numFmt `R$ #,##0.00` |
 
-Month → column map (k = 0..11): Janeiro D/E/F, Fevereiro G/H/I, Março J/K/L, Abril M/N/O,
-Maio P/Q/R, Junho S/T/U, Julho V/W/X, Agosto Y/Z/AA, Setembro AB/AC/AD, Outubro AE/AF/AG,
-Novembro AH/AI/AJ, Dezembro AK/AL/AM. **Valor cols: F I L O R U X AA AD AG AJ AM.**
+Month → cols (k=0..11): Janeiro C/D/E, Fevereiro F/G/H, Março I/J/K, Abril L/M/N,
+Maio O/P/Q, Junho R/S/T, Julho U/V/W, Agosto X/Y/Z, Setembro AA/AB/AC, Outubro AD/AE/AF,
+Novembro AG/AH/AI, Dezembro AJ/AK/AL. **Valor cols: E H K N Q T W Z AC AF AI AL.**
 
-**Frozen panes:** rows 1–2; cols A–B (2-label sheets) or A–C (3-label sheets).
+(v1 started months at D with col C as sub-item/spacer; v2 eliminates that column entirely.)
 
-### 3.2 Row model (parametric)
+### 3.2 Row model
 
 ```
-Row 1  header-month: fill C0C0C0 entire used width.
-       A1 = "Mês", B1 = "Mês" (repeated value, NO merge; bold). C1 empty (3-label: filled C0C0C0).
-       Month name in the Item col of each triple (D1, G1, J1, …); value NOT repeated across
-       the triple's other two cols (cells styled C0C0C0 but empty).  [see Open Q3]
-Row 2  header-col: fill D8D8D8 on D..AM; "Item"/"Data"/"Valor" repeated per month triple.
-       A2/B2/C2: no fill, empty. Full thin borders on each filled cell.
-Row 3+ per category, in taxonomy order:
-   per subcategory:
-      data rows   = entries-derived rows + headroomRows blank rows (styled as data rows)
-      total row   = 1 row (see 3.3)
-   after last subcategory of the category: 1 blank row, 1 SEPARATOR row, 1 blank row
-   (separator: no cells, row-level fill 000000, the blank+black+blank band the source
-   renders; not emitted after the final category)
+Row 1  header-month: A1:B2 merged "Mês" (bold, C0C0C0, centered).
+       Month banners merged 3-wide: C1:E1="Janeiro" … AJ1:AL1="Dezembro";
+       fill C0C0C0 + Open Sans 14 bold on the anchor cell.
+Row 2  header-col: "Item / Data / Valor" repeated per month triple, D8D8D8, centered,
+       thin borders.
+Row 3+ per category (in taxonomy order):
+   per subcategory block:
+      data rows = max-entries-per-month + headroomRows (default 3); zero entries → 3 rows
+      total row (3.3)
+      col B merged <firstData>:<totalRow> with the subcategoria label
+   col A merged across the category's entire row span (incl. total rows)
+   after the category (not after the last one): blank row, separator row (no cells,
+   row-level fill 000000 across A..AL), blank row
+Receitas delta: separators only between income CATEGORIES (none between blocks of the
+   same category, e.g. Salário | 13°).
 ```
-
-Data-row content: A=categoria (bold), B=subcategoria, C=subItem (3-label sheets, may be
-empty), then per month with entries: Item/Data/Valor in that month's triple. Entries for
-different months sit on the same rows top-aligned (the grid is per-month independent —
-row n of a block holds the n-th entry *of each month*).
-
-Block size = max over months of entry count, + headroomRows. SUM ranges cover the full
-block including headroom rows, so manual additions stay counted.
 
 ### 3.3 Total row
 
 | Cell | Content | Style |
 |---|---|---|
-| A, B (, C) | categoria / subcategoria *values* repeated (background fill: none) | C: no fill (B7B7B7 dropped — see §9 Q10) |
-| each month Item col | literal `Total` | F2F2F2 |
-| each month Data col | literal `–` | F2F2F2 |
-| each month Valor col | `=SUM(<ValorCol><firstDataRow>:<ValorCol><lastDataRow>)` | F2F2F2 |
-| all D..AM cells | fill F2F2F2, thin borders top+bottom (left on each triple's first col) |
+| A, B | covered by the vertical merges (no own value) | no fill |
+| each month Item col | `Total` | F2F2F2 |
+| each month Data col | `–` | F2F2F2 |
+| each month Valor col | `=SUM(<ValorCol><firstDataRow>:<ValorCol><lastDataRow>)` | F2F2F2, currency numFmt |
 
-### 3.4 Style fingerprints (expense sheets)
+Borders: top+bottom thin on C..AL; left on each triple's first col.
 
-| rowType | A–C fill | D+ fill | bold | borders |
-|---|---|---|---|---|
-| header-month | C0C0C0 | C0C0C0 | A/B yes | box on A; box on each triple-start col |
-| header-col | none | D8D8D8 | no | full thin borders per cell |
-| data-row | none | none | A only | top border on first row of block (D+) |
-| total-row | none | F2F2F2 | no | top+bottom on D+ |
-| separator | row-level fill 000000, no cells | | | |
+### 3.4 Style fingerprints
 
-### 3.5 What is NOT reproduced from the source
+| rowType | A–B | C+ | notes |
+|---|---|---|---|
+| header-month | C0C0C0 (merged Mês) | C0C0C0 on month anchors only (cells under a merge carry no own fill/font) | Open Sans 14 bold |
+| header-col | (covered by Mês merge) | D8D8D8, centered, thin borders | Open Sans 14 |
+| data-row | merge anchors only | none | Arial 10 |
+| total-row | (covered by merges) | F2F2F2 | Arial 10 |
+| separator | row-level fill 000000, no cells, flanked by one blank row each side |
 
-- `category-label` spacer rows (Extras 26–36, Fixas after most totals, Variáveis 104–107 /
-  235–238) — replaced by the uniform headroom + separator policy.
-- Category-level total rows (Extras rows 37, 81) — dropped; category totals live in Listas.
-- Trailing appended blocks far past the body (Extras 306+, Adicionais 398+) and 200-row
-  gaps — derived layout keeps categories contiguous in taxonomy order.
-- The 15.75pt row-height patches, manual column-width drift, June `SUM(T..)` bug,
-  single-cell `SUM(F16)` forms, fill-down gaps (Extras Mudança).
+## 4. Listas de itens (rollup — PULLS source total cells)
 
-## 4. Receitas (income; same family look, shifted grid)
+### 4.1 Geometry — v2: 15 cols (A–O)
 
-Differences from expense sheets — everything else (palette, fonts, total-row pattern,
-canonical formats) is identical:
-
-| Aspect | Receitas rule |
+| Col | Role |
 |---|---|
-| Grid | 38 cols (A–AL). Col A = income category (width 6.75), col B = item/block label (19.13), C–AL data (12.63) |
-| Month triples | start at **col C**: Janeiro C/D/E, Fevereiro F/G/H, … Dezembro AJ/AK/AL. **Valor cols: E H K N Q T W Z AC AF AI AL** |
-| Row 1 | A1:B1 **merged** = "Mês" (bold, C0C0C0); month banners **merged** 3-wide: C1:E1="Janeiro" … AJ1:AL1="Dezembro" |
-| Row 2 | Item/Data/Valor from col C; D8D8D8 |
-| Block labels | col B **merged** vertically across the block's rows (B<start>:B<total>) with the block label; col A merged or filled with the income category |
-| Total row | `Total` in each month's Item col (C, F, …), `–` in Data col, `=SUM(E<start>:E<end>)` etc. in Valor cols (all 12 months — verified) |
-| Separators | same blank + 000000 + blank band — between **income categories only**, never between blocks of the same category (e.g. no separator between Salário and 13°, both category "Receita") |
-| Frozen panes | rows 1–2, cols A–B |
-| Row heights | row 1: 17.25; body 15; total rows 15.75 |
+| A | sheet-type / section label (Receitas, Fixas, Variáveis, Extras, Adicionais, Saldo, Dólar) — merged vertically per section, 333399 fill, white text |
+| B | categoria label — merged vertically per group (e.g. B40:B41 "Saúde") |
+| C | item: subcategoria name / block label / saldo row label |
+| D–O | months Janeiro–Dezembro, one col each. numFmt `R$ #,##0.00` (percent rows: `0.00%`) |
 
-NOT reproduced: the 10 empty pre-provisioned blocks (rows 37–111) and the anomalous
-total-less band at 116–124 — derived layout provisions via headroom instead. The source's
-mixed merge usage (blocks 3–32 unmerged, 33+ merged) is normalized to: always merge col B
-across the block.
+Freeze panes `D4`. Separators on this sheet: row-level fill **333399**.
 
-## 5. Listas de itens (rollup — PULLS, never SUMs source ranges)
-
-### 5.1 Geometry
-
-17 cols (A–Q). Widths: A 0.38 (near-hidden), B 12.88, C 9.88, D 13.38, E 10.13 (spacer),
-F–Q 16.38. **Month value cols F..Q = Janeiro..Dezembro (1 col per month).**
-Frozen panes: rows 1–3, cols A–E. Separators on THIS sheet use fill **333399** (indigo),
-not black.
-
-### 5.2 Band structure (top to bottom, positions computed)
+### 4.2 Band structure (positions computed)
 
 ```
-Rows 1–2  blank
-Row 3     header-month: A3:D3 merged "Mês"; F3..Q3 = month names; C0C0C0
-Row 4     blank
-Row 5     "Valor" repeated in F..Q (no fill)
-— Receitas section —
-   pull rows: one per Receitas block; A:C merged vertically = "Receitas" (fill 333399,
-     white text); D = block label; F..Q = ='Receitas'!<ValorCol><blockTotalRow>
+Rows 1–2 blank
+Row 3   header-month: "Mês" label area; D3..O3 month names, C0C0C0
+Row 4   blank
+Row 5   "Valor" repeated D..O (no fill)
+— Receitas section — A merged "Receitas" (333399, white)
+   pull rows: C = block label; D..O = ='Receitas'!<ValorCol(k)><blockTotalRow>
    separator (333399)
-   Total row (C0C0C0): D="Total"; F..Q pull each Receitas grand total — or SUM of the pull
-     rows above (see Open Q4)
-— Investimentos section —
-   category-label row (A="Investimentos", no fill), then a manually-maintained block:
-   A:C merged 333399; rows have NO formulas (user types monthly amounts); ends with a
-   total (C0C0C0) + "% sobre Receita" row
-— Despesas block — category-label row (A="Despesas"), sub-header row (B="Categoria", D="Despesa")
-   for each source sheet S in (Fixas, Variáveis, Extras, Adicionais):
-      for each categoria in S (col C merged vertically with categoria name; A–B 333399):
-         pull rows: one per subcategory; D = subcategoria;
-            F..Q = ='<S>'!<ValorCol_k><subcatTotalRow>   (ValorCol per §3.1/§4 maps)
-         categoria-group total row (fill CCCCFF): F..Q = SUM(F<firstPull>:F<lastPull>)
-         "% sobre Despesas <S>" row (CCCCFF):  =IF(F<grpTot> >0, F<grpTot>/F<sheetGrandTotal>, 0)
-         "% sobre Receitas" row (C0C0C0):      =IF(F<receitasTotal> >0, F<grpTot>/F<receitasTotal>, 0)
-         separator (333399)
-   NOTE: <sheetGrandTotal> and <receitasTotal> are cells BELOW/ABOVE these rows — forward
-   references are legal in Excel and expected here; the generator knows all positions before
-   writing formulas, so emit them in one pass. The "% sobre Receitas" formula above is the
-   direct algebraic form of the source's chained `=F<pctRow>*F<receitasPctRow>` — same value,
-   no dependency on other percent cells. Both per-group percent rows ARE required (decision
-   2026-06-09; the Phase-A template predates this and omits them — see ambiguities.md A2/C1).
-      sheet grand-total row (C0C0C0): C = "Total despesas <s>";
-         F..Q = SUM(<each CCCCFF group-total cell for S>)
-      separator; "% sobre Receita" row: =IF(F<grand> >0, F<grand>/F<receitasTotal>, 0)
-— Saldo block (bottom) —
-   micro-gap row (height 3.75)
-   A:C merged "Saldo" (333399) spanning the block
-   C0C0C0 sub-label rows + 333333 (near-black) aggregate rows:
-      Receita            = <receitasTotalCell>
-      Investimentos      = <investimentosTotalCell>
-      Total Renda        = SUM(the two above)            [333333]
-      Despesas fixas/variáveis/extras/adicionais = the 4 grand-total cells   [C0C0C0]
-      Total Despesas     = SUM(the four above)           [333333]
-      Porcentagen da Despesa  (label-only row)           [333333]
-      4 rows: each sheet total / Total Despesas          [C0C0C0]
-      Porcentagen da Renda = Total Despesas / Total Renda [333333]
-      4 rows: each sheet total / Total Renda             [C0C0C0]
-      Saldo = Total Renda − Total Despesas               [333333]
-   "Dólar" row: A:C merged "Dólar" (333399); manual value
+   Total row (C0C0C0): C="Total"; D..O = SUM of the pull rows above
+— Investimentos — label row + one manual-entry shell row + Total (=manual row) +
+   "% sobre Receita" (=IF(receitasTot>0, invTot/receitasTot, 0)), numFmt 0.00%
+— Despesas — label row; sub-header row
+   for each source sheet S (Fixas, Variáveis, Extras, Adicionais):
+      A merged with S's name across the section (333399, white)
+      for each categoria (B merged with categoria name across its group):
+         pull rows: C = subcategoria; D..O = ='<S>'!<ValorCol(k)><subcatTotalRow>
+         categoria-group total row (CCCCFF): D..O = SUM(D<firstPull>:D<lastPull>)
+         "% sobre Despesas <S>" row (CCCCFF): =IF(D<grpTot>>0, D<grpTot>/D<sheetGrand>, 0)
+         "% sobre Receitas" row (CCCCFF): =IF(D<recTot>>0, D<grpTot>/D<recTot>, 0)
+      sheet grand-total row (C0C0C0): C = "Total despesas <s>"; D..O = SUM(group totals)
+      separator; "% sobre Receita" row (fill CCCCFF, numFmt 0.00%)
+— Saldo block — A merged "Saldo" (333399); labels in col A-adjacent layout per golden master:
+   Receita (=receitas total) | Investimentos (=inv total)        [C0C0C0]
+   Total Renda = SUM of the two                                   [333333]
+   4 rows: Despesas fixas/variáveis/extras/adicionais (= grand totals) [C0C0C0]
+   Total Despesas = SUM of the four                               [333333]
+   "Porcentagen da Despesa" label row [333333]; 4 percent rows (sheet/TotalDespesas) [CCCCFF, 0.00%]
+   "Porcentagen da Renda" label row [333333]; 4 percent rows (sheet/TotalRenda) [CCCCFF, 0.00%]
+   Saldo = TotalRenda − TotalDespesas                             [333333]
+— Dólar — single merged labelled row (333399), manual value
 ```
 
-All A–C cells on body and saldo rows carry 333399 (white text). The generator computes
-every referenced row number during layout (it owns all positions on all sheets — this
-replaces Referência's role).
+White font (FFFFFF) on all 333399 and 333333 cells — set explicitly.
 
-Source anomalies normalized: row 277 mislabel ("Total despesas extras" in the Adicionais
-block) → correct label; row 300's missing A–C cells → emit them.
+⚠ **Golden-master gap:** `template-reviewed.xlsx` does NOT contain the per-group
+"% sobre Despesas <S>" / "% sobre Receitas" rows (decision 2026-06-10: they ARE required;
+the Phase-A template omitted them and the hand-review didn't re-add them). Phase A
+convergence targets the golden master as-is; the rows enter in Phase B when the golden
+master is next edited. Until then the builder has a `perGroupPctRows` switch (off).
 
-## 6. Cross-sheet wiring summary
-
-Only Listas references other sheets. Pull formula template:
+### 4.3 Pull formula templates
 
 ```
-Listas!<F+k> = ='<SourceSheet>'!<ValorCol(S,k)><totalRow>     k = 0..11 (month index)
-ValorCol(expense sheet, k) = col F + 3k   (F, I, L, … AM)
-ValorCol(Receitas, k)      = col E + 3k   (E, H, K, … AL)
+Listas!<D+k> = ='<SourceSheet>'!<ValorCol(k)><totalRow>      k = 0..11
+ValorCol(any data sheet, k) = col E + 3k    (E, H, K, … AL)  — v2: uniform, Receitas included
 ```
 
-`totalRow` = the subcategory's (or Receitas block's) total row, computed during generation.
-Quote sheet names containing spaces/accents (`'Listas de itens'!`, `Variáveis!` — excelize
-handles quoting; always emit quoted form for safety). Set `FullCalcOnLoad` +
-`UpdateLinkedValue()` before save (established fix — LibreOffice/Sheets stale-value issue).
+`totalRow` computed during generation. Always emit quoted sheet names. Set
+`UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)` before save (excelize ≥2.8;
+LibreOffice/Sheets stale-cache fix). excelize `SetCellFormula` takes the formula WITHOUT
+the leading `=`.
 
-## 7. Validation plan (summary — detail in the phase plan)
+## 5. Validation
 
-Hand-built template workbook (partial taxonomy, then partial data) is the golden master.
-Compare via `workbook-inspect` structural dumps of template vs generated output
-(normalized diff). Phase A: structure only, no entries. Phase B: with entries (totals,
-pulls live). Candidate acceptance tests: deterministic, fixture-safe (fake data).
+Golden master: `.claude/workbook-template/template-reviewed.xlsx` (user-curated).
+Convergence = `workbook-inspect` dump of generated output diffs empty against the golden
+master's dump, plus an openpyxl-level pass for what inspect doesn't capture (font
+name/size/color, italics, numFmt, alignment, freeze panes). Phase B repeats with data.
+Known golden-master self-inconsistencies (normalize toward the spec, flag in diff report):
+- Receitas 13° col-B merge excludes its total row (B7:B9, total 10) while Salário/Fixas
+  merges include it → spec rule: include.
 
-## 8. Deliberate deviations from the source workbook
+## 6. Deliberate deviations from the source workbook
 
-So template diffs aren't mistaken for generator errors:
+1. June Valor totals summed col T (Data) — fixed to the Valor column.
+2. Single-cell `SUM(F16)` collapse (Adicionais all months; Extras Jan/Feb/Nov/Dec) — range form.
+3. Inconsistent fill-down — superseded: v2 uses merges.
+4. `""` vs `–` total-row placeholders — always `–`.
+5. Category-label spacer rows + category-level total rows — dropped (headroom + Listas totals).
+6. Trailing appended blocks / 200-row gaps / category regressions — contiguous taxonomy order.
+7. Text-typed numbers & dates — typed values + single numFmt (§2).
+8. Column width / row height drift — canonical per role.
+9. Receitas pre-provisioned empty blocks & inconsistent merging — headroom + always-merge.
+10. Listas row-277 mislabel, row-300 missing cells — corrected.
+11. Referência sheet — omitted.
+12. B7B7B7 col-C patch — **moot in v2** (no col C); analysis preserved in §7 Q-B7 for the
+    record.
+13. Receitas separators — between income categories only.
+14. **v2 redesigns (hand-review):** months start col C (no spacer/sub-item col); labels
+    merged not filled-down; Mês spans A1:B2; freeze C3; sub-item level composed into col B;
+    Listas label area 5→3 cols (months D–O), sheet-section labels in col A; percent-row fill
+    CCCCFF + numFmt 0.00%; merged category labels Arial 14 bold centered.
 
-1. June Valor totals: source sums col T (Data) — **fixed** to col U (systematic on all 28
-   Adicionais totals; Fixas row 12; Extras row 47).
-2. Single-cell `SUM(F16)` totals (all Adicionais months; Extras Jan/Feb/Nov/Dec) — **range
-   form** everywhere. NOTE: Adicionais source single-cell SUMs reference only the LAST data
-   row, so its rendered totals are wrong in the source.
-3. Inconsistent fill-down (Extras Mudança col A blank) — **always fill down**.
-4. `""` vs `–` in total-row Data cols — **always `–`**.
-5. Category-label spacer rows + category-level total rows — **dropped** (headroom +
-   Listas totals replace them).
-6. Trailing appended blocks / 200-row gaps / category regressions — **contiguous taxonomy
-   order**.
-7. Text-typed numbers & dates, mixed display formats — **typed values + one numFmt** (§2).
-8. Column width / row height drift — **canonical per role**.
-9. Receitas pre-provisioned empty blocks & inconsistent col-B merging — **headroom policy +
-   always-merge**.
-10. Listas row-277 mislabel, row-300 missing cells — **corrected**.
-11. Referência sheet — **omitted entirely**.
-12. B7B7B7 col-C patch on total rows — **dropped entirely** (decision 2026-06-09, provisional;
-    full analysis in §9 Q10). Source applied it only on Variáveis, only from Transporte onward —
-    style drift, not a rule.
-13. Receitas separators — **between income categories only** (source/template drift put one
-    between same-category blocks).
+## 7. Open questions
 
-## 9. Open questions
+1. **Headroom default 3** — Phase B pressure-tests (real blocks like Luz/Supermercado are
+   much larger; per-sheet/per-subcategory override may be needed).
+2. **Per-group percent rows** — required but absent from the golden master (see §4.2 ⚠);
+   add to golden master + builder in Phase B.
+3. **Q-B7 (B7B7B7), for the record only:** medium-gray patch the source put on col C of
+   some Variáveis total rows (16/38, Transporte onward only; never Adicionais). Moot in v2
+   since col C no longer exists. If a sub-item column ever returns, prefer the "column in
+   use" rule (apply only on sheets where ≥1 subcategory has a sub-item).
+4. **Merged headroom tails** (blank rows inside B merges) — accepted in golden master;
+   re-check render with data in Phase B.
+5. **Dólar row semantics** — manual currency-rate cell; confirm placement/format when data
+   phase touches the saldo block.
 
-1. **Headroom interaction with merges (Receitas):** col B merge must span headroom rows
-   too — confirm rendering acceptable with blank merged tail.
-2. **Variáveis sub-item granularity:** in the source, sub-items split a subcategory into
-   multiple blocks (Orion→Consultas/Ração). Does the entries datastore carry sub-item?
-   If not, 3-label sheets degenerate to 2-label + B7B7B7 on every total row col C.
-3. **Month banner cell repetition:** dump shows month name only in the triple's first col
-   on expense sheets (other two cells styled-but-empty); Fixas digest noted "value repeated
-   across all 3 cols". Decide: write name in first col only (recommended) — verify against
-   template render.
-4. **Listas Receitas-section total:** source pulls `Receitas!E21` (a block total) for the
-   section Total row — verify whether a Receitas *grand* total exists or whether the Listas
-   row should SUM its own pull rows (recommended: SUM of pull rows, self-contained).
-5. **Investimentos & Dólar:** manual sections with no backing data — generate as empty
-   styled shells? (Recommended: yes, structure only.)
-6. **White font on 333399/333333 cells:** visual-notes fact; dump doesn't carry font color.
-   Generator must set font color explicitly — confirm exact white vs off-white in template.
-7. **Italic subtitle / any other un-dumped styles:** the dump omits italics and font color;
-   the template build is the catch-all for these (diff by eye once).
-8. **Headroom default:** 3 rows assumed — confirm, and whether per-sheet overrides needed
-   (e.g. Variáveis Supermercado/Luz blocks are much larger than typical).
-9a. **Q10 — B7B7B7 col-C patch on total rows: REVIEW LATER (currently dropped, deviation #12).**
-   Background for the future review: B7B7B7 is a medium-gray patch on col C of total rows whose
-   visual job is to "close" the F2F2F2 total band into the frozen label area when col C carries
-   no sub-item label. Source behavior is drift, not a rule: on Variáveis it appears only from
-   Transporte onward (16/38 total rows — Alimentação totals like Gás/Supermercado have empty
-   col C but NO patch); on Adicionais (also 3-label, col C never populated) it appears nowhere.
-   Options considered 2026-06-09:
-   (1) Uniform rule — any 3-label sheet total row with empty sub-item → B7B7B7. Consistent, but
-       gives Adicionais all-gray totals, a look the source never had. (Phase-A template shipped
-       this; render reviewed and rejected for now.)
-   (2) "Column in use" rule — apply only on sheets where ≥1 subcategory has a sub-item
-       (Variáveis yes, Adicionais no; auto-adopts if Adicionais gains sub-items). Closest to
-       source intent; backfills Alimentação totals the author never painted.
-   (3) Drop entirely — total rows keep a white A–C gap. **← current decision (provisional).**
-   Revisit after Phase B render comparison; if reinstated, prefer option (2).
-10. **D9E1F2 render discrepancy:** moot (Referência omitted) — recorded here for history;
-   resolve only if the slim Referência sheet is ever added with alternating fills.
+## 8. Source references
 
-## 10. Source references
-
-- Digests (per sheet detail, exemplar rows): `.claude/workbook-dump/digests/*.md`
-- Raw dumps (gitignored): `.claude/workbook-dump/*.json`
-- Visual notes (gitignored): `.claude/workbook-visual-notes.md`
+- Golden master: `.claude/workbook-template/template-reviewed.xlsx` (untracked, fake data)
+- Hand-review diff catalogue: `.claude/workbook-template/review-diff.md`
+- Phase-A build ambiguities: `.claude/workbook-template/ambiguities.md`
+- Builder: `.claude/scratch/template-builder/` (standalone Go module)
+- Per-sheet source digests: `.claude/workbook-dump/digests/*.md` (gitignored)
+- Raw source dumps / visual notes: `.claude/workbook-dump/`, `.claude/workbook-visual-notes.md` (gitignored)
 - Taxonomy (113 triples): Referência digest §2
-- Layer 3 brief: `.claude/plans/workbook-layer3-instructions.md`
