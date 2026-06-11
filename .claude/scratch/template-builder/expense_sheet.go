@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -25,10 +26,8 @@ func buildExpenseSheet(f *excelize.File, st *styleSet, sh ExpenseSheet, reg *lay
 		ct := catTotals{Categoria: cat.Name}
 		catFirst := row
 		for _, sub := range cat.Subs {
-			firstData := row
-			lastData := row + headroomRows - 1
-			totalRow := lastData + 1
-			writeSubcatBlock(f, st, name, sub.Name, firstData, lastData, totalRow)
+			firstData, lastData, totalRow := calculateSubcatBlockRows(row, sub)
+			writeSubcatBlock(f, st, name, sub, firstData, lastData, totalRow)
 			ct.Subs = append(ct.Subs, subcatTotal{
 				Sheet: name, Categoria: cat.Name, Subcat: sub.Name, TotalRow: totalRow,
 			})
@@ -86,7 +85,16 @@ func writeMonthHeader(f *excelize.File, st *styleSet, name string) {
 
 // writeSubcatBlock writes one subcategory: its data rows (styled, numfmt-ready), its merged
 // col-B label across data+total rows, and its total row.
-func writeSubcatBlock(f *excelize.File, st *styleSet, name, subLabel string, firstData, lastData, totalRow int) {
+func writeSubcatBlock(f *excelize.File, st *styleSet, name string, sub Subcat, firstData, lastData, totalRow int) {
+	writeSubcatDataRows(f, st, name, sub, firstData, lastData)
+	writeTotalRow(f, st, name, firstData, lastData, totalRow)
+	// col B merged across data rows + total row (incl. total per spec §2).
+	f.MergeCell(name, cell("B", firstData), cell("B", totalRow))
+	f.SetCellValue(name, cell("B", firstData), sub.Name)
+	f.SetCellStyle(name, cell("B", firstData), cell("B", totalRow), st.SubcatLabel)
+}
+
+func writeSubcatDataRows(f *excelize.File, st *styleSet, name string, sub Subcat, firstData, lastData int) {
 	for r := firstData; r <= lastData; r++ {
 		f.SetRowHeight(name, r, 12.75)
 		style := st.DataCellArial
@@ -100,11 +108,28 @@ func writeSubcatBlock(f *excelize.File, st *styleSet, name, subLabel string, fir
 			f.SetCellStyle(name, cell(valorCol, r), cell(valorCol, r), st.Currency)
 		}
 	}
-	writeTotalRow(f, st, name, firstData, lastData, totalRow)
-	// col B merged across data rows + total row (incl. total per spec §2).
-	f.MergeCell(name, cell("B", firstData), cell("B", totalRow))
-	f.SetCellValue(name, cell("B", firstData), subLabel)
-	f.SetCellStyle(name, cell("B", firstData), cell("B", totalRow), st.SubcatLabel)
+
+	for k := 0; k < 12; k++ {
+		itemCol, dataCol, valorCol := expenseMonthCols(k)
+		for i, entry := range sub.Months[k] {
+			row := firstData + i
+			f.SetCellValue(name, cell(itemCol, row), entry.Item)
+			dateValue := time.Date(dataYear, time.Month(k+1), entry.Day, 0, 0, 0, 0, time.UTC)
+			f.SetCellValue(name, cell(dataCol, row), dateValue)
+			f.SetCellValue(name, cell(valorCol, row), entry.Value)
+		}
+	}
+}
+
+func calculateSubcatBlockRows(row int, sub Subcat) (firstData, lastData, totalRow int) {
+	maxEntries := sub.MaxEntries()
+	if maxEntries == 0 {
+		maxEntries = 1
+	}
+	firstData = row
+	lastData = firstData + maxEntries + headroomRows - 1
+	totalRow = lastData + 1
+	return firstData, lastData, totalRow
 }
 
 func mergeCategoriaLabel(f *excelize.File, st *styleSet, name, label string, first, last int) {

@@ -34,7 +34,8 @@ Taxonomy: ordered list of (tipoPrincipal, categoria, subcategoria)
   - subcategoria may be a composed string ("Orion - Consultas") — no separate sub-item field
 Income taxonomy: ordered list of (incomeCategoria, blockLabel) for Receitas
 Entries: per subcategory, per month: list of (item, date, value)
-Config: year, headroomRows (default 3)
+Config: year, headroomRows (default 0 — see §3.2 / §7 Q1; the workbook is regenerated from
+the database, never inserted into, so spare rows are optional manual-entry convenience)
 ```
 
 Taxonomy order = workbook order (categories contiguous, subcategories in listed order).
@@ -84,7 +85,8 @@ Row 2  header-col: "Item / Data / Valor" repeated per month triple, D8D8D8, cent
        thin borders.
 Row 3+ per category (in taxonomy order):
    per subcategory block:
-      data rows = max-entries-per-month + headroomRows (default 3); zero entries → 3 rows
+      data rows = max-entries-per-month + headroomRows (default 0); the row count is set by
+         the BUSIEST month for that subcategory; zero-entry subcategory → 1 row (edge, settle in G2)
       total row (3.3)
       col B merged <firstData>:<totalRow> with the subcategoria label
    col A merged across the category's entire row span (incl. total rows)
@@ -240,8 +242,13 @@ Known golden-master self-inconsistencies (normalize toward the spec, flag in dif
 
 ## 7. Open questions
 
-1. **Headroom default 3** — Phase B pressure-tests (real blocks like Luz/Supermercado are
-   much larger; per-sheet/per-subcategory override may be needed).
+1. **Headroom — RESOLVED (2026-06-10):** block rows = **max-entries-per-month** (the busiest
+   month sets the count); `headroomRows` default **0**. Rationale: the workbook is regenerated
+   from the database on every change ("add expense → DB; generate → file"), so it is never an
+   insertion target and spare rows are optional. ⚠ `template-data.xlsx` was hand-filled to
+   fixed-3 blocks (a Phase-A template artifact) and therefore does NOT honor this rule for
+   sub-3-entry blocks — Phase B regenerates a corrected golden master rather than diffing
+   template-data to zero. Zero-entry subcategory handling deferred to G2.
 2. **Per-group percent rows** — ✅ RESOLVED (Phase B, 2026-06-10): added with normalized
    labels `% sobre despesas` / `% sobre receita`; see §4.2.
 3. **Q-B7 (B7B7B7), for the record only:** medium-gray patch the source put on col C of

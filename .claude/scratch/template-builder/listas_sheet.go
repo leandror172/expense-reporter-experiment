@@ -41,6 +41,7 @@ type listasBuilder struct {
 	receitasTotalRow int            // Listas row of the Receitas-section grand total
 	investTotalRow   int            // Listas row of Investimentos total
 	sheetGrandRow    map[string]int // expense sheet -> Listas row of its grand-total
+	saldoSepRow      int            // row of the thin 3.75 separator before the saldo block
 }
 
 func buildListas(f *excelize.File, st *styleSet, reg *layoutRegistry) error {
@@ -67,9 +68,9 @@ func (b *listasBuilder) setWidths() {
 }
 
 func (b *listasBuilder) setHeights() {
-	for r := 1; r <= 79; r++ {
+	for r := 1; r <= b.row; r++ {
 		switch {
-		case r == 60:
+		case r == b.saldoSepRow:
 			b.f.SetRowHeight(listasName, r, 3.75)
 		case r <= 20:
 			b.f.SetRowHeight(listasName, r, 15)
@@ -194,6 +195,7 @@ func (b *listasBuilder) despesaSection(sName string) {
 		return
 	}
 	sectionFirst := b.row
+	plannedGrand := plannedGrandTotalRow(sectionFirst, layout.Cats)
 	var groupTotalRows []int
 
 	for _, ct := range layout.Cats {
@@ -228,7 +230,7 @@ func (b *listasBuilder) despesaSection(sName string) {
 		b.row++
 
 		if perGroupPctRows {
-			b.row++ // placeholder; not emitted in Phase A
+			b.emitGroupPctRows(b.row-1, plannedGrand)
 		}
 	}
 
@@ -265,9 +267,49 @@ func (b *listasBuilder) despesaSection(sName string) {
 	b.row += 2 // % row consumed; skip blank to next section
 }
 
-// saldoBlock: bottom aggregate block (rows 61..79), labels in col A.
+// plannedGrandTotalRow returns the row where a despesa section's grand total will
+// land, given the section's first row. Each categoria consumes its pull rows + 1
+// group-total row + (when enabled) 2 per-group percent rows. The per-group
+// "% sobre despesas" formula references the grand total, which is written after the
+// loop — so its row must be known in advance.
+func plannedGrandTotalRow(sectionFirst int, cats []catTotals) int {
+	row := sectionFirst
+	for _, ct := range cats {
+		row += len(ct.Subs) + 1
+		if perGroupPctRows {
+			row += 2
+		}
+	}
+	return row
+}
+
+// emitGroupPctRows writes a categoria's two percent rows beneath its group total:
+// its share of total expenses (group / sheet grand total) and of revenue
+// (group / receitas total).
+func (b *listasBuilder) emitGroupPctRows(grpRow, grandRow int) {
+	b.groupPctRow("% sobre despesas", grpRow, grandRow)
+	b.groupPctRow("% sobre receita", grpRow, b.receitasTotalRow)
+}
+
+// groupPctRow writes one CCCCFF percent row: label in col B (B:C label style),
+// D..O = IF(denom>0, group/denom, 0) per month.
+func (b *listasBuilder) groupPctRow(label string, grpRow, denomRow int) {
+	f, st := b.f, b.st
+	f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.GroupTotalLbl)
+	f.SetCellValue(listasName, cell("B", b.row), label)
+	b.monthFormulas(b.row, st.GroupTotalPct, func(k int) string {
+		c := listasMonthCol(k)
+		return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, denomRow), cell(c, grpRow), cell(c, denomRow))
+	})
+	b.row++
+}
+
+// saldoBlock: bottom aggregate block, labels in col A. Starts at the current row
+// (dynamic — per-group percent rows push it down) behind a thin separator.
 func (b *listasBuilder) saldoBlock() {
-	b.row = 61
+	b.saldoSepRow = b.row
+	b.f.SetRowHeight(listasName, b.saldoSepRow, 3.75)
+	b.row++
 	order := []string{"Fixas", "Variáveis", "Extras", "Adicionais"}
 	rt, st := b.reg, b.st
 
