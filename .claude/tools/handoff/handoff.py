@@ -1,133 +1,167 @@
-# handoff.py
-"""
-CLI entrypoint for session-handoff pipeline.
-"""
+# handoff.py — session-handoff CLI
+# Two paths:
+#   --payload <file>  → stage: validate + ingest + in-memory apply + emit JSON (dir stays -pending)
+#   --id <handle>     → promote: find pending run + commit + rename dir + emit JSON
 
 import argparse
+import datetime
+import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, List, Any
+from typing import List, Optional
 
 from payload import parse, validate, PayloadError
 from registry_io import load_register, RegistryError
-from orchestrator import run_handoff
+from orchestrator import run_handoff, stage_and_apply
+from runlog import (
+    create_run_dir, find_pending_run, promote_run_dir,
+    mark_run_failed, count_runs_by_status, peek_session_number,
+    write_input, write_report, RunReport, RunNotFoundError,
+)
 from gitio import SubprocessGit
 
 
-def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def _parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Session handoff CLI")
-    parser.add_argument("--payload", required=True, help="Path to payload markdown file")
-    parser.add_argument(
-        "--repo-root",
-        default=None,
-        help="Repository root directory; defaults to git root or current working directory"
-    )
-    parser.add_argument(
-        "--registry",
-        default=None,
-        help="Path to registry.yaml; defaults to <repo_root>/.claude/handoff/registry.yaml"
-    )
-    parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--payload", type=str, help="Path to payload file (stage)")
+    group.add_argument("--id", type=str, help="Handle of pending run (promote)")
+    parser.add_argument("--repo-root", type=str, default=None)
+    parser.add_argument("--registry", type=str, default=None)
     return parser.parse_args(argv)
 
 
 def _default_repo_root() -> Path:
     try:
-        repo_root = Path(
-            subprocess.run(["git", "rev-parse", "--show-toplevel"],
-                          capture_output=True, text=True, check=True).stdout.strip()
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True,
         )
-        return repo_root
+        return Path(result.stdout.strip())
     except (subprocess.CalledProcessError, FileNotFoundError):
         return Path.cwd()
 
 
-def _resolve_registry(args: argparse.Namespace, repo_root: Path) -> Path:
+def _resolve_registry(args, repo_root: Path) -> Path:
     if args.registry:
         return Path(args.registry)
-    registry_path = repo_root / ".claude/handoff/registry.yaml"
-    return registry_path
+    return repo_root / ".claude/handoff/registry.yaml"
 
 
-def print_summary(report: Any, git: SubprocessGit, dry_run: bool) -> None:
-    status_line = ""
-    if report.committed:
-        status_line = f"committed (session {report.session_number})"
-    elif dry_run and report.verify_ok:
-        status_line = f"dry-run OK (session {report.session_number}): validated, not written"
-    elif dry_run:
-        status_line = f"dry-run FAILED (session {report.session_number}): {report.reason}"
-    else:
-        status_line = f"rolled back: {report.reason}"
-    
-    print(status_line)
-    print("verify: ok" if report.verify_ok else "verify: FAILED")
-    
-    if report.edits:
-        print("regions touched:")
-        for edit in report.edits:
-            print(f"  - {edit.role} ({edit.mode})")
-    
-    try:
-        status = git.status_short()
-        if status.strip():
-            print(f"warning: uncommitted changes outside tracking files:\n{status}")
-    except Exception:
-        pass  # status check is best-effort; never block the summary on it
+def _handle_from_run_dir(run_dir: Path) -> str:
+    for suffix in ("-pending", "-success", "-failed"):
+        if run_dir.name.endswith(suffix):
+            return run_dir.name[:-len(suffix)]
+    raise ValueError(f"run dir has no recognised suffix: {run_dir.name}")
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    args = _parse_args(argv)
-    
+def _build_result(handle: str, status: str, report, run_dir: Path, run_counts: dict) -> dict:
+    return {
+        "handle": handle,
+        "status": status,
+        "run_dir": str(run_dir),
+        "session_number": report.session_number if report else None,
+        "regions": [e.role for e in report.edits] if report and report.edits else [],
+        "report_path": str(run_dir / "report.md"),
+        "reason": report.reason if report else "",
+        "run_counts": run_counts,
+    }
+
+
+def _stage_path(args, repo_root: Path, register: dict, git) -> int:
+    """--payload path: validate → ingest → in-memory apply → write report → emit JSON.
+
+    The run dir is created with status="pending" and stays -pending after this call.
+    No commit happens here. The --id path commits later.
+    """
     payload_path = Path(args.payload)
-    if not payload_path.exists():
-        print(f"error: payload file {payload_path} does not exist", file=sys.stderr)
-        return 1
-    
+
+    # 1. Parse + validate — failure leaves file at well-known path
     try:
-        payload_text = payload_path.read_text()
-        payload = parse(payload_text)
+        payload = parse(payload_path.read_text())
     except PayloadError as e:
-        print(f"error: cannot parse payload: {e}", file=sys.stderr)
+        print(json.dumps({"status": "validation_failed", "reason": str(e)}))
         return 2
-    
-    registry_path = _resolve_registry(args, repo_root=Path(args.repo_root or _default_repo_root()))
-    
+
+    errors = validate(payload, register)
+    if errors:
+        print(json.dumps({"status": "validation_failed", "reason": "; ".join(errors)}))
+        return 2
+
+    # 2. Ingest: create run dir, move file off well-known path (rename-on-ingest)
+    session_number = peek_session_number(repo_root, register["header-current-session"]["file"])
+    run_dir = create_run_dir(repo_root, session_number, status="pending")
+    shutil.move(str(payload_path), str(run_dir / "input.md"))
+
+    # 3. In-memory apply; on failure mark run dir as failed
+    try:
+        _, region_edits = stage_and_apply(repo_root, register, payload, clock=datetime.datetime.now)
+        report = RunReport(session_number, False, False, "", True, region_edits)
+        write_report(run_dir, report)
+    except Exception as e:
+        run_dir = mark_run_failed(run_dir)
+        print(json.dumps({"status": "stage_failed", "reason": str(e)}))
+        return 1
+
+    run_counts = count_runs_by_status(repo_root)
+    print(json.dumps(_build_result(_handle_from_run_dir(run_dir), "stage_ok", report, run_dir, run_counts)))
+    return 0
+
+
+def _promote_path(args, repo_root: Path, register: dict, git) -> int:
+    """--id path: find -pending run → idempotency check → run_handoff → promote/fail → emit JSON."""
+    handle = args.id
+
+    # 1. Find pending run dir
+    try:
+        run_dir = find_pending_run(repo_root, handle)
+    except RunNotFoundError as e:
+        print(json.dumps({"status": "error", "reason": str(e)}))
+        return 1
+
+    # 2. Parse payload; check idempotency by title, not session number — after the first
+    #    commit the header is updated so peek_session_number would return N+1, causing a miss.
+    payload = parse((run_dir / "input.md").read_text())
+    commit_suffix = f" — {payload.session_title}"
+
+    # 3. Idempotency: commit already in log → promote without re-committing (crash recovery)
+    if any(m.startswith("chore(session-handoff): session ") and m.endswith(commit_suffix)
+           for m in git.log_messages(5)):
+        success_dir = promote_run_dir(run_dir)
+        run_counts = count_runs_by_status(repo_root)
+        print(json.dumps(_build_result(handle, "committed", None, success_dir, run_counts)))
+        return 0
+
+    # 4. Full commit path
+    report = run_handoff(repo_root, register, payload, git=git, run_dir=run_dir)
+
+    if report.committed:
+        final_dir = promote_run_dir(run_dir)
+        status = "committed"
+    else:
+        final_dir = mark_run_failed(run_dir)
+        status = "failed"
+
+    run_counts = count_runs_by_status(repo_root)
+    print(json.dumps(_build_result(handle, status, report, final_dir, run_counts)))
+    return 0 if status == "committed" else 1
+
+
+def main(argv=None) -> int:
+    args = _parse_args(argv)
+    repo_root = Path(args.repo_root or _default_repo_root())
+    registry_path = _resolve_registry(args, repo_root)
     try:
         register = load_register(registry_path)
     except RegistryError as e:
-        print(f"error: {e}", file=sys.stderr)
+        print(json.dumps({"status": "error", "reason": str(e)}))
         return 2
-    
-    errors = validate(payload, register)
-    if errors:
-        print("validation failed:", file=sys.stderr)
-        for error in errors:
-            print(f"  - {error}", file=sys.stderr)
-        return 2
-    
-    repo_root = Path(args.repo_root or _default_repo_root())
     git = SubprocessGit(repo_root)
-    
-    try:
-        report = run_handoff(
-            repo_root=repo_root,
-            register=register,
-            payload=payload,
-            git=git,
-            dry_run=args.dry_run
-        )
-    except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
-    
-    print_summary(report, git, args.dry_run)
-    
-    if report.committed or (args.dry_run and report.verify_ok):
-        return 0
-    else:
-        return 1
+    if args.payload:
+        return _stage_path(args, repo_root, register, git)
+    return _promote_path(args, repo_root, register, git)
 
 
 if __name__ == "__main__":

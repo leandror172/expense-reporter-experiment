@@ -40,3 +40,8 @@ class SubprocessGit:
 
     def status_short(self) -> str:
         return self._run(["status", "--porcelain"]).stdout
+
+    def log_messages(self, n: int = 5) -> List[str]:
+        """Return the subject lines of the last n commits."""
+        result = self._run(["log", f"--format=%s", f"-{n}"])
+        return result.stdout.strip().splitlines()

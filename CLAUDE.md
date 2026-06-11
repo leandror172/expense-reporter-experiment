@@ -34,12 +34,17 @@ archive navigation. Do not use `ref:KEY` for content that is only occasionally n
 The full indexing convention (examples, block format, § pointer usage) is documented in
 `.claude/index.md` under the "Indexing Conventions" section.
 <!-- /overlay:ref-indexing -->
-<!-- overlay:session-tracking v2 -->
+<!-- overlay:session-tracking v4 -->
 ## Resuming Multi-Session Work
 
 **On session start:** run `.claude/tools/resume.sh` — outputs current status, next task, key files, active decisions, and recent commits in ~80-100 lines.
 For deeper context: `ref-lookup.sh current-status` | `ref-lookup.sh active-decisions` | `ref-lookup.sh quick-pointers` | `ref-lookup.sh user-prefs`
 **Knowledge index:** `.claude/index.md` maps every topic to its file location. [ref:resume-steps]
+
+## Workflow Rules (HARD REQUIREMENTS)
+
+1. **DO NOT proceed to the next phase automatically** — Always wait for explicit user permission
+2. **Step-by-step configuration** — Build config files incrementally, explaining each setting
 <!-- /overlay:session-tracking -->
 ## Project Identity
 
