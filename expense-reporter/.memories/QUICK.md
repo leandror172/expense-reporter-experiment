@@ -11,9 +11,11 @@ flags; writes `confirmed`/`corrected` instead of `manual` when prediction contex
 `auto --json` emits `classification_id` for the caller to pass back to `add`.
 Workbook-mapping done (sessions 26-27): `cmd/workbook-inspect` JSON dump -> generator spec v2
 (`.claude/plans/workbook-generator-spec.md`) + scratch builder converged to golden master.
-Phase B (data validation) IN PROGRESS — scratch builder gains entries, typed values, per-group
-percent rows, and a centralized English-identifier `Labels` struct (pt-BR values; i18n config
-loader deferred); converges against `template-data.xlsx`. Spec §4.4.
+Phase B (data validation) IN PROGRESS — session 28: scratch builder now data-bearing —
+max-entries block sizing (headroom 0), typed DD/MM + BRL entries, per-group percent rows, and a
+centralized English-identifier `Labels` struct (pt-BR values; i18n loader deferred). Receitas
+income-block sizing bug found by review + fixed; testify unit tests in `builder_test.go`.
+Re-review regenerated `template.xlsx` + bless next.
 Next: `generate-workbook` command - port `.claude/scratch/template-builder/` into
 `internal/generate` + `cmd/` (carry the `Labels` struct over), lift inspect core into
 `internal/inspect`, acceptance tests first;
