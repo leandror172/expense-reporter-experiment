@@ -11,13 +11,13 @@ const lastExpenseCol = "AL" // col 38 (index 37)
 
 // buildExpenseSheet writes one expense sheet (Fixas/Variáveis/Extras/Adicionais) and
 // records its subcategory total-row positions into reg.
-func buildExpenseSheet(f *excelize.File, st *styleSet, sh ExpenseSheet, reg *layoutRegistry) error {
+func buildExpenseSheet(f *excelize.File, st *styleSet, lbl Labels, sh ExpenseSheet, reg *layoutRegistry) error {
 	name := sh.Name
 	if _, err := f.NewSheet(name); err != nil {
 		return err
 	}
 	setDataSheetWidths(f, name)
-	writeMonthHeader(f, st, name)
+	writeMonthHeader(f, st, lbl, name)
 	freezeC3(f, name)
 
 	layout := &sheetLayout{Sheet: name}
@@ -27,7 +27,7 @@ func buildExpenseSheet(f *excelize.File, st *styleSet, sh ExpenseSheet, reg *lay
 		catFirst := row
 		for _, sub := range cat.Subs {
 			firstData, lastData, totalRow := calculateSubcatBlockRows(row, sub)
-			writeSubcatBlock(f, st, name, sub, firstData, lastData, totalRow)
+			writeSubcatBlock(f, st, lbl, name, sub, firstData, lastData, totalRow)
 			ct.Subs = append(ct.Subs, subcatTotal{
 				Sheet: name, Categoria: cat.Name, Subcat: sub.Name, TotalRow: totalRow,
 			})
@@ -65,29 +65,29 @@ func freezeC3(f *excelize.File, name string) {
 }
 
 // writeMonthHeader writes row 1 (Mês corner + month banners) and row 2 (Item/Data/Valor).
-func writeMonthHeader(f *excelize.File, st *styleSet, name string) {
+func writeMonthHeader(f *excelize.File, st *styleSet, lbl Labels, name string) {
 	f.SetRowHeight(name, 1, 18)
 	f.SetRowHeight(name, 2, 15)
 	f.MergeCell(name, "A1", "B2")
-	f.SetCellValue(name, "A1", "Mês")
+	f.SetCellValue(name, "A1", lbl.Month)
 	f.SetCellStyle(name, "A1", "A1", st.MesCorner)
 	for k := 0; k < 12; k++ {
 		item, data, valor := expenseMonthCols(k)
 		f.MergeCell(name, item+"1", valor+"1")
-		f.SetCellValue(name, item+"1", monthNames[k])
+		f.SetCellValue(name, item+"1", lbl.MonthNames[k])
 		f.SetCellStyle(name, item+"1", item+"1", st.MonthBanner)
-		f.SetCellValue(name, item+"2", "Item")
-		f.SetCellValue(name, data+"2", "Data")
-		f.SetCellValue(name, valor+"2", "Valor")
+		f.SetCellValue(name, item+"2", lbl.Item)
+		f.SetCellValue(name, data+"2", lbl.Date)
+		f.SetCellValue(name, valor+"2", lbl.Amount)
 		f.SetCellStyle(name, item+"2", valor+"2", st.HeaderCol)
 	}
 }
 
 // writeSubcatBlock writes one subcategory: its data rows (styled, numfmt-ready), its merged
 // col-B label across data+total rows, and its total row.
-func writeSubcatBlock(f *excelize.File, st *styleSet, name string, sub Subcat, firstData, lastData, totalRow int) {
+func writeSubcatBlock(f *excelize.File, st *styleSet, lbl Labels, name string, sub Subcat, firstData, lastData, totalRow int) {
 	writeSubcatDataRows(f, st, name, sub, firstData, lastData)
-	writeTotalRow(f, st, name, firstData, lastData, totalRow)
+	writeTotalRow(f, st, lbl, name, firstData, lastData, totalRow)
 	// col B merged across data rows + total row (incl. total per spec §2).
 	f.MergeCell(name, cell("B", firstData), cell("B", totalRow))
 	f.SetCellValue(name, cell("B", firstData), sub.Name)
@@ -138,18 +138,18 @@ func mergeCategoriaLabel(f *excelize.File, st *styleSet, name, label string, fir
 	f.SetCellStyle(name, cell("A", first), cell("A", last), st.CategoriaBold)
 }
 
-// writeTotalRow writes the total row: "Total"/"–"/SUM per month triple.
+// writeTotalRow writes the total row: Total/TotalDash/SUM per month triple.
 // groupSeps adds the every-other-month vertical separator borders (data sheets, not Receitas).
-func writeTotalRow(f *excelize.File, st *styleSet, name string, firstData, lastData, totalRow int) {
-	writeTotalRowOpt(f, st, name, firstData, lastData, totalRow, true)
+func writeTotalRow(f *excelize.File, st *styleSet, lbl Labels, name string, firstData, lastData, totalRow int) {
+	writeTotalRowOpt(f, st, lbl, name, firstData, lastData, totalRow, true)
 }
 
-func writeTotalRowOpt(f *excelize.File, st *styleSet, name string, firstData, lastData, totalRow int, groupSeps bool) {
+func writeTotalRowOpt(f *excelize.File, st *styleSet, lbl Labels, name string, firstData, lastData, totalRow int, groupSeps bool) {
 	f.SetRowHeight(name, totalRow, 12.75)
 	for k := 0; k < 12; k++ {
 		itemCol, dataCol, valorCol := expenseMonthCols(k)
-		f.SetCellValue(name, cell(itemCol, totalRow), "Total")
-		f.SetCellValue(name, cell(dataCol, totalRow), "–")
+		f.SetCellValue(name, cell(itemCol, totalRow), lbl.Total)
+		f.SetCellValue(name, cell(dataCol, totalRow), lbl.TotalDash)
 		formula := fmt.Sprintf("SUM(%s:%s)", cell(valorCol, firstData), cell(valorCol, lastData))
 		f.SetCellFormula(name, cell(valorCol, totalRow), formula)
 		itemStyle, valorStyle := st.TotalData, st.TotalValor

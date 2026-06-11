@@ -26,19 +26,20 @@ func run() error {
 		return fmt.Errorf("styles: %w", err)
 	}
 
+	lbl := newPtBRLabels()
 	expenseSheets, receitasBlocks := buildTaxonomy()
 	reg := newLayoutRegistry()
 
 	// Build source sheets first so Listas can wire to their total rows.
-	if err := buildReceitas(f, st, receitasBlocks, reg); err != nil {
+	if err := buildReceitas(f, st, lbl, receitasBlocks, reg); err != nil {
 		return fmt.Errorf("receitas: %w", err)
 	}
 	for _, sh := range expenseSheets {
-		if err := buildExpenseSheet(f, st, sh, reg); err != nil {
+		if err := buildExpenseSheet(f, st, lbl, sh, reg); err != nil {
 			return fmt.Errorf("expense %s: %w", sh.Name, err)
 		}
 	}
-	if err := buildListas(f, st, reg); err != nil {
+	if err := buildListas(f, st, lbl, reg); err != nil {
 		return fmt.Errorf("listas: %w", err)
 	}
 

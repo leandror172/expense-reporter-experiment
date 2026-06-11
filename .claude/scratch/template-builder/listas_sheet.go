@@ -35,6 +35,7 @@ func needsQuote(s string) bool {
 type listasBuilder struct {
 	f   *excelize.File
 	st  *styleSet
+	lbl Labels
 	reg *layoutRegistry
 	row int
 
@@ -44,11 +45,11 @@ type listasBuilder struct {
 	saldoSepRow      int            // row of the thin 3.75 separator before the saldo block
 }
 
-func buildListas(f *excelize.File, st *styleSet, reg *layoutRegistry) error {
+func buildListas(f *excelize.File, st *styleSet, lbl Labels, reg *layoutRegistry) error {
 	if _, err := f.NewSheet(listasName); err != nil {
 		return err
 	}
-	b := &listasBuilder{f: f, st: st, reg: reg, sheetGrandRow: map[string]int{}}
+	b := &listasBuilder{f: f, st: st, lbl: lbl, reg: reg, sheetGrandRow: map[string]int{}}
 	b.setWidths()
 	f.SetPanes(listasName, &excelize.Panes{Freeze: true, XSplit: 3, YSplit: 3, TopLeftCell: "D4", ActivePane: "bottomRight"})
 
@@ -87,11 +88,11 @@ func (b *listasBuilder) header() {
 	f.SetCellStyle(listasName, "A3", "C3", st.ListasMonth)
 	for k := 0; k < 12; k++ {
 		c := listasMonthCol(k)
-		f.SetCellValue(listasName, c+"3", monthNames[k])
+		f.SetCellValue(listasName, c+"3", b.lbl.MonthNames[k])
 		f.SetCellStyle(listasName, c+"3", c+"3", st.ListasMonth)
 	}
 	for k := 0; k < 12; k++ {
-		f.SetCellValue(listasName, listasMonthCol(k)+"5", "Valor")
+		f.SetCellValue(listasName, listasMonthCol(k)+"5", b.lbl.Amount)
 	}
 }
 
@@ -131,9 +132,9 @@ func (b *listasBuilder) receitasSection() {
 	b.bandRow(b.row) // internal separator
 	b.row++
 
-	// Total row (C0C0C0): C="Total"; D..O = SUM of pulls. B/C labels General, D..O currency.
+	// Total row (C0C0C0): C=lbl.Total; D..O = SUM of pulls. B/C labels General, D..O currency.
 	f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.ListasTotalLbl)
-	f.SetCellValue(listasName, cell("C", b.row), "Total")
+	f.SetCellValue(listasName, cell("C", b.row), b.lbl.Total)
 	b.monthFormulas(b.row, st.ListasTotalCur, func(k int) string {
 		c := listasMonthCol(k)
 		return fmt.Sprintf("SUM(%s:%s)", cell(c, firstPull), cell(c, lastPull))
@@ -143,7 +144,7 @@ func (b *listasBuilder) receitasSection() {
 
 	// Investimentos shell row.
 	f.SetCellStyle(listasName, cell("B", b.row), cell("B", b.row), st.IndigoBand)
-	f.SetCellValue(listasName, cell("C", b.row), "Investimentos")
+	f.SetCellValue(listasName, cell("C", b.row), b.lbl.Investments)
 	for k := 0; k < 12; k++ {
 		c := listasMonthCol(k)
 		f.SetCellStyle(listasName, cell(c, b.row), cell(c, b.row), st.PullCur)
@@ -153,7 +154,7 @@ func (b *listasBuilder) receitasSection() {
 
 	// Investimentos total.
 	f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.ListasTotalLbl)
-	f.SetCellValue(listasName, cell("C", b.row), "Total")
+	f.SetCellValue(listasName, cell("C", b.row), b.lbl.Total)
 	b.monthFormulas(b.row, st.ListasTotalCur, func(k int) string {
 		return cell(listasMonthCol(k), investRow)
 	})
@@ -162,7 +163,7 @@ func (b *listasBuilder) receitasSection() {
 
 	// % sobre Receita.
 	f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.ListasTotalLbl)
-	f.SetCellValue(listasName, cell("C", b.row), "% sobre Receita")
+	f.SetCellValue(listasName, cell("C", b.row), b.lbl.PctOfRevenue)
 	invTot, recTot := b.investTotalRow, b.receitasTotalRow
 	b.monthFormulas(b.row, st.GroupTotalPct, func(k int) string {
 		c := listasMonthCol(k)
@@ -221,7 +222,7 @@ func (b *listasBuilder) despesaSection(sName string) {
 
 		// group total (CCCCFF): B = "Total <cat>"; D..O = SUM of pulls. B/C General, D..O cur.
 		f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.GroupTotalLbl)
-		f.SetCellValue(listasName, cell("B", b.row), "Total "+ct.Categoria)
+		f.SetCellValue(listasName, cell("B", b.row), fmt.Sprintf(b.lbl.TotalCategoryFmt, ct.Categoria))
 		b.monthFormulas(b.row, st.GroupTotalCur, func(k int) string {
 			c := listasMonthCol(k)
 			return sumRange(cell(c, firstPull), cell(c, lastPull))
@@ -236,7 +237,7 @@ func (b *listasBuilder) despesaSection(sName string) {
 
 	// sheet grand-total (C0C0C0): B = "Total despesas <sheet-lower>". B/C General, D..O cur.
 	f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.ListasTotalLbl)
-	f.SetCellValue(listasName, cell("B", b.row), "Total despesas "+lower(sName))
+	f.SetCellValue(listasName, cell("B", b.row), fmt.Sprintf(b.lbl.TotalSheetExpensesFmt, lower(sName)))
 	grandRow := b.row
 	b.monthFormulas(b.row, st.ListasTotalCur, func(k int) string {
 		c := listasMonthCol(k)
@@ -255,7 +256,7 @@ func (b *listasBuilder) despesaSection(sName string) {
 
 	// % sobre Receita (CCCCFF pct on D..O; B..C C0C0C0 label).
 	f.SetCellStyle(listasName, cell("B", b.row), cell("C", b.row), st.ListasTotalLbl)
-	f.SetCellValue(listasName, cell("B", b.row), "% sobre Receita")
+	f.SetCellValue(listasName, cell("B", b.row), b.lbl.PctOfRevenue)
 	recTot := b.receitasTotalRow
 	b.monthFormulas(b.row, st.GroupTotalPct, func(k int) string {
 		c := listasMonthCol(k)
@@ -287,8 +288,8 @@ func plannedGrandTotalRow(sectionFirst int, cats []catTotals) int {
 // its share of total expenses (group / sheet grand total) and of revenue
 // (group / receitas total).
 func (b *listasBuilder) emitGroupPctRows(grpRow, grandRow int) {
-	b.groupPctRow("% sobre despesas", grpRow, grandRow)
-	b.groupPctRow("% sobre receita", grpRow, b.receitasTotalRow)
+	b.groupPctRow(b.lbl.PctOfExpenses, grpRow, grandRow)
+	b.groupPctRow(b.lbl.PctOfRevenue, grpRow, b.receitasTotalRow)
 }
 
 // groupPctRow writes one CCCCFF percent row: label in col B (B:C label style),
@@ -313,30 +314,26 @@ func (b *listasBuilder) saldoBlock() {
 	order := []string{"Fixas", "Variáveis", "Extras", "Adicionais"}
 	rt, st := b.reg, b.st
 
-	receitaRow := b.saldoRow("Receita", st.ListasTotalLbl, st.ListasTotalCur, func(k int) string {
+	receitaRow := b.saldoRow(b.lbl.Revenue, st.ListasTotalLbl, st.ListasTotalCur, func(k int) string {
 		return cell(listasMonthCol(k), b.receitasTotalRow)
 	})
-	investRow := b.saldoRow("Investimentos", st.ListasTotalLbl, st.ListasTotalCur, func(k int) string {
+	investRow := b.saldoRow(b.lbl.Investments, st.ListasTotalLbl, st.ListasTotalCur, func(k int) string {
 		return cell(listasMonthCol(k), b.investTotalRow)
 	})
-	totalRendaRow := b.saldoRow("Total Renda", st.NearBlack, st.NearBlackCur, func(k int) string {
+	totalRendaRow := b.saldoRow(b.lbl.TotalIncome, st.NearBlack, st.NearBlackCur, func(k int) string {
 		c := listasMonthCol(k)
 		return fmt.Sprintf("SUM(%s:%s)", cell(c, receitaRow), cell(c, investRow))
 	})
 	_ = rt
 
-	despLabels := map[string]string{
-		"Fixas": "Despesas fixas", "Variáveis": "Despesas variáveis",
-		"Extras": "Despesas extras", "Adicionais": "Despesas adicionais",
-	}
 	despRows := map[string]int{}
 	for _, s := range order {
 		gr := b.sheetGrandRow[s]
-		despRows[s] = b.saldoRow(despLabels[s], st.ListasTotalLbl, st.ListasTotalCur, func(k int) string {
+		despRows[s] = b.saldoRow(fmt.Sprintf(b.lbl.SheetExpensesFmt, lower(s)), st.ListasTotalLbl, st.ListasTotalCur, func(k int) string {
 			return cell(listasMonthCol(k), gr)
 		})
 	}
-	totalDespRow := b.saldoRow("Total Despesas", st.NearBlack, st.NearBlackCur, func(k int) string {
+	totalDespRow := b.saldoRow(b.lbl.TotalExpenses, st.NearBlack, st.NearBlackCur, func(k int) string {
 		c := listasMonthCol(k)
 		terms := make([]string, len(order))
 		for i, s := range order {
@@ -345,7 +342,7 @@ func (b *listasBuilder) saldoBlock() {
 		return sumList(terms)
 	})
 
-	b.saldoLabelRow("Porcentagen da Despesa")
+	b.saldoLabelRow(b.lbl.ExpenseShareHeader)
 	for _, s := range order {
 		dr := despRows[s]
 		b.saldoRowPct(s, func(k int) string {
@@ -353,7 +350,7 @@ func (b *listasBuilder) saldoBlock() {
 			return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, totalDespRow), cell(c, dr), cell(c, totalDespRow))
 		})
 	}
-	b.saldoLabelRow("Porcentagen da Renda")
+	b.saldoLabelRow(b.lbl.IncomeShareHeader)
 	for _, s := range order {
 		dr := despRows[s]
 		b.saldoRowPct(s, func(k int) string {
@@ -361,7 +358,7 @@ func (b *listasBuilder) saldoBlock() {
 			return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, totalRendaRow), cell(c, dr), cell(c, totalRendaRow))
 		})
 	}
-	b.saldoRow("Saldo", st.NearBlack, st.NearBlackCur, func(k int) string {
+	b.saldoRow(b.lbl.Balance, st.NearBlack, st.NearBlackCur, func(k int) string {
 		c := listasMonthCol(k)
 		return fmt.Sprintf("%s-%s", cell(c, totalRendaRow), cell(c, totalDespRow))
 	})
