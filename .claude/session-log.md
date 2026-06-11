@@ -1,6 +1,6 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`
 , `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
@@ -19,11 +19,67 @@
 , `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
 , `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
 , `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
-**Current Session:** 2026-06-10 — Session 27: Workbook generator — Layer 3 spec v2 + Phase A template convergence
-**Current Layer:** Workbook Generator — spec v2 + Phase A done; Phase B (data) + generate-workbook command next
+**Current Session:** 2026-06-11 — Session 28: Workbook generator Phase B — typed entries, max-entries sizing, per-group %, i18n labels + unit tests
+**Current Layer:** Workbook Generator — Phase B (data + formula validation), branch `feat/workbook-generator`
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
+
+## 2026-06-11 - Session 28: Workbook generator Phase B — data-bearing builder + unit tests
+
+### Context
+Resumed Phase B of the workbook generator from the session-27 handoff, working in the
+scratch builder `.claude/scratch/template-builder/`. Tracked plan authored at
+`.claude/plans/workbook-generator-phaseB-plan.md` (decisions D1–D7, gotchas, verdict log).
+
+### What Was Done
+- **Step 1 (expense_sheet.go):** block data rows = `max(MaxEntries-across-months, 1)` +
+  headroom (0); write typed entries — Item, real `time.Date(dataYear, month, day)` dates
+  (DD/MM), BRL amounts. Helpers `calculateSubcatBlockRows` / `writeSubcatDataRows`. (qcoder v1.)
+- **Step 2 (listas_sheet.go):** per-group `% sobre despesas` (group/sheet-grand, forward
+  reference via new `plannedGrandTotalRow`) + `% sobre receita` rows; `saldoBlock` and
+  `setHeights` made dynamic (dropped hardcoded rows 61/60/79). Inline after a qcoder timeout.
+- **Step 3 (Labels i18n):** wired `newPtBRLabels()` through the builder via a **sonnet
+  subagent → my-go-qcoder `patch_file`** (18 calls, all verdict 2). Generic literals →
+  `Labels` fields; normalization (lowercase per-group rows, `Porcentagen`→`Porcentagem`).
+  main.go/receitas/expense were pre-wired by the user. English field names, pt-BR values.
+- **Step 4 (generate + sonnet review):** review caught a **BLOCKING Receitas bug** —
+  income blocks still used pre-Phase-B sizing → zero data rows + inverted `SUM(E3:E2)`,
+  cascading to every `% sobre receita` denominator and the Saldo. Fixed Receitas to mirror
+  the expense pattern (`calculateReceitasBlockRows` / `writeReceitasDataRows`, DD/MM + R$).
+  Regenerated the workbook.
+- **Unit tests:** added `builder_test.go` (testify, 12 tests) — sizing, MaxEntries,
+  `plannedGrandTotalRow`, sheet-ref quoting, label normalization, and in-memory
+  build-and-assert integration guards incl. `TestBuildReceitasSumRange` (locks the SUM bug).
+  testify added to the scratch `go.mod`.
+- Backed up workbook artifacts to `.claude/workbook-template/backup-2026-06-10-pre-phaseB-gen/`.
+- Commits: `b72326a` (steps 1–2), `09a4651` (step 3), `ddc0e13` (Receitas fix + tests).
+
+### Decisions Made
+- **Block sizing = max-entries-per-month, headroom 0** (workbook is regenerated from the DB,
+  never inserted into; zero-entry subcat → 1 row).
+- **Phase B validation = generate → review → bless** (not diff-to-zero; max-entries sizing
+  shifts row positions, so address-based diffing is non-viable).
+- **i18n:** all generic strings in a `Labels` struct, English identifiers + pt-BR values;
+  config-file loader deferred but constructor-ready.
+- **Receitas income cells now use DD/MM + R$** (the old "General numFmt" note was from when
+  rows were empty; a real date in a General cell renders as a serial number) — **NEEDS USER
+  CONFIRMATION** at bless.
+- **Subagents doing codegen must also route to the local model (Ollama)** — saved to memory.
+- **TDD means test-FIRST (red→green)**, not test-after; this session was test-after — a miss,
+  corrected in memory. Apply red-first next session, including in the scratch module.
+
+### Next
+- **RE-REVIEW the regenerated `.claude/workbook-template/template.xlsx`** with a sonnet review
+  subagent — the prior PASS validated the *buggy* file; confirm income rows, `% sobre receita`
+  denominators, and the Saldo chain now resolve.
+- Present the user a report (work done + decisions) and a **double-check list** for the
+  generated template (see reading guide), then bless as the data-bearing golden master.
+- Answer 2 open questions: (a) Receitas DD/MM+R$ vs General; (b) Listas section-header fill
+  black `000000` vs navy `333399` (Phase A converged to black).
+- Gap: Listas section header `"Receitas"` and despesa section names have no `Labels` field yet.
+- Then **Phase G:** port the builder → `internal/generate` + `generate-workbook` command,
+  acceptance-first + TDD.
 
 ## 2026-06-10 - Session 27: Workbook generator — Layer 3 spec + Phase A golden-master convergence
 
@@ -135,51 +191,4 @@ Layer 2 (visual notes). Entry point: `.claude/plans/workbook-mapping-plan.md`.
   row (trailing empties dropped); row-level fills are captured separately via the separator probe.
 - `cmd/workbook-inspect` takes the workbook path as an arg and does NOT read config.json.
 - PR #25 is stacked on #24 — retarget to `master` once #24 merges.
-
-## 2026-06-08 - Session 25: apply Phase 4 smoke, workbook fixes, mapping plan
-
-### Context
-Started by merging PR #23 (apply command). Ran Phase 4 smoke against a real `reviewed.json`
-(349 entries from May–Dec 2025). Iteratively fixed issues surfaced by the smoke test.
-
-### What Was Done
-- **Phase 4 smoke completed** — 347 rows inserted live into `Planilha_Normalized_Final.xlsx`
-- **PR branch `fix/apply-dry-run-unallocated`** opened with 5 commits:
-  1. `fix(apply)`: dry-run now reports correct counts (was always 0/0)
-  2. `fix(apply)`: surface uninsertable rows in summary (two silent drop points surfaced)
-  3. `fix(excel)`: trim whitespace in subcategory boundary comparisons — trailing spaces
-     in workbook cells (e.g. `"Escritório "`) caused false "section full" errors
-  4. `feat(apply)`: `--backup` flag added (uses `batch.BackupManager`, same as `batch`)
-  5. `feat(apply)`: `--verbose` lists skipped and pending entries with item/date/value
-- **Formula recalculation fix** — `setFullCalcOnLoad` now also calls `f.UpdateLinkedValue()`
-  before save; `FullCalcOnLoad` was Excel-only, LibreOffice/Google Sheets were showing
-  stale cached values
-- **`workbook-inspect` tool** created at `expense-reporter/cmd/workbook-inspect/main.go`;
-  initial structural map saved to `.claude/workbook-map.md` (1,237 lines, all 7 sheets)
-- **3-layer workbook mapping plan** written to `.claude/plans/workbook-mapping-plan.md`
-- **`internal/excel/.memories/QUICK.md`** created — documents reference sheet columns,
-  boundary trim fix, and two-reader.go disambiguation
-
-### Decisions Made
-- **Workbook-generate direction confirmed** — long-term: treat `classifications.jsonl` +
-  `expenses_log.jsonl` as source of truth, generate workbook from scratch. Insertions
-  kept for now as fallback.
-- **3-layer mapping approach:** Layer 1 = full JSON dump with cell styles; Layer 2 =
-  Chrome screenshots via Google Sheets; Layer 3 = claude.ai synthesis (2× usage expires
-  2026-07-05 — prioritise before then)
-- **`Referência de Categorias` columns D and F are dead** — `RowNumber`/`TotalRow` loaded
-  but never read back in any command. New entries only need columns A, B, C.
-
-### Next
-- Open PR for `fix/apply-dry-run-unallocated` and merge
-- Execute workbook mapping: Layer 1 first (JSON dump drives Layer 2 screenshot targeting)
-- Use claude.ai 2× usage (expires 2026-07-05) for Layer 3 spec synthesis
-- Decide: RUI-4 (3-level path in CSV) or 5.R1 (TF-IDF) after mapping work
-
-### Gotchas
-- `go run ./cmd/expense-reporter` fails to load config — binary must be built first
-  (`go build -o expense-reporter ./cmd/expense-reporter`) so it sits alongside `config/`
-- `backupFlag` is a package-level var in `batch.go`; `apply.go` uses `applyBackup` to avoid collision
-- Two `reader.go` files: `internal/excel/reader.go` (workbook I/O) vs `internal/apply/reader.go`
-  (reviewed.json parser) — always disambiguate
 

@@ -46,24 +46,26 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Workbook Generator — mapping L1–L3 complete; Phase A (template
-  convergence) complete on branch `feat/workbook-generator`
-- **Last checkpoint:** Session 27 (2026-06-10) — Layer 3 spec synthesized locally via Sonnet
-  digest fan-out, hardened by an Opus dogfood build, patched to **v2** after user hand-review
-  (`.claude/plans/workbook-generator-spec.md` — redesign: merges not fill-down, months at
-  col C, no sub-item column, Referência omitted). Scratch builder
-  (`.claude/scratch/template-builder/`) CONVERGED to the user-curated golden master
-  `.claude/workbook-template/template-reviewed.xlsx` (41 justified residuals —
-  `convergence-report.md`).
-- **Prior checkpoint:** Session 26 (2026-06-08) — workbook mapping Layers 1+2 (JSON dump +
-  visual notes). PRs #24/#25 merged 2026-06-09.
-- **Next:** `.claude/plans/workbook-generator-implementation-plan.md` is the next-session
-  brief (prep reading in its §0). Phase B blocks on the user hand-filling
-  `template-data.xlsx` + adding per-group percent rows. Then Phase G: `internal/inspect`
-  lift, `generate-workbook` command, acceptance-first.
-- **Open questions:** spec §7 (headroom default, per-group percent rows into golden master,
-  merged-headroom render, Dólar semantics, taxonomy source for the real generator).
-  D9E1F2 is moot (Referência omitted).
+- **Active layer:** Workbook Generator — **Phase B (data + formula validation) IN PROGRESS**
+  on branch `feat/workbook-generator`. Mapping L1–L3 and Phase A (template convergence) complete.
+- **Last checkpoint:** Session 28 (2026-06-11) — Phase B steps 1–4: the scratch builder
+  (`.claude/scratch/template-builder/`) is now **data-bearing**. Max-entries block sizing
+  (headroom 0) + typed entries (DD/MM dates, BRL amounts); per-group `% sobre despesas` /
+  `% sobre receita` rows; i18n `Labels` struct wired (English fields, pt-BR values). A
+  **Receitas income-block sizing bug** (zero rows + inverted SUM) was caught by the generate
+  review and fixed. **testify unit tests** added (`builder_test.go`, incl. a SUM regression
+  guard). Plan: `.claude/plans/workbook-generator-phaseB-plan.md`. Commits `b72326a` /
+  `09a4651` / `ddc0e13`.
+- **Prior checkpoint:** Session 27 (2026-06-10) — Layer 3 spec **v2** + Phase A convergence to
+  the user-curated golden master (`.claude/plans/workbook-generator-spec.md`; merges not
+  fill-down, months at col C, no sub-item column, Referência omitted).
+- **Next:** RE-REVIEW the regenerated `.claude/workbook-template/template.xlsx` (the prior PASS
+  was against the buggy file), present a report + double-check list, then bless it as the
+  data-bearing golden master. Then Phase G: port builder → `internal/generate` +
+  `generate-workbook` command, acceptance-first + TDD.
+- **Open questions:** (1) Receitas cell format DD/MM+R$ vs General; (2) Listas section-header
+  fill black `000000` vs navy `333399`; (3) section header `"Receitas"`/section names have no
+  `Labels` field yet; plus spec §7 (Dólar semantics, taxonomy source for the real generator).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -179,7 +181,7 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Workbook generator Phase B + G (START HERE)** | `.claude/plans/workbook-generator-implementation-plan.md` §0 (full prep list); then spec v2 + `convergence-report.md` | Do NOT re-read raw dumps/digests — the spec distills them. Phase B blocks on user hand-filling `template-data.xlsx`. Builder = reference impl to port. |
+| **Workbook generator Phase B — re-review + bless (START HERE)** | `.claude/plans/workbook-generator-phaseB-plan.md` (decisions D1–D7 + verdict log); then the **Session 28** entry in `.claude/session-log.md` | **FIRST present the user a report**: work done, decisions made, and a DOUBLE-CHECK list for the generated `.claude/workbook-template/template.xlsx` → income rows present with non-inverted SUMs; `% sobre receita` denominators ≠ 0; Saldo = Total Renda − Total Despesas; per-group `% sobre despesas` references the correct grand-total row; merged headroom tail on Aluguel Feb; numFmts R$ / DD-MM / 0.00%; block sizes = busiest month (Diarista 3, Aluguel 2). Re-run a **sonnet** review subagent on the REGENERATED file (prior PASS was vs the buggy version). Resolve 2 open Qs: Receitas DD/MM+R$ vs General; section-header black vs navy. Backups: `.claude/workbook-template/backup-2026-06-10-pre-phaseB-gen/`. **TDD = test-FIRST** going forward. |
 | RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->
