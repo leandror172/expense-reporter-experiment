@@ -46,26 +46,22 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Workbook Generator — **Phase B (data + formula validation) IN PROGRESS**
-  on branch `feat/workbook-generator`. Mapping L1–L3 and Phase A (template convergence) complete.
-- **Last checkpoint:** Session 28 (2026-06-11) — Phase B steps 1–4: the scratch builder
-  (`.claude/scratch/template-builder/`) is now **data-bearing**. Max-entries block sizing
-  (headroom 0) + typed entries (DD/MM dates, BRL amounts); per-group `% sobre despesas` /
-  `% sobre receita` rows; i18n `Labels` struct wired (English fields, pt-BR values). A
-  **Receitas income-block sizing bug** (zero rows + inverted SUM) was caught by the generate
-  review and fixed. **testify unit tests** added (`builder_test.go`, incl. a SUM regression
-  guard). Plan: `.claude/plans/workbook-generator-phaseB-plan.md`. Commits `b72326a` /
-  `09a4651` / `ddc0e13`.
-- **Prior checkpoint:** Session 27 (2026-06-10) — Layer 3 spec **v2** + Phase A convergence to
-  the user-curated golden master (`.claude/plans/workbook-generator-spec.md`; merges not
-  fill-down, months at col C, no sub-item column, Referência omitted).
-- **Next:** RE-REVIEW the regenerated `.claude/workbook-template/template.xlsx` (the prior PASS
-  was against the buggy file), present a report + double-check list, then bless it as the
-  data-bearing golden master. Then Phase G: port builder → `internal/generate` +
-  `generate-workbook` command, acceptance-first + TDD.
-- **Open questions:** (1) Receitas cell format DD/MM+R$ vs General; (2) Listas section-header
-  fill black `000000` vs navy `333399`; (3) section header `"Receitas"`/section names have no
-  `Labels` field yet; plus spec §7 (Dólar semantics, taxonomy source for the real generator).
+- **Active layer:** Workbook Generator — **COMPLETE** (sessions 25–29) on branch
+  `feat/workbook-generator`, **PR #27 ready to merge** (title/body cover full scope; the user's
+  pending review drafts were addressed in code and await submit/discard).
+- **Last checkpoint:** Session 29 (2026-06-11) — Phase B blessed (data-bearing golden master,
+  Sonnet re-review PASS, navy headers + D9 guard + RevenueSheet label) and **Phase G shipped**:
+  `internal/inspect` (dump core, G1) + `internal/generate` + **`generate-workbook` command**
+  (G2) with acceptance-first contract (G3: `test/fixtures/generate-basic/`, oracle-frozen
+  dumps, `verify.WorkbookStructureMatches` normalized subset) and docs/retirement (G4: README,
+  scratch builder SUPERSEDED). PR review: English identifiers + SOLID extraction; hardcoded
+  sheet-order bug fixed (registry `sheetOrder`; dumps re-frozen, delta reviewed). All suites
+  green: 220+ unit tests, 3/3 acceptance (deterministic, no Ollama, <1s).
+- **Input contract (spec §1.1):** taxonomy JSON (sheets→cats→subcats; incomeCategories→blocks)
+  + `expenses_log.jsonl` entries (date `DD/MM`, no year — `--year` supplies it); unknown
+  subcategory → warn+skip exit 0; taxonomy wins on category mismatch.
+- **Next:** merge PR #27; one-time export of the real 113-subcategory taxonomy (Referência →
+  `taxonomy.json`); year-rollover workflow; then TF-IDF (5.R1).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -88,18 +84,23 @@ Or manually:
 <!-- ref:active-decisions -->
 ## Active Decisions
 
-### Workbook Generator (session 27)
+### Workbook Generator (sessions 27–29)
 - **Spec v2 is the design authority** (`.claude/plans/workbook-generator-spec.md`) — a
-  REDESIGN; where it disagrees with the original workbook, the spec wins.
-- **Derived layout** — row positions computed from taxonomy + entry counts; never copied
-  from the source. 14 deliberate deviations catalogued in spec §6.
+  REDESIGN; where it disagrees with the original workbook, the spec wins. §1.1 carries the
+  G3 input contract (taxonomy JSON + entries join rules).
+- **Derived layout** — row positions computed from taxonomy + entry counts; sheet order =
+  taxonomy order via registry `sheetOrder` (never hardcode the 4-sheet list — D0-refs bug).
 - **Merges, not fill-down; 2 label cols everywhere; months start col C; Referência omitted**
-  — hand-review reversals of source behavior (rationale: a generated workbook never suffers
-  insert-into-merge pain; sub-item level composed into col-B strings).
-- **Golden-master validation** — `template-reviewed.xlsx` is the convergence target;
-  judge ONLY via workbook-inspect dumps + `diff.py`, never eyeballing.
-- **Generated workbook is not an insertion target for now** — `apply`/`add` keep working
-  against hand-maintained workbooks; slim Referência + resolver-taxonomy question deferred.
+  — hand-review reversals of source behavior.
+- **Golden-master validation** — data-bearing `template.xlsx` blessed 2026-06-11; judge ONLY
+  via workbook-inspect dumps, never eyeballing.
+- **Oracle-frozen acceptance expectations** — `expected-dump-*` frozen from the trusted
+  scratch builder before the port. Limit: oracle and port can share bugs; deliberate output
+  changes require re-freezing + manually reviewing the dump delta.
+- **Identifiers English, strings pt-BR** — all user-visible text in `Labels`;
+  `Labels.RevenueSheet` ("Receitas") appears inside cross-sheet formulas → schema identifier.
+- **Generated workbook is not an insertion target** — regenerate-don't-insert; `apply`/`add`
+  keep working against hand-maintained workbooks; year-rollover + taxonomy export pending.
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
@@ -122,7 +123,7 @@ Or manually:
 - **Confidence threshold:** HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (print candidates + ⚠ signal)
 - **Feature dictionary pre-filter:** skipped in 5.2; deferred to 5.7 (few-shot injection task)
 - **Few-shot injection (5.7):** implemented — keyword layer (layer 1 of 3-layer cascade) complete; SelectExamples in `internal/classifier/examples.go`; loaders in `loader.go`; injected as user/assistant pairs in buildRequest; TF-IDF/embeddings deferred to future sessions
-- **`expenses_log.jsonl`** — slim insert log (`id`, `item`, `date`, `value`, `subcategory`, `category`, `timestamp`); separate from `classifications.jsonl`; ID is sha256[:12] shared across both files for cross-file correlation
+- **`expenses_log.jsonl`** — slim insert log (`id`, `item`, `date`, `value`, `subcategory`, `category`, `timestamp`); separate from `classifications.jsonl`; ID is sha256[:12] shared across both files for cross-file correlation. NOTE: `date` is `DD/MM` (no year).
 
 ### Go Conventions
 - **Cobra pattern:** Each subcommand is a `.go` file in `cmd/expense-reporter/cmd/`
@@ -131,6 +132,7 @@ Or manually:
 - **Table-driven tests:** Standard approach — any new command gets table-driven test coverage
 - **Unit tests use testify:** `assert`/`require` from `github.com/stretchr/testify` (convention change session 10); acceptance `test/verify/` already used testify
 - **Acceptance tests:** `//go:build acceptance` tag, separate from unit tests, live Ollama required
+  (EXCEPTION: generate-workbook tests are Ollama-free and deterministic)
 - **Acceptance harness:** `test/harness/` (Context, Scenario, Run), `test/actions/`, `test/verify/`;
   `run-acceptance.sh` with Ollama pre-flight, workbook auto-detect, filter arg, keep-artifacts flags
 - **Workbook config:** `EXPENSE_WORKBOOK_PATH` env var — script auto-detects from relative path to workbook
@@ -140,15 +142,24 @@ Or manually:
 - **Ollama timeout policy (session 8):** 1st timeout = retry (cold start), not a rejection. Only treat as 1st rejection if the model responds with wrong output. Two rejections → escalate to Claude.
 - **Ollama parallelization ceiling (session 15):** 3 parallel codegen calls only safe for tiny near-identical prompts. Default to serial for non-trivial codegen — VRAM ceiling causes silent degradation/timeouts.
 - **`my-go-qcoder` first benchmark (session 23, 2026-05-18):** Used for `cmd/review.go` (verdict 1), `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1). Struggled with intermediate Go map types in a prior session (verdict 0 on `taxonomy.go`) — passes cleanly when types are pre-defined in context files. Test generation is its strongest use; cobra command wiring is solid. Preferred over `my-go-q25c14` going forward for single-file codegen tasks.
-- **Files written directly this session (no Ollama):** `taxonomy.go`, `render.go`, `embed.go` — escalation after prior `0` verdict on `taxonomy.go`. Files written directly should still be retried with Ollama next time with richer context (pre-defined type stubs).
+- **Verbatim code moves are NOT codegen (session 29):** 530-line package-rename moves go to
+  sed/python — 3 warm-model timeouts proved the shape wrong for LLMs (pure transcription risk).
+  Delegate synthesis (new tests, new units), not copying. Also: the model hallucinated fixture
+  literals it was explicitly given — always re-check literals in generated tests.
 - **Excelize formula APIs (session 27):** `SetCellFormula` takes the formula WITHOUT a leading
   `=`; stale-formula display fix = `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
+- **Excelize API confusions to expect from local models (session 29):** `NewSheet` returns
+  (int, error); no `SetCellFont` (use NewStyle+SetCellStyle); `MergeCell` not `MergeCells`.
+- **`gh` on this repo (session 29):** `gh pr edit` / `pr view --comments` fail (projects-classic
+  GraphQL deprecation) — use `gh api repos/.../pulls/N` REST endpoints instead.
 
 ### Test Conventions (session 15)
 - **Acceptance-first** — discuss scenarios → write acceptance tests → drop into TDD inner loop for unit tests
 - **Given naming** — Event Modeling style, past-tense events that happened (`expenseAutoConfirmed`); state-only exception for empty event streams (`noClassificationsRecorded`)
 - **Then naming** — composable `[]func(*Context)` slices joined via `slices.Concat`; describe the concern, not the scenario
 - **Doc:** `expense-reporter/test/PATTERNS.md` is the spec — send to Ollama as context when delegating test generation
+- **generate-basic fixture sub-format (session 29):** taxonomy.json + entries.jsonl +
+  oracle-frozen `expected-dump-*/` — NOT config.json+input.csv. See PATTERNS.md.
 
 ### Correction Workflow (session 15, Layer 5.9)
 - **`correct` is feedback-only** — no `--workbook` flag; user fixes workbook manually
@@ -181,7 +192,8 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Workbook generator Phase B — re-review + bless (START HERE)** | `.claude/plans/workbook-generator-phaseB-plan.md` (decisions D1–D7 + verdict log); then the **Session 28** entry in `.claude/session-log.md` | **FIRST present the user a report**: work done, decisions made, and a DOUBLE-CHECK list for the generated `.claude/workbook-template/template.xlsx` → income rows present with non-inverted SUMs; `% sobre receita` denominators ≠ 0; Saldo = Total Renda − Total Despesas; per-group `% sobre despesas` references the correct grand-total row; merged headroom tail on Aluguel Feb; numFmts R$ / DD-MM / 0.00%; block sizes = busiest month (Diarista 3, Aluguel 2). Re-run a **sonnet** review subagent on the REGENERATED file (prior PASS was vs the buggy version). Resolve 2 open Qs: Receitas DD/MM+R$ vs General; section-header black vs navy. Backups: `.claude/workbook-template/backup-2026-06-10-pre-phaseB-gen/`. **TDD = test-FIRST** going forward. |
+| **Merge PR #27 + taxonomy export (START HERE)** | PR #27 on GitHub; `expense-reporter/internal/generate/.memories/QUICK.md`; spec §1.1 (`.claude/plans/workbook-generator-spec.md`) | User: submit/discard the pending review on PR #27 (its 2 draft comments were addressed in session 29), then merge. Then the one-time export: read Referência (113 subcats; `internal/excel.LoadReferenceSheet` or workbook-inspect dump) → write `taxonomy.json` per spec §1.1 schema; sub-item splits compose into "Parent - Child" strings. Validate by generating a skeleton workbook and eyeballing in LibreOffice. Real entries: `expense-reporter/expenses_log.jsonl` (gitignored; date is DD/MM, no year). |
+| Year-rollover workflow | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. |
 | RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->

@@ -1,6 +1,6 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`
 , `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
@@ -19,11 +19,77 @@
 , `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
 , `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
 , `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
-**Current Session:** 2026-06-11 — Session 28: Workbook generator Phase B — typed entries, max-entries sizing, per-group %, i18n labels + unit tests
-**Current Layer:** Workbook Generator — Phase B (data + formula validation), branch `feat/workbook-generator`
+**Current Session:** 2026-06-12 — Session 29: Workbook generator COMPLETE — Phase B close-out + Phase G (G1–G4) + PR review
+**Current Layer:** Workbook Generator — COMPLETE on PR #27; next merge + real-taxonomy export
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
+
+## 2026-06-11 - Session 29: Workbook generator complete — Phase B blessed, Phase G shipped, PR review addressed
+
+### Context
+Resumed from session 28 handoff: re-review the regenerated data-bearing template, settle 2 open
+questions, then Phase G. Branch `feat/workbook-generator`. Sonnet pre-approved for subagents.
+
+### What Was Done
+- **Phase B closed:** open questions resolved (spec §7.6/§7.7: Receitas numFmt = DD/MM + R$
+  uniform; Listas section headers navy 333399 — spec wins over the Phase A black accommodation).
+  Sonnet re-review of the regenerated `template.xlsx`: **PASS, 0 blocking defects**
+  (`.claude/workbook-template/phaseB-rereview.md` + 8-item double-check list). Its one
+  actionable observation (section `% sobre receita` guarded on numerator, not the D9 income
+  denominator) fixed. **User blessed the data-bearing golden master.** `RevenueSheet` Labels
+  field added (sheet name + Listas pulls + section header + sheet ordering).
+- **G1:** `internal/inspect` — dump core lifted verbatim from `cmd/workbook-inspect` (now a
+  thin wrapper); output verified byte-identical; unit tests (qcoder, verdict 1).
+- **G3 (acceptance-first, advisor-reviewed):** Opus advisor review
+  (`.claude/advisor-G3-acceptance-design.md`) reshaped the design — input contract pinned in
+  spec §1.1 (taxonomy JSON schema; entries DD/MM no-year; unknown subcat → warn+skip exit 0;
+  taxonomy authority on category mismatch); **oracle bootstrap**: scratch builder taught to read
+  the fixture (`LoadTaxonomy` loader + flags), its dumps frozen as `expected-dump-*`;
+  `verify.WorkbookStructureMatches` compares a NORMALIZED SUBSET (ignores widths/heights/
+  manifest source). 3 scenarios born RED on `unknown command`. Fixture
+  `test/fixtures/generate-basic/` documented in PATTERNS.md (new sub-format).
+- **G2:** `internal/generate` (builder port) + `generate-workbook -o --taxonomy [--entries
+  --year --headroom]` cobra command (qcoder, verdict 2) — **all 3 acceptance scenarios green
+  on first run**. Loader + builder math tests ported (Phase B fake dataset is now
+  `taxonomy_fixture_test.go`).
+- **G4:** README command docs; scratch builder marked SUPERSEDED; **PR #27** title/body updated
+  to full scope (via REST API — `gh pr edit` hits a projects-classic GraphQL bug on this repo).
+- **PR review comments addressed** (2 drafts in the user's still-pending review): identifiers
+  → English (Categoria→Category, Receitas*→Revenue*, listas*→summary*, despesa*→expense*,
+  saldo*→balance*; files renamed summary_sheet.go/revenue_sheet.go; pt-BR strings only in
+  `Labels`); revenueSection/expenseSection extracted into single-responsibility `write*` steps.
+- **Latent bug found by the refactor:** summary sections + balance block hardcoded the 4-sheet
+  order → invalid `D0`/`E0` refs for smaller taxonomies, PRESENT IN THE FROZEN DUMPS (oracle
+  shared the bug). Fix: registry `sheetOrder`; dumps re-frozen with a manually reviewed delta
+  (exactly 6 phantom rows + 4 bogus refs removed; other sheets byte-identical).
+- Memories updated (root/expense-reporter/test/inspect QUICK+KNOWLEDGE; new
+  `internal/generate/.memories/QUICK.md`; auto-memory rewritten). 10 commits, all pushed.
+
+### Decisions Made
+- **Taxonomy source = (b) dedicated JSON file** + entries from `expenses_log.jsonl`; option (a)
+  Referência read demoted to a possible one-time export tool. JSON over CSV (nested structure).
+- **Oracle-frozen expectations** (advisor): freeze the trusted scratch builder's dumps BEFORE
+  the port → G2 = converge-to-green. Recorded limit: oracle and port can share a bug —
+  acceptance can't see it; on contract changes, re-freeze + manually review the dump delta.
+- **`incomeCategories[].name` is block grouping**, not the sheet label (that's
+  `Labels.RevenueSheet`, which appears inside formulas → schema identifier, not cosmetic).
+- Verbatim code moves go to sed/python, NOT the local model (3 warm timeouts on a 530-line
+  transcription; zero design value, pure drift risk). Models kept for synthesis: loader (1),
+  loader tests (1 — hallucinated 8 fixture literals despite being given them), verifier (1),
+  acceptance tests (2), cobra cmd (2).
+
+### Next
+- **Merge PR #27** (user: also submit/discard the pending review — drafts are invisible until then).
+- One-time export: real 113-subcategory taxonomy (Referência) → `taxonomy.json`.
+- Year-rollover workflow; fate of `apply`/`add` vs generated workbooks. Then TF-IDF (5.R1).
+
+### Gotchas
+- `gh pr edit`/`pr view --comments` fail on this repo (projects-classic GraphQL deprecation);
+  use `gh api repos/.../pulls/27` REST instead.
+- The expenses log stores `date` as `DD/MM` — NO year component; `--year` supplies it.
+- excelize `f.NewSheet` returns (int, error); style via NewStyle+SetCellStyle (no SetCellFont);
+  `MergeCell` not `MergeCells` — recurring local-model API confusions, all caught by compile.
 
 ## 2026-06-11 - Session 28: Workbook generator Phase B — data-bearing builder + unit tests
 
@@ -140,55 +206,4 @@ Branch `feat/workbook-generator`.
 - No `jq` on this machine — use python3 (openpyxl available).
 - Long-running subagents (>5 min) expire the main session's prompt cache — one full
   re-read per agent return; acceptable, not a bug.
-
-## 2026-06-08 - Session 26: Workbook mapping Layers 1+2 (JSON dump, visual notes, memories)
-
-### Context
-Resumed from session 25 to execute the workbook-mapping plan. Ran as TWO parallel Claude Code
-sessions: this one owned Layer 1 (JSON dump) + coordination + memories; a parallel session owned
-Layer 2 (visual notes). Entry point: `.claude/plans/workbook-mapping-plan.md`.
-
-### What Was Done
-- **Layer 1 — `cmd/workbook-inspect` rewritten to JSON** (PR #25, branch
-  `feat/workbook-inspect-json-dump`, stacked on #24). Emits `manifest.json` + per-sheet JSON into
-  `.claude/workbook-dump/` (gitignored — real expense values). Per cell: value, formula, style
-  (bgColor/bold/4 borders). Per sheet: dims, col widths, row heights, merged cells, cross-sheet
-  refs (parsed from formulas, handles `'Quoted Name'!Ref`). Per row: `rowType` classifier
-  (header-month/header-col/total-row/data-row/category-label/separator). Extraction core via
-  `my-go-qcoder` (verdict 1); cross-ref parser, classifier, and fixes written directly.
-- **Row-level black separator fills** (commit `906a99d`) — otherwise-empty rows with a row-level
-  fill (solid-black category dividers) were a cell-level blind spot; now probed via the
-  GetCellStyle→row-style fallback and emitted as `rowType:"separator"` + `rowFill`. Verified
-  against catalogued gaps; corrected two visual inferences (Fixas has one black band not seven;
-  Receitas has two the visual pass missed).
-- **Layer 2 — visual notes** for all 7 sheets in `.claude/workbook-visual-notes.md` (gitignored):
-  frozen panes, rendered-vs-hex colors, fonts, number/date formatting.
-- **Memories** — new `internal/excel/.memories/KNOWLEDGE.md` (workbook structural map), new
-  `cmd/workbook-inspect/.memories/QUICK.md`, refreshed excel/repo/root QUICK pointers,
-  `.claude/index.md` registration. Project memory `project_workbook_mapping.md` updated.
-- **Layer 3 cowork brief** — `.claude/plans/workbook-layer3-instructions.md`.
-
-### Decisions Made
-- **Merges are sheet-specific** (corrected an earlier wrong "no merges anywhere"): expense sheets
-  (Fixas/Variáveis/Extras/Adicionais) are merge-free fill-down; Receitas/Listas/Referência merge.
-- **Two sheet families, per-sheet palette + fonts** — not workbook-wide. Generator must branch.
-- **Listas de itens PULLS, not SUMs** (references source totals directly, e.g. `Fixas!F19`);
-  **Referência is the row-mapping source of truth** (ODS dot-notation reference strings inside
-  CONCATENATE, not real `!` refs).
-- **Layer 3 should run locally in Claude Code, not claude.ai** — feeding the raw dump to the web
-  would upload real financial data; local keeps the project's local-first privacy. claude.ai is a
-  fallback requiring a sanitized (values-stripped) dump.
-
-### Next
-- Workbook mapping Layer 3 — produce `.claude/plans/workbook-generator-spec.md` per
-  `.claude/plans/workbook-layer3-instructions.md`.
-- Resolve the Referência `D9E1F2` render-vs-hex discrepancy (theme remap or conditional format).
-
-### Gotchas
-- `.claude/workbook-dump/`, `.claude/workbook-visual-notes.md`, `.claude/workbook-screenshots/`
-  are all gitignored (real expense values) — never commit; Layer 3 inputs stay local.
-- The dump iterates `GetRows`, so it is a faithful style map only up to the last valued cell per
-  row (trailing empties dropped); row-level fills are captured separately via the separator probe.
-- `cmd/workbook-inspect` takes the workbook path as an arg and does NOT read config.json.
-- PR #25 is stacked on #24 — retarget to `master` once #24 merges.
 
