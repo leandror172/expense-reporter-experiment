@@ -47,7 +47,10 @@ func run() error {
 	if err := f.DeleteSheet("Sheet1"); err != nil {
 		return err
 	}
-	order := []string{listasName, "Receitas", "Fixas", "Variáveis", "Extras", "Adicionais"}
+	order := []string{listasName, lbl.RevenueSheet}
+	for _, sh := range expenseSheets {
+		order = append(order, sh.Name)
+	}
 	// Place sheets in order: moving from the last pair backward, put each sheet directly
 	// before its successor. MoveSheet(source, target) moves source before target.
 	for i := len(order) - 2; i >= 0; i-- {

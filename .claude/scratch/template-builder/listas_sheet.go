@@ -123,7 +123,7 @@ func (b *listasBuilder) receitasSection() {
 		f.SetCellValue(listasName, cell("C", b.row), blk.Label)
 		tr := blk.TotalRow
 		b.monthFormulas(b.row, st.PullCur, func(k int) string {
-			return sheetRef("Receitas", expenseValorCol(k), tr)
+			return sheetRef(b.lbl.RevenueSheet, expenseValorCol(k), tr)
 		})
 		b.row++
 	}
@@ -171,7 +171,7 @@ func (b *listasBuilder) receitasSection() {
 	})
 	sectionLast := b.row
 
-	mergeSection(f, st, "Receitas", sectionFirst, sectionLast)
+	mergeSection(f, st, b.lbl.RevenueSheet, sectionFirst, sectionLast)
 	b.row += 4 // % row consumed at sectionLast; skip blanks to row 18
 }
 

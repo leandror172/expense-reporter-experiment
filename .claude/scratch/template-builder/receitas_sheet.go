@@ -13,7 +13,7 @@ const lastReceitasCol = "AL"
 // its blocks, block label in col B merged across the block incl. its total row.
 // Separators appear only between income categories (none within a category).
 func buildReceitas(f *excelize.File, st *styleSet, lbl Labels, blocks []ReceitasBlock, reg *layoutRegistry) error {
-	const name = "Receitas"
+	name := lbl.RevenueSheet
 	if _, err := f.NewSheet(name); err != nil {
 		return err
 	}

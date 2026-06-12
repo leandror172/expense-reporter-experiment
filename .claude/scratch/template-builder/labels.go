@@ -22,6 +22,9 @@ type Labels struct {
 	TotalSheetExpensesFmt string
 	SheetExpensesFmt      string
 
+	// sheet / section names
+	RevenueSheet string
+
 	// saldo block
 	Revenue            string
 	Investments        string
@@ -50,6 +53,7 @@ func newPtBRLabels() Labels {
 		TotalCategoryFmt:      "Total %s",
 		TotalSheetExpensesFmt: "Total despesas %s",
 		SheetExpensesFmt:      "Despesas %s",
+		RevenueSheet:          "Receitas",
 		Revenue:               "Receita",
 		Investments:           "Investimentos",
 		TotalIncome:           "Total renda",
