@@ -144,4 +144,7 @@ Local-first review surface — supersedes the Lovable cloud plan
 - [x] (RUI-WM2) **Workbook mapping Layer 2** — Chrome automation screenshot pass via Google Sheets. Use Layer 1 block list to target sections. See plan.
 - [x] (RUI-WM3) **Workbook mapping Layer 3** — claude.ai synthesis of Layer 1+2 into `workbook-generator-spec.md`. Must complete before 2026-07-05 (2× usage expires).
 - [x] (RUI-WG) **Workbook generator command** — Implement `generate` command that produces workbook from `classifications.jsonl` + `expenses_log.jsonl`. Blocked on RUI-WM3 (spec).
+- [ ] (T-01) **Merge PR #27** — workbook generator branch; user submits/discards pending review first (drafts addressed in session 29)
+- [ ] (T-02) **Real-taxonomy export** — one-time: Referência (113 subcats) → `taxonomy.json` per spec §1.1; compose sub-item splits into col-B strings; validate via skeleton generation
+- [ ] (T-03) **Year-rollover workflow** — generate year N+1 skeleton from taxonomy alone; decide `apply`/`add` fate against generated workbooks
 <!-- /ref:deferred -->
