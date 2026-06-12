@@ -64,7 +64,8 @@
 |---------|------|---------|
 | `main` | `expense-reporter/cmd/expense-reporter/main.go` | Entry point |
 | `cmd` | `expense-reporter/cmd/expense-reporter/cmd/` | Cobra CLI subcommands (add, batch, version; +classify/auto/batch-auto in Layer 5) |
-| `workbook-inspect` | `expense-reporter/cmd/workbook-inspect/` | Standalone tool — JSON structural dump of a workbook (workbook mapping L1); see its `.memories/QUICK.md` |
+| `workbook-inspect` | `expense-reporter/cmd/workbook-inspect/` | Thin CLI wrapper over `internal/inspect` (workbook mapping L1); see its `.memories/QUICK.md` |
+| `internal/inspect` | `expense-reporter/internal/inspect/` | Structural-dump core (values/formulas/styles/merges/rowType classifier) shared by workbook-inspect and test verifiers |
 | `internal/batch` | `expense-reporter/internal/batch/` | Batch import orchestration |
 | `internal/cli` | `expense-reporter/internal/cli/` | CLI output helpers |
 | `internal/excel` | `expense-reporter/internal/excel/` | Excel workbook read/write (excelize library) |
