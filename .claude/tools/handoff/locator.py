@@ -11,6 +11,10 @@ class Region:
     start: int
     end: int
     interior: str = ""
+    # Optional metadata for diagnostic messages — populated by orchestrator._collect_edits
+    role: str = ""
+    target: str = ""   # ref-key, task-id, or field label
+    file: str = ""     # repo-relative file path
 
 class LocatorError(Exception):
     pass

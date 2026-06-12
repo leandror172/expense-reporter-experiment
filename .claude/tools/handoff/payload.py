@@ -37,10 +37,14 @@ def parse(text: str) -> HandoffPayload:
     )
 
 
-def validate(payload: HandoffPayload, register: Dict[str, Dict[str, str]]) -> List[str]:
+def validate(payload: HandoffPayload, register: Dict[str, Dict[str, str]], *, amend: bool = False) -> List[str]:
     errors: List[str] = []
-    errors.extend(_role_errors(payload, register))
-    errors.extend(_scalar_errors(payload))
+    if amend:
+        errors.extend(_amend_role_errors(payload, register))
+        # scalars not required in amend mode — header is not written
+    else:
+        errors.extend(_role_errors(payload, register))
+        errors.extend(_scalar_errors(payload))
     errors.extend(_checkoff_errors(payload))
     return errors
 
@@ -119,6 +123,28 @@ def _role_header(line: str):
 
 # ---- validation -------------------------------------------------------------
 
+# Amend mode is additive-only: only append and checkoff are permitted.
+# prepend (log-entry) is excluded — it would add a second "## Session N" heading for an
+# already-committed session, creating duplicate-heading pollution.
+_AMEND_ALLOWED_MODES = {"append", "checkoff"}
+
+
+def _amend_role_errors(payload: HandoffPayload, register: Dict[str, Dict[str, str]]) -> List[str]:
+    """In amend mode, only append/checkoff write_modes are allowed."""
+    errors = []
+    for role in payload.blocks:
+        if role not in register:
+            errors.append(f"unknown role: {role}")
+        elif register[role].get("write_mode") == "nomodel":
+            errors.append(f"role '{role}' is nomodel — header fields come from scalars, not blocks")
+        elif register[role].get("write_mode") not in _AMEND_ALLOWED_MODES:
+            mode = register[role].get("write_mode", "unknown")
+            errors.append(
+                f"amend mode is additive-only; role '{role}' (mode={mode}) belongs to the next session's normal run"
+            )
+    return errors
+
+
 def _role_errors(payload: HandoffPayload, register: Dict[str, Dict[str, str]]) -> List[str]:
     errors = []
     for role in payload.blocks:
@@ -132,9 +158,13 @@ def _role_errors(payload: HandoffPayload, register: Dict[str, Dict[str, str]]) -
 def _scalar_errors(payload: HandoffPayload) -> List[str]:
     errors = []
     if not payload.session_title.strip():
-        errors.append("session_title is empty")
+        errors.append(
+            "session_title is required because this run bumps the Current Session header"
+        )
     if not payload.current_layer.strip():
-        errors.append("current_layer is empty")
+        errors.append(
+            "current_layer is required because this run bumps the Current Layer header"
+        )
     return errors
 
 

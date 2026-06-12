@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Tuple
 from locator import locate, Region, LocatorError
 from applier import apply as apply_edit
 from verifier import verify, VerifyError
-from mechanics import compute_header_values, apply_field, rotate as default_rotate
+from mechanics import compute_header_values, apply_field, rotate as default_rotate, current_session_number
 from runlog import (
     peek_session_number,
     write_report,
@@ -36,12 +36,13 @@ def run_handoff(
     rotate: Callable = default_rotate,
     clock: Callable = datetime.datetime.now,
     run_dir: Path,
+    amend: bool = False,
 ) -> RunReport:
     repo_root = Path(repo_root)
     log_rel = register["header-current-session"]["file"]
 
     # 1. Precondition: tracking files must be clean (rollback would clobber otherwise).
-    touched = _touched_files(register, payload)
+    touched = _touched_files(register, payload, amend=amend)
     if not git.is_clean(touched):
         return RunReport(
             session_number=peek_session_number(repo_root, log_rel),
@@ -50,12 +51,16 @@ def run_handoff(
             verify_ok=False, edits=[],
         )
 
-    session_number = peek_session_number(repo_root, log_rel)
+    log_text = (repo_root / log_rel).read_text()
+    if amend:
+        session_number = current_session_number(log_text)
+    else:
+        session_number = peek_session_number(repo_root, log_rel)
 
     # 2. Stage (locate) -> apply in memory -> verify each file's combined edit set (F4).
     try:
         modified_by_file, region_edits = stage_and_apply(
-            repo_root, register, payload, clock=clock
+            repo_root, register, payload, clock=clock, amend=amend
         )
     except LocatorError as exc:
         return _fail(run_dir, session_number, f"locate failed: {exc}", verify_ok=False, edits=[])
@@ -67,7 +72,7 @@ def run_handoff(
         _write_all(repo_root, modified_by_file)
         _run_rotation(rotate, repo_root)
         git.add(_commit_paths(repo_root, touched))
-        git.commit(_commit_message(session_number, payload))
+        git.commit(_commit_message(session_number, payload, amend=amend))
     except Exception as exc:
         git.checkout(list(modified_by_file.keys()))
         return _fail(run_dir, session_number, f"apply/commit failed: {exc}",
@@ -81,7 +86,7 @@ def run_handoff(
 # ---- staging ----------------------------------------------------------------
 
 def stage_and_apply(
-    repo_root, register, payload, *, clock
+    repo_root, register, payload, *, clock, amend: bool = False
 ) -> Tuple[Dict[str, str], List[RegionEdit]]:
     """Locate -> apply -> verify, purely in memory. Raises LocatorError / VerifyError.
 
@@ -90,7 +95,7 @@ def stage_and_apply(
     `verify` is referenced as a module global (not threaded through) so test
     monkeypatching still intercepts.
     """
-    grouped = _collect_edits(repo_root, register, payload, clock=clock)
+    grouped = _collect_edits(repo_root, register, payload, clock=clock, amend=amend)
 
     modified_by_file: Dict[str, str] = {}
     region_edits: List[RegionEdit] = []
@@ -118,7 +123,7 @@ def _normalize_block(content: str) -> str:
     return content if content.endswith("\n") else content + "\n"
 
 
-def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tuple[str, Region, str]]]:
+def _collect_edits(repo_root, register, payload, *, clock, amend: bool = False) -> Dict[str, List[Tuple[str, Region, str]]]:
     cache: Dict[str, str] = {}
 
     def text_of(rel: str) -> str:
@@ -142,7 +147,8 @@ def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tup
         for task_id in payload.checkoffs:
             add(rel, "tasks-checkoff", locate(role_def, text_of(rel), task_id=task_id), "")
 
-    _add_header_edits(register, payload, text_of, add, clock=clock)
+    if not amend:
+        _add_header_edits(register, payload, text_of, add, clock=clock)
     return grouped
 
 
@@ -185,12 +191,13 @@ def _run_rotation(rotate, repo_root) -> None:
 
 # ---- helpers ----------------------------------------------------------------
 
-def _touched_files(register, payload) -> List[str]:
+def _touched_files(register, payload, *, amend: bool = False) -> List[str]:
     files = {register[role]["file"] for role in payload.blocks}
     if payload.checkoffs:
         files.add(register["tasks-checkoff"]["file"])
-    for role in HEADER_ROLES:
-        files.add(register[role]["file"])
+    if not amend:
+        for role in HEADER_ROLES:
+            files.add(register[role]["file"])
     return sorted(files)
 
 
@@ -201,7 +208,9 @@ def _commit_paths(repo_root, touched: List[str]) -> List[str]:
     return paths
 
 
-def _commit_message(session_number: int, payload: HandoffPayload) -> str:
+def _commit_message(session_number: int, payload: HandoffPayload, *, amend: bool = False) -> str:
+    if amend:
+        return f"chore(session-handoff): session {session_number} — amend"
     return f"chore(session-handoff): session {session_number} — {payload.session_title}"
 
 

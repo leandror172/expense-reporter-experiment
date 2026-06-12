@@ -17,6 +17,14 @@ class MechanicsError(Exception):
     pass
 
 
+def current_session_number(log_text: str) -> int:
+    """Return the highest session number found in log headings (the *current* committed session)."""
+    heading_numbers = _extract_heading_numbers(log_text)
+    if not heading_numbers:
+        return 0
+    return max(heading_numbers)
+
+
 def next_session_number(log_text: str) -> int:
     """Scan the session-log text for entry headings shaped like `## <ISO-date> - Session <N>: ...` and return the next session number."""
     heading_numbers = _extract_heading_numbers(log_text)

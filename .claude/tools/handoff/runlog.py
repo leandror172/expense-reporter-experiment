@@ -74,10 +74,19 @@ def mark_run_failed(run_dir: Path) -> Path:
     return new_path
 
 
+def mark_run_aborted(run_dir: Path) -> Path:
+    """Rename <handle>-pending/ to <handle>-aborted/ using shutil.move. Returns new path."""
+    if not run_dir.name.endswith("-pending"):
+        raise ValueError(f"not a pending run dir: {run_dir}")
+    new_path = run_dir.parent / (run_dir.name[:-len("-pending")] + "-aborted")
+    shutil.move(str(run_dir), str(new_path))
+    return new_path
+
+
 def count_runs_by_status(repo_root: Path) -> dict:
     """Count run dirs by suffix (-pending/-success/-failed) under handoff-runs/. Missing statuses get 0."""
     runs_folder = repo_root / ".claude" / "local" / "handoff-runs"
-    counts = {"pending": 0, "success": 0, "failed": 0}
+    counts = {"pending": 0, "success": 0, "failed": 0, "aborted": 0}
     if not runs_folder.exists():
         return counts
     for path in runs_folder.iterdir():
