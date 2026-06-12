@@ -260,7 +260,7 @@ func (b *listasBuilder) despesaSection(sName string) {
 	recTot := b.receitasTotalRow
 	b.monthFormulas(b.row, st.GroupTotalPct, func(k int) string {
 		c := listasMonthCol(k)
-		return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, grandRow), cell(c, grandRow), cell(c, recTot))
+		return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, recTot), cell(c, grandRow), cell(c, recTot))
 	})
 	sectionLast := b.row
 

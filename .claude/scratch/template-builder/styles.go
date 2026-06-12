@@ -21,7 +21,7 @@ type styleSet struct {
 	DateCell      int
 
 	// Listas-specific
-	SectionLabel   int // merged col-A section: black, Arial 18 bold white, center/center/wrap
+	SectionLabel   int // merged col-A section: 333399 navy, Arial 18 bold white, center/center/wrap
 	IndigoBand     int // 333399 band cell, white bold (no numfmt)
 	IndigoLabel    int // 333399 merged categoria label, white bold, center/center/wrap
 	IndigoBandCur  int // 333399 band cell, white bold, currency
@@ -115,7 +115,7 @@ func newStyles(f *excelize.File) (*styleSet, error) {
 	s.Currency = mk(&excelize.Style{Font: arial(false), CustomNumFmt: &cur})
 	s.DateCell = mk(&excelize.Style{Font: arial(false), CustomNumFmt: &date})
 
-	s.SectionLabel = mk(&excelize.Style{Fill: solidFill("000000"), Font: arialWhite(18, true), Alignment: centerBoth(true)})
+	s.SectionLabel = mk(&excelize.Style{Fill: solidFill("333399"), Font: arialWhite(18, true), Alignment: centerBoth(true)})
 	s.IndigoBand = mk(&excelize.Style{Fill: solidFill("333399"), Font: arialWhite(10, true)})
 	s.IndigoLabel = mk(&excelize.Style{Fill: solidFill("333399"), Font: arialWhite(10, true), Alignment: centerBoth(true)})
 	s.IndigoBandCur = mk(&excelize.Style{Fill: solidFill("333399"), Font: arialWhite(10, true), CustomNumFmt: &cur})

@@ -259,6 +259,14 @@ Known golden-master self-inconsistencies (normalize toward the spec, flag in dif
    re-check render with data in Phase B.
 5. **Dólar row semantics** — manual currency-rate cell; confirm placement/format when data
    phase touches the saldo block.
+6. **Receitas data-cell numFmt — ✅ RESOLVED (2026-06-11):** uniform `DD/MM` (Data) +
+   `R$ #,##0.00` (Valor) on all 12 months, same as the expense sheets. The golden master's
+   General-except-December pattern (convergence R5) is a source artifact; typed Phase-B
+   values require the numFmts to render. Builder already complied.
+7. **Listas section-header fill — ✅ RESOLVED (2026-06-11):** navy **333399** per §4 (spec
+   wins), matching the sheet's indigo bands. Phase A had converged `SectionLabel` to the
+   golden master's black `000000` as an unrecorded accommodation; reverted in `styles.go`.
+   Expect a deliberate SectionLabel fill delta vs `template-reviewed.xlsx` in diff runs.
 
 ## 8. Source references
 
