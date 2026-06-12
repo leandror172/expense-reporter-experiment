@@ -83,3 +83,24 @@ tests, `subcategory`/`category` are also omitted from expected files.
 differ every run. Expected files contain only the deterministic contract.
 **Implication:** When adding new fields to JSONL output, update the verifier's skip
 list if the field is non-deterministic.
+
+## Generate-Workbook Acceptance Design (2026-06, session 29)
+The `generate-basic` fixture is a NEW sub-format: `taxonomy.json` + `entries.jsonl`
+(+ `entries-with-unmapped.jsonl`) + committed `expected-dump-skeleton/` and
+`expected-dump-data/` (per-sheet `internal/inspect` JSON dumps). No config.json, no input.csv,
+no Ollama (fully deterministic, <1s — safe for the suite-timeout budget).
+**Oracle-frozen expectations:** dumps were frozen from the convergence-verified scratch
+builder run on the same fixture BEFORE the generator existed, making G2 a converge-to-green
+port (healthy RED = command-absent, not expectation-fake).
+**Rationale:** placeholder expectations assert nothing and freezing a generator's own output
+against itself is circular; an independent already-trusted producer is the only real oracle.
+**Limit:** oracle and port can share a bug (hardcoded sheet order emitted invalid D0 refs in
+the frozen dumps). When the contract changes, re-freeze and MANUALLY REVIEW the dump delta —
+acceptance can't distinguish "both fixed" from "both broken".
+**Normalized-subset comparison:** `verify.WorkbookStructureMatches` asserts exact equality on
+values/formulas/merges/dims/rowType/rowFill/bgColor/bold/borders and ignores column widths,
+row heights, and manifest source (excelize float/serialization noise). Full deep-equality
+would turn cosmetic excelize quirks into red tests.
+**Implication:** when extending the generator, run the acceptance tests first; if a deliberate
+output change is intended, regenerate `expected-dump-*` with the fixed binary + workbook-inspect
+and diff old-vs-new dumps before committing.

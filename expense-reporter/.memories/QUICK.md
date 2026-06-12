@@ -3,30 +3,25 @@
 *Working memory for the Go application. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Full CLI operational: add, batch, classify, auto, batch-auto, correct, version commands.
-190+ unit tests passing. JSON output mode (`--json`) on classify/auto/add.
-Few-shot injection (5.7) complete — keyword-based example selection active.
-MCP prediction feedback (5.9+) complete — `add` accepts `--predicted-subcategory` and related
-flags; writes `confirmed`/`corrected` instead of `manual` when prediction context is present.
-`auto --json` emits `classification_id` for the caller to pass back to `add`.
-Workbook-mapping done (sessions 26-27): `cmd/workbook-inspect` JSON dump -> generator spec v2
-(`.claude/plans/workbook-generator-spec.md`) + scratch builder converged to golden master.
-Phase B (data validation) IN PROGRESS — session 28: scratch builder now data-bearing —
-max-entries block sizing (headroom 0), typed DD/MM + BRL entries, per-group percent rows, and a
-centralized English-identifier `Labels` struct (pt-BR values; i18n loader deferred). Receitas
-income-block sizing bug found by review + fixed; testify unit tests in `builder_test.go`.
-Re-review regenerated `template.xlsx` + bless next.
-Next: `generate-workbook` command - port `.claude/scratch/template-builder/` into
-`internal/generate` + `cmd/` (carry the `Labels` struct over), lift inspect core into
-`internal/inspect`, acceptance tests first;
-brief: `.claude/plans/workbook-generator-implementation-plan.md`. Then TF-IDF (5.R1).
+Full CLI operational: add, batch, classify, auto, batch-auto, correct, review, apply,
+**generate-workbook**, version. 220+ unit tests. JSON output mode on classify/auto/add.
+Few-shot injection (5.7) + MCP prediction feedback (5.9+) complete.
+**Workbook generator COMPLETE (Phase G, session 29):** `internal/inspect` = structural-dump
+core (lifted from cmd/workbook-inspect, now a thin wrapper); `internal/generate` = spec-v2
+builder port — `Generate(Options)`, taxonomy JSON (spec §1.1) + entries JSONL loader (join
+layer: DD/MM dates, unknown subcat → warn+skip exit 0, taxonomy authority), English
+identifiers (Revenue*/summary*/balance*; pt-BR strings only in `Labels`), sheet order derived
+from taxonomy via registry `sheetOrder` (hardcoded 4-sheet order bug fixed).
+Acceptance: `test/fixtures/generate-basic/` with oracle-frozen expected dumps;
+`verify.WorkbookStructureMatches` (normalized subset). Scratch builder SUPERSEDED.
+Next: merge PR #27; export real taxonomy → taxonomy.json; year rollover. Then TF-IDF (5.R1).
 
 ## Structure
 ```
 cmd/expense-reporter/
   main.go              # Entry point
   cmd/                 # Cobra subcommands: add, auto, batch, batch-auto, classify, correct, version
-cmd/workbook-inspect/  # Standalone tool — JSON structural dump of a workbook (workbook mapping L1)
+cmd/workbook-inspect/  # Thin wrapper over internal/inspect (JSON structural dump)
 internal/
   batch/               # CSV reading, installment expansion, progress bars, report generation
   classifier/          # LLM classification — Ollama client, few-shot, decision logic
@@ -34,6 +29,8 @@ internal/
   config/              # config.json loader
   excel/               # Excelize wrapper — read/write workbook, column mapping
   feedback/            # JSONL persistence (classifications + expense log)
+  generate/            # Workbook generator — spec v2: taxonomy+entries → full workbook
+  inspect/             # Structural dump core (values/formulas/styles/merges/rowType)
   logger/              # Debug logging
   models/              # Domain types: Expense, BatchError, ClassifiedExpense
   parser/              # Semicolon-delimited expense string parser

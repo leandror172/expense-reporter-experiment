@@ -3,22 +3,16 @@
 *Working memory for the repo root. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Layer 5 (Expense Classifier) active. Phases 1–4 complete (CLI: add/batch/version, 190+ unit tests, v2.1.0).
-Layer 5 milestones done: classifier (5.2), decision logic (5.3), auto/batch-auto commands (5.4–5.5),
-feedback persistence (5.6), few-shot injection (5.7), JSON output + MCP server (5.8a/b).
-Since: 5.9 MCP feedback, `apply` command, `review` UI, workbook-mapping L1+2 (session 26),
-and L3 + generator Phase A (session 27, branch `feat/workbook-generator`): spec v2
-(`.claude/plans/workbook-generator-spec.md` — redesign: merges not fill-down, months at col C,
-no sub-item col, Referência omitted) + scratch builder converged to user-curated golden master
-(`.claude/workbook-template/`).
-Phase B (data validation) IN PROGRESS — session 28: scratch builder is now DATA-BEARING
-(max-entries block sizing, headroom 0; typed DD/MM + BRL entries; per-group `% sobre despesas`/
-`% sobre receita` rows; i18n `Labels` struct wired, English fields + pt-BR values). A Receitas
-income-block sizing bug (zero rows + inverted SUM) was caught by the generate review and fixed;
-testify unit tests added (`builder_test.go`). Plan: `.claude/plans/workbook-generator-phaseB-plan.md`.
-Next: RE-REVIEW the regenerated `.claude/workbook-template/template.xlsx` (prior PASS was vs the
-buggy file) + bless as data-bearing golden master. Then `generate-workbook` command (Phase G),
-then TF-IDF (5.R1).
+Layer 5 (Expense Classifier) milestones done through 5.9 (classifier, auto/batch-auto, feedback,
+few-shot, JSON+MCP, `apply`, `review` UI). **Workbook generator COMPLETE** (sessions 26–29,
+branch `feat/workbook-generator`, PR #27): mapping L1–L3 → spec v2 → Phase A/B convergence
+(user-blessed data-bearing golden master) → Phase G: `internal/inspect` (dump core),
+`internal/generate` + **`generate-workbook` command** (taxonomy JSON + expenses_log.jsonl →
+full workbook), acceptance-first with oracle-frozen dumps (3/3 green, deterministic, no Ollama).
+PR #27 review comments addressed (English identifiers, SOLID extraction); latent hardcoded
+sheet-order bug fixed (registry `sheetOrder`). Scratch builder SUPERSEDED.
+Next: merge PR #27; real-taxonomy export (113 subcats from Referência → taxonomy.json);
+year-rollover workflow; then TF-IDF (5.R1).
 
 ## Repo Structure
 ```

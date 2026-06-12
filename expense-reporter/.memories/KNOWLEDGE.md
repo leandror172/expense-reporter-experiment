@@ -123,3 +123,27 @@ no leading `=`; stale-formula fix = UpdateLinkedValue() + SetCalcProps(FullCalcO
   and localized pt-BR values; month names included; a `loadLabels(path)` config reader is a
   deferred drop-in. Forces Receita→Revenue / Renda→Income naming. Carry this struct into
   `internal/generate` when porting.
+
+### Phase G — the real generator (2026-06-11, session 29)
+- **`internal/inspect`** (G1): extraction core lifted verbatim from `cmd/workbook-inspect`
+  (now a thin wrapper). `DumpWorkbook(path, outDir)` + exported dump types. The dump JSON is a
+  TEST CONTRACT — `verify.WorkbookStructureMatches` unmarshals it.
+- **Input contract (spec §1.1):** taxonomy JSON (sheets→categories→subcategories;
+  incomeCategories→blocks; `incomeCategories[].name` is block grouping, NOT the sheet label —
+  that's `Labels.RevenueSheet`) + `expenses_log.jsonl` entries (`date` is DD/MM, no year;
+  `--year` supplies it). Join layer rules: unknown subcategory → warn to stderr + skip,
+  exit 0; on category mismatch the taxonomy wins; duplicate subcategory names = error.
+- **Oracle bootstrap (advisor-driven):** the scratch builder was taught to read the fixture
+  files and its dumps frozen as the acceptance expectation BEFORE the port — G2 became a
+  converge-to-green port (3/3 green first run). Limit of the pattern: oracle and port can
+  share a bug — the hardcoded `{Fixas,Variáveis,Extras,Adicionais}` order emitted invalid
+  D0/E0 refs for smaller taxonomies and the frozen dumps contained them. Fix: registry records
+  `sheetOrder`; dumps re-frozen with a manually reviewed delta.
+- **Verifier philosophy:** acceptance compares a NORMALIZED SUBSET (values, formulas, merges,
+  dims, rowType/rowFill, bgColor/bold/borders) and deliberately ignores column widths, row
+  heights, manifest source — excelize serialization noise classes documented in Phase A.
+- **Naming (PR #27 review):** identifiers are English (Revenue*/summary*/balance*/Category);
+  pt-BR text lives ONLY in `Labels` values. `RevenueSheet` ("Receitas") appears inside
+  cross-sheet formulas — behaves like a schema identifier, not cosmetic text.
+- Scratch builder `.claude/scratch/template-builder/` SUPERSEDED (kept as Phase A/B history);
+  its fake dataset lives on as `internal/generate/taxonomy_fixture_test.go`.
