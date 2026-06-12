@@ -8,7 +8,7 @@ type styleSet struct {
 	MonthBanner   int // month-name anchor: C0C0C0, Open Sans 14 bold, center (h)
 	MonthCovered  int // cells under a month merge: C0C0C0, no font emphasis
 	HeaderCol     int // row 2 Item/Data/Valor: D8D8D8, Open Sans 14, box border, center
-	CategoriaBold int // merged col-A label: Arial 14 bold, center/center, wrap
+	CategoryBold int // merged col-A label: Arial 14 bold, center/center, wrap
 	SubcatLabel   int // merged col-B label: Arial 10, center/center, wrap
 	DataCellArial int
 	DataCellTop   int
@@ -28,14 +28,14 @@ type styleSet struct {
 	GroupTotalLbl  int // CCCCFF, Arial 10, General (B/C label cells)
 	GroupTotalCur  int // CCCCFF, Arial 10, currency
 	GroupTotalPct  int // CCCCFF, Arial 10, percent
-	ListasTotalLbl int // C0C0C0, Arial 10 bold, General (B/C label cells)
-	ListasTotalCur int // C0C0C0, Arial 10 bold, currency
-	ListasTotalPct int // C0C0C0, Arial 10 bold, percent
+	SummaryTotalLbl int // C0C0C0, Arial 10 bold, General (B/C label cells)
+	SummaryTotalCur int // C0C0C0, Arial 10 bold, currency
+	SummaryTotalPct int // C0C0C0, Arial 10 bold, percent
 	NearBlack      int // 333333, Arial 10 bold white (label)
 	NearBlackCur   int // 333333, Arial 10 bold white, currency
 	NearBlackPct   int // 333333, Arial 10 bold white, percent
 	PullCur        int // plain currency Arial 10 (pull rows D..O)
-	ListasMonth    int // C0C0C0 month header on Listas row 3
+	SummaryMonth    int // C0C0C0 month header on Listas row 3
 }
 
 const (
@@ -100,7 +100,7 @@ func newStyles(f *excelize.File) (*styleSet, error) {
 	s.MesCorner = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: openSans(true), Border: topLeft, Alignment: centerBoth(false)})
 	s.MonthBanner = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: openSans(true), Border: topLeft, Alignment: alignH("center")})
 	s.HeaderCol = mk(&excelize.Style{Fill: solidFill("D8D8D8"), Font: openSans(false), Border: boxBorder()})
-	s.CategoriaBold = mk(&excelize.Style{Font: arialN(14, true), Alignment: centerBoth(true)})
+	s.CategoryBold = mk(&excelize.Style{Font: arialN(14, true), Alignment: centerBoth(true)})
 	s.SubcatLabel = mk(&excelize.Style{Font: arial(false), Alignment: centerBoth(true)})
 	s.DataCellArial = mk(&excelize.Style{Font: arial(false)})
 	s.DataCellTop = mk(&excelize.Style{Font: arial(false), Border: []excelize.Border{{Type: "top", Color: "000000", Style: 1}}})
@@ -122,14 +122,14 @@ func newStyles(f *excelize.File) (*styleSet, error) {
 	s.GroupTotalLbl = mk(&excelize.Style{Fill: solidFill("CCCCFF"), Font: arial(false)})
 	s.GroupTotalCur = mk(&excelize.Style{Fill: solidFill("CCCCFF"), Font: arial(false), CustomNumFmt: &cur})
 	s.GroupTotalPct = mk(&excelize.Style{Fill: solidFill("CCCCFF"), Font: arial(false), CustomNumFmt: &pct})
-	s.ListasTotalLbl = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: arial(true)})
-	s.ListasTotalCur = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: arial(true), CustomNumFmt: &cur})
-	s.ListasTotalPct = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: arial(true), CustomNumFmt: &pct})
+	s.SummaryTotalLbl = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: arial(true)})
+	s.SummaryTotalCur = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: arial(true), CustomNumFmt: &cur})
+	s.SummaryTotalPct = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: arial(true), CustomNumFmt: &pct})
 	s.NearBlack = mk(&excelize.Style{Fill: solidFill("333333"), Font: arialWhite(10, true)})
 	s.NearBlackCur = mk(&excelize.Style{Fill: solidFill("333333"), Font: arialWhite(10, true), CustomNumFmt: &cur})
 	s.NearBlackPct = mk(&excelize.Style{Fill: solidFill("333333"), Font: arialWhite(10, true), CustomNumFmt: &pct})
 	s.PullCur = mk(&excelize.Style{Font: arial(false), CustomNumFmt: &cur})
-	s.ListasMonth = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: openSans(false)})
+	s.SummaryMonth = mk(&excelize.Style{Fill: solidFill("C0C0C0"), Font: openSans(false)})
 
 	return s, firstErr
 }

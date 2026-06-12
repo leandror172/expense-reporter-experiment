@@ -62,12 +62,12 @@ func expenseValorCol(k int) string {
 	return colName(dataMonthBase + 3*k + 2)
 }
 
-// receitasMonthCols / receitasValorCol — v2 unifies Receitas with the data-sheet column model.
-func receitasMonthCols(k int) (item, data, valor string) { return expenseMonthCols(k) }
-func receitasValorCol(k int) string                      { return expenseValorCol(k) }
+// revenueMonthCols / revenueAmountCol — v2 unifies Receitas with the data-sheet column model.
+func revenueMonthCols(k int) (item, data, valor string) { return expenseMonthCols(k) }
+func revenueAmountCol(k int) string                      { return expenseValorCol(k) }
 
-// listasMonthCol returns the column letter for a month in a listas sheet (v2: months D..O).
-func listasMonthCol(k int) string {
+// summaryMonthCol returns the column letter for a month in a listas sheet (v2: months D..O).
+func summaryMonthCol(k int) string {
 	if k < 0 || k > 11 {
 		return ""
 	}

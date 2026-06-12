@@ -32,16 +32,16 @@ func Generate(opts Options) error {
 	dataYear = opts.Year
 	headroomRows = opts.Headroom
 
-	expenseSheets, receitasBlocks, err := LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
+	expenseSheets, revenueBlocks, err := LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
 	if err != nil {
 		return err
 	}
-	return buildWorkbook(expenseSheets, receitasBlocks, opts.OutPath)
+	return buildWorkbook(expenseSheets, revenueBlocks, opts.OutPath)
 }
 
 // buildWorkbook renders the loaded taxonomy+entries into an xlsx file (port of
 // the scratch builder's run()).
-func buildWorkbook(expenseSheets []ExpenseSheet, receitasBlocks []ReceitasBlock, outPath string) error {
+func buildWorkbook(expenseSheets []ExpenseSheet, revenueBlocks []RevenueBlock, outPath string) error {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -53,15 +53,15 @@ func buildWorkbook(expenseSheets []ExpenseSheet, receitasBlocks []ReceitasBlock,
 	reg := newLayoutRegistry()
 
 	// Build source sheets first so Listas can wire to their total rows.
-	if err := buildReceitas(f, st, lbl, receitasBlocks, reg); err != nil {
-		return fmt.Errorf("receitas: %w", err)
+	if err := buildRevenueSheet(f, st, lbl, revenueBlocks, reg); err != nil {
+		return fmt.Errorf("revenue: %w", err)
 	}
 	for _, sh := range expenseSheets {
 		if err := buildExpenseSheet(f, st, lbl, sh, reg); err != nil {
 			return fmt.Errorf("expense %s: %w", sh.Name, err)
 		}
 	}
-	if err := buildListas(f, st, lbl, reg); err != nil {
+	if err := buildSummarySheet(f, st, lbl, reg); err != nil {
 		return fmt.Errorf("listas: %w", err)
 	}
 
@@ -88,7 +88,7 @@ func orderSheets(f *excelize.File, lbl Labels, expenseSheets []ExpenseSheet) err
 	if err := f.DeleteSheet("Sheet1"); err != nil {
 		return err
 	}
-	order := []string{listasName, lbl.RevenueSheet}
+	order := []string{summarySheetName, lbl.RevenueSheet}
 	for _, sh := range expenseSheets {
 		order = append(order, sh.Name)
 	}
@@ -97,7 +97,7 @@ func orderSheets(f *excelize.File, lbl Labels, expenseSheets []ExpenseSheet) err
 			return fmt.Errorf("move %s: %w", order[i], err)
 		}
 	}
-	if i, _ := f.GetSheetIndex(listasName); i >= 0 {
+	if i, _ := f.GetSheetIndex(summarySheetName); i >= 0 {
 		f.SetActiveSheet(i)
 	}
 	return nil

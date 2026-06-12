@@ -28,8 +28,8 @@ func (s Subcat) MaxEntries() int {
 	return max
 }
 
-// Categoria groups subcategories under one bold category label.
-type Categoria struct {
+// Category groups subcategories under one bold category label.
+type Category struct {
 	Name string
 	Subs []Subcat
 }
@@ -37,18 +37,18 @@ type Categoria struct {
 // ExpenseSheet is one of Fixas/Variáveis/Extras/Adicionais.
 type ExpenseSheet struct {
 	Name string
-	Cats []Categoria
+	Cats []Category
 }
 
-// ReceitasBlock is one income block (Salário, 13°...).
-type ReceitasBlock struct {
+// RevenueBlock is one income block (Salário, 13°...).
+type RevenueBlock struct {
 	Category string // income category, e.g. "Receita"
 	Label    string // block label
 	Months   [12][]Entry
 }
 
 // MaxEntries mirrors Subcat.MaxEntries for income blocks.
-func (b ReceitasBlock) MaxEntries() int {
+func (b RevenueBlock) MaxEntries() int {
 	max := 0
 	for _, m := range b.Months {
 		if len(m) > max {

@@ -1,10 +1,10 @@
 {
-  "source": "/tmp/gen-skeleton.xlsx",
+  "source": "/tmp/regen-skel.xlsx",
   "sheets": [
     {
       "name": "Listas de itens",
       "file": "Listas de itens.json",
-      "rows": 58,
+      "rows": 52,
       "cols": 15
     },
     {

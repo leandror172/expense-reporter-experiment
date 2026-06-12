@@ -27,8 +27,8 @@ func TestSubcatMaxEntries(t *testing.T) {
 	assert.Equal(t, 0, Subcat{Name: "empty"}.MaxEntries())
 }
 
-func TestReceitasBlockMaxEntries(t *testing.T) {
-	blk := ReceitasBlock{Label: "Salário", Months: [12][]Entry{
+func TestRevenueBlockMaxEntries(t *testing.T) {
+	blk := RevenueBlock{Label: "Salário", Months: [12][]Entry{
 		0: {{Item: "a"}},
 		3: {{Item: "b"}, {Item: "c"}},
 	}}
@@ -58,16 +58,16 @@ func TestCalculateSubcatBlockRows(t *testing.T) {
 	}
 }
 
-func TestCalculateReceitasBlockRows(t *testing.T) {
+func TestCalculateRevenueBlockRows(t *testing.T) {
 	require.Equal(t, 0, headroomRows)
 	// 2 entries -> 2 data rows starting at row 6: 6,7 data + 8 total.
-	blk := ReceitasBlock{Label: "Salário", Months: entriesInOneMonth(2)}
-	first, last, total := calculateReceitasBlockRows(6, blk)
+	blk := RevenueBlock{Label: "Salário", Months: entriesInOneMonth(2)}
+	first, last, total := calculateRevenueBlockRows(6, blk)
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 7, last)
 	assert.Equal(t, 8, total)
 	// zero-entry block still gets one data row.
-	first, last, total = calculateReceitasBlockRows(6, ReceitasBlock{Label: "none"})
+	first, last, total = calculateRevenueBlockRows(6, RevenueBlock{Label: "none"})
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 6, last)
 	assert.Equal(t, 7, total)
@@ -77,8 +77,8 @@ func TestPlannedGrandTotalRow(t *testing.T) {
 	require.True(t, perGroupPctRows, "expectation assumes per-group percent rows on")
 	// Two categorias with 2 and 1 subcats. Each consumes len(Subs)+1 group total+2 pct rows.
 	cats := []catTotals{
-		{Categoria: "A", Subs: make([]subcatTotal, 2)}, // 2+1+2 = 5
-		{Categoria: "B", Subs: make([]subcatTotal, 1)}, // 1+1+2 = 4
+		{Category: "A", Subs: make([]subcatTotal, 2)}, // 2+1+2 = 5
+		{Category: "B", Subs: make([]subcatTotal, 1)}, // 1+1+2 = 4
 	}
 	assert.Equal(t, 6+5+4, plannedGrandTotalRow(6, cats))
 }
@@ -113,17 +113,17 @@ func newTestFile(t *testing.T) (*excelize.File, *styleSet, Labels) {
 	return f, st, newPtBRLabels()
 }
 
-// TestBuildReceitasSumRange is the regression guard for the inverted-SUM bug:
+// TestBuildRevenueSumRange is the regression guard for the inverted-SUM bug:
 // the income total row must SUM over the block's data rows, not an empty/backwards range.
-func TestBuildReceitasSumRange(t *testing.T) {
+func TestBuildRevenueSumRange(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	blocks := []ReceitasBlock{
+	blocks := []RevenueBlock{
 		{Category: "Receita", Label: "Salário", Months: [12][]Entry{
 			0: {{Item: "Salário", Day: 5, Value: 5000}},
 		}},
 	}
-	require.NoError(t, buildReceitas(f, st, lbl, blocks, reg))
+	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
 
 	// One entry -> data row 3, total row 4. Jan valor column is E.
 	formula, err := f.GetCellFormula("Receitas", "E4")
@@ -138,19 +138,19 @@ func TestBuildReceitasSumRange(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, valor, "amount must be written into the data row")
 
-	require.Len(t, reg.receitas.Blocks, 1)
-	assert.Equal(t, 4, reg.receitas.Blocks[0].TotalRow)
+	require.Len(t, reg.revenue.Blocks, 1)
+	assert.Equal(t, 4, reg.revenue.Blocks[0].TotalRow)
 }
 
-func TestBuildReceitasSumRangeMultiEntry(t *testing.T) {
+func TestBuildRevenueSumRangeMultiEntry(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	blocks := []ReceitasBlock{
+	blocks := []RevenueBlock{
 		{Category: "Receita", Label: "Comissão", Months: [12][]Entry{
 			0: {{Item: "c1", Day: 3, Value: 100}, {Item: "c2", Day: 9, Value: 200}},
 		}},
 	}
-	require.NoError(t, buildReceitas(f, st, lbl, blocks, reg))
+	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
 	// Two entries -> data rows 3,4; total row 5.
 	formula, err := f.GetCellFormula("Receitas", "E5")
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestBuildReceitasSumRangeMultiEntry(t *testing.T) {
 func TestBuildExpenseSheetSizingAndSum(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	sh := ExpenseSheet{Name: "Fixas", Cats: []Categoria{
+	sh := ExpenseSheet{Name: "Fixas", Cats: []Category{
 		{Name: "Habitação", Subs: []Subcat{
 			{Name: "Diarista", Months: [12][]Entry{
 				0: {{Item: "Diarista", Day: 3, Value: 150}, {Item: "Diarista", Day: 10, Value: 160}, {Item: "Diarista", Day: 17, Value: 155.5}},
@@ -193,29 +193,29 @@ func TestBuildExpenseSheetSizingAndSum(t *testing.T) {
 	assert.Equal(t, 6, layout.Cats[0].Subs[0].TotalRow)
 }
 
-// TestBuildListasPerGroupPctRows checks the new per-group percent rows are emitted
+// TestBuildSummaryPerGroupPctRows checks the new per-group percent rows are emitted
 // with IF-percent formulas that reference the sheet grand total (forward reference).
-func TestBuildListasPerGroupPctRows(t *testing.T) {
+func TestBuildSummaryPerGroupPctRows(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	blocks := []ReceitasBlock{
+	blocks := []RevenueBlock{
 		{Category: "Receita", Label: "Salário", Months: [12][]Entry{0: {{Item: "Salário", Day: 5, Value: 5000}}}},
 	}
-	require.NoError(t, buildReceitas(f, st, lbl, blocks, reg))
-	sh := ExpenseSheet{Name: "Fixas", Cats: []Categoria{
+	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
+	sh := ExpenseSheet{Name: "Fixas", Cats: []Category{
 		{Name: "Habitação", Subs: []Subcat{
 			{Name: "Aluguel", Months: [12][]Entry{0: {{Item: "Aluguel", Day: 5, Value: 1200}}}},
 		}},
 	}}
 	require.NoError(t, buildExpenseSheet(f, st, lbl, sh, reg))
-	require.NoError(t, buildListas(f, st, lbl, reg))
+	require.NoError(t, buildSummarySheet(f, st, lbl, reg))
 
 	// Scan column B of Listas for the per-group percent labels.
-	rows, err := f.GetRows(listasName)
+	rows, err := f.GetRows(summarySheetName)
 	require.NoError(t, err)
 	var pctExpRow int
 	for r := 1; r <= len(rows); r++ {
-		v, _ := f.GetCellValue(listasName, cell("B", r))
+		v, _ := f.GetCellValue(summarySheetName, cell("B", r))
 		if v == lbl.PctOfExpenses {
 			pctExpRow = r
 			break
@@ -224,7 +224,7 @@ func TestBuildListasPerGroupPctRows(t *testing.T) {
 	require.NotZero(t, pctExpRow, "expected a %q row in column B", lbl.PctOfExpenses)
 
 	// The Jan formula on that row (col D) must be an IF percent expression.
-	formula, err := f.GetCellFormula(listasName, cell("D", pctExpRow))
+	formula, err := f.GetCellFormula(summarySheetName, cell("D", pctExpRow))
 	require.NoError(t, err)
 	assert.Contains(t, formula, "IF(")
 	assert.Contains(t, formula, "/")

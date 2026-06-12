@@ -23,18 +23,18 @@ func buildExpenseSheet(f *excelize.File, st *styleSet, lbl Labels, sh ExpenseShe
 	layout := &sheetLayout{Sheet: name}
 	row := 3
 	for ci, cat := range sh.Cats {
-		ct := catTotals{Categoria: cat.Name}
+		ct := catTotals{Category: cat.Name}
 		catFirst := row
 		for _, sub := range cat.Subs {
 			firstData, lastData, totalRow := calculateSubcatBlockRows(row, sub)
 			writeSubcatBlock(f, st, lbl, name, sub, firstData, lastData, totalRow)
 			ct.Subs = append(ct.Subs, subcatTotal{
-				Sheet: name, Categoria: cat.Name, Subcat: sub.Name, TotalRow: totalRow,
+				Sheet: name, Category: cat.Name, Subcat: sub.Name, TotalRow: totalRow,
 			})
 			row = totalRow + 1
 		}
 		catLast := row - 1
-		mergeCategoriaLabel(f, st, name, cat.Name, catFirst, catLast)
+		mergeCategoryLabel(f, st, name, cat.Name, catFirst, catLast)
 		layout.Cats = append(layout.Cats, ct)
 		if ci < len(sh.Cats)-1 {
 			row++ // blank
@@ -44,6 +44,7 @@ func buildExpenseSheet(f *excelize.File, st *styleSet, lbl Labels, sh ExpenseShe
 		}
 	}
 	reg.expense[name] = layout
+	reg.sheetOrder = append(reg.sheetOrder, name)
 	return nil
 }
 
@@ -132,10 +133,10 @@ func calculateSubcatBlockRows(row int, sub Subcat) (firstData, lastData, totalRo
 	return firstData, lastData, totalRow
 }
 
-func mergeCategoriaLabel(f *excelize.File, st *styleSet, name, label string, first, last int) {
+func mergeCategoryLabel(f *excelize.File, st *styleSet, name, label string, first, last int) {
 	f.MergeCell(name, cell("A", first), cell("A", last))
 	f.SetCellValue(name, cell("A", first), label)
-	f.SetCellStyle(name, cell("A", first), cell("A", last), st.CategoriaBold)
+	f.SetCellStyle(name, cell("A", first), cell("A", last), st.CategoryBold)
 }
 
 // writeTotalRow writes the total row: Total/TotalDash/SUM per month triple.

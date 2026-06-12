@@ -1,7 +1,7 @@
 {
   "sheet": "Listas de itens",
   "dimensions": {
-    "rows": 58,
+    "rows": 52,
     "cols": 15
   },
   "columnWidths": {
@@ -70,12 +70,6 @@
     "50": 15.75,
     "51": 15.75,
     "52": 15.75,
-    "53": 15.75,
-    "54": 15.75,
-    "55": 15.75,
-    "56": 15.75,
-    "57": 15.75,
-    "58": 15.75,
     "6": 15,
     "7": 15,
     "8": 15,
@@ -5774,402 +5768,6 @@
     },
     {
       "row": 45,
-      "rowType": "header-month",
-      "cells": [
-        {
-          "col": "A",
-          "value": "Despesas extras",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "B",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "C",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "D",
-          "value": "",
-          "formula": "D0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "E",
-          "value": "",
-          "formula": "E0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "F",
-          "value": "",
-          "formula": "F0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "G",
-          "value": "",
-          "formula": "G0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "H",
-          "value": "",
-          "formula": "H0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "I",
-          "value": "",
-          "formula": "I0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "J",
-          "value": "",
-          "formula": "J0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "K",
-          "value": "",
-          "formula": "K0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "L",
-          "value": "",
-          "formula": "L0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "M",
-          "value": "",
-          "formula": "M0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "N",
-          "value": "",
-          "formula": "N0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "O",
-          "value": "",
-          "formula": "O0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        }
-      ]
-    },
-    {
-      "row": 46,
-      "rowType": "header-month",
-      "cells": [
-        {
-          "col": "A",
-          "value": "Despesas adicionais",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "B",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "C",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "D",
-          "value": "",
-          "formula": "D0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "E",
-          "value": "",
-          "formula": "E0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "F",
-          "value": "",
-          "formula": "F0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "G",
-          "value": "",
-          "formula": "G0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "H",
-          "value": "",
-          "formula": "H0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "I",
-          "value": "",
-          "formula": "I0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "J",
-          "value": "",
-          "formula": "J0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "K",
-          "value": "",
-          "formula": "K0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "L",
-          "value": "",
-          "formula": "L0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "M",
-          "value": "",
-          "formula": "M0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "N",
-          "value": "",
-          "formula": "N0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "O",
-          "value": "",
-          "formula": "O0",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        }
-      ]
-    },
-    {
-      "row": 47,
       "rowType": "data-row",
       "cells": [
         {
@@ -6211,7 +5809,7 @@
         {
           "col": "D",
           "value": "",
-          "formula": "SUM(D43,D44,D45,D46)",
+          "formula": "SUM(D43,D44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6224,7 +5822,7 @@
         {
           "col": "E",
           "value": "",
-          "formula": "SUM(E43,E44,E45,E46)",
+          "formula": "SUM(E43,E44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6237,7 +5835,7 @@
         {
           "col": "F",
           "value": "",
-          "formula": "SUM(F43,F44,F45,F46)",
+          "formula": "SUM(F43,F44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6250,7 +5848,7 @@
         {
           "col": "G",
           "value": "",
-          "formula": "SUM(G43,G44,G45,G46)",
+          "formula": "SUM(G43,G44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6263,7 +5861,7 @@
         {
           "col": "H",
           "value": "",
-          "formula": "SUM(H43,H44,H45,H46)",
+          "formula": "SUM(H43,H44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6276,7 +5874,7 @@
         {
           "col": "I",
           "value": "",
-          "formula": "SUM(I43,I44,I45,I46)",
+          "formula": "SUM(I43,I44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6289,7 +5887,7 @@
         {
           "col": "J",
           "value": "",
-          "formula": "SUM(J43,J44,J45,J46)",
+          "formula": "SUM(J43,J44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6302,7 +5900,7 @@
         {
           "col": "K",
           "value": "",
-          "formula": "SUM(K43,K44,K45,K46)",
+          "formula": "SUM(K43,K44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6315,7 +5913,7 @@
         {
           "col": "L",
           "value": "",
-          "formula": "SUM(L43,L44,L45,L46)",
+          "formula": "SUM(L43,L44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6328,7 +5926,7 @@
         {
           "col": "M",
           "value": "",
-          "formula": "SUM(M43,M44,M45,M46)",
+          "formula": "SUM(M43,M44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6341,7 +5939,7 @@
         {
           "col": "N",
           "value": "",
-          "formula": "SUM(N43,N44,N45,N46)",
+          "formula": "SUM(N43,N44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6354,7 +5952,7 @@
         {
           "col": "O",
           "value": "",
-          "formula": "SUM(O43,O44,O45,O46)",
+          "formula": "SUM(O43,O44)",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -6367,7 +5965,7 @@
       ]
     },
     {
-      "row": 48,
+      "row": 46,
       "rowType": "category-label",
       "cells": [
         {
@@ -6385,7 +5983,7 @@
       ]
     },
     {
-      "row": 49,
+      "row": 47,
       "rowType": "data-row",
       "cells": [
         {
@@ -6427,7 +6025,7 @@
         {
           "col": "D",
           "value": "",
-          "formula": "IF(D47\u003e0,D43/D47,0)",
+          "formula": "IF(D45\u003e0,D43/D45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6440,7 +6038,7 @@
         {
           "col": "E",
           "value": "",
-          "formula": "IF(E47\u003e0,E43/E47,0)",
+          "formula": "IF(E45\u003e0,E43/E45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6453,7 +6051,7 @@
         {
           "col": "F",
           "value": "",
-          "formula": "IF(F47\u003e0,F43/F47,0)",
+          "formula": "IF(F45\u003e0,F43/F45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6466,7 +6064,7 @@
         {
           "col": "G",
           "value": "",
-          "formula": "IF(G47\u003e0,G43/G47,0)",
+          "formula": "IF(G45\u003e0,G43/G45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6479,7 +6077,7 @@
         {
           "col": "H",
           "value": "",
-          "formula": "IF(H47\u003e0,H43/H47,0)",
+          "formula": "IF(H45\u003e0,H43/H45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6492,7 +6090,7 @@
         {
           "col": "I",
           "value": "",
-          "formula": "IF(I47\u003e0,I43/I47,0)",
+          "formula": "IF(I45\u003e0,I43/I45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6505,7 +6103,7 @@
         {
           "col": "J",
           "value": "",
-          "formula": "IF(J47\u003e0,J43/J47,0)",
+          "formula": "IF(J45\u003e0,J43/J45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6518,7 +6116,7 @@
         {
           "col": "K",
           "value": "",
-          "formula": "IF(K47\u003e0,K43/K47,0)",
+          "formula": "IF(K45\u003e0,K43/K45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6531,7 +6129,7 @@
         {
           "col": "L",
           "value": "",
-          "formula": "IF(L47\u003e0,L43/L47,0)",
+          "formula": "IF(L45\u003e0,L43/L45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6544,7 +6142,7 @@
         {
           "col": "M",
           "value": "",
-          "formula": "IF(M47\u003e0,M43/M47,0)",
+          "formula": "IF(M45\u003e0,M43/M45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6557,7 +6155,7 @@
         {
           "col": "N",
           "value": "",
-          "formula": "IF(N47\u003e0,N43/N47,0)",
+          "formula": "IF(N45\u003e0,N43/N45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6570,7 +6168,7 @@
         {
           "col": "O",
           "value": "",
-          "formula": "IF(O47\u003e0,O43/O47,0)",
+          "formula": "IF(O45\u003e0,O43/O45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6583,7 +6181,7 @@
       ]
     },
     {
-      "row": 50,
+      "row": 48,
       "rowType": "data-row",
       "cells": [
         {
@@ -6625,7 +6223,7 @@
         {
           "col": "D",
           "value": "",
-          "formula": "IF(D47\u003e0,D44/D47,0)",
+          "formula": "IF(D45\u003e0,D44/D45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6638,7 +6236,7 @@
         {
           "col": "E",
           "value": "",
-          "formula": "IF(E47\u003e0,E44/E47,0)",
+          "formula": "IF(E45\u003e0,E44/E45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6651,7 +6249,7 @@
         {
           "col": "F",
           "value": "",
-          "formula": "IF(F47\u003e0,F44/F47,0)",
+          "formula": "IF(F45\u003e0,F44/F45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6664,7 +6262,7 @@
         {
           "col": "G",
           "value": "",
-          "formula": "IF(G47\u003e0,G44/G47,0)",
+          "formula": "IF(G45\u003e0,G44/G45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6677,7 +6275,7 @@
         {
           "col": "H",
           "value": "",
-          "formula": "IF(H47\u003e0,H44/H47,0)",
+          "formula": "IF(H45\u003e0,H44/H45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6690,7 +6288,7 @@
         {
           "col": "I",
           "value": "",
-          "formula": "IF(I47\u003e0,I44/I47,0)",
+          "formula": "IF(I45\u003e0,I44/I45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6703,7 +6301,7 @@
         {
           "col": "J",
           "value": "",
-          "formula": "IF(J47\u003e0,J44/J47,0)",
+          "formula": "IF(J45\u003e0,J44/J45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6716,7 +6314,7 @@
         {
           "col": "K",
           "value": "",
-          "formula": "IF(K47\u003e0,K44/K47,0)",
+          "formula": "IF(K45\u003e0,K44/K45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6729,7 +6327,7 @@
         {
           "col": "L",
           "value": "",
-          "formula": "IF(L47\u003e0,L44/L47,0)",
+          "formula": "IF(L45\u003e0,L44/L45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6742,7 +6340,7 @@
         {
           "col": "M",
           "value": "",
-          "formula": "IF(M47\u003e0,M44/M47,0)",
+          "formula": "IF(M45\u003e0,M44/M45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6755,7 +6353,7 @@
         {
           "col": "N",
           "value": "",
-          "formula": "IF(N47\u003e0,N44/N47,0)",
+          "formula": "IF(N45\u003e0,N44/N45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6768,7 +6366,7 @@
         {
           "col": "O",
           "value": "",
-          "formula": "IF(O47\u003e0,O44/O47,0)",
+          "formula": "IF(O45\u003e0,O44/O45,0)",
           "style": {
             "bgColor": "CCCCFF",
             "bold": false,
@@ -6781,403 +6379,7 @@
       ]
     },
     {
-      "row": 51,
-      "rowType": "data-row",
-      "cells": [
-        {
-          "col": "A",
-          "value": "Extras",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "B",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "C",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "D",
-          "value": "",
-          "formula": "IF(D47\u003e0,D45/D47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "E",
-          "value": "",
-          "formula": "IF(E47\u003e0,E45/E47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "F",
-          "value": "",
-          "formula": "IF(F47\u003e0,F45/F47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "G",
-          "value": "",
-          "formula": "IF(G47\u003e0,G45/G47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "H",
-          "value": "",
-          "formula": "IF(H47\u003e0,H45/H47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "I",
-          "value": "",
-          "formula": "IF(I47\u003e0,I45/I47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "J",
-          "value": "",
-          "formula": "IF(J47\u003e0,J45/J47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "K",
-          "value": "",
-          "formula": "IF(K47\u003e0,K45/K47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "L",
-          "value": "",
-          "formula": "IF(L47\u003e0,L45/L47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "M",
-          "value": "",
-          "formula": "IF(M47\u003e0,M45/M47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "N",
-          "value": "",
-          "formula": "IF(N47\u003e0,N45/N47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "O",
-          "value": "",
-          "formula": "IF(O47\u003e0,O45/O47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        }
-      ]
-    },
-    {
-      "row": 52,
-      "rowType": "data-row",
-      "cells": [
-        {
-          "col": "A",
-          "value": "Adicionais",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "B",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "C",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "D",
-          "value": "",
-          "formula": "IF(D47\u003e0,D46/D47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "E",
-          "value": "",
-          "formula": "IF(E47\u003e0,E46/E47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "F",
-          "value": "",
-          "formula": "IF(F47\u003e0,F46/F47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "G",
-          "value": "",
-          "formula": "IF(G47\u003e0,G46/G47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "H",
-          "value": "",
-          "formula": "IF(H47\u003e0,H46/H47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "I",
-          "value": "",
-          "formula": "IF(I47\u003e0,I46/I47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "J",
-          "value": "",
-          "formula": "IF(J47\u003e0,J46/J47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "K",
-          "value": "",
-          "formula": "IF(K47\u003e0,K46/K47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "L",
-          "value": "",
-          "formula": "IF(L47\u003e0,L46/L47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "M",
-          "value": "",
-          "formula": "IF(M47\u003e0,M46/M47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "N",
-          "value": "",
-          "formula": "IF(N47\u003e0,N46/N47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "O",
-          "value": "",
-          "formula": "IF(O47\u003e0,O46/O47,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        }
-      ]
-    },
-    {
-      "row": 53,
+      "row": 49,
       "rowType": "category-label",
       "cells": [
         {
@@ -7195,7 +6397,7 @@
       ]
     },
     {
-      "row": 54,
+      "row": 50,
       "rowType": "data-row",
       "cells": [
         {
@@ -7393,7 +6595,7 @@
       ]
     },
     {
-      "row": 55,
+      "row": 51,
       "rowType": "data-row",
       "cells": [
         {
@@ -7591,403 +6793,7 @@
       ]
     },
     {
-      "row": 56,
-      "rowType": "data-row",
-      "cells": [
-        {
-          "col": "A",
-          "value": "Extras",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "B",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "C",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "D",
-          "value": "",
-          "formula": "IF(D42\u003e0,D45/D42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "E",
-          "value": "",
-          "formula": "IF(E42\u003e0,E45/E42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "F",
-          "value": "",
-          "formula": "IF(F42\u003e0,F45/F42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "G",
-          "value": "",
-          "formula": "IF(G42\u003e0,G45/G42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "H",
-          "value": "",
-          "formula": "IF(H42\u003e0,H45/H42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "I",
-          "value": "",
-          "formula": "IF(I42\u003e0,I45/I42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "J",
-          "value": "",
-          "formula": "IF(J42\u003e0,J45/J42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "K",
-          "value": "",
-          "formula": "IF(K42\u003e0,K45/K42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "L",
-          "value": "",
-          "formula": "IF(L42\u003e0,L45/L42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "M",
-          "value": "",
-          "formula": "IF(M42\u003e0,M45/M42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "N",
-          "value": "",
-          "formula": "IF(N42\u003e0,N45/N42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "O",
-          "value": "",
-          "formula": "IF(O42\u003e0,O45/O42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        }
-      ]
-    },
-    {
-      "row": 57,
-      "rowType": "data-row",
-      "cells": [
-        {
-          "col": "A",
-          "value": "Adicionais",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "B",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "C",
-          "value": "",
-          "style": {
-            "bgColor": "C0C0C0",
-            "bold": true,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "D",
-          "value": "",
-          "formula": "IF(D42\u003e0,D46/D42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "E",
-          "value": "",
-          "formula": "IF(E42\u003e0,E46/E42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "F",
-          "value": "",
-          "formula": "IF(F42\u003e0,F46/F42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "G",
-          "value": "",
-          "formula": "IF(G42\u003e0,G46/G42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "H",
-          "value": "",
-          "formula": "IF(H42\u003e0,H46/H42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "I",
-          "value": "",
-          "formula": "IF(I42\u003e0,I46/I42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "J",
-          "value": "",
-          "formula": "IF(J42\u003e0,J46/J42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "K",
-          "value": "",
-          "formula": "IF(K42\u003e0,K46/K42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "L",
-          "value": "",
-          "formula": "IF(L42\u003e0,L46/L42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "M",
-          "value": "",
-          "formula": "IF(M42\u003e0,M46/M42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "N",
-          "value": "",
-          "formula": "IF(N42\u003e0,N46/N42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        },
-        {
-          "col": "O",
-          "value": "",
-          "formula": "IF(O42\u003e0,O46/O42,0)",
-          "style": {
-            "bgColor": "CCCCFF",
-            "bold": false,
-            "borderTop": false,
-            "borderBottom": false,
-            "borderLeft": false,
-            "borderRight": false
-          }
-        }
-      ]
-    },
-    {
-      "row": 58,
+      "row": 52,
       "rowType": "data-row",
       "cells": [
         {
@@ -8029,7 +6835,7 @@
         {
           "col": "D",
           "value": "",
-          "formula": "D42-D47",
+          "formula": "D42-D45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8042,7 +6848,7 @@
         {
           "col": "E",
           "value": "",
-          "formula": "E42-E47",
+          "formula": "E42-E45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8055,7 +6861,7 @@
         {
           "col": "F",
           "value": "",
-          "formula": "F42-F47",
+          "formula": "F42-F45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8068,7 +6874,7 @@
         {
           "col": "G",
           "value": "",
-          "formula": "G42-G47",
+          "formula": "G42-G45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8081,7 +6887,7 @@
         {
           "col": "H",
           "value": "",
-          "formula": "H42-H47",
+          "formula": "H42-H45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8094,7 +6900,7 @@
         {
           "col": "I",
           "value": "",
-          "formula": "I42-I47",
+          "formula": "I42-I45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8107,7 +6913,7 @@
         {
           "col": "J",
           "value": "",
-          "formula": "J42-J47",
+          "formula": "J42-J45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8120,7 +6926,7 @@
         {
           "col": "K",
           "value": "",
-          "formula": "K42-K47",
+          "formula": "K42-K45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8133,7 +6939,7 @@
         {
           "col": "L",
           "value": "",
-          "formula": "L42-L47",
+          "formula": "L42-L45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8146,7 +6952,7 @@
         {
           "col": "M",
           "value": "",
-          "formula": "M42-M47",
+          "formula": "M42-M45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8159,7 +6965,7 @@
         {
           "col": "N",
           "value": "",
-          "formula": "N42-N47",
+          "formula": "N42-N45",
           "style": {
             "bgColor": "333333",
             "bold": true,
@@ -8172,7 +6978,7 @@
         {
           "col": "O",
           "value": "",
-          "formula": "O42-O47",
+          "formula": "O42-O45",
           "style": {
             "bgColor": "333333",
             "bold": true,

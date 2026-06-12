@@ -10,7 +10,7 @@ import (
 )
 
 // LoadTaxonomy loads taxonomy and entries from JSON files.
-func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseSheet, []ReceitasBlock, error) {
+func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseSheet, []RevenueBlock, error) {
 	sheets, incomeBlocks, err := loadTaxonomyFile(taxonomyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
@@ -44,7 +44,7 @@ type rawSheet struct {
 }
 
 // loadTaxonomyFile parses the taxonomy JSON file.
-func loadTaxonomyFile(path string) ([]ExpenseSheet, []ReceitasBlock, error) {
+func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading taxonomy file: %w", err)
@@ -64,9 +64,9 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []ReceitasBlock, error) {
 	sheets := make([]ExpenseSheet, len(raw.Sheets))
 	for i, rs := range raw.Sheets {
 		sheets[i] = ExpenseSheet{Name: rs.Name}
-		cats := make([]Categoria, len(rs.Categories))
+		cats := make([]Category, len(rs.Categories))
 		for j, rc := range rs.Categories {
-			cats[j] = Categoria{Name: rc.Name}
+			cats[j] = Category{Name: rc.Name}
 			subs := make([]Subcat, len(rc.Subcategories))
 			for k, name := range rc.Subcategories {
 				subs[k] = Subcat{Name: name}
@@ -76,10 +76,10 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []ReceitasBlock, error) {
 		sheets[i].Cats = cats
 	}
 
-	incomeBlocks := make([]ReceitasBlock, 0)
+	incomeBlocks := make([]RevenueBlock, 0)
 	for _, ic := range raw.IncomeCategories {
 		for _, blockName := range ic.Blocks {
-			incomeBlocks = append(incomeBlocks, ReceitasBlock{
+			incomeBlocks = append(incomeBlocks, RevenueBlock{
 				Category: ic.Name,
 				Label:    blockName,
 			})
@@ -90,7 +90,7 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []ReceitasBlock, error) {
 }
 
 // loadEntries reads entries from a JSONL file and populates the taxonomy.
-func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]ReceitasBlock) error {
+func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]RevenueBlock) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("opening entries file: %w", err)
@@ -148,7 +148,7 @@ func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]ReceitasBl
 }
 
 // buildSubcategoryMap creates a map from subcategory names to their targets.
-func buildSubcategoryMap(sheets []ExpenseSheet, incomeBlocks []ReceitasBlock) (map[string]subcatTarget, error) {
+func buildSubcategoryMap(sheets []ExpenseSheet, incomeBlocks []RevenueBlock) (map[string]subcatTarget, error) {
 	result := make(map[string]subcatTarget)
 
 	// Index into the backing slices — pointers to range copies would lose appends.
@@ -199,5 +199,5 @@ func parseDate(dateStr string) (int, int, error) {
 type subcatTarget struct {
 	kind   string // "expense" or "income"
 	expense *Subcat
-	income  *ReceitasBlock
+	income  *RevenueBlock
 }
