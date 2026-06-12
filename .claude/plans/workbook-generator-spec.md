@@ -42,6 +42,36 @@ Taxonomy order = workbook order (categories contiguous, subcategories in listed 
 Current full taxonomy (113 subcategories): Referência digest §2 — sub-item splits must be
 composed into col-B strings when imported.
 
+### 1.1 Concrete input files (G3 decision, 2026-06-11 — advisor-reviewed)
+
+**Taxonomy file (JSON)** — primary skeleton source, sheet order = file order:
+```json
+{
+  "sheets": [
+    { "name": "Fixas",
+      "categories": [
+        { "name": "Habitação", "subcategories": ["Diarista", "Aluguel"] } ] } ],
+  "incomeCategories": [
+    { "name": "Receita", "blocks": ["Salário", "13°"] } ]
+}
+```
+- `incomeCategories[].name` is a **block grouping** (drives the between-income-category
+  separators, §3.2) — NOT the Receitas sheet name, which comes from `Labels.RevenueSheet`.
+- The Listas Investimentos shell block (§4.2) is generator-constant structure, not
+  taxonomy-derived; it appears even for an empty taxonomy.
+
+**Entries file** — `expenses_log.jsonl` lines (`internal/feedback.ExpenseEntry`); `date`
+is `DD/MM` (no year — the log stores day/month only); the `--year` flag supplies the year.
+
+**Join layer (explicit unit, separately tested):** routes each entry by `subcategory` —
+first against expense subcategories (taxonomy maps subcategory → sheet/categoria), then
+against income block labels. Rules:
+- **Unknown subcategory → warn to stderr + skip the entry; exit 0.** (No Diversos
+  fallback — that's a product decision requiring a Diversos bucket in the taxonomy.)
+- **Category mismatch (entry.category ≠ taxonomy categoria for that subcategory):
+  trust the taxonomy**, ignore the entry's category field.
+- Duplicate subcategory names across sheets are a taxonomy validation error.
+
 ## 2. Workbook-wide canonical conventions
 
 | Concern | Rule |

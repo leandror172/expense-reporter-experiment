@@ -119,7 +119,7 @@ xlsx generated on the fly.
 | 3 | B7B7B7 | moot (record only) |
 | 4 | merged headroom tail render | check in Phase B step 4 |
 | 5 | Dólar row semantics | settle in Phase B saldo work |
-| G | taxonomy source for the real generator | decide at G2 (recommend taxonomy file + log fallback) |
+| G | taxonomy source for the real generator | ✅ RESOLVED (2026-06-11): (b) dedicated **JSON taxonomy file** as primary skeleton source; entries from `expenses_log.jsonl`; option (a) Referência read demoted to a possible one-time export/bootstrap tool |
 
 ## 6. Working agreements that apply (from this session's flow)
 

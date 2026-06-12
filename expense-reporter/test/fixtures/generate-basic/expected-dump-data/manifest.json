@@ -1,0 +1,29 @@
+{
+  "source": "/tmp/gen-data.xlsx",
+  "sheets": [
+    {
+      "name": "Listas de itens",
+      "file": "Listas de itens.json",
+      "rows": 58,
+      "cols": 15
+    },
+    {
+      "name": "Receitas",
+      "file": "Receitas.json",
+      "rows": 6,
+      "cols": 38
+    },
+    {
+      "name": "Fixas",
+      "file": "Fixas.json",
+      "rows": 12,
+      "cols": 38
+    },
+    {
+      "name": "Variáveis",
+      "file": "Variáveis.json",
+      "rows": 4,
+      "cols": 38
+    }
+  ]
+}

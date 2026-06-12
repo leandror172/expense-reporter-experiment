@@ -1,0 +1,20 @@
+{
+  "sheets": [
+    {
+      "name": "Fixas",
+      "categories": [
+        { "name": "Habitação", "subcategories": ["Diarista", "Aluguel"] },
+        { "name": "Lazer", "subcategories": ["Netflix"] }
+      ]
+    },
+    {
+      "name": "Variáveis",
+      "categories": [
+        { "name": "Transporte", "subcategories": ["Metrô"] }
+      ]
+    }
+  ],
+  "incomeCategories": [
+    { "name": "Receita", "blocks": ["Salário", "13°"] }
+  ]
+}

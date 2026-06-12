@@ -48,6 +48,22 @@ Name it pragmatically — e.g. `noClassificationsRecorded()`.
 Given names align with how the system actually evolves over time (a sequence of recorded
 events) and keep the test description domain-focused.
 
+## Generate-Workbook Fixture Sub-Format (G3, 2026-06-11)
+
+`generate-basic` does NOT follow the config.json+input.csv format. It is file-in/file-out:
+
+| File | Role |
+|------|------|
+| `taxonomy.json` | workbook skeleton (sheets→categories→subcategories, incomeCategories→blocks); schema: spec §1.1 |
+| `entries.jsonl` | `feedback.ExpenseEntry` lines; `date` is `DD/MM` (no year) |
+| `entries-with-unmapped.jsonl` | variant with a subcategory absent from the taxonomy (warn+skip contract) |
+| `expected-dump-skeleton/`, `expected-dump-data/` | committed `internal/inspect` dumps frozen from the scratch template-builder oracle |
+
+Verifier: `verify.WorkbookStructureMatches(expectedDumpDir)` — compares a NORMALIZED SUBSET
+(values, formulas, merges, dims, rowType/rowFill, bgColor/bold/borders); deliberately ignores
+column widths, row heights, manifest source (excelize serialization noise). No Ollama —
+these tests are deterministic and fast.
+
 ## JSONL Log Verification
 
 For commands that write JSONL log files on insert, use file-specific verifiers (not generic string-keyed ones):

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,13 +12,17 @@ import (
 const outRelPath = "../../workbook-template/template.xlsx"
 
 func main() {
-	if err := run(); err != nil {
+	taxonomyPath := flag.String("taxonomy", "", "taxonomy JSON file (default: built-in Phase B taxonomy)")
+	entriesPath := flag.String("entries", "", "entries JSONL file (requires -taxonomy)")
+	outPath := flag.String("out", outRelPath, "output xlsx path")
+	flag.Parse()
+	if err := run(*taxonomyPath, *entriesPath, *outPath); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(taxonomyPath, entriesPath, outPath string) error {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -28,6 +33,13 @@ func run() error {
 
 	lbl := newPtBRLabels()
 	expenseSheets, receitasBlocks := buildTaxonomy()
+	if taxonomyPath != "" {
+		var err error
+		expenseSheets, receitasBlocks, err = LoadTaxonomy(taxonomyPath, entriesPath)
+		if err != nil {
+			return err
+		}
+	}
 	reg := newLayoutRegistry()
 
 	// Build source sheets first so Listas can wire to their total rows.
@@ -71,7 +83,7 @@ func run() error {
 		return fmt.Errorf("calc props: %w", err)
 	}
 
-	out, err := filepath.Abs(outRelPath)
+	out, err := filepath.Abs(outPath)
 	if err != nil {
 		return err
 	}
