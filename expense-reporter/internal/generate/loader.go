@@ -61,8 +61,16 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
 		return nil, nil, fmt.Errorf("parsing taxonomy JSON: %w", err)
 	}
 
-	sheets := make([]ExpenseSheet, len(raw.Sheets))
-	for i, rs := range raw.Sheets {
+	sheets := rawSheetsToExpenseSheets(raw.Sheets)
+	incomeBlocks := incomeCatsToRevenueBlocks(raw.IncomeCategories)
+
+	return sheets, incomeBlocks, nil
+}
+
+// rawSheetsToExpenseSheets builds the ExpenseSheet tree from the raw taxonomy sheets.
+func rawSheetsToExpenseSheets(raw []rawSheet) []ExpenseSheet {
+	sheets := make([]ExpenseSheet, len(raw))
+	for i, rs := range raw {
 		sheets[i] = ExpenseSheet{Name: rs.Name}
 		cats := make([]Category, len(rs.Categories))
 		for j, rc := range rs.Categories {
@@ -75,9 +83,16 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
 		}
 		sheets[i].Cats = cats
 	}
+	return sheets
+}
 
+// incomeCatsToRevenueBlocks flattens income categories into a []RevenueBlock slice.
+func incomeCatsToRevenueBlocks(raw []struct {
+	Name   string   `json:"name"`
+	Blocks []string `json:"blocks"`
+}) []RevenueBlock {
 	incomeBlocks := make([]RevenueBlock, 0)
-	for _, ic := range raw.IncomeCategories {
+	for _, ic := range raw {
 		for _, blockName := range ic.Blocks {
 			incomeBlocks = append(incomeBlocks, RevenueBlock{
 				Category: ic.Name,
@@ -85,8 +100,7 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
 			})
 		}
 	}
-
-	return sheets, incomeBlocks, nil
+	return incomeBlocks
 }
 
 // loadEntries reads entries from a JSONL file and populates the taxonomy.
@@ -103,6 +117,12 @@ func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]RevenueBlo
 	}
 
 	scanner := bufio.NewScanner(file)
+	return scanEntries(scanner, subcatMap)
+}
+
+// scanEntries reads each non-blank JSONL line, parses it, looks up its subcategory,
+// and attaches the entry to the appropriate month slice.
+func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" {
@@ -110,10 +130,10 @@ func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]RevenueBlo
 		}
 
 		var entry struct {
-			Item       string `json:"item"`
-			Date       string `json:"date"`
-			Value      float64 `json:"value"`
-			Subcategory string `json:"subcategory"`
+			Item        string  `json:"item"`
+			Date        string  `json:"date"`
+			Value       float64 `json:"value"`
+			Subcategory string  `json:"subcategory"`
 		}
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			return fmt.Errorf("parsing entry line: %w", err)
@@ -130,18 +150,7 @@ func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]RevenueBlo
 			return fmt.Errorf("parsing date for item %q: %w", entry.Item, err)
 		}
 
-		entryObj := Entry{
-			Item:  entry.Item,
-			Day:   day,
-			Value: entry.Value,
-		}
-
-		switch subcat.kind {
-		case "expense":
-			subcat.expense.Months[month-1] = append(subcat.expense.Months[month-1], entryObj)
-		case "income":
-			subcat.income.Months[month-1] = append(subcat.income.Months[month-1], entryObj)
-		}
+		subcat.attachEntry(Entry{Item: entry.Item, Day: day, Value: entry.Value}, month-1)
 	}
 
 	return scanner.Err()
@@ -197,7 +206,16 @@ func parseDate(dateStr string) (int, int, error) {
 
 // subcatTarget holds a reference to either an expense subcategory or income block.
 type subcatTarget struct {
-	kind   string // "expense" or "income"
+	kind    string // "expense" or "income"
 	expense *Subcat
 	income  *RevenueBlock
+}
+
+// attachEntry appends entry to the appropriate month slice based on kind.
+func (t subcatTarget) attachEntry(entry Entry, month int) {
+	if t.kind == "expense" {
+		t.expense.Months[month] = append(t.expense.Months[month], entry)
+	} else {
+		t.income.Months[month] = append(t.income.Months[month], entry)
+	}
 }

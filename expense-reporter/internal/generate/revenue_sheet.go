@@ -72,7 +72,8 @@ func calculateRevenueBlockRows(row int, b RevenueBlock) (firstData, lastData, to
 // writeRevenueBlock writes one income block: its data rows (styled with date/currency formats),
 // its merged col-B label across data+total rows, and its total row.
 func writeRevenueBlock(f *excelize.File, st *styleSet, lbl Labels, name string, b RevenueBlock, firstData, lastData, totalRow int) {
-	writeRevenueDataRows(f, st, name, b, firstData, lastData)
+	styleRevenueDataBand(f, st, name, firstData, lastData)
+	fillRevenueEntries(f, name, b, firstData)
 	writeTotalRowOpt(f, st, lbl, name, firstData, lastData, totalRow, false)
 	f.SetRowHeight(name, totalRow, 15.75)
 	f.MergeCell(name, cell("B", firstData), cell("B", totalRow))
@@ -80,8 +81,8 @@ func writeRevenueBlock(f *excelize.File, st *styleSet, lbl Labels, name string, 
 	f.SetCellStyle(name, cell("B", firstData), cell("B", totalRow), st.SubcatLabel)
 }
 
-// writeRevenueDataRows styles each data row and fills typed entries.
-func writeRevenueDataRows(f *excelize.File, st *styleSet, name string, b RevenueBlock, firstData, lastData int) {
+// styleRevenueDataBand sets row heights and cell styles for the data row band.
+func styleRevenueDataBand(f *excelize.File, st *styleSet, name string, firstData, lastData int) {
 	for r := firstData; r <= lastData; r++ {
 		f.SetRowHeight(name, r, 15)
 		style := st.DataCellArial
@@ -96,7 +97,10 @@ func writeRevenueDataRows(f *excelize.File, st *styleSet, name string, b Revenue
 			f.SetCellStyle(name, cell(valorCol, r), cell(valorCol, r), st.Currency)
 		}
 	}
+}
 
+// fillRevenueEntries writes item, date, and value cells for each typed entry.
+func fillRevenueEntries(f *excelize.File, name string, b RevenueBlock, firstData int) {
 	for k := 0; k < 12; k++ {
 		itemCol, dataCol, valorCol := expenseMonthCols(k)
 		for i, entry := range b.Months[k] {

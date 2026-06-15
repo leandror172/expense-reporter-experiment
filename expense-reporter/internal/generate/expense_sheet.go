@@ -71,7 +71,7 @@ func writeMonthHeader(f *excelize.File, st *styleSet, lbl Labels, name string) {
 	f.SetRowHeight(name, 2, 15)
 	f.MergeCell(name, "A1", "B2")
 	f.SetCellValue(name, "A1", lbl.Month)
-	f.SetCellStyle(name, "A1", "A1", st.MesCorner)
+	f.SetCellStyle(name, "A1", "A1", st.MonthCorner)
 	for k := 0; k < 12; k++ {
 		item, data, valor := expenseMonthCols(k)
 		f.MergeCell(name, item+"1", valor+"1")
@@ -153,13 +153,13 @@ func writeTotalRowOpt(f *excelize.File, st *styleSet, lbl Labels, name string, f
 		f.SetCellValue(name, cell(dataCol, totalRow), lbl.TotalDash)
 		formula := fmt.Sprintf("SUM(%s:%s)", cell(valorCol, firstData), cell(valorCol, lastData))
 		f.SetCellFormula(name, cell(valorCol, totalRow), formula)
-		itemStyle, valorStyle := st.TotalData, st.TotalValor
+		itemStyle, valueStyle := st.TotalText, st.TotalValue
 		if groupSeps && k%2 == 1 { // vertical separator every 2 month-groups (golden pattern)
-			itemStyle, valorStyle = st.TotalDataL, st.TotalValorR
+			itemStyle, valueStyle = st.TotalTextLeft, st.TotalValueRight
 		}
 		f.SetCellStyle(name, cell(itemCol, totalRow), cell(itemCol, totalRow), itemStyle)
-		f.SetCellStyle(name, cell(dataCol, totalRow), cell(dataCol, totalRow), st.TotalData)
-		f.SetCellStyle(name, cell(valorCol, totalRow), cell(valorCol, totalRow), valorStyle)
+		f.SetCellStyle(name, cell(dataCol, totalRow), cell(dataCol, totalRow), st.TotalText)
+		f.SetCellStyle(name, cell(valorCol, totalRow), cell(valorCol, totalRow), valueStyle)
 	}
 }
 

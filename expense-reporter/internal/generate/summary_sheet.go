@@ -362,27 +362,41 @@ func (b *summaryBuilder) balanceBlock() {
 	b.f.SetRowHeight(summarySheetName, b.balanceSepRow, 3.75)
 	b.row++
 	order := b.reg.sheetOrder
-	st := b.st
 
-	receitaRow := b.balanceRow(b.lbl.Revenue, st.SummaryTotalLbl, st.SummaryTotalCur, func(k int) string {
+	_, _, totalRendaRow := b.writeIncomeRows()
+	despRows, totalDespRow := b.writeExpenseRows(order)
+	b.writeExpenseShareBlock(order, despRows, totalDespRow)
+	b.writeIncomeShareBlock(order, despRows, totalRendaRow)
+	b.writeFinalBalanceRow(totalRendaRow, totalDespRow)
+}
+
+// writeIncomeRows writes the Revenue pull, Investments pull, and TotalIncome sum rows.
+// Returns all three row numbers for use in later formula references.
+func (b *summaryBuilder) writeIncomeRows() (receitaRow, investRow, totalRendaRow int) {
+	receitaRow = b.balanceRow(b.lbl.Revenue, b.st.SummaryTotalLbl, b.st.SummaryTotalCur, func(k int) string {
 		return cell(summaryMonthCol(k), b.revenueTotalRow)
 	})
-	investRow := b.balanceRow(b.lbl.Investments, st.SummaryTotalLbl, st.SummaryTotalCur, func(k int) string {
+	investRow = b.balanceRow(b.lbl.Investments, b.st.SummaryTotalLbl, b.st.SummaryTotalCur, func(k int) string {
 		return cell(summaryMonthCol(k), b.investTotalRow)
 	})
-	totalRendaRow := b.balanceRow(b.lbl.TotalIncome, st.NearBlack, st.NearBlackCur, func(k int) string {
+	totalRendaRow = b.balanceRow(b.lbl.TotalIncome, b.st.NearBlack, b.st.NearBlackCur, func(k int) string {
 		c := summaryMonthCol(k)
 		return fmt.Sprintf("SUM(%s:%s)", cell(c, receitaRow), cell(c, investRow))
 	})
+	return
+}
 
-	despRows := map[string]int{}
+// writeExpenseRows writes one balance row per sheet (using sheetGrandRow) and the
+// TotalExpenses sum row. Returns the per-sheet row map and the total row number.
+func (b *summaryBuilder) writeExpenseRows(order []string) (despRows map[string]int, totalDespRow int) {
+	despRows = map[string]int{}
 	for _, s := range order {
 		gr := b.sheetGrandRow[s]
-		despRows[s] = b.balanceRow(fmt.Sprintf(b.lbl.SheetExpensesFmt, lower(s)), st.SummaryTotalLbl, st.SummaryTotalCur, func(k int) string {
+		despRows[s] = b.balanceRow(fmt.Sprintf(b.lbl.SheetExpensesFmt, lower(s)), b.st.SummaryTotalLbl, b.st.SummaryTotalCur, func(k int) string {
 			return cell(summaryMonthCol(k), gr)
 		})
 	}
-	totalDespRow := b.balanceRow(b.lbl.TotalExpenses, st.NearBlack, st.NearBlackCur, func(k int) string {
+	totalDespRow = b.balanceRow(b.lbl.TotalExpenses, b.st.NearBlack, b.st.NearBlackCur, func(k int) string {
 		c := summaryMonthCol(k)
 		terms := make([]string, len(order))
 		for i, s := range order {
@@ -390,7 +404,12 @@ func (b *summaryBuilder) balanceBlock() {
 		}
 		return sumList(terms)
 	})
+	return
+}
 
+// writeExpenseShareBlock writes the ExpenseShareHeader label then one percent row per sheet
+// showing each sheet's share of total expenses.
+func (b *summaryBuilder) writeExpenseShareBlock(order []string, despRows map[string]int, totalDespRow int) {
 	b.balanceLabelRow(b.lbl.ExpenseShareHeader)
 	for _, s := range order {
 		dr := despRows[s]
@@ -399,6 +418,11 @@ func (b *summaryBuilder) balanceBlock() {
 			return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, totalDespRow), cell(c, dr), cell(c, totalDespRow))
 		})
 	}
+}
+
+// writeIncomeShareBlock writes the IncomeShareHeader label then one percent row per sheet
+// showing each sheet's share of total income.
+func (b *summaryBuilder) writeIncomeShareBlock(order []string, despRows map[string]int, totalRendaRow int) {
 	b.balanceLabelRow(b.lbl.IncomeShareHeader)
 	for _, s := range order {
 		dr := despRows[s]
@@ -407,7 +431,11 @@ func (b *summaryBuilder) balanceBlock() {
 			return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, totalRendaRow), cell(c, dr), cell(c, totalRendaRow))
 		})
 	}
-	b.balanceRow(b.lbl.Balance, st.NearBlack, st.NearBlackCur, func(k int) string {
+}
+
+// writeFinalBalanceRow writes the Balance row (total income minus total expenses).
+func (b *summaryBuilder) writeFinalBalanceRow(totalRendaRow, totalDespRow int) {
+	b.balanceRow(b.lbl.Balance, b.st.NearBlack, b.st.NearBlackCur, func(k int) string {
 		c := summaryMonthCol(k)
 		return fmt.Sprintf("%s-%s", cell(c, totalRendaRow), cell(c, totalDespRow))
 	})
