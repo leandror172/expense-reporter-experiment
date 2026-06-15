@@ -11,27 +11,6 @@ const (
 	lastSummaryCol   = "O"
 )
 
-// quoteSheet wraps a sheet name in single quotes for safe cross-sheet references.
-// Plain (unquoted) names are emitted when the name has no spaces, matching the golden master.
-func sheetRef(name, col string, row int) string {
-	if needsQuote(name) {
-		return fmt.Sprintf("'%s'!%s%d", name, col, row)
-	}
-	return fmt.Sprintf("%s!%s%d", name, col, row)
-}
-
-// needsQuote: Excel quotes a sheet name in a reference unless it is purely ASCII
-// alphanumeric (letters/digits). Names with spaces, accents, or punctuation get quoted.
-func needsQuote(s string) bool {
-	for _, r := range s {
-		isASCIIAlnum := (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
-		if !isASCIIAlnum {
-			return true
-		}
-	}
-	return false
-}
-
 type summaryBuilder struct {
 	f   *excelize.File
 	st  *styleSet

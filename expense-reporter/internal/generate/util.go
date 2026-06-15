@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -25,4 +26,28 @@ func sumRange(first, last string) string {
 		return "SUM(" + first + ")"
 	}
 	return "SUM(" + first + ":" + last + ")"
+}
+
+// cell formats a col+row pair into an Excel cell address (e.g. "C3").
+func cell(col string, row int) string { return fmt.Sprintf("%s%d", col, row) }
+
+// sheetRef formats a cross-sheet reference, quoting the sheet name when required.
+// Plain (unquoted) names are emitted when the name is purely ASCII alphanumeric.
+func sheetRef(name, col string, row int) string {
+	if needsQuote(name) {
+		return fmt.Sprintf("'%s'!%s%d", name, col, row)
+	}
+	return fmt.Sprintf("%s!%s%d", name, col, row)
+}
+
+// needsQuote returns true when an Excel sheet name must be quoted in a formula reference.
+// Names are unquoted only when every character is ASCII alphanumeric.
+func needsQuote(s string) bool {
+	for _, r := range s {
+		isASCIIAlnum := (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+		if !isASCIIAlnum {
+			return true
+		}
+	}
+	return false
 }

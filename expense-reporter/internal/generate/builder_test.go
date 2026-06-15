@@ -50,7 +50,7 @@ func TestCalculateSubcatBlockRows(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sub := Subcat{Name: "S", Months: entriesInOneMonth(tc.entries)}
-			first, last, total := calculateSubcatBlockRows(3, sub)
+			first, last, total := calculateBlockRows(3, sub.MaxEntries())
 			assert.Equal(t, tc.wantFirst, first)
 			assert.Equal(t, tc.wantLast, last)
 			assert.Equal(t, tc.wantTot, total)
@@ -62,12 +62,12 @@ func TestCalculateRevenueBlockRows(t *testing.T) {
 	require.Equal(t, 0, headroomRows)
 	// 2 entries -> 2 data rows starting at row 6: 6,7 data + 8 total.
 	blk := RevenueBlock{Label: "Salário", Months: entriesInOneMonth(2)}
-	first, last, total := calculateRevenueBlockRows(6, blk)
+	first, last, total := calculateBlockRows(6, blk.MaxEntries())
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 7, last)
 	assert.Equal(t, 8, total)
 	// zero-entry block still gets one data row.
-	first, last, total = calculateRevenueBlockRows(6, RevenueBlock{Label: "none"})
+	first, last, total = calculateBlockRows(6, RevenueBlock{Label: "none"}.MaxEntries())
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 6, last)
 	assert.Equal(t, 7, total)
