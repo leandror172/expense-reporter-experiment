@@ -11,6 +11,10 @@ branch `feat/workbook-generator`, PR #27): mapping L1–L3 → spec v2 → Phase
 full workbook), acceptance-first with oracle-frozen dumps (3/3 green, deterministic, no Ollama).
 PR #27 review comments addressed (English identifiers, SOLID extraction); latent hardcoded
 sheet-order bug fixed (registry `sheetOrder`). Scratch builder SUPERSEDED.
+Sessions 30–31: `internal/generate` internal refactor (styles vocabulary + English renames;
+loader/revenue/summary step-extraction; shared helpers → `util.go`/new `data_sheet.go`; unified
+block-sizing + data-band writers) — behavior-preserving, oracle dumps unchanged, 2 commits on the
+branch (uncommitted-then-committed). See generate `.memories/QUICK.md` for the conventions.
 Next: merge PR #27; real-taxonomy export (113 subcats from Referência → taxonomy.json);
 year-rollover workflow; then TF-IDF (5.R1).
 

@@ -147,3 +147,29 @@ no leading `=`; stale-formula fix = UpdateLinkedValue() + SetCalcProps(FullCalcO
   cross-sheet formulas — behaves like a schema identifier, not cosmetic text.
 - Scratch builder `.claude/scratch/template-builder/` SUPERSEDED (kept as Phase A/B history);
   its fake dataset lives on as `internal/generate/taxonomy_fixture_test.go`.
+
+### Generator internal refactor — style system & file layout (2026-06-12 → 06-15, sessions 30–31)
+`internal/generate` was reorganized for domain isolation, behavior-preserving throughout (oracle
+dumps byte-identical at every step):
+- **styles.go is two layers:** a style *vocabulary* (named constructors + palette/numfmt constants
+  naming the workbook's visual language) and a `styleRegistrar` (first-error capture; `family()`
+  mints General/currency/percent trios of one fill+font). Sheet builders consume only `styleSet`
+  IDs; new styles EXTEND the vocabulary rather than inlining `excelize.Style` literals. Portuguese
+  field names anglicized (MonthCorner, TotalText/Value…); dead styles (MonthCovered, IndigoBandCur)
+  removed.
+- **File homes by domain, not first caller:** pure ref/formula helpers (`cell`, `sheetRef`,
+  `needsQuote`) moved into `util.go`; the data-sheet writing vocabulary shared by the expense
+  sheets and Receitas moved into new `data_sheet.go`. Two near-duplicate pairs were unified there:
+  `calculateBlockRows(row, maxEntries)` (was calculateSubcat/RevenueBlockRows) and
+  `writeDataBand(..., rowHeight, lastCol)` (was writeSubcatDataRows vs styleRevenueDataBand+
+  fillRevenueEntries) — the sole behavioral difference between the expense and revenue bands is
+  row height (12.75 vs 15).
+**Rationale:** naming WHAT a style/helper is — not how it's assembled nor where first used — makes
+reuse visible and additions self-policing; the oracle-frozen dump made aggressive merges safe (a
+mis-parameterized row height fails loudly and specifically).
+**Implication:** package stays FLAT (subfolders = separate Go packages = forced exports + cycle
+risk; Java-style nesting rejected). The one penciled split — `internal/taxonomy` as a pure input
+layer during the T-02 real-taxonomy export — is non-trivial: `taxonomy.go` currently mixes the
+domain types (`Entry`/`Subcat`/`Category`/`ExpenseSheet`/`RevenueBlock`, used by every builder)
+with mutable RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()` and
+read by builders) that must relocate into `generate` before any split.
