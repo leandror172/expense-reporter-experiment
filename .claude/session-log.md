@@ -1,6 +1,6 @@
 # Session Log — Expense Reporter
 
-**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`
+**Previous logs:** `.claude/archive/session-log-2026-02-27-to-2026-02-27.md`, `.claude/archive/session-log-2026-05-15-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-18-to-2026-05-18.md`, `.claude/archive/session-log-2026-05-29-to-2026-05-29.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`, `.claude/archive/session-log-2026-06-08-to-2026-06-08.md`, `.claude/archive/session-log-2026-06-10-to-2026-06-10.md`
 , `.claude/archive/session-log-2026-03-02-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-13-to-2026-03-02.md`
 , `.claude/archive/session-log-2026-03-03-to-2026-03-03.md`
@@ -19,11 +19,60 @@
 , `.claude/archive/session-log-2026-04-25-to-2026-04-25.md`
 , `.claude/archive/session-log-2026-04-27-to-2026-04-27.md`
 , `.claude/archive/session-log-2026-05-12-to-2026-05-12.md`
-**Current Session:** 2026-06-12 — Session 29: Workbook generator COMPLETE — Phase B close-out + Phase G (G1–G4) + PR review
-**Current Layer:** Workbook Generator — COMPLETE on PR #27; next merge + real-taxonomy export
+**Current Session:** 2026-06-15 — Session 30: generate package internal refactor — styles vocabulary, cross-file extraction, memory merge
+**Current Layer:** Workbook Generator — COMPLETE (PR #27 pending merge; internal refactor done)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
+
+## 2026-06-15 - Session 30: generate package internal refactor — styles vocabulary, cross-file extraction, memory merge
+
+### Context
+Continued from a compacted session that had left an uncommitted styles.go refactor in the tree.
+Picked up that work, committed it, then ran the cross-file domain-extraction pass discussed
+pre-compaction, then the memory handoff. All work in `expense-reporter/internal/generate`,
+behavior-preserving (the oracle-frozen acceptance dumps stayed byte-identical throughout).
+
+### What Was Done
+- **Committed the styles.go refactor** (carried over uncommitted from the pre-compaction session):
+  styles.go split into a style *vocabulary* (named constructors `dataCell`/`grayBanner`/
+  `columnHeader`/`totalRowCell`/`navyBand`/… + named palette/numfmt constants) over a
+  `styleRegistrar` (first-error capture; `family()` mints General/currency/percent trios);
+  Portuguese `styleSet` fields anglicized (MonthCorner; TotalText/TotalTextLeft/TotalValue/
+  TotalValueRight); dead styles removed. Plus loader/revenue/`summary.balanceBlock` step-extraction.
+- **Cross-file domain-extraction pass (A+B+C+D), via a sonnet subagent (codegen routed to Ollama,
+  qcoder verdict 1):** moved pure ref/formula helpers (`cell`, `sheetRef`, `needsQuote`) into
+  `util.go`; created new `data_sheet.go` holding the data-sheet writing vocabulary shared by the
+  expense sheets and Receitas (`writeMonthHeader`, `writeTotalRow(Opt)`, `writeSeparator`,
+  `mergeCategoryLabel`, `freezeC3`); unified two near-duplicate pairs into `calculateBlockRows(row,
+  maxEntries)` and `writeDataBand(..., rowHeight, lastCol)` (the only behavioral difference between
+  the two sheet kinds is row height — 12.75 expense / 15 revenue). Net −144 lines.
+- **Verified green and committed:** 480 unit tests / 19 packages, `go vet` clean, 3/3 generate
+  acceptance tests with dumps byte-identical. 3 commits on `feat/workbook-generator` (2 refactor +
+  1 chore-memory). Independently verified the subagent's tree before trusting its report.
+- **Memory handoff:** merged the session-30 pre-compaction scratch into durable memory (generate
+  `.memories/QUICK.md` code-organization section; repo `KNOWLEDGE.md` generator-refactor entry;
+  root `QUICK.md` status). Wrote two Claude-side auto-memories (`feedback_style_vocabulary`,
+  `feedback_subagent_verify_tree`) + reinforced `feedback_method_extraction`. Deleted both scratch
+  files.
+- **PR #27 description checked → STALE** (covers only G1–G4; predates the PR-review fixes and the
+  session-30 refactor; test counts read 220+/17, now 480/19). Update pending the user's go-ahead.
+
+### Decisions Made
+- **Package stays FLAT** — no styles/sheets subpackages (Go idiom; styleSet/layoutRegistry/Labels/
+  domain types too coupled to split). Style/config definitions are expressed through identifying
+  names (the vocabulary pattern) — name WHAT a thing is, not how it's assembled; generalizes
+  beyond styles.go.
+- **`internal/taxonomy` split deferred to T-02** (the real-taxonomy export), now with a PREREQUISITE
+  discovered this session: `taxonomy.go` mixes the domain types (used by every builder) with mutable
+  RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()`, read by builders)
+  — those vars must relocate into `generate` first; then decide domain-type placement (cycle risk).
+  Recorded as the T-02 addendum in tasks.md.
+
+### Next
+- **Update the PR #27 description** (stale — pending user approval to push), then merge PR #27 (T-01).
+- Real-taxonomy export (T-02) — now carries the `internal/taxonomy` split + its prerequisite.
+- Year-rollover (T-03); then TF-IDF (5.R1).
 
 ## 2026-06-11 - Session 29: Workbook generator complete — Phase B blessed, Phase G shipped, PR review addressed
 
@@ -146,64 +195,4 @@ scratch builder `.claude/scratch/template-builder/`. Tracked plan authored at
 - Gap: Listas section header `"Receitas"` and despesa section names have no `Labels` field yet.
 - Then **Phase G:** port the builder → `internal/generate` + `generate-workbook` command,
   acceptance-first + TDD.
-
-## 2026-06-10 - Session 27: Workbook generator — Layer 3 spec + Phase A golden-master convergence
-
-### Context
-Started from session 26 handoff: execute workbook-mapping Layer 3 locally per
-`.claude/plans/workbook-layer3-instructions.md`. Grew into Phase A of the generator itself.
-Branch `feat/workbook-generator`.
-
-### What Was Done
-- **Layer 3 executed locally** (claude.ai 2× usage not needed): 7 parallel Sonnet subagents
-  produced per-sheet structural digests (`.claude/workbook-dump/digests/`, gitignored);
-  main session synthesized `.claude/plans/workbook-generator-spec.md`. Digests surfaced
-  source bugs the reconciled findings missed (systematic June SUM-over-Data-column bug;
-  Adicionais single-cell SUMs that only count the LAST data row — its totals are wrong).
-- **Dogfood template build (Opus subagent, spec-only context):** standalone builder at
-  `.claude/scratch/template-builder/` → `.claude/workbook-template/template.xlsx` +
-  `ambiguities.md` (14 decisions, 2 spec contradictions found by building).
-- **User hand-reviewed the template** → `template-reviewed.xlsx` (golden master). Sonnet
-  subagent diffed it → `review-diff.md` (14 correction patterns).
-- **Spec v2:** folds in the hand-review. Redesign stances: vertical MERGES replace
-  fill-down; months start col C; sub-item level eliminated ("Orion - Consultas" composed
-  strings); Mês A1:B2; freeze C3/D4; Listas 3-col label area, months D–O; Referência
-  sheet OMITTED (not an insertion target); B7B7B7 moot. Spec wins over original workbook.
-- **Convergence (Opus subagent):** builder rewritten to v2; output matches the golden
-  master — 41 residuals, all justified golden-master hand-edit artifacts
-  (`convergence-report.md`; diff harness `diff.py`).
-- **Implementation plan written:** `.claude/plans/workbook-generator-implementation-plan.md`
-  — prep reading list, Phase B, Phase G (generate-workbook command), open questions. Sized
-  for a Sonnet executor.
-- Memories updated (repo + expense-reporter QUICK, expense-reporter KNOWLEDGE generator
-  entry, auto-memory workbook-mapping rewritten); index.md registered all artifacts.
-- 4 commits on `feat/workbook-generator`.
-
-### Decisions Made
-- **Derived layout** — positions computed from taxonomy + entries; dump is validation
-  reference only. Source drift/bugs deliberately normalized (spec §6, 14 deviations).
-- **Golden-master validation** — convergence judged ONLY by workbook-inspect dump diff +
-  openpyxl pass (`diff.py`), never eyeballing.
-- **Per-group percent rows required** but absent from golden master — enter in Phase B
-  (builder `perGroupPctRows` switch off until then).
-- **Subagent fan-out pattern endorsed** — digests/reports to FILES, main session
-  synthesizes; Sonnet for extraction/diffing, Opus for build/convergence.
-- excelize gotchas: `SetCellFormula` takes no leading `=`; stale-formula fix =
-  `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
-
-### Next
-- Follow `.claude/plans/workbook-generator-implementation-plan.md` §0 prep list.
-- Phase B first step BLOCKS ON USER: copy golden master → `template-data.xlsx`, hand-fill
-  fake entries, add per-group percent rows to Listas.
-- Then Phase G: lift inspect core into `internal/inspect`; port builder into
-  `internal/generate` + `cmd/generate.go`; acceptance tests FIRST.
-
-### Gotchas
-- Templates/builder are tracked (fake data only); dump-* dirs gitignored via
-  `.claude/workbook-template/.gitignore`. Source dumps/digests/visual notes stay gitignored.
-- Golden master has 6 hand-edit inconsistencies (convergence-report.md) — builder follows
-  the spec rule; do NOT "fix" the builder toward them.
-- No `jq` on this machine — use python3 (openpyxl available).
-- Long-running subagents (>5 min) expire the main session's prompt cache — one full
-  re-read per agent return; acceptable, not a bug.
 

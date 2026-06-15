@@ -46,22 +46,26 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Workbook Generator — **COMPLETE** (sessions 25–29) on branch
-  `feat/workbook-generator`, **PR #27 ready to merge** (title/body cover full scope; the user's
-  pending review drafts were addressed in code and await submit/discard).
-- **Last checkpoint:** Session 29 (2026-06-11) — Phase B blessed (data-bearing golden master,
-  Sonnet re-review PASS, navy headers + D9 guard + RevenueSheet label) and **Phase G shipped**:
-  `internal/inspect` (dump core, G1) + `internal/generate` + **`generate-workbook` command**
-  (G2) with acceptance-first contract (G3: `test/fixtures/generate-basic/`, oracle-frozen
-  dumps, `verify.WorkbookStructureMatches` normalized subset) and docs/retirement (G4: README,
-  scratch builder SUPERSEDED). PR review: English identifiers + SOLID extraction; hardcoded
-  sheet-order bug fixed (registry `sheetOrder`; dumps re-frozen, delta reviewed). All suites
-  green: 220+ unit tests, 3/3 acceptance (deterministic, no Ollama, <1s).
+- **Active layer:** Workbook Generator — **COMPLETE** (sessions 25–30) on branch
+  `feat/workbook-generator`. **PR #27 ready to merge**, BUT its description is now **STALE** —
+  covers only G1–G4, predates the PR-review fixes + the session-30 internal refactor, and its test
+  counts read "220+/17" (now 480/19). Update the body before merging.
+- **Last checkpoint:** Session 30 (2026-06-15) — `internal/generate` internal refactor,
+  behavior-preserving (oracle dumps byte-identical throughout). styles.go split into a style
+  *vocabulary* (named constructors + palette/numfmt constants) over a `styleRegistrar`
+  (first-error capture, `family()` trios); Portuguese style fields anglicized; dead styles removed.
+  loader/revenue/summary `balanceBlock` step-extracted. Cross-file extraction: pure ref/formula
+  helpers (`cell`/`sheetRef`/`needsQuote`) → `util.go`; shared data-sheet vocabulary → new
+  `data_sheet.go`; two near-duplicate pairs unified there (`calculateBlockRows`, `writeDataBand` —
+  only diff is row height 12.75 vs 15). 3 commits on branch (2 refactor + 1 chore-memory). All
+  green: 480 unit tests / 19 packages, 3/3 acceptance (deterministic, no Ollama).
 - **Input contract (spec §1.1):** taxonomy JSON (sheets→cats→subcats; incomeCategories→blocks)
   + `expenses_log.jsonl` entries (date `DD/MM`, no year — `--year` supplies it); unknown
   subcategory → warn+skip exit 0; taxonomy wins on category mismatch.
-- **Next:** merge PR #27; one-time export of the real 113-subcategory taxonomy (Referência →
-  `taxonomy.json`); year-rollover workflow; then TF-IDF (5.R1).
+- **Next:** update PR #27 description (stale); merge PR #27; one-time export of the real
+  113-subcategory taxonomy (Referência → `taxonomy.json`) — now carries the `internal/taxonomy`
+  package split (T-02 addendum, with a render-config relocation prerequisite); year-rollover
+  workflow; then TF-IDF (5.R1).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -101,6 +105,26 @@ Or manually:
   `Labels.RevenueSheet` ("Receitas") appears inside cross-sheet formulas → schema identifier.
 - **Generated workbook is not an insertion target** — regenerate-don't-insert; `apply`/`add`
   keep working against hand-maintained workbooks; year-rollover + taxonomy export pending.
+
+### Generate Package Architecture (session 30)
+- **styles.go = vocabulary + registration** — named constructors say WHAT a cell is
+  (`dataCell`/`grayBanner`/`columnHeader`/`totalRowCell`/`navyBand`/…) over named palette +
+  numfmt constants; `styleRegistrar.family(fill,font)` mints General/currency/percent trios.
+  Never inline a raw `excelize.Style{...}` in a sheet builder — extend the vocabulary.
+  `styleSet` fields are English (MonthCorner; TotalText/TotalTextLeft/TotalValue/TotalValueRight).
+- **File homes by domain, not first caller** — `util.go` = pure string/formula/ref helpers, no
+  excelize (`cell`, `sheetRef`, `needsQuote`, `sumList/Range`, `lower`, `atoi`); `data_sheet.go` =
+  the data-sheet writing vocabulary shared by the expense sheets AND Receitas, plus the unified
+  `calculateBlockRows(row, maxEntries)` and `writeDataBand(..., rowHeight, lastCol)` (sole
+  behavioral diff between the two sheet kinds is row height 12.75 vs 15).
+- **Package stays FLAT** — no styles/sheets subpackages (Go idiom; styleSet/layoutRegistry/Labels/
+  domain types too coupled). One split penciled (T-02 addendum): `internal/taxonomy` as a pure
+  input layer alongside the real-taxonomy export. PREREQUISITE: `taxonomy.go` mixes the domain
+  types (used by every builder) with mutable RENDER config (`dataYear`/`headroomRows`/
+  `perGroupPctRows`, set by `Generate()`, read by builders) — relocate those into `generate`
+  first, then decide domain-type placement (cycle risk).
+- **Behavior-preserving refactors leaned on the oracle** — a mis-parameterized row height fails the
+  frozen dump loudly and specifically; that safety net is what made aggressive cross-file merges safe.
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
@@ -192,7 +216,7 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Merge PR #27 + taxonomy export (START HERE)** | PR #27 on GitHub; `expense-reporter/internal/generate/.memories/QUICK.md`; spec §1.1 (`.claude/plans/workbook-generator-spec.md`) | User: submit/discard the pending review on PR #27 (its 2 draft comments were addressed in session 29), then merge. Then the one-time export: read Referência (113 subcats; `internal/excel.LoadReferenceSheet` or workbook-inspect dump) → write `taxonomy.json` per spec §1.1 schema; sub-item splits compose into "Parent - Child" strings. Validate by generating a skeleton workbook and eyeballing in LibreOffice. Real entries: `expense-reporter/expenses_log.jsonl` (gitignored; date is DD/MM, no year). |
+| **Merge PR #27 + taxonomy export (START HERE)** | PR #27 on GitHub; `expense-reporter/internal/generate/.memories/QUICK.md`; spec §1.1 (`.claude/plans/workbook-generator-spec.md`) | **First: the PR #27 description is STALE** — it covers only G1–G4, predates the PR-review fixes + the session-30 internal refactor, and its test counts read 220+/17 (now 480/19); update the body before merging. Then: user submits/discards the pending review (its 2 draft comments were addressed in session 29) and merges. Then the one-time export: read Referência (113 subcats; `internal/excel.LoadReferenceSheet` or workbook-inspect dump) → write `taxonomy.json` per spec §1.1 schema; sub-item splits compose into "Parent - Child" strings. **This export now carries the `internal/taxonomy` package split** (T-02 addendum — see Active Decisions; relocate the render-config vars out of `taxonomy.go` first). Validate by generating a skeleton workbook and eyeballing in LibreOffice. Real entries: `expense-reporter/expenses_log.jsonl` (gitignored; date is DD/MM, no year). |
 | Year-rollover workflow | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. |
 | RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
