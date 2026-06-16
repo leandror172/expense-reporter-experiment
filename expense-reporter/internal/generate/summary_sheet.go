@@ -77,7 +77,7 @@ func (b *summaryBuilder) header() {
 
 // monthFormulas writes D..O on a row, each a formula built by fn(k), styled valStyle.
 func (b *summaryBuilder) monthFormulas(row, valStyle int, fn func(k int) string) {
-	for k := 0; k < 12; k++ {
+	for k := range 12 {
 		c := summaryMonthCol(k)
 		b.f.SetCellFormula(summarySheetName, cell(c, row), fn(k))
 		b.f.SetCellStyle(summarySheetName, cell(c, row), cell(c, row), valStyle)
@@ -130,8 +130,7 @@ func (b *summaryBuilder) writeRevenueTotalRow(firstPull, lastPull int) {
 	b.f.SetCellStyle(summarySheetName, cell("B", b.row), cell("C", b.row), b.st.SummaryTotalLbl)
 	b.f.SetCellValue(summarySheetName, cell("C", b.row), b.lbl.Total)
 	b.monthFormulas(b.row, b.st.SummaryTotalCur, func(k int) string {
-		c := summaryMonthCol(k)
-		return fmt.Sprintf("SUM(%s:%s)", cell(c, firstPull), cell(c, lastPull))
+		return sumCellRange(summaryMonthCol(k), firstPull, lastPull)
 	})
 	b.revenueTotalRow = b.row
 	b.row += 3 // total, then two blank rows (10, 11)
@@ -170,8 +169,7 @@ func (b *summaryBuilder) writeInvestmentsPctRow() {
 	b.f.SetCellValue(summarySheetName, cell("C", b.row), b.lbl.PctOfRevenue)
 	invTot, recTot := b.investTotalRow, b.revenueTotalRow
 	b.monthFormulas(b.row, b.st.GroupTotalPct, func(k int) string {
-		c := summaryMonthCol(k)
-		return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, recTot), cell(c, invTot), cell(c, recTot))
+		return safeRatioFormula(summaryMonthCol(k), recTot, invTot)
 	})
 }
 
@@ -292,8 +290,7 @@ func (b *summaryBuilder) writeSectionPctOfRevenueRow(grandRow int) {
 	b.f.SetCellValue(summarySheetName, cell("B", b.row), b.lbl.PctOfRevenue)
 	recTot := b.revenueTotalRow
 	b.monthFormulas(b.row, b.st.GroupTotalPct, func(k int) string {
-		c := summaryMonthCol(k)
-		return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, recTot), cell(c, grandRow), cell(c, recTot))
+		return safeRatioFormula(summaryMonthCol(k), recTot, grandRow)
 	})
 }
 
@@ -328,8 +325,7 @@ func (b *summaryBuilder) groupPctRow(label string, grpRow, denomRow int) {
 	f.SetCellStyle(summarySheetName, cell("B", b.row), cell("C", b.row), st.GroupTotalLbl)
 	f.SetCellValue(summarySheetName, cell("B", b.row), label)
 	b.monthFormulas(b.row, st.GroupTotalPct, func(k int) string {
-		c := summaryMonthCol(k)
-		return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, denomRow), cell(c, grpRow), cell(c, denomRow))
+		return safeRatioFormula(summaryMonthCol(k), denomRow, grpRow)
 	})
 	b.row++
 }
@@ -359,8 +355,7 @@ func (b *summaryBuilder) writeIncomeRows() (receitaRow, investRow, totalRendaRow
 		return cell(summaryMonthCol(k), b.investTotalRow)
 	})
 	totalRendaRow = b.balanceRow(b.lbl.TotalIncome, b.st.NearBlack, b.st.NearBlackCur, func(k int) string {
-		c := summaryMonthCol(k)
-		return fmt.Sprintf("SUM(%s:%s)", cell(c, receitaRow), cell(c, investRow))
+		return sumCellRange(summaryMonthCol(k), receitaRow, investRow)
 	})
 	return
 }
@@ -393,8 +388,7 @@ func (b *summaryBuilder) writeExpenseShareBlock(order []string, despRows map[str
 	for _, s := range order {
 		dr := despRows[s]
 		b.balanceRowPct(s, func(k int) string {
-			c := summaryMonthCol(k)
-			return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, totalDespRow), cell(c, dr), cell(c, totalDespRow))
+			return safeRatioFormula(summaryMonthCol(k), totalDespRow, dr)
 		})
 	}
 }
@@ -406,8 +400,7 @@ func (b *summaryBuilder) writeIncomeShareBlock(order []string, despRows map[stri
 	for _, s := range order {
 		dr := despRows[s]
 		b.balanceRowPct(s, func(k int) string {
-			c := summaryMonthCol(k)
-			return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(c, totalRendaRow), cell(c, dr), cell(c, totalRendaRow))
+			return safeRatioFormula(summaryMonthCol(k), totalRendaRow, dr)
 		})
 	}
 }
@@ -447,4 +440,12 @@ func (b *summaryBuilder) balanceLabelRow(label string) {
 	b.f.SetCellValue(summarySheetName, cell("A", r), label)
 	b.f.SetCellStyle(summarySheetName, cell("A", r), cell(lastSummaryCol, r), b.st.NearBlack)
 	b.row++
+}
+
+func sumCellRange(col string, fromRow, toRow int) string {
+	return fmt.Sprintf("SUM(%s:%s)", cell(col, fromRow), cell(col, toRow))
+}
+
+func safeRatioFormula(col string, denomRow, numeratorRow int) string {
+	return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(col, denomRow), cell(col, numeratorRow), cell(col, denomRow))
 }
