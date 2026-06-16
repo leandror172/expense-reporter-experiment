@@ -12,6 +12,17 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// headroomRows, perGroupPctRows and dataYear are package state set by Generate()
+// from its Options before building (ported from the scratch builder's consts;
+// the CLI is single-shot, so mutable package state is acceptable here).
+var headroomRows = 0 // §3.2: regenerate-don't-insert → no spare rows by default
+
+// perGroupPctRows toggles the per-group "% sobre despesas/receita" rows (§4.2).
+var perGroupPctRows = true
+
+// dataYear is the config year applied to entry dates.
+var dataYear = 2026
+
 // Options configures one workbook generation run.
 type Options struct {
 	TaxonomyPath string // taxonomy JSON file (spec §1.1) — required
