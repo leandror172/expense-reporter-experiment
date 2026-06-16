@@ -26,26 +26,35 @@ func buildRevenueSheet(f *excelize.File, st *styleSet, lbl Labels, blocks []Reve
 		cat := blocks[i].Category
 		catFirst := row
 		for i < len(blocks) && blocks[i].Category == cat {
-			b := blocks[i]
-			firstData, lastData, totalRow := calculateBlockRows(row, b.MaxEntries())
-			writeRevenueBlock(f, st, lbl, name, b, firstData, lastData, totalRow)
-			reg.revenue.Blocks = append(reg.revenue.Blocks, revenueBlockTotal{
-				Category: b.Category, Label: b.Label, TotalRow: totalRow,
-			})
-			row = totalRow + 1
+			row = writeRevenueBlockRow(blocks, i, row, f, st, lbl, name, reg)
 			i++
 		}
 		catLast := row - 1
 		mergeCategoryLabel(f, st, name, cat, catFirst, catLast)
 		// separator only between income categories
-		if i < len(blocks) {
-			row++ // blank
-			writeSeparator(f, st, name, row, lastRevenueCol)
-			row++ // separator consumed
-			row++ // blank
-		}
+		writeCategorySeparator(i, blocks, row, f, st, name)
 	}
 	return nil
+}
+
+func writeCategorySeparator(i int, blocks []RevenueBlock, row int, f *excelize.File, st *styleSet, name string) {
+	if i < len(blocks) {
+		row++ // blank
+		writeSeparator(f, st, name, row, lastRevenueCol)
+		row++ // separator consumed
+		row++ // blank
+	}
+}
+
+func writeRevenueBlockRow(blocks []RevenueBlock, i int, row int, f *excelize.File, st *styleSet, lbl Labels, name string, reg *layoutRegistry) int {
+	b := blocks[i]
+	firstData, lastData, totalRow := calculateBlockRows(row, b.MaxEntries())
+	writeRevenueBlock(f, st, lbl, name, b, firstData, lastData, totalRow)
+	reg.revenue.Blocks = append(reg.revenue.Blocks, revenueBlockTotal{
+		Category: b.Category, Label: b.Label, TotalRow: totalRow,
+	})
+	row = totalRow + 1
+	return row
 }
 
 func setRevenueSheetWidths(f *excelize.File, name string) {
