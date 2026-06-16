@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Tuple
 from locator import locate, Region, LocatorError
 from applier import apply as apply_edit
 from verifier import verify, VerifyError
-from mechanics import compute_header_values, apply_field, rotate as default_rotate, current_session_number
+from mechanics import compute_header_values, apply_field, rotate as default_rotate, current_session_number, render_log_entry
 from runlog import (
     peek_session_number,
     write_report,
@@ -148,18 +148,35 @@ def _collect_edits(repo_root, register, payload, *, clock, amend: bool = False) 
             add(rel, "tasks-checkoff", locate(role_def, text_of(rel), task_id=task_id), "")
 
     if not amend:
-        _add_header_edits(register, payload, text_of, add, clock=clock)
+        # Compute header values once — session_number is the single source of truth
+        # shared between the rendered log-entry heading and the header field bump.
+        log_rel = register["header-current-session"]["file"]
+        date_str = clock().strftime("%Y-%m-%d")
+        header_values = compute_header_values(
+            text_of(log_rel),
+            session_title=payload.session_title,
+            current_layer=payload.current_layer,
+            date=date_str,
+        )
+        _add_header_edits_from_values(register, header_values, text_of, add)
+
+        # Render log-entry: render-then-apply (pure renderer upstream of prepend applier)
+        if payload.log_entry is not None:
+            role_def = register["log-entry"]
+            rel = role_def["file"]
+            rendered = render_log_entry(
+                payload.log_entry,
+                date=date_str,
+                session_number=header_values["session_number"],
+                session_title=payload.session_title,
+            )
+            add(rel, "log-entry", locate(role_def, text_of(rel)), _normalize_block(rendered))
+
     return grouped
 
 
-def _add_header_edits(register, payload, text_of, add, *, clock) -> None:
-    log_rel = register["header-current-session"]["file"]
-    values = compute_header_values(
-        text_of(log_rel),
-        session_title=payload.session_title,
-        current_layer=payload.current_layer,
-        date=clock().strftime("%Y-%m-%d"),
-    )
+def _add_header_edits_from_values(register, values, text_of, add) -> None:
+    """Wire header-field edits from pre-computed header values dict."""
     keyed = {"header-current-session": "current_session", "header-current-layer": "current_layer"}
     for role in HEADER_ROLES:
         role_def = register[role]

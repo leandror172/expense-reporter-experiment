@@ -4,12 +4,94 @@
 # Pure stdlib, no async, no httpx.
 
 import re
+from dataclasses import dataclass, field
 from datetime import date as dt_date
 from pathlib import Path
 from subprocess import CompletedProcess, run
 from typing import Any, Dict, List, Tuple
 
 from locator import locate, Region
+
+
+@dataclass
+class LogEntry:
+    """Structured slots for a session log entry. what_was_done and next are required."""
+    what_was_done: List[str]
+    next: List[str]
+    context: str = ""
+    decisions: List[str] = field(default_factory=list)
+    gotchas: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.what_was_done:
+            raise ValueError("log-entry requires a non-empty 'what_was_done' slot")
+        if not self.next:
+            raise ValueError("log-entry requires a non-empty 'next' slot")
+
+
+def render_log_entry(
+    log_entry: LogEntry,
+    *,
+    date: str,
+    session_number: int,
+    session_title: str,
+) -> str:
+    """Render a LogEntry into the canonical log-entry markdown block.
+
+    Renders ALL scaffold: heading, section headers, bullet formatting, blank lines.
+    Optional empty slots are omitted entirely (no empty section headers).
+    The returned string ends with exactly one trailing newline (session-86 contract).
+
+    Heading uses a hyphen: '## <date> - Session <N>: <title>'
+    (The Current Session header field uses an em-dash — different string, same values.)
+    """
+    parts: List[str] = []
+
+    # Heading line + blank line
+    parts.append(f"## {date} - Session {session_number}: {session_title}\n")
+    parts.append("\n")
+
+    # Optional: Context (plain paragraph, not a bullet list)
+    if log_entry.context:
+        parts.append("### Context\n")
+        parts.append("\n")
+        parts.append(f"{log_entry.context}\n")
+        parts.append("\n")
+
+    # Required: What Was Done (bullet list)
+    parts.append("### What Was Done\n")
+    parts.append("\n")
+    for item in log_entry.what_was_done:
+        parts.append(f"- {item}\n")
+    parts.append("\n")
+
+    # Optional: Decisions Made (bullet list)
+    if log_entry.decisions:
+        parts.append("### Decisions Made\n")
+        parts.append("\n")
+        for item in log_entry.decisions:
+            parts.append(f"- {item}\n")
+        parts.append("\n")
+
+    # Required: Next (bullet list)
+    parts.append("### Next\n")
+    parts.append("\n")
+    for item in log_entry.next:
+        parts.append(f"- {item}\n")
+    parts.append("\n")
+
+    # Optional: Gotchas (bullet list)
+    if log_entry.gotchas:
+        parts.append("### Gotchas\n")
+        parts.append("\n")
+        for item in log_entry.gotchas:
+            parts.append(f"- {item}\n")
+        parts.append("\n")
+
+    result = "".join(parts)
+    # Guarantee exactly one trailing newline (session-86 contract: no double-newline glue)
+    result = result.rstrip("\n") + "\n"
+    return result
 
 
 class MechanicsError(Exception):
@@ -79,7 +161,7 @@ def apply_field(text: str, region: Region, value: str) -> str:
     return text[:region.start] + value + text[region.end:]
 
 
-def rotate(repo_root: Path, keep: int = 3) -> CompletedProcess:
+def rotate(repo_root: Path, keep: int = 1) -> CompletedProcess:
     """Run the rotate-session-log.sh script with --keep argument."""
     script_path = repo_root / ".claude" / "tools" / "rotate-session-log.sh"
     result = run(
