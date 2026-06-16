@@ -135,6 +135,22 @@ def _stage_path(args, repo_root: Path, register: dict, git) -> int:
     return 0
 
 
+def _already_committed(handle: str, payload, run_dir: Path, repo_root: Path, git) -> bool:
+    """Return True if the session title is already in recent git history (idempotency guard).
+
+    When True, the caller should return 0 immediately; the promoted dir and JSON result
+    have already been printed as a side-effect of this call.
+    """
+    commit_suffix = f" — {payload.session_title}"
+    if not any(m.startswith("chore(session-handoff): session ") and m.endswith(commit_suffix)
+               for m in git.log_messages(5)):
+        return False
+    success_dir = promote_run_dir(run_dir)
+    run_counts = count_runs_by_status(repo_root)
+    print(json.dumps(_build_result(handle, "committed", None, success_dir, run_counts)))
+    return True
+
+
 def _promote_path(args, repo_root: Path, register: dict, git) -> int:
     """--id path: find -pending run → idempotency check → run_handoff → promote/fail → emit JSON.
 
@@ -157,14 +173,8 @@ def _promote_path(args, repo_root: Path, register: dict, git) -> int:
     payload = parse((run_dir / "input.md").read_text())
 
     # 4. Idempotency check (skipped for amend — no header write, no title in commit message)
-    if not amend:
-        commit_suffix = f" — {payload.session_title}"
-        if any(m.startswith("chore(session-handoff): session ") and m.endswith(commit_suffix)
-               for m in git.log_messages(5)):
-            success_dir = promote_run_dir(run_dir)
-            run_counts = count_runs_by_status(repo_root)
-            print(json.dumps(_build_result(handle, "committed", None, success_dir, run_counts)))
-            return 0
+    if not amend and _already_committed(handle, payload, run_dir, repo_root, git):
+        return 0
 
     # 5. Full commit path
     report = run_handoff(repo_root, register, payload, git=git, run_dir=run_dir, amend=amend)
