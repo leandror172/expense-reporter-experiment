@@ -3,32 +3,33 @@ package generate
 import (
 	"testing"
 
+	"expense-reporter/internal/taxonomy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xuri/excelize/v2"
 )
 
-// entriesInOneMonth builds a [12][]Entry with n identical entries placed in January.
-func entriesInOneMonth(n int) [12][]Entry {
-	var months [12][]Entry
+// entriesInOneMonth builds a [12][]taxonomy.Entry with n identical entries placed in January.
+func entriesInOneMonth(n int) [12][]taxonomy.Entry {
+	var months [12][]taxonomy.Entry
 	for i := 0; i < n; i++ {
-		months[0] = append(months[0], Entry{Item: "X", Day: 5, Value: 100})
+		months[0] = append(months[0], taxonomy.Entry{Item: "X", Day: 5, Value: 100})
 	}
 	return months
 }
 
 func TestSubcatMaxEntries(t *testing.T) {
 	// Busiest month sets the count: 2 in Jan, 3 in Feb -> 3.
-	sub := Subcat{Name: "S", Months: [12][]Entry{
+	sub := taxonomy.Subcat{Name: "S", Months: [12][]taxonomy.Entry{
 		0: {{Item: "a"}, {Item: "b"}},
 		1: {{Item: "c"}, {Item: "d"}, {Item: "e"}},
 	}}
 	assert.Equal(t, 3, sub.MaxEntries())
-	assert.Equal(t, 0, Subcat{Name: "empty"}.MaxEntries())
+	assert.Equal(t, 0, taxonomy.Subcat{Name: "empty"}.MaxEntries())
 }
 
 func TestRevenueBlockMaxEntries(t *testing.T) {
-	blk := RevenueBlock{Label: "Salário", Months: [12][]Entry{
+	blk := taxonomy.RevenueBlock{Label: "Salário", Months: [12][]taxonomy.Entry{
 		0: {{Item: "a"}},
 		3: {{Item: "b"}, {Item: "c"}},
 	}}
@@ -49,7 +50,7 @@ func TestCalculateSubcatBlockRows(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sub := Subcat{Name: "S", Months: entriesInOneMonth(tc.entries)}
+			sub := taxonomy.Subcat{Name: "S", Months: entriesInOneMonth(tc.entries)}
 			first, last, total := calculateBlockRows(3, sub.MaxEntries())
 			assert.Equal(t, tc.wantFirst, first)
 			assert.Equal(t, tc.wantLast, last)
@@ -61,13 +62,13 @@ func TestCalculateSubcatBlockRows(t *testing.T) {
 func TestCalculateRevenueBlockRows(t *testing.T) {
 	require.Equal(t, 0, headroomRows)
 	// 2 entries -> 2 data rows starting at row 6: 6,7 data + 8 total.
-	blk := RevenueBlock{Label: "Salário", Months: entriesInOneMonth(2)}
+	blk := taxonomy.RevenueBlock{Label: "Salário", Months: entriesInOneMonth(2)}
 	first, last, total := calculateBlockRows(6, blk.MaxEntries())
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 7, last)
 	assert.Equal(t, 8, total)
 	// zero-entry block still gets one data row.
-	first, last, total = calculateBlockRows(6, RevenueBlock{Label: "none"}.MaxEntries())
+	first, last, total = calculateBlockRows(6, taxonomy.RevenueBlock{Label: "none"}.MaxEntries())
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 6, last)
 	assert.Equal(t, 7, total)
@@ -118,8 +119,8 @@ func newTestFile(t *testing.T) (*excelize.File, *styleSet, Labels) {
 func TestBuildRevenueSumRange(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	blocks := []RevenueBlock{
-		{Category: "Receita", Label: "Salário", Months: [12][]Entry{
+	blocks := []taxonomy.RevenueBlock{
+		{Category: "Receita", Label: "Salário", Months: [12][]taxonomy.Entry{
 			0: {{Item: "Salário", Day: 5, Value: 5000}},
 		}},
 	}
@@ -145,8 +146,8 @@ func TestBuildRevenueSumRange(t *testing.T) {
 func TestBuildRevenueSumRangeMultiEntry(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	blocks := []RevenueBlock{
-		{Category: "Receita", Label: "Comissão", Months: [12][]Entry{
+	blocks := []taxonomy.RevenueBlock{
+		{Category: "Receita", Label: "Comissão", Months: [12][]taxonomy.Entry{
 			0: {{Item: "c1", Day: 3, Value: 100}, {Item: "c2", Day: 9, Value: 200}},
 		}},
 	}
@@ -162,9 +163,9 @@ func TestBuildRevenueSumRangeMultiEntry(t *testing.T) {
 func TestBuildExpenseSheetSizingAndSum(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	sh := ExpenseSheet{Name: "Fixas", Cats: []Category{
-		{Name: "Habitação", Subs: []Subcat{
-			{Name: "Diarista", Months: [12][]Entry{
+	sh := taxonomy.ExpenseSheet{Name: "Fixas", Cats: []taxonomy.Category{
+		{Name: "Habitação", Subs: []taxonomy.Subcat{
+			{Name: "Diarista", Months: [12][]taxonomy.Entry{
 				0: {{Item: "Diarista", Day: 3, Value: 150}, {Item: "Diarista", Day: 10, Value: 160}, {Item: "Diarista", Day: 17, Value: 155.5}},
 			}},
 		}},
@@ -198,13 +199,13 @@ func TestBuildExpenseSheetSizingAndSum(t *testing.T) {
 func TestBuildSummaryPerGroupPctRows(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	blocks := []RevenueBlock{
-		{Category: "Receita", Label: "Salário", Months: [12][]Entry{0: {{Item: "Salário", Day: 5, Value: 5000}}}},
+	blocks := []taxonomy.RevenueBlock{
+		{Category: "Receita", Label: "Salário", Months: [12][]taxonomy.Entry{0: {{Item: "Salário", Day: 5, Value: 5000}}}},
 	}
 	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
-	sh := ExpenseSheet{Name: "Fixas", Cats: []Category{
-		{Name: "Habitação", Subs: []Subcat{
-			{Name: "Aluguel", Months: [12][]Entry{0: {{Item: "Aluguel", Day: 5, Value: 1200}}}},
+	sh := taxonomy.ExpenseSheet{Name: "Fixas", Cats: []taxonomy.Category{
+		{Name: "Habitação", Subs: []taxonomy.Subcat{
+			{Name: "Aluguel", Months: [12][]taxonomy.Entry{0: {{Item: "Aluguel", Day: 5, Value: 1200}}}},
 		}},
 	}}
 	require.NoError(t, buildExpenseSheet(f, st, lbl, sh, reg))

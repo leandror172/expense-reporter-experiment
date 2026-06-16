@@ -1,4 +1,4 @@
-package generate
+package taxonomy
 
 import (
 	"bufio"
@@ -53,7 +53,7 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
 	var raw struct {
 		Sheets           []rawSheet `json:"sheets"`
 		IncomeCategories []struct {
-			Name  string   `json:"name"`
+			Name   string   `json:"name"`
 			Blocks []string `json:"blocks"`
 		} `json:"incomeCategories"`
 	}

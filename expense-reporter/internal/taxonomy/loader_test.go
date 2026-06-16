@@ -1,4 +1,4 @@
-package generate
+package taxonomy
 
 import (
 	"os"
@@ -198,10 +198,10 @@ func TestParseDate_Malformed(t *testing.T) {
 		dayErr   bool
 		monthErr bool
 	}{
-		{"5/13", false, true},     // Invalid month
+		{"5/13", false, true},      // Invalid month
 		{"32/01", true, false},     // Invalid day
-		{"x/y", true, true},       // Non-numeric values
-		{"05/01", false, false},   // Valid date
+		{"x/y", true, true},        // Non-numeric values
+		{"05/01", false, false},    // Valid date
 		{"2026-01-05", true, true}, // Wrong format
 	}
 

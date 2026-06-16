@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"expense-reporter/internal/taxonomy"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -43,7 +44,7 @@ func Generate(opts Options) error {
 	dataYear = opts.Year
 	headroomRows = opts.Headroom
 
-	expenseSheets, revenueBlocks, err := LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
+	expenseSheets, revenueBlocks, err := taxonomy.LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
 	if err != nil {
 		return err
 	}
@@ -52,7 +53,7 @@ func Generate(opts Options) error {
 
 // buildWorkbook renders the loaded taxonomy+entries into an xlsx file (port of
 // the scratch builder's run()).
-func buildWorkbook(expenseSheets []ExpenseSheet, revenueBlocks []RevenueBlock, outPath string) error {
+func buildWorkbook(expenseSheets []taxonomy.ExpenseSheet, revenueBlocks []taxonomy.RevenueBlock, outPath string) error {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -95,7 +96,7 @@ func buildWorkbook(expenseSheets []ExpenseSheet, revenueBlocks []RevenueBlock, o
 // orderSheets removes the default sheet and orders: Listas, Receitas, then the
 // expense sheets in taxonomy order. MoveSheet(source, target) moves source
 // before target, so we walk the order backward.
-func orderSheets(f *excelize.File, lbl Labels, expenseSheets []ExpenseSheet) error {
+func orderSheets(f *excelize.File, lbl Labels, expenseSheets []taxonomy.ExpenseSheet) error {
 	if err := f.DeleteSheet("Sheet1"); err != nil {
 		return err
 	}

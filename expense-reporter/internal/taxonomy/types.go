@@ -1,4 +1,7 @@
-package generate
+// Package taxonomy holds the domain types and loader for the expense taxonomy.
+// It is a pure-input package: it imports nothing from the generate package,
+// preventing import cycles.
+package taxonomy
 
 // Entry is one expense/income line within a subcategory's month.
 // Day is the day-of-month; the builder pairs it with the column's month + the
@@ -57,6 +60,3 @@ func (b RevenueBlock) MaxEntries() int {
 	}
 	return max
 }
-
-
-

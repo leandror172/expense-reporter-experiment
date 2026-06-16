@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"expense-reporter/internal/taxonomy"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -8,7 +9,7 @@ const lastExpenseCol = "AL" // col 38 (index 37)
 
 // buildExpenseSheet writes one expense sheet (Fixas/Variáveis/Extras/Adicionais) and
 // records its subcategory total-row positions into reg.
-func buildExpenseSheet(f *excelize.File, st *styleSet, lbl Labels, sh ExpenseSheet, reg *layoutRegistry) error {
+func buildExpenseSheet(f *excelize.File, st *styleSet, lbl Labels, sh taxonomy.ExpenseSheet, reg *layoutRegistry) error {
 	name := sh.Name
 	if _, err := f.NewSheet(name); err != nil {
 		return err
@@ -58,7 +59,7 @@ func setDataSheetWidths(f *excelize.File, name string) {
 
 // writeSubcatBlock writes one subcategory: its data rows (styled, numfmt-ready), its merged
 // col-B label across data+total rows, and its total row.
-func writeSubcatBlock(f *excelize.File, st *styleSet, lbl Labels, name string, sub Subcat, firstData, lastData, totalRow int) {
+func writeSubcatBlock(f *excelize.File, st *styleSet, lbl Labels, name string, sub taxonomy.Subcat, firstData, lastData, totalRow int) {
 	writeDataBand(f, st, name, sub.Months, firstData, lastData, 12.75, lastExpenseCol)
 	writeTotalRow(f, st, lbl, name, firstData, lastData, totalRow)
 	// col B merged across data rows + total row (incl. total per spec §2).

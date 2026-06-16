@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"expense-reporter/internal/taxonomy"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -10,7 +11,7 @@ const lastRevenueCol = "AL"
 // v2: Receitas shares the data-sheet column model; income category in col A merged across
 // its blocks, block label in col B merged across the block incl. its total row.
 // Separators appear only between income categories (none within a category).
-func buildRevenueSheet(f *excelize.File, st *styleSet, lbl Labels, blocks []RevenueBlock, reg *layoutRegistry) error {
+func buildRevenueSheet(f *excelize.File, st *styleSet, lbl Labels, blocks []taxonomy.RevenueBlock, reg *layoutRegistry) error {
 	name := lbl.RevenueSheet
 	if _, err := f.NewSheet(name); err != nil {
 		return err
@@ -37,7 +38,7 @@ func buildRevenueSheet(f *excelize.File, st *styleSet, lbl Labels, blocks []Reve
 	return nil
 }
 
-func writeCategorySeparator(i int, blocks []RevenueBlock, row int, f *excelize.File, st *styleSet, name string) {
+func writeCategorySeparator(i int, blocks []taxonomy.RevenueBlock, row int, f *excelize.File, st *styleSet, name string) {
 	if i < len(blocks) {
 		row++ // blank
 		writeSeparator(f, st, name, row, lastRevenueCol)
@@ -46,7 +47,7 @@ func writeCategorySeparator(i int, blocks []RevenueBlock, row int, f *excelize.F
 	}
 }
 
-func writeRevenueBlockRow(blocks []RevenueBlock, i int, row int, f *excelize.File, st *styleSet, lbl Labels, name string, reg *layoutRegistry) int {
+func writeRevenueBlockRow(blocks []taxonomy.RevenueBlock, i int, row int, f *excelize.File, st *styleSet, lbl Labels, name string, reg *layoutRegistry) int {
 	b := blocks[i]
 	firstData, lastData, totalRow := calculateBlockRows(row, b.MaxEntries())
 	writeRevenueBlock(f, st, lbl, name, b, firstData, lastData, totalRow)
@@ -65,7 +66,7 @@ func setRevenueSheetWidths(f *excelize.File, name string) {
 
 // writeRevenueBlock writes one income block: its data rows (styled with date/currency formats),
 // its merged col-B label across data+total rows, and its total row.
-func writeRevenueBlock(f *excelize.File, st *styleSet, lbl Labels, name string, b RevenueBlock, firstData, lastData, totalRow int) {
+func writeRevenueBlock(f *excelize.File, st *styleSet, lbl Labels, name string, b taxonomy.RevenueBlock, firstData, lastData, totalRow int) {
 	writeDataBand(f, st, name, b.Months, firstData, lastData, 15, lastRevenueCol)
 	writeTotalRowOpt(f, st, lbl, name, firstData, lastData, totalRow, false)
 	f.SetRowHeight(name, totalRow, 15.75)
