@@ -1,9 +1,10 @@
 # cmd/workbook-inspect — quick notes
 
 ## Purpose
-Standalone CLI that dumps the full structural map of an Excel workbook to JSON — Layer 1 of the
-workbook-mapping plan (`.claude/plans/workbook-mapping-plan.md`). Feeds the future
-"generate workbook from database" command and the Layer 3 spec synthesis.
+Thin CLI wrapper over **`internal/inspect`** (extraction core lifted there in Phase G1,
+session 29) — dumps the full structural map of an Excel workbook to JSON. The library is also
+used by `test/verify.WorkbookStructureMatches` (generate-workbook acceptance) — JSON schema is
+therefore a test contract; output verified byte-identical at the G1 refactor.
 
 ## Usage
 ```

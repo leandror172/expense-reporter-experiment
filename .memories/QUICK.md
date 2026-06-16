@@ -3,13 +3,20 @@
 *Working memory for the repo root. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Layer 5 (Expense Classifier) active. Phases 1–4 complete (CLI: add/batch/version, 190+ unit tests, v2.1.0).
-Layer 5 milestones done: classifier (5.2), decision logic (5.3), auto/batch-auto commands (5.4–5.5),
-feedback persistence (5.6), few-shot injection (5.7), JSON output + MCP server (5.8a/b).
-Since: 5.9 MCP feedback, `apply` command, `review` UI, and workbook-mapping Layers 1+2 done
-(session 26: `cmd/workbook-inspect` JSON dump + visual notes; see `internal/excel/.memories/KNOWLEDGE.md`).
-PRs #24 (apply dry-run fixes) and #25 (workbook-inspect) merged 2026-06-09. Master is current.
-Next: workbook-mapping Layer 3 (`.claude/plans/workbook-layer3-instructions.md`), TF-IDF (5.R1).
+Layer 5 (Expense Classifier) milestones done through 5.9 (classifier, auto/batch-auto, feedback,
+few-shot, JSON+MCP, `apply`, `review` UI). **Workbook generator COMPLETE** (sessions 26–29,
+branch `feat/workbook-generator`, PR #27): mapping L1–L3 → spec v2 → Phase A/B convergence
+(user-blessed data-bearing golden master) → Phase G: `internal/inspect` (dump core),
+`internal/generate` + **`generate-workbook` command** (taxonomy JSON + expenses_log.jsonl →
+full workbook), acceptance-first with oracle-frozen dumps (3/3 green, deterministic, no Ollama).
+PR #27 review comments addressed (English identifiers, SOLID extraction); latent hardcoded
+sheet-order bug fixed (registry `sheetOrder`). Scratch builder SUPERSEDED.
+Sessions 30–31: `internal/generate` internal refactor (styles vocabulary + English renames;
+loader/revenue/summary step-extraction; shared helpers → `util.go`/new `data_sheet.go`; unified
+block-sizing + data-band writers) — behavior-preserving, oracle dumps unchanged, 2 commits on the
+branch (uncommitted-then-committed). See generate `.memories/QUICK.md` for the conventions.
+Next: merge PR #27; real-taxonomy export (113 subcats from Referência → taxonomy.json);
+year-rollover workflow; then TF-IDF (5.R1).
 
 ## Repo Structure
 ```

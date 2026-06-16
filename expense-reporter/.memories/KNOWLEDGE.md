@@ -88,3 +88,88 @@ history (data queries). The shared hash enables joins without a database.
 not code. The exclusion list was added after discovering "Diversos" false positives.
 **Implication:** Year rollover requires updating `date_year` in config (and likely the
 workbook path). No code changes needed.
+
+## Workbook Generator Design (2026-06, sessions 26–27)
+Spec v2 at `.claude/plans/workbook-generator-spec.md` is the single design authority; it is a
+REDESIGN — where it disagrees with the original workbook, the spec wins.
+Key decisions:
+- **Derived layout** — row positions computed from taxonomy + entry counts; the original
+  workbook's dump is only a historical reference. The source's fixed layout contained drift
+  (June SUMs over the wrong column, single-cell SUM collapse, fill-down gaps) precisely
+  because it was hand-maintained.
+- **Merges, not fill-down** — the source filled labels down because hand-inserting rows into
+  merges is painful; generated workbooks don't care, so v2 merges col A per category section
+  and col B per block (both include total rows).
+- **2 label columns everywhere** — sub-item level eliminated ("Orion - Consultas" composed
+  strings); months start at col C on all data sheets including Receitas.
+- **Referência sheet omitted** — it existed to support manual insertion; the generator knows
+  all positions. If `add`/`batch` resolver compat is ever needed, emit a slim A/B/C taxonomy sheet.
+- **Golden-master validation** — `.claude/workbook-template/template-reviewed.xlsx`
+  (user-curated, fake data) is the convergence target; compare via `workbook-inspect` dumps +
+  openpyxl pass (`diff.py`). Never claim convergence by eyeballing.
+**Rationale:** generation inverts the dependency — taxonomy input becomes the source of truth,
+sheets become projections.
+**Implication:** the scratch builder (`.claude/scratch/template-builder/`) is the reference
+implementation to port into `internal/generate`; excelize gotchas learned: SetCellFormula takes
+no leading `=`; stale-formula fix = UpdateLinkedValue() + SetCalcProps(FullCalcOnLoad).
+
+### Phase B updates (2026-06-10)
+- **Convergence target moved** `template-reviewed.xlsx` → `template-data.xlsx` (adds entries,
+  typed values) for the data/formula validation pass.
+- **Per-group percent rows resolved** (spec §7 Q2): `% sobre despesas` / `% sobre receita`
+  emit per categoria group; `perGroupPctRows` ON.
+- **Labels centralized + normalized for i18n** (spec §4.4): all generic strings live in a
+  `Labels` struct with **English field names** (`PctOfExpenses`, `Investments`, `TotalIncome`)
+  and localized pt-BR values; month names included; a `loadLabels(path)` config reader is a
+  deferred drop-in. Forces Receita→Revenue / Renda→Income naming. Carry this struct into
+  `internal/generate` when porting.
+
+### Phase G — the real generator (2026-06-11, session 29)
+- **`internal/inspect`** (G1): extraction core lifted verbatim from `cmd/workbook-inspect`
+  (now a thin wrapper). `DumpWorkbook(path, outDir)` + exported dump types. The dump JSON is a
+  TEST CONTRACT — `verify.WorkbookStructureMatches` unmarshals it.
+- **Input contract (spec §1.1):** taxonomy JSON (sheets→categories→subcategories;
+  incomeCategories→blocks; `incomeCategories[].name` is block grouping, NOT the sheet label —
+  that's `Labels.RevenueSheet`) + `expenses_log.jsonl` entries (`date` is DD/MM, no year;
+  `--year` supplies it). Join layer rules: unknown subcategory → warn to stderr + skip,
+  exit 0; on category mismatch the taxonomy wins; duplicate subcategory names = error.
+- **Oracle bootstrap (advisor-driven):** the scratch builder was taught to read the fixture
+  files and its dumps frozen as the acceptance expectation BEFORE the port — G2 became a
+  converge-to-green port (3/3 green first run). Limit of the pattern: oracle and port can
+  share a bug — the hardcoded `{Fixas,Variáveis,Extras,Adicionais}` order emitted invalid
+  D0/E0 refs for smaller taxonomies and the frozen dumps contained them. Fix: registry records
+  `sheetOrder`; dumps re-frozen with a manually reviewed delta.
+- **Verifier philosophy:** acceptance compares a NORMALIZED SUBSET (values, formulas, merges,
+  dims, rowType/rowFill, bgColor/bold/borders) and deliberately ignores column widths, row
+  heights, manifest source — excelize serialization noise classes documented in Phase A.
+- **Naming (PR #27 review):** identifiers are English (Revenue*/summary*/balance*/Category);
+  pt-BR text lives ONLY in `Labels` values. `RevenueSheet` ("Receitas") appears inside
+  cross-sheet formulas — behaves like a schema identifier, not cosmetic text.
+- Scratch builder `.claude/scratch/template-builder/` SUPERSEDED (kept as Phase A/B history);
+  its fake dataset lives on as `internal/generate/taxonomy_fixture_test.go`.
+
+### Generator internal refactor — style system & file layout (2026-06-12 → 06-15, sessions 30–31)
+`internal/generate` was reorganized for domain isolation, behavior-preserving throughout (oracle
+dumps byte-identical at every step):
+- **styles.go is two layers:** a style *vocabulary* (named constructors + palette/numfmt constants
+  naming the workbook's visual language) and a `styleRegistrar` (first-error capture; `family()`
+  mints General/currency/percent trios of one fill+font). Sheet builders consume only `styleSet`
+  IDs; new styles EXTEND the vocabulary rather than inlining `excelize.Style` literals. Portuguese
+  field names anglicized (MonthCorner, TotalText/Value…); dead styles (MonthCovered, IndigoBandCur)
+  removed.
+- **File homes by domain, not first caller:** pure ref/formula helpers (`cell`, `sheetRef`,
+  `needsQuote`) moved into `util.go`; the data-sheet writing vocabulary shared by the expense
+  sheets and Receitas moved into new `data_sheet.go`. Two near-duplicate pairs were unified there:
+  `calculateBlockRows(row, maxEntries)` (was calculateSubcat/RevenueBlockRows) and
+  `writeDataBand(..., rowHeight, lastCol)` (was writeSubcatDataRows vs styleRevenueDataBand+
+  fillRevenueEntries) — the sole behavioral difference between the expense and revenue bands is
+  row height (12.75 vs 15).
+**Rationale:** naming WHAT a style/helper is — not how it's assembled nor where first used — makes
+reuse visible and additions self-policing; the oracle-frozen dump made aggressive merges safe (a
+mis-parameterized row height fails loudly and specifically).
+**Implication:** package stays FLAT (subfolders = separate Go packages = forced exports + cycle
+risk; Java-style nesting rejected). The one penciled split — `internal/taxonomy` as a pure input
+layer during the T-02 real-taxonomy export — is non-trivial: `taxonomy.go` currently mixes the
+domain types (`Entry`/`Subcat`/`Category`/`ExpenseSheet`/`RevenueBlock`, used by every builder)
+with mutable RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()` and
+read by builders) that must relocate into `generate` before any split.

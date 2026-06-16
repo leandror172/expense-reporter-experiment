@@ -37,6 +37,14 @@
 | Workbook mapping Layer 3 cowork brief | `.claude/plans/workbook-layer3-instructions.md` |
 | Workbook structural map (JSON + cell notes, session 25) | `.claude/workbook-map.md` |
 | Workbook visual notes (annotated screenshots, session 26) | `.claude/workbook-visual-notes.md` |
+| Workbook generator spec v2 (Layer 3 + hand-review, session 27) | `.claude/plans/workbook-generator-spec.md` |
+| Workbook generator implementation plan + next-session brief | `.claude/plans/workbook-generator-implementation-plan.md` |
+| Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
+| Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
+| Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
+| Phase B data extract (template-data.xlsx block/column model) | `.claude/workbook-template/phaseB-data-extract.md` |
+| Phase B re-review report (data-bearing template, PASS) | `.claude/workbook-template/phaseB-rereview.md` |
+| Template builder (SUPERSEDED by `internal/generate`, kept as Phase A/B history) | `.claude/scratch/template-builder/` (standalone Go module) |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -44,6 +52,10 @@
 | Session log archive (session 17 — 2026-04-23) | `.claude/archive/session-log-2026-04-23-to-2026-04-23.md` |
 | Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
+| Generate-workbook acceptance fixture (G3, oracle-frozen dumps) | `expense-reporter/test/fixtures/generate-basic/` + `test/verify/workbook_structure.go` |
+| Advisor review — G3 acceptance design | `.claude/advisor-G3-acceptance-design.md` |
+| Advisor reviews — apply phase 3, Phase B builder, session 24 | `.claude/advisor-{apply-phase3,phaseB-builder,session24-review}.md` |
+| Doc audit (2026-06-09) | `.claude/doc-audit-2026-06-09.md` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
 
@@ -55,8 +67,10 @@
 | Package | Path | Purpose |
 |---------|------|---------|
 | `main` | `expense-reporter/cmd/expense-reporter/main.go` | Entry point |
-| `cmd` | `expense-reporter/cmd/expense-reporter/cmd/` | Cobra CLI subcommands (add, batch, version; +classify/auto/batch-auto in Layer 5) |
-| `workbook-inspect` | `expense-reporter/cmd/workbook-inspect/` | Standalone tool — JSON structural dump of a workbook (workbook mapping L1); see its `.memories/QUICK.md` |
+| `cmd` | `expense-reporter/cmd/expense-reporter/cmd/` | Cobra CLI subcommands (add, batch, version; +classify/auto/batch-auto in Layer 5; +generate-workbook in Phase G) |
+| `workbook-inspect` | `expense-reporter/cmd/workbook-inspect/` | Thin CLI wrapper over `internal/inspect` (workbook mapping L1); see its `.memories/QUICK.md` |
+| `internal/inspect` | `expense-reporter/internal/inspect/` | Structural-dump core (values/formulas/styles/merges/rowType classifier) shared by workbook-inspect and test verifiers |
+| `internal/generate` | `expense-reporter/internal/generate/` | Workbook generator (spec v2 port of the scratch builder): `Generate(Options)`, taxonomy JSON + entries JSONL loader, layout/styles/listas logic |
 | `internal/batch` | `expense-reporter/internal/batch/` | Batch import orchestration |
 | `internal/cli` | `expense-reporter/internal/cli/` | CLI output helpers |
 | `internal/excel` | `expense-reporter/internal/excel/` | Excel workbook read/write (excelize library) |
@@ -348,6 +362,7 @@ Desktop-era planning documents — read for context, do not modify.
 | `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
 | `expense-reporter/internal/excel/.memories/` | QUICK.md, KNOWLEDGE.md | Reference-sheet columns, boundary detection, and the workbook structural map (sheet families, palette, fill-down vs merge, separators, cross-sheet wiring) |
 | `expense-reporter/cmd/workbook-inspect/.memories/` | QUICK.md | workbook-inspect tool: usage, output schema, classifier + row-fill design |
+| `expense-reporter/internal/generate/.memories/` | QUICK.md | generator entry points, sheet-order rule, re-freeze discipline, excelize gotchas |
 | `.claude/workbook-dump/` | *.json (gitignored) | Raw JSON dumps from workbook-inspect; input for Layer 2 visual annotation and Layer 3 spec |
 
 ---

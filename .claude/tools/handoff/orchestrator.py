@@ -9,17 +9,15 @@
 # A clean-tree precondition on the tracking files makes the second layer sound.
 
 import datetime
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
 from locator import locate, Region, LocatorError
 from applier import apply as apply_edit
 from verifier import verify, VerifyError
-from mechanics import compute_header_values, apply_field, rotate as default_rotate
+from mechanics import compute_header_values, apply_field, rotate as default_rotate, current_session_number, render_log_entry
 from runlog import (
-    create_run_dir,
-    write_input,
+    peek_session_number,
     write_report,
     RunReport,
     RegionEdit,
@@ -37,57 +35,44 @@ def run_handoff(
     git,
     rotate: Callable = default_rotate,
     clock: Callable = datetime.datetime.now,
-    dry_run: bool = False,
+    run_dir: Path,
+    amend: bool = False,
 ) -> RunReport:
     repo_root = Path(repo_root)
     log_rel = register["header-current-session"]["file"]
 
     # 1. Precondition: tracking files must be clean (rollback would clobber otherwise).
-    touched = _touched_files(register, payload)
+    touched = _touched_files(register, payload, amend=amend)
     if not git.is_clean(touched):
         return RunReport(
-            session_number=_peek_session_number(repo_root, log_rel),
+            session_number=peek_session_number(repo_root, log_rel),
             committed=False, rolled_back=False,
             reason="precondition: tracking files have uncommitted changes",
             verify_ok=False, edits=[],
         )
 
-    session_number = _peek_session_number(repo_root, log_rel)
+    log_text = (repo_root / log_rel).read_text()
+    if amend:
+        session_number = current_session_number(log_text)
+    else:
+        session_number = peek_session_number(repo_root, log_rel)
 
-    # Dry-run: stage -> apply -> verify in memory only. No run dir, no writes, no commit.
-    # Same pure half the real path uses, so a clean dry-run guarantees a clean real run.
-    if dry_run:
-        try:
-            _, region_edits = _stage_and_apply(repo_root, register, payload, clock=clock)
-        except LocatorError as exc:
-            return RunReport(session_number, False, False,
-                             f"dry-run: locate failed: {exc}", verify_ok=False, edits=[])
-        except VerifyError as exc:
-            return RunReport(session_number, False, False,
-                             f"dry-run: verify failed: {exc}", verify_ok=False, edits=[])
-        return RunReport(session_number, False, False,
-                         "dry-run: validated, not written", verify_ok=True, edits=region_edits)
-
-    # 2. Log intent immediately (recovery artifact, before touching anything).
-    run_dir = create_run_dir(repo_root, session_number, clock=clock)
-    write_input(run_dir, payload.raw)
-
-    # 3-5. Stage (locate) -> apply in memory -> verify each file's combined edit set (F4).
+    # 2. Stage (locate) -> apply in memory -> verify each file's combined edit set (F4).
     try:
-        modified_by_file, region_edits = _stage_and_apply(
-            repo_root, register, payload, clock=clock
+        modified_by_file, region_edits = stage_and_apply(
+            repo_root, register, payload, clock=clock, amend=amend
         )
     except LocatorError as exc:
         return _fail(run_dir, session_number, f"locate failed: {exc}", verify_ok=False, edits=[])
     except VerifyError as exc:
         return _fail(run_dir, session_number, f"verify failed: {exc}", verify_ok=False, edits=[])
 
-    # 6-8. Write, rotate, commit — git checkout is the rollback net.
+    # 3. Write, rotate, commit — git checkout is the rollback net.
     try:
         _write_all(repo_root, modified_by_file)
         _run_rotation(rotate, repo_root)
         git.add(_commit_paths(repo_root, touched))
-        git.commit(_commit_message(session_number, payload))
+        git.commit(_commit_message(session_number, payload, amend=amend))
     except Exception as exc:
         git.checkout(list(modified_by_file.keys()))
         return _fail(run_dir, session_number, f"apply/commit failed: {exc}",
@@ -100,16 +85,17 @@ def run_handoff(
 
 # ---- staging ----------------------------------------------------------------
 
-def _stage_and_apply(
-    repo_root, register, payload, *, clock
+def stage_and_apply(
+    repo_root, register, payload, *, clock, amend: bool = False
 ) -> Tuple[Dict[str, str], List[RegionEdit]]:
     """Locate -> apply -> verify, purely in memory. Raises LocatorError / VerifyError.
 
-    The deterministic, side-effect-free half of the transaction. Shared by the
-    real path and dry-run so both validate identically. `verify` is referenced as
-    a module global (not threaded through) so test monkeypatching still intercepts.
+    The deterministic, side-effect-free half of the transaction.
+    Called directly by handoff.py for the --payload (stage) path.
+    `verify` is referenced as a module global (not threaded through) so test
+    monkeypatching still intercepts.
     """
-    grouped = _collect_edits(repo_root, register, payload, clock=clock)
+    grouped = _collect_edits(repo_root, register, payload, clock=clock, amend=amend)
 
     modified_by_file: Dict[str, str] = {}
     region_edits: List[RegionEdit] = []
@@ -124,6 +110,7 @@ def _stage_and_apply(
         )
     return modified_by_file, region_edits
 
+
 def _normalize_block(content: str) -> str:
     """Guarantee a single trailing newline on a payload block.
 
@@ -136,7 +123,7 @@ def _normalize_block(content: str) -> str:
     return content if content.endswith("\n") else content + "\n"
 
 
-def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tuple[str, Region, str]]]:
+def _collect_edits(repo_root, register, payload, *, clock, amend: bool = False) -> Dict[str, List[Tuple[str, Region, str]]]:
     cache: Dict[str, str] = {}
 
     def text_of(rel: str) -> str:
@@ -160,18 +147,36 @@ def _collect_edits(repo_root, register, payload, *, clock) -> Dict[str, List[Tup
         for task_id in payload.checkoffs:
             add(rel, "tasks-checkoff", locate(role_def, text_of(rel), task_id=task_id), "")
 
-    _add_header_edits(register, payload, text_of, add, clock=clock)
+    if not amend:
+        # Compute header values once — session_number is the single source of truth
+        # shared between the rendered log-entry heading and the header field bump.
+        log_rel = register["header-current-session"]["file"]
+        date_str = clock().strftime("%Y-%m-%d")
+        header_values = compute_header_values(
+            text_of(log_rel),
+            session_title=payload.session_title,
+            current_layer=payload.current_layer,
+            date=date_str,
+        )
+        _add_header_edits_from_values(register, header_values, text_of, add)
+
+        # Render log-entry: render-then-apply (pure renderer upstream of prepend applier)
+        if payload.log_entry is not None:
+            role_def = register["log-entry"]
+            rel = role_def["file"]
+            rendered = render_log_entry(
+                payload.log_entry,
+                date=date_str,
+                session_number=header_values["session_number"],
+                session_title=payload.session_title,
+            )
+            add(rel, "log-entry", locate(role_def, text_of(rel)), _normalize_block(rendered))
+
     return grouped
 
 
-def _add_header_edits(register, payload, text_of, add, *, clock) -> None:
-    log_rel = register["header-current-session"]["file"]
-    values = compute_header_values(
-        text_of(log_rel),
-        session_title=payload.session_title,
-        current_layer=payload.current_layer,
-        date=clock().strftime("%Y-%m-%d"),
-    )
+def _add_header_edits_from_values(register, values, text_of, add) -> None:
+    """Wire header-field edits from pre-computed header values dict."""
     keyed = {"header-current-session": "current_session", "header-current-layer": "current_layer"}
     for role in HEADER_ROLES:
         role_def = register[role]
@@ -203,12 +208,13 @@ def _run_rotation(rotate, repo_root) -> None:
 
 # ---- helpers ----------------------------------------------------------------
 
-def _touched_files(register, payload) -> List[str]:
+def _touched_files(register, payload, *, amend: bool = False) -> List[str]:
     files = {register[role]["file"] for role in payload.blocks}
     if payload.checkoffs:
         files.add(register["tasks-checkoff"]["file"])
-    for role in HEADER_ROLES:
-        files.add(register[role]["file"])
+    if not amend:
+        for role in HEADER_ROLES:
+            files.add(register[role]["file"])
     return sorted(files)
 
 
@@ -219,13 +225,10 @@ def _commit_paths(repo_root, touched: List[str]) -> List[str]:
     return paths
 
 
-def _commit_message(session_number: int, payload: HandoffPayload) -> str:
+def _commit_message(session_number: int, payload: HandoffPayload, *, amend: bool = False) -> str:
+    if amend:
+        return f"chore(session-handoff): session {session_number} — amend"
     return f"chore(session-handoff): session {session_number} — {payload.session_title}"
-
-
-def _peek_session_number(repo_root, log_rel: str) -> int:
-    from mechanics import next_session_number
-    return next_session_number((repo_root / log_rel).read_text())
 
 
 def _fail(run_dir, session_number, reason, *, verify_ok, edits, rolled_back=True) -> RunReport:

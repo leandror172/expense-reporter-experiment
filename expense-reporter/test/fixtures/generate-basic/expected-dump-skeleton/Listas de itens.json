@@ -1,0 +1,6994 @@
+{
+  "sheet": "Listas de itens",
+  "dimensions": {
+    "rows": 52,
+    "cols": 15
+  },
+  "columnWidths": {
+    "A": 12.86,
+    "B": 14,
+    "C": 18.14,
+    "D": 16.43,
+    "E": 16.43,
+    "F": 16.43,
+    "G": 16.43,
+    "H": 16.43,
+    "I": 16.43,
+    "J": 16.43,
+    "K": 16.43,
+    "L": 16.43,
+    "M": 16.43,
+    "N": 16.43,
+    "O": 16.43
+  },
+  "rowHeights": {
+    "1": 15,
+    "10": 15,
+    "11": 15,
+    "12": 15,
+    "13": 15,
+    "14": 15,
+    "15": 15,
+    "16": 15,
+    "17": 15,
+    "18": 15,
+    "19": 15,
+    "2": 15,
+    "20": 15,
+    "21": 15.75,
+    "22": 15.75,
+    "23": 15.75,
+    "24": 15.75,
+    "25": 15.75,
+    "26": 15.75,
+    "27": 15.75,
+    "28": 15.75,
+    "29": 15.75,
+    "3": 15,
+    "30": 15.75,
+    "31": 15.75,
+    "32": 15.75,
+    "33": 15.75,
+    "34": 15.75,
+    "35": 15.75,
+    "36": 15.75,
+    "37": 15.75,
+    "38": 15.75,
+    "39": 3.75,
+    "4": 15,
+    "40": 15.75,
+    "41": 15.75,
+    "42": 15.75,
+    "43": 15.75,
+    "44": 15.75,
+    "45": 15.75,
+    "46": 15.75,
+    "47": 15.75,
+    "48": 15.75,
+    "49": 15.75,
+    "5": 15,
+    "50": 15.75,
+    "51": 15.75,
+    "52": 15.75,
+    "6": 15,
+    "7": 15,
+    "8": 15,
+    "9": 15
+  },
+  "mergedCells": [
+    {
+      "range": "A3:C3",
+      "value": ""
+    },
+    {
+      "range": "A6:A14",
+      "value": "Receitas"
+    },
+    {
+      "range": "B18:B19",
+      "value": "Habitação"
+    },
+    {
+      "range": "A18:A29",
+      "value": "Fixas"
+    },
+    {
+      "range": "A31:A37",
+      "value": "Variáveis"
+    }
+  ],
+  "crossSheetRefs": [
+    "Fixas",
+    "Receitas",
+    "Variáveis"
+  ],
+  "rows": [
+    {
+      "row": 3,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "Janeiro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "Fevereiro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Março",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "Abril",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "Maio",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Junho",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "Julho",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "Agosto",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Setembro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "Outubro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "Novembro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Dezembro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 5,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "D",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Valor",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 6,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Receitas",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Salário",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "Receitas!E4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "Receitas!H4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "Receitas!K4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "Receitas!N4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "Receitas!Q4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "Receitas!T4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "Receitas!W4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "Receitas!Z4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "Receitas!AC4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "Receitas!AF4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "Receitas!AI4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "Receitas!AL4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 7,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "13°",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "Receitas!E6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "Receitas!H6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "Receitas!K6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "Receitas!N6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "Receitas!Q6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "Receitas!T6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "Receitas!W6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "Receitas!Z6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "Receitas!AC6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "Receitas!AF6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "Receitas!AI6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "Receitas!AL6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 8,
+      "rowType": "separator",
+      "rowFill": "333399",
+      "cells": null
+    },
+    {
+      "row": 9,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D6:D7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E6:E7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F6:F7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G6:G7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H6:H7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I6:I7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J6:J7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K6:K7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L6:L7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M6:M7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N6:N7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O6:O7)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 10,
+      "rowType": "separator",
+      "rowFill": "333399",
+      "cells": null
+    },
+    {
+      "row": 11,
+      "rowType": "separator",
+      "rowFill": "333399",
+      "cells": null
+    },
+    {
+      "row": 12,
+      "rowType": "unknown",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Investimentos",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 13,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "D12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "E12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "F12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "G12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "H12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "I12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "J12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "K12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "L12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "M12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "N12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "O12",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 14,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "% sobre receita",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D9\u003e0,D13/D9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E9\u003e0,E13/E9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F9\u003e0,F13/F9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G9\u003e0,G13/G9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H9\u003e0,H13/H9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I9\u003e0,I13/I9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J9\u003e0,J13/J9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K9\u003e0,K13/K9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L9\u003e0,L13/L9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M9\u003e0,M13/M9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N9\u003e0,N13/N9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O9\u003e0,O13/O9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 18,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Fixas",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Habitação",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Diarista",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "Fixas!E4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "Fixas!H4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "Fixas!K4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "Fixas!N4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "Fixas!Q4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "Fixas!T4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "Fixas!W4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "Fixas!Z4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "Fixas!AC4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "Fixas!AF4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "Fixas!AI4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "Fixas!AL4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 19,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Aluguel",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "Fixas!E6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "Fixas!H6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "Fixas!K6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "Fixas!N6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "Fixas!Q6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "Fixas!T6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "Fixas!W6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "Fixas!Z6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "Fixas!AC6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "Fixas!AF6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "Fixas!AI6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "Fixas!AL6",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 20,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Total Habitação",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D18:D19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E18:E19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F18:F19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G18:G19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H18:H19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I18:I19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J18:J19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K18:K19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L18:L19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M18:M19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N18:N19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O18:O19)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 21,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre despesas",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D27\u003e0,D20/D27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E27\u003e0,E20/E27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F27\u003e0,F20/F27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G27\u003e0,G20/G27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H27\u003e0,H20/H27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I27\u003e0,I20/I27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J27\u003e0,J20/J27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K27\u003e0,K20/K27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L27\u003e0,L20/L27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M27\u003e0,M20/M27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N27\u003e0,N20/N27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O27\u003e0,O20/O27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 22,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre receita",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D9\u003e0,D20/D9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E9\u003e0,E20/E9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F9\u003e0,F20/F9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G9\u003e0,G20/G9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H9\u003e0,H20/H9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I9\u003e0,I20/I9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J9\u003e0,J20/J9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K9\u003e0,K20/K9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L9\u003e0,L20/L9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M9\u003e0,M20/M9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N9\u003e0,N20/N9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O9\u003e0,O20/O9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 23,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Lazer",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Netflix",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "Fixas!E11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "Fixas!H11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "Fixas!K11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "Fixas!N11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "Fixas!Q11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "Fixas!T11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "Fixas!W11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "Fixas!Z11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "Fixas!AC11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "Fixas!AF11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "Fixas!AI11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "Fixas!AL11",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 24,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Total Lazer",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O23)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 25,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre despesas",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D27\u003e0,D24/D27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E27\u003e0,E24/E27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F27\u003e0,F24/F27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G27\u003e0,G24/G27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H27\u003e0,H24/H27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I27\u003e0,I24/I27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J27\u003e0,J24/J27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K27\u003e0,K24/K27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L27\u003e0,L24/L27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M27\u003e0,M24/M27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N27\u003e0,N24/N27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O27\u003e0,O24/O27,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 26,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre receita",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D9\u003e0,D24/D9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E9\u003e0,E24/E9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F9\u003e0,F24/F9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G9\u003e0,G24/G9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H9\u003e0,H24/H9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I9\u003e0,I24/I9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J9\u003e0,J24/J9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K9\u003e0,K24/K9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L9\u003e0,L24/L9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M9\u003e0,M24/M9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N9\u003e0,N24/N9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O9\u003e0,O24/O9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 27,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Total despesas fixas",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D20,D24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E20,E24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F20,F24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G20,G24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H20,H24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I20,I24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J20,J24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K20,K24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L20,L24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M20,M24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N20,N24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O20,O24)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 28,
+      "rowType": "separator",
+      "rowFill": "333399",
+      "cells": null
+    },
+    {
+      "row": 29,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre receita",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D9\u003e0,D27/D9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E9\u003e0,E27/E9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F9\u003e0,F27/F9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G9\u003e0,G27/G9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H9\u003e0,H27/H9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I9\u003e0,I27/I9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J9\u003e0,J27/J9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K9\u003e0,K27/K9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L9\u003e0,L27/L9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M9\u003e0,M27/M9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N9\u003e0,N27/N9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O9\u003e0,O27/O9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 31,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Variáveis",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Transporte",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Metrô",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "'Variáveis'!E4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "'Variáveis'!H4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "'Variáveis'!K4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "'Variáveis'!N4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "'Variáveis'!Q4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "'Variáveis'!T4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "'Variáveis'!W4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "'Variáveis'!Z4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "'Variáveis'!AC4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "'Variáveis'!AF4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "'Variáveis'!AI4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "'Variáveis'!AL4",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 32,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Total Transporte",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O31)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 33,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre despesas",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D35\u003e0,D32/D35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E35\u003e0,E32/E35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F35\u003e0,F32/F35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G35\u003e0,G32/G35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H35\u003e0,H32/H35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I35\u003e0,I32/I35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J35\u003e0,J32/J35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K35\u003e0,K32/K35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L35\u003e0,L32/L35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M35\u003e0,M32/M35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N35\u003e0,N32/N35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O35\u003e0,O32/O35,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 34,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre receita",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D9\u003e0,D32/D9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E9\u003e0,E32/E9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F9\u003e0,F32/F9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G9\u003e0,G32/G9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H9\u003e0,H32/H9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I9\u003e0,I32/I9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J9\u003e0,J32/J9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K9\u003e0,K32/K9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L9\u003e0,L32/L9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M9\u003e0,M32/M9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N9\u003e0,N32/N9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O9\u003e0,O32/O9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 35,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Total despesas variáveis",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O32)",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 36,
+      "rowType": "separator",
+      "rowFill": "333399",
+      "cells": null
+    },
+    {
+      "row": 37,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bgColor": "333399",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "% sobre receita",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D9\u003e0,D35/D9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E9\u003e0,E35/E9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F9\u003e0,F35/F9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G9\u003e0,G35/G9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H9\u003e0,H35/H9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I9\u003e0,I35/I9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J9\u003e0,J35/J9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K9\u003e0,K35/K9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L9\u003e0,L35/L9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M9\u003e0,M35/M9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N9\u003e0,N35/N9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O9\u003e0,O35/O9,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 40,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Receita",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "D9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "E9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "F9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "G9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "H9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "I9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "J9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "K9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "L9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "M9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "N9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "O9",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 41,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Investimentos",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "D13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "E13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "F13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "G13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "H13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "I13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "J13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "K13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "L13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "M13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "N13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "O13",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 42,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Total renda",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D40:D41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E40:E41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F40:F41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G40:G41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H40:H41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I40:I41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J40:J41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K40:K41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L40:L41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M40:M41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N40:N41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O40:O41)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 43,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Despesas fixas",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "D27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "E27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "F27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "G27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "H27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "I27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "J27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "K27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "L27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "M27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "N27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "O27",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 44,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Despesas variáveis",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "D35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "E35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "F35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "G35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "H35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "I35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "J35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "K35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "L35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "M35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "N35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "O35",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 45,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Total despesas",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "SUM(D43,D44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E43,E44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "SUM(F43,F44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "SUM(G43,G44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H43,H44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "SUM(I43,I44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "SUM(J43,J44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K43,K44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "SUM(L43,L44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "SUM(M43,M44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N43,N44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "SUM(O43,O44)",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 46,
+      "rowType": "category-label",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Porcentagem da despesa",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 47,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Fixas",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D45\u003e0,D43/D45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E45\u003e0,E43/E45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F45\u003e0,F43/F45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G45\u003e0,G43/G45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H45\u003e0,H43/H45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I45\u003e0,I43/I45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J45\u003e0,J43/J45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K45\u003e0,K43/K45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L45\u003e0,L43/L45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M45\u003e0,M43/M45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N45\u003e0,N43/N45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O45\u003e0,O43/O45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 48,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Variáveis",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D45\u003e0,D44/D45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E45\u003e0,E44/E45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F45\u003e0,F44/F45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G45\u003e0,G44/G45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H45\u003e0,H44/H45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I45\u003e0,I44/I45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J45\u003e0,J44/J45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K45\u003e0,K44/K45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L45\u003e0,L44/L45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M45\u003e0,M44/M45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N45\u003e0,N44/N45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O45\u003e0,O44/O45,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 49,
+      "rowType": "category-label",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Porcentagem da renda",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 50,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Fixas",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D42\u003e0,D43/D42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E42\u003e0,E43/E42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F42\u003e0,F43/F42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G42\u003e0,G43/G42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H42\u003e0,H43/H42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I42\u003e0,I43/I42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J42\u003e0,J43/J42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K42\u003e0,K43/K42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L42\u003e0,L43/L42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M42\u003e0,M43/M42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N42\u003e0,N43/N42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O42\u003e0,O43/O42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 51,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Variáveis",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "IF(D42\u003e0,D44/D42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "IF(E42\u003e0,E44/E42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "IF(F42\u003e0,F44/F42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "IF(G42\u003e0,G44/G42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "IF(H42\u003e0,H44/H42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "IF(I42\u003e0,I44/I42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "IF(J42\u003e0,J44/J42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "IF(K42\u003e0,K44/K42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "IF(L42\u003e0,L44/L42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "IF(M42\u003e0,M44/M42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "IF(N42\u003e0,N44/N42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "IF(O42\u003e0,O44/O42,0)",
+          "style": {
+            "bgColor": "CCCCFF",
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 52,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Saldo",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "",
+          "formula": "D42-D45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "E42-E45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "formula": "F42-F45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "",
+          "formula": "G42-G45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "H42-H45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "formula": "I42-I45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "",
+          "formula": "J42-J45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "K42-K45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "formula": "L42-L45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "",
+          "formula": "M42-M45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "N42-N45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "formula": "O42-O45",
+          "style": {
+            "bgColor": "333333",
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -140,8 +140,12 @@ Local-first review surface — supersedes the Lovable cloud plan
 <!-- ref:deferred -->
 ## Deferred / Backlog
 
-- [ ] (RUI-WM1) **Workbook mapping Layer 1** — Rewrite `cmd/workbook-inspect/main.go` to output full JSON per sheet: all cells, formulas, cell styles (fill color, bold, borders). Schema in `.claude/plans/workbook-mapping-plan.md`.
-- [ ] (RUI-WM2) **Workbook mapping Layer 2** — Chrome automation screenshot pass via Google Sheets. Use Layer 1 block list to target sections. See plan.
-- [ ] (RUI-WM3) **Workbook mapping Layer 3** — claude.ai synthesis of Layer 1+2 into `workbook-generator-spec.md`. Must complete before 2026-07-05 (2× usage expires).
-- [ ] (RUI-WG) **Workbook generator command** — Implement `generate` command that produces workbook from `classifications.jsonl` + `expenses_log.jsonl`. Blocked on RUI-WM3 (spec).
+- [x] (RUI-WM1) **Workbook mapping Layer 1** — Rewrite `cmd/workbook-inspect/main.go` to output full JSON per sheet: all cells, formulas, cell styles (fill color, bold, borders). Schema in `.claude/plans/workbook-mapping-plan.md`.
+- [x] (RUI-WM2) **Workbook mapping Layer 2** — Chrome automation screenshot pass via Google Sheets. Use Layer 1 block list to target sections. See plan.
+- [x] (RUI-WM3) **Workbook mapping Layer 3** — claude.ai synthesis of Layer 1+2 into `workbook-generator-spec.md`. Must complete before 2026-07-05 (2× usage expires).
+- [x] (RUI-WG) **Workbook generator command** — Implement `generate` command that produces workbook from `classifications.jsonl` + `expenses_log.jsonl`. Blocked on RUI-WM3 (spec).
+- [ ] (T-01) **Merge PR #27** — workbook generator branch; user submits/discards pending review first (drafts addressed in session 29)
+- [ ] (T-02) **Real-taxonomy export** — one-time: Referência (113 subcats) → `taxonomy.json` per spec §1.1; compose sub-item splits into col-B strings; validate via skeleton generation
+  - **Addendum (decided session 30, 2026-06-12):** when implementing this export, split `loader.go` (+ the input-only parts of `taxonomy.go`) into a sibling `internal/taxonomy` package — pure input layer, zero excelize — and land the export writer there. Explicit decision NOT to subpackage styles/sheets (Go flat-package idiom; too coupled). **Prerequisite (found session 31):** `taxonomy.go` mixes domain types with mutable RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()`, read by builders); relocate those vars into `generate` before the split, and decide whether the domain types live in `internal/taxonomy` or stay in `generate` (cycle risk to check).
+- [ ] (T-03) **Year-rollover workflow** — generate year N+1 skeleton from taxonomy alone; decide `apply`/`add` fate against generated workbooks
 <!-- /ref:deferred -->

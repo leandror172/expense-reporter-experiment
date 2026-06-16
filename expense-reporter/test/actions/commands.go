@@ -239,3 +239,19 @@ func RunApply(reviewedPath string) func(*harness.Context) {
 		runCommand(ctx, args...)
 	}
 }
+
+// RunGenerateWorkbook returns a When closure that runs the generate-workbook command.
+// The output workbook lands in ctx.WorkDir and is registered as the
+// "generated-workbook" artifact for structure verification.
+func RunGenerateWorkbook(taxonomyPath, entriesPath string, extraFlags ...string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		outputPath := filepath.Join(ctx.WorkDir, "generated.xlsx")
+		args := []string{"generate-workbook", "-o", outputPath, "--taxonomy", taxonomyPath}
+		if entriesPath != "" {
+			args = append(args, "--entries", entriesPath)
+		}
+		args = append(args, extraFlags...)
+		runCommand(ctx, args...)
+		ctx.Artifacts["generated-workbook"] = outputPath
+	}
+}

@@ -151,6 +151,29 @@ This command does **not** modify the workbook; it only writes to the feedback lo
 Flags:
 - `--data-dir` — path to classification data (for resolving the corrected category)
 
+### `generate-workbook` — Generate a complete workbook from data
+
+```bash
+expense-reporter generate-workbook -o 2026.xlsx --taxonomy taxonomy.json \
+    --entries expenses_log.jsonl --year 2026
+```
+
+Builds a full expense workbook (Listas de itens + Receitas + one sheet per expense
+group) from a JSON taxonomy file, optionally filled with entries from an
+`expenses_log.jsonl` log. The workbook is **regenerated from data, never inserted
+into** — rerun the command after the log changes.
+
+| Flag | Required | Meaning |
+|------|----------|---------|
+| `-o, --output` | yes | output `.xlsx` path |
+| `--taxonomy` | yes | taxonomy JSON file (sheets → categories → subcategories, plus income categories/blocks) |
+| `--entries` | no | entries JSONL; omitted = skeleton workbook |
+| `--year` | no (current year) | year applied to entry dates (`DD/MM` in the log has no year) |
+| `--headroom` | no (0) | spare data rows per block beyond the busiest month |
+
+Entries whose subcategory is not in the taxonomy are skipped with a warning
+(exit stays 0). On category disagreement the taxonomy wins.
+
 ### `version` — Print version
 
 ```bash
