@@ -51,3 +51,11 @@ func needsQuote(s string) bool {
 	}
 	return false
 }
+
+func sumCellRange(col string, fromRow, toRow int) string {
+	return fmt.Sprintf("SUM(%s:%s)", cell(col, fromRow), cell(col, toRow))
+}
+
+func safeRatioFormula(col string, denomRow, numeratorRow int) string {
+	return fmt.Sprintf("IF(%s>0,%s/%s,0)", cell(col, denomRow), cell(col, numeratorRow), cell(col, denomRow))
+}
