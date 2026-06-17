@@ -17,8 +17,10 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseSheet, []RevenueBl
 	}
 
 	// Duplicate-subcategory validation applies to the taxonomy itself,
-	// even when no entries are loaded.
-	if _, err := buildSubcategoryMap(sheets, incomeBlocks); err != nil {
+	// even when no entries are loaded. The routing map + ambiguity set are
+	// reused below when entries are present.
+	subcatMap, ambiguous, err := buildSubcategoryMap(sheets, incomeBlocks)
+	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
 
@@ -26,8 +28,7 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseSheet, []RevenueBl
 		return sheets, incomeBlocks, nil
 	}
 
-	err = loadEntries(entriesPath, &sheets, &incomeBlocks)
-	if err != nil {
+	if err := loadEntries(entriesPath, subcatMap, ambiguous); err != nil {
 		return nil, nil, fmt.Errorf("loading entries: %w", err)
 	}
 
@@ -103,26 +104,21 @@ func incomeCatsToRevenueBlocks(raw []struct {
 	return incomeBlocks
 }
 
-// loadEntries reads entries from a JSONL file and populates the taxonomy.
-func loadEntries(path string, sheets *[]ExpenseSheet, incomeBlocks *[]RevenueBlock) error {
+// loadEntries reads entries from a JSONL file and routes them using the
+// pre-built subcategory map and ambiguity set.
+func loadEntries(path string, subcatMap map[string]subcatTarget, ambiguous map[string]bool) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("opening entries file: %w", err)
 	}
 	defer file.Close()
 
-	subcatMap, err := buildSubcategoryMap(*sheets, *incomeBlocks)
-	if err != nil {
-		return err
-	}
-
-	scanner := bufio.NewScanner(file)
-	return scanEntries(scanner, subcatMap)
+	return scanEntries(bufio.NewScanner(file), subcatMap, ambiguous)
 }
 
 // scanEntries reads each non-blank JSONL line, parses it, looks up its subcategory,
 // and attaches the entry to the appropriate month slice.
-func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget) error {
+func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget, ambiguous map[string]bool) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" {
@@ -141,7 +137,7 @@ func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget) erro
 
 		subcat, exists := subcatMap[entry.Subcategory]
 		if !exists {
-			fmt.Fprintf(os.Stderr, "skipping entry %q: subcategory %q not in taxonomy\n", entry.Item, entry.Subcategory)
+			warnUnroutable(entry.Item, entry.Subcategory, ambiguous[entry.Subcategory])
 			continue
 		}
 
@@ -156,32 +152,84 @@ func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget) erro
 	return scanner.Err()
 }
 
-// buildSubcategoryMap creates a map from subcategory names to their targets.
-func buildSubcategoryMap(sheets []ExpenseSheet, incomeBlocks []RevenueBlock) (map[string]subcatTarget, error) {
+// warnUnroutable reports a skipped entry, distinguishing an ambiguous subcategory
+// (a name shared by multiple full paths, skipped pending the full-path routing
+// redesign) from one that is simply absent from the taxonomy. Both exit 0.
+func warnUnroutable(item, subcategory string, isAmbiguous bool) {
+	if isAmbiguous {
+		fmt.Fprintf(os.Stderr,
+			"skipping entry %q: subcategory %q is ambiguous across multiple blocks (pending full-path routing)\n",
+			item, subcategory)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "skipping entry %q: subcategory %q not in taxonomy\n", item, subcategory)
+}
+
+// buildSubcategoryMap builds the bare-name → target routing map plus the set of
+// ambiguous bare names. A subcategory's identity is its full path
+// (sheet/category/sub for expenses; group/label for income); only an exact
+// repeat of a full path is a validation error. A bare name that resolves to more
+// than one full path is ambiguous and is not routable (see registerTarget).
+func buildSubcategoryMap(sheets []ExpenseSheet, incomeBlocks []RevenueBlock) (map[string]subcatTarget, map[string]bool, error) {
 	result := make(map[string]subcatTarget)
+	ambiguous := make(map[string]bool)
+	seen := make(map[string]bool) // full paths, for true-duplicate detection
 
 	// Index into the backing slices — pointers to range copies would lose appends.
 	for i := range sheets {
 		for j := range sheets[i].Cats {
 			for k := range sheets[i].Cats[j].Subs {
 				sub := &sheets[i].Cats[j].Subs[k]
-				if _, exists := result[sub.Name]; exists {
-					return nil, fmt.Errorf("subcategory %q appears more than once in taxonomy", sub.Name)
+				path := expensePath(sheets[i].Name, sheets[i].Cats[j].Name, sub.Name)
+				if seen[path] {
+					return nil, nil, fmt.Errorf("subcategory %q appears more than once in %s/%s", sub.Name, sheets[i].Name, sheets[i].Cats[j].Name)
 				}
-				result[sub.Name] = subcatTarget{kind: "expense", expense: sub}
+				seen[path] = true
+				registerTarget(result, ambiguous, sub.Name, subcatTarget{kind: "expense", expense: sub})
 			}
 		}
 	}
 
 	for i := range incomeBlocks {
 		block := &incomeBlocks[i]
-		if _, exists := result[block.Label]; exists {
-			return nil, fmt.Errorf("subcategory %q (income block label) appears more than once in taxonomy", block.Label)
+		path := incomePath(block.Category, block.Label)
+		if seen[path] {
+			return nil, nil, fmt.Errorf("income block %q appears more than once in %s", block.Label, block.Category)
 		}
-		result[block.Label] = subcatTarget{kind: "income", income: block}
+		seen[path] = true
+		registerTarget(result, ambiguous, block.Label, subcatTarget{kind: "income", income: block})
 	}
 
-	return result, nil
+	return result, ambiguous, nil
+}
+
+// registerTarget records target under name for bare-name routing. Each call is a
+// distinct full path (callers reject exact-path repeats first), so finding the
+// name already present means a second full path claims it: the name becomes
+// ambiguous, is removed from the map, and stays ambiguous permanently — which
+// also stops a third occurrence from re-adding it.
+func registerTarget(result map[string]subcatTarget, ambiguous map[string]bool, name string, target subcatTarget) {
+	if ambiguous[name] {
+		return
+	}
+	if _, exists := result[name]; exists {
+		delete(result, name)
+		ambiguous[name] = true
+		return
+	}
+	result[name] = target
+}
+
+// expensePath / incomePath join taxonomy segments with a null byte — a separator
+// that cannot occur in human-typed names (which DO contain '/', e.g. "Uber/Taxi").
+// The kind prefix keeps a 3-segment expense path from ever equalling a 2-segment
+// income path.
+func expensePath(sheet, category, sub string) string {
+	return "expense\x00" + sheet + "\x00" + category + "\x00" + sub
+}
+
+func incomePath(category, label string) string {
+	return "income\x00" + category + "\x00" + label
 }
 
 // parseDate converts DD/MM to day and month integers.

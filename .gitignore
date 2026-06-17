@@ -40,6 +40,9 @@ data/classification/*.json
 data/classification/*.csv
 !data/classification/algorithm_parameters.json
 
+# Real taxonomy (derived from personal Referência sheet — reveals personal categories)
+expense-reporter/config/taxonomy.json
+
 # Claude Code local data (secrets, personal paths, backups)
 .claude/local/
 
