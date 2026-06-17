@@ -1,57 +1,39 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-15 — Session 30: generate package internal refactor — styles vocabulary, cross-file extraction, memory merge
-**Current Layer:** Workbook Generator — COMPLETE (PR #27 pending merge; internal refactor done)
+**Current Session:** 2026-06-17 — Session 31: internal/taxonomy split + full-path identity key (T-02)
+**Current Layer:** Workbook Generator — taxonomy package + full-path identity (T-02 done; T-04 deferred)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-
-## 2026-06-15 - Session 30: generate package internal refactor — styles vocabulary, cross-file extraction, memory merge
+## 2026-06-17 - Session 31: internal/taxonomy split + full-path identity key (T-02)
 
 ### Context
-Continued from a compacted session that had left an uncommitted styles.go refactor in the tree.
-Picked up that work, committed it, then ran the cross-file domain-extraction pass discussed
-pre-compaction, then the memory handoff. All work in `expense-reporter/internal/generate`,
-behavior-preserving (the oracle-frozen acceptance dumps stayed byte-identical throughout).
+
+Continued from the workbook-generator session after PR #27 merged; picked up T-02 (real-taxonomy export + the penciled `internal/taxonomy` split).
 
 ### What Was Done
-- **Committed the styles.go refactor** (carried over uncommitted from the pre-compaction session):
-  styles.go split into a style *vocabulary* (named constructors `dataCell`/`grayBanner`/
-  `columnHeader`/`totalRowCell`/`navyBand`/… + named palette/numfmt constants) over a
-  `styleRegistrar` (first-error capture; `family()` mints General/currency/percent trios);
-  Portuguese `styleSet` fields anglicized (MonthCorner; TotalText/TotalTextLeft/TotalValue/
-  TotalValueRight); dead styles removed. Plus loader/revenue/`summary.balanceBlock` step-extraction.
-- **Cross-file domain-extraction pass (A+B+C+D), via a sonnet subagent (codegen routed to Ollama,
-  qcoder verdict 1):** moved pure ref/formula helpers (`cell`, `sheetRef`, `needsQuote`) into
-  `util.go`; created new `data_sheet.go` holding the data-sheet writing vocabulary shared by the
-  expense sheets and Receitas (`writeMonthHeader`, `writeTotalRow(Opt)`, `writeSeparator`,
-  `mergeCategoryLabel`, `freezeC3`); unified two near-duplicate pairs into `calculateBlockRows(row,
-  maxEntries)` and `writeDataBand(..., rowHeight, lastCol)` (the only behavioral difference between
-  the two sheet kinds is row height — 12.75 expense / 15 revenue). Net −144 lines.
-- **Verified green and committed:** 480 unit tests / 19 packages, `go vet` clean, 3/3 generate
-  acceptance tests with dumps byte-identical. 3 commits on `feat/workbook-generator` (2 refactor +
-  1 chore-memory). Independently verified the subagent's tree before trusting its report.
-- **Memory handoff:** merged the session-30 pre-compaction scratch into durable memory (generate
-  `.memories/QUICK.md` code-organization section; repo `KNOWLEDGE.md` generator-refactor entry;
-  root `QUICK.md` status). Wrote two Claude-side auto-memories (`feedback_style_vocabulary`,
-  `feedback_subagent_verify_tree`) + reinforced `feedback_method_extraction`. Deleted both scratch
-  files.
-- **PR #27 description checked → STALE** (covers only G1–G4; predates the PR-review fixes and the
-  session-30 refactor; test counts read 220+/17, now 480/19). Update pending the user's go-ahead.
+
+- Relocated render config (`dataYear`/`headroomRows`/`perGroupPctRows`) out of `taxonomy.go` into `generate` — T-02 prerequisite (commit 07f395a).
+- Extracted `internal/taxonomy` as a pure input layer (domain types + loader), fully qualified all `taxonomy.X` references, deleted the alias shim; cycle-free (commit 21c6d4e).
+- Authored the real `config/taxonomy.json` (112 subs) from the user's CSV — Gás consolidated to Variáveis/Habitação, Variáveis/Habitação `Produtos`→`Produtos de casa`, categories grouped by first appearance, Receitas income (Investimentos deferred); gitignored (commit 47b2379).
+- Reworked `buildSubcategoryMap` to full-path identity + sticky ambiguity guard, distinct ambiguous skip message in `scanEntries`; relaxed spec §1.1; added decision doc `.claude/plans/taxonomy-identity-key.md` `[ref:taxonomy-identity-key]` (commit 47b2379).
+- Updated memory QUICK/KNOWLEDGE across generate, module, and the new taxonomy package (commit 5fa22d8).
 
 ### Decisions Made
-- **Package stays FLAT** — no styles/sheets subpackages (Go idiom; styleSet/layoutRegistry/Labels/
-  domain types too coupled to split). Style/config definitions are expressed through identifying
-  names (the vocabulary pattern) — name WHAT a thing is, not how it's assembled; generalizes
-  beyond styles.go.
-- **`internal/taxonomy` split deferred to T-02** (the real-taxonomy export), now with a PREREQUISITE
-  discovered this session: `taxonomy.go` mixes the domain types (used by every builder) with mutable
-  RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()`, read by builders)
-  — those vars must relocate into `generate` first; then decide domain-type placement (cycle risk).
-  Recorded as the T-02 addendum in tasks.md.
+
+- T-02 reframed: NO export command/writer — the real taxonomy is a one-shot hand-authored file; long-term direction is DB ingestion, not workbook insertion (user).
+- Subcategory identity = full path (sheet/category/sub; income group/label), not bare leaf name; only an exact full-path repeat errors, cross-path repeats are legal (real data repeats `Orion`, `Aluguel`).
+- Bare-name routing retained but ambiguous names dropped (warn+skip, exit 0) until full-path entry routing lands — never a silent misroute; routing-by-full-path deferred to T-04.
 
 ### Next
-- **Update the PR #27 description** (stale — pending user approval to push), then merge PR #27 (T-01).
-- Real-taxonomy export (T-02) — now carries the `internal/taxonomy` split + its prerequisite.
-- Year-rollover (T-03); then TF-IDF (5.R1).
+
+- Open + merge the PR for branch `refactor/internal-taxonomy`.
+- T-04 (deferred): full-path entry routing — entry contract + classifier + `scanEntries` + fixtures.
+- T-03 year-rollover; then TF-IDF (5.R1).
+
+### Gotchas
+
+- `buildSubcategoryMap` is only hit for *validation* on the skeleton path (the map is discarded) — ambiguity/routing coverage comes from an entry-fed unit test, not skeleton generation.
+- Local model (`my-go-qcoder`) verdict 0 on the loader change: O(n²) ambiguity scan, truncated output, and used `/` as the path separator when real names contain `/` (`Uber/Taxi`) — wrote from scratch (sanctioned for conceptual defects).
+- "112 subs + no dups" is necessary but not sufficient for a hand-transcribed file; the CSV↔JSON symmetric-difference (empty) is the real fidelity check.
 

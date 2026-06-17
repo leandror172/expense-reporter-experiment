@@ -42,30 +42,28 @@
 ---
 
 <!-- ref:current-status -->
+
 ## Current Status
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Workbook Generator — **COMPLETE** (sessions 25–30) on branch
-  `feat/workbook-generator`. **PR #27 ready to merge**, BUT its description is now **STALE** —
-  covers only G1–G4, predates the PR-review fixes + the session-30 internal refactor, and its test
-  counts read "220+/17" (now 480/19). Update the body before merging.
-- **Last checkpoint:** Session 30 (2026-06-15) — `internal/generate` internal refactor,
-  behavior-preserving (oracle dumps byte-identical throughout). styles.go split into a style
-  *vocabulary* (named constructors + palette/numfmt constants) over a `styleRegistrar`
-  (first-error capture, `family()` trios); Portuguese style fields anglicized; dead styles removed.
-  loader/revenue/summary `balanceBlock` step-extracted. Cross-file extraction: pure ref/formula
-  helpers (`cell`/`sheetRef`/`needsQuote`) → `util.go`; shared data-sheet vocabulary → new
-  `data_sheet.go`; two near-duplicate pairs unified there (`calculateBlockRows`, `writeDataBand` —
-  only diff is row height 12.75 vs 15). 3 commits on branch (2 refactor + 1 chore-memory). All
-  green: 480 unit tests / 19 packages, 3/3 acceptance (deterministic, no Ollama).
+- **Active layer:** Workbook Generator — **COMPLETE**; **PR #27 MERGED to master**. Follow-on (T-02)
+  on branch `refactor/internal-taxonomy` (not yet merged): `internal/taxonomy` extracted + real
+  `config/taxonomy.json` authored + full-path identity key.
+- **Last checkpoint (this session):** T-02 landed as 4 commits on `refactor/internal-taxonomy`:
+  render-config relocation (prereq) → `internal/taxonomy` extraction (domain types + loader, fully
+  qualified, cycle-free) → real `config/taxonomy.json` (112 subs, gitignored) + full-path identity
+  key with sticky ambiguity guard → memory docs. All green: full unit suite + 3/3 generate-workbook
+  acceptance (oracle dumps byte-identical); CSV↔JSON fidelity symmetric-difference empty.
+- **Identity decision:** a subcategory's identity is its FULL PATH (sheet/category/sub; income
+  group/label), not the bare leaf name — only an exact full-path repeat errors; a bare name shared
+  by >1 path is *ambiguous* → warn+skip (`[ref:taxonomy-identity-key]`,
+  `.claude/plans/taxonomy-identity-key.md`).
 - **Input contract (spec §1.1):** taxonomy JSON (sheets→cats→subcats; incomeCategories→blocks)
   + `expenses_log.jsonl` entries (date `DD/MM`, no year — `--year` supplies it); unknown
   subcategory → warn+skip exit 0; taxonomy wins on category mismatch.
-- **Next:** update PR #27 description (stale); merge PR #27; one-time export of the real
-  113-subcategory taxonomy (Referência → `taxonomy.json`) — now carries the `internal/taxonomy`
-  package split (T-02 addendum, with a render-config relocation prerequisite); year-rollover
-  workflow; then TF-IDF (5.R1).
+- **Next:** open + merge PR for `refactor/internal-taxonomy`; T-04 full-path entry routing
+  (DEFERRED — changes the entry contract + classifier); T-03 year-rollover; then TF-IDF (5.R1).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -86,6 +84,7 @@ Or manually:
 ---
 
 <!-- ref:active-decisions -->
+
 ## Active Decisions
 
 ### Workbook Generator (sessions 27–29)
@@ -117,14 +116,28 @@ Or manually:
   the data-sheet writing vocabulary shared by the expense sheets AND Receitas, plus the unified
   `calculateBlockRows(row, maxEntries)` and `writeDataBand(..., rowHeight, lastCol)` (sole
   behavioral diff between the two sheet kinds is row height 12.75 vs 15).
-- **Package stays FLAT** — no styles/sheets subpackages (Go idiom; styleSet/layoutRegistry/Labels/
-  domain types too coupled). One split penciled (T-02 addendum): `internal/taxonomy` as a pure
-  input layer alongside the real-taxonomy export. PREREQUISITE: `taxonomy.go` mixes the domain
-  types (used by every builder) with mutable RENDER config (`dataYear`/`headroomRows`/
-  `perGroupPctRows`, set by `Generate()`, read by builders) — relocate those into `generate`
-  first, then decide domain-type placement (cycle risk).
+- **Package stays FLAT** — no styles/sheets subpackages (Go idiom; styleSet/layoutRegistry/Labels
+  too coupled). The penciled split is **DONE** (T-02, 2026-06-16, commits 07f395a + 21c6d4e):
+  `internal/taxonomy` extracted as the pure input layer (domain types + loader); render config
+  (`dataYear`/`headroomRows`/`perGroupPctRows`) relocated into `generate` FIRST (cycle-free).
+  Builders reference `taxonomy.X` by full qualification (no alias shim).
 - **Behavior-preserving refactors leaned on the oracle** — a mis-parameterized row height fails the
   frozen dump loudly and specifically; that safety net is what made aggressive cross-file merges safe.
+
+### Taxonomy Identity Key (this session — `[ref:taxonomy-identity-key]`)
+- **Identity = full path** — a subcategory is identified by sheet/category/subcategory (income:
+  group/label), NOT its bare leaf name. Only an exact repeated full path is a validation error;
+  cross-path repeats are legal (real data repeats leaves: `Orion` ×3 across Pet blocks; `Aluguel`
+  as expense + income).
+- **Bare-name routing kept but guarded** — a bare name shared by >1 full path is *ambiguous* and
+  dropped from routing (entry warn+skip, exit 0; never a silent misroute). `registerTarget` keeps
+  the ambiguous set sticky (guards the 3× re-add trap); full paths join on a null byte (names
+  contain `/`, e.g. `Uber/Taxi`).
+- **T-02 reframed** — NO export command/writer; the real taxonomy is a one-shot hand-authored file
+  (`config/taxonomy.json`, 112 subs, gitignored). Long-term direction is DB ingestion, not workbook
+  insertion.
+- **Routing-by-full-path is DEFERRED (T-04)** — it changes the entry contract + classifier; until
+  then the ambiguity guard is the safety net. Full record: `.claude/plans/taxonomy-identity-key.md`.
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
@@ -165,7 +178,7 @@ Or manually:
 - **Working directory:** Shell commands run from `expense-reporter/` — do not prefix paths with it
 - **Ollama timeout policy (session 8):** 1st timeout = retry (cold start), not a rejection. Only treat as 1st rejection if the model responds with wrong output. Two rejections → escalate to Claude.
 - **Ollama parallelization ceiling (session 15):** 3 parallel codegen calls only safe for tiny near-identical prompts. Default to serial for non-trivial codegen — VRAM ceiling causes silent degradation/timeouts.
-- **`my-go-qcoder` first benchmark (session 23, 2026-05-18):** Used for `cmd/review.go` (verdict 1), `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1). Struggled with intermediate Go map types in a prior session (verdict 0 on `taxonomy.go`) — passes cleanly when types are pre-defined in context files. Test generation is its strongest use; cobra command wiring is solid. Preferred over `my-go-q25c14` going forward for single-file codegen tasks.
+- **`my-go-qcoder` first benchmark (session 23, 2026-05-18):** Used for `cmd/review.go` (verdict 1), `render_test.go` (verdict 2), `taxonomy_test.go` (verdict 2), `queue_test.go` (verdict 1). Struggled with intermediate Go map types in a prior session (verdict 0 on `taxonomy.go`) — passes cleanly when types are pre-defined in context files. Test generation is its strongest use; cobra command wiring is solid. Preferred over `my-go-q25c14` going forward for single-file codegen tasks. (Session T-02: verdict 0 on a loader edit with subtle algorithm + data-aware separator — wrote from scratch; conceptual/data-shaped defects remain a weak spot.)
 - **Verbatim code moves are NOT codegen (session 29):** 530-line package-rename moves go to
   sed/python — 3 warm-model timeouts proved the shape wrong for LLMs (pure transcription risk).
   Delegate synthesis (new tests, new units), not copying. Also: the model hallucinated fixture
@@ -210,14 +223,16 @@ Or manually:
 <!-- /ref:active-decisions -->
 
 <!-- ref:session-reading-guide -->
+
 ## Pre-Session Reading Guide
 
 *What to read before each pending work item.*
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Merge PR #27 + taxonomy export (START HERE)** | PR #27 on GitHub; `expense-reporter/internal/generate/.memories/QUICK.md`; spec §1.1 (`.claude/plans/workbook-generator-spec.md`) | **First: the PR #27 description is STALE** — it covers only G1–G4, predates the PR-review fixes + the session-30 internal refactor, and its test counts read 220+/17 (now 480/19); update the body before merging. Then: user submits/discards the pending review (its 2 draft comments were addressed in session 29) and merges. Then the one-time export: read Referência (113 subcats; `internal/excel.LoadReferenceSheet` or workbook-inspect dump) → write `taxonomy.json` per spec §1.1 schema; sub-item splits compose into "Parent - Child" strings. **This export now carries the `internal/taxonomy` package split** (T-02 addendum — see Active Decisions; relocate the render-config vars out of `taxonomy.go` first). Validate by generating a skeleton workbook and eyeballing in LibreOffice. Real entries: `expense-reporter/expenses_log.jsonl` (gitignored; date is DD/MM, no year). |
-| Year-rollover workflow | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. |
+| **Merge `refactor/internal-taxonomy` (START HERE)** | the open PR; `expense-reporter/internal/taxonomy/.memories/QUICK.md`; `.claude/plans/taxonomy-identity-key.md` | T-02 work (render-config relocation → package extraction → real `taxonomy.json` → full-path identity key). All green; CSV↔JSON fidelity verified (symmetric-difference empty), oracle dumps unchanged. Review + merge. |
+| **T-04 full-path entry routing (DEFERRED)** | `.claude/plans/taxonomy-identity-key.md` §6 (`[ref:taxonomy-identity-key]`); `internal/taxonomy/loader.go` (`buildSubcategoryMap`/`scanEntries`); fixtures `test/fixtures/generate-basic/` | Route logged entries by full path, not bare name. Changes the entry contract (`expenses_log.jsonl` carries only a bare `subcategory` today), the classifier that emits entries, `scanEntries`, and entry-fed fixtures. Advisor-reviewed. Until then the ambiguity guard keeps entry-fed generation safe (warn+skip, never silent misroute). |
+| Year-rollover workflow (T-03) | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. Real `config/taxonomy.json` (gitignored) is the input. |
 | RUI-4 (3-level CSV path) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go` | Emit sheet,category,subcategory into classified CSV |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->
