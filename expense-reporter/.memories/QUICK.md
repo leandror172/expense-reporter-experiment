@@ -14,7 +14,10 @@ identifiers (Revenue*/summary*/balance*; pt-BR strings only in `Labels`), sheet 
 from taxonomy via registry `sheetOrder` (hardcoded 4-sheet order bug fixed).
 Acceptance: `test/fixtures/generate-basic/` with oracle-frozen expected dumps;
 `verify.WorkbookStructureMatches` (normalized subset). Scratch builder SUPERSEDED.
-Next: merge PR #27; export real taxonomy → taxonomy.json; year rollover. Then TF-IDF (5.R1).
+**`internal/taxonomy` extracted (2026-06-16, PR #27 merged):** pure input layer (domain types
++ loader) split from generate; identity = **full path**, not bare leaf name —
+`[ref:taxonomy-identity-key]`. Real `config/taxonomy.json` authored (112 subs, **gitignored**).
+Next: year rollover; full-path entry routing (DEFERRED, task #5); TF-IDF (5.R1).
 
 ## Structure
 ```
@@ -30,6 +33,7 @@ internal/
   excel/               # Excelize wrapper — read/write workbook, column mapping
   feedback/            # JSONL persistence (classifications + expense log)
   generate/            # Workbook generator — spec v2: taxonomy+entries → full workbook
+  taxonomy/            # Pure input layer — domain types + taxonomy/entries loader (split from generate)
   inspect/             # Structural dump core (values/formulas/styles/merges/rowType)
   logger/              # Debug logging
   models/              # Domain types: Expense, BatchError, ClassifiedExpense
