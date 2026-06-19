@@ -10,10 +10,16 @@ genuine data bugs fixed at source while authoring `config/taxonomy.json`; cross-
 income-vs-expense collisions (`Orion`, `Dentista`, `Aluguel`) are legal and only broke
 the old bare-name validation.
 
-**The interim guard is a stopgap, not the design.** Bare-name routing + warn+skip keeps
-behavior *safe* (never silent misroute) but *incomplete* (ambiguous entries don't
-populate) until entries carry their type. Full-path routing (Plan B) needs the entry
-contract to carry type — which is why Plan A (persist type) must land first.
+**Two-tier routing landed (Plan B / T-04).** Typed entries route by full path
+(`byPath`), which resolves ambiguous leaves to exactly one block. Type-less entries
+(legacy/auto/batch-auto) fall back to the retained bare-name map (`byName`) with its
+ambiguous-skip — behavior unchanged for them. Plan A (persist type) landed first so the
+entry contract could carry type. The bare-name fallback is **transitional, not
+permanent**: it's a bridge to be retired once the classifier emits a type for every
+entry (5.R4/RUI-4); `scanEntries` logs a one-line count of type-less fallbacks so the
+remaining surface is measurable. Routing is value-equality on the full path — a typed
+entry whose type/category/sub don't byte-match the taxonomy warn+skips (never silent
+misroute), so the classifier MUST emit taxonomy-exact strings when 5.R4 lands.
 
 **Two taxonomy sources exist and don't know about each other** (cross-cutting, also
 noted in classifier memory):

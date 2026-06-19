@@ -135,10 +135,12 @@ Or manually:
   group/label), NOT its bare leaf name. Only an exact repeated full path is a validation error;
   cross-path repeats are legal (real data repeats leaves: `Orion` ×3 across Pet blocks; `Aluguel`
   as expense + income).
-- **Bare-name routing kept but guarded** — a bare name shared by >1 full path is *ambiguous* and
-  dropped from routing (entry warn+skip, exit 0; never a silent misroute). `registerTarget` keeps
-  the ambiguous set sticky (guards the 3× re-add trap); full paths join on a null byte (names
-  contain `/`, e.g. `Uber/Taxi`).
+- **Two-tier routing (T-04 landed)** — typed entries route by full-path key (`byPath`,
+  `expensePath`), resolving ambiguous leaves to one block; type-less entries fall back to the
+  retained bare-name map (`byName`) where a name shared by >1 full path is *ambiguous* and dropped
+  (entry warn+skip, exit 0; never a silent misroute). `registerTarget` keeps the ambiguous set
+  sticky (3× re-add trap); full paths join on a null byte (names contain `/`, e.g. `Uber/Taxi`).
+  The bare-name tier is **transitional** — retired once the classifier emits type for all entries.
 - **T-02 reframed** — NO export command/writer; the real taxonomy is a one-shot hand-authored file
   (`config/taxonomy.json`, 112 subs, gitignored). Long-term direction is DB ingestion, not workbook
   insertion.
@@ -154,13 +156,18 @@ Or manually:
   insertion) but absent from `expenses_log.jsonl`, `classifications.jsonl`, and the 7-field
   classified CSV. This is a retraining data loss. Plan A Phase F captures it; B-fill backfills
   (partial — only reviewed entries carry the type).
-- **Routing is two-tier, guard is PERMANENT (T-04, Plan B)** — typed entries route by full-path key
-  (`expensePath`); type-less entries (auto.go:172 + batch_auto.go:296 + ~355 existing log lines)
-  fall back to the retained bare-name map with ambiguous-skip. The earlier "guard removal / DEFERRED"
-  framing is RETRACTED — the guard is a fallback, not removed. Advisor-caught: deleting it would drop
-  the auto-inserted majority.
-- **Sequencing** — merge branch → Plan A (T-05) Phase F + recover → Plan B (T-04) → classifier
-  full-path label (later). No impl until user authorizes.
+- **Routing is two-tier, guard is TRANSITIONAL (T-04, Plan B — IMPLEMENTED)** — typed entries route
+  by full-path key (`expensePath`); type-less entries (auto.go + batch_auto.go + ~355 existing log
+  lines) fall back to the retained bare-name map with ambiguous-skip. The earlier "guard removal /
+  DEFERRED" framing is RETRACTED — but so is "permanent": the fallback is a **bridge**, to be retired
+  once the classifier emits type for every entry (5.R4/RUI-4). `scanEntries` logs a one-line count of
+  type-less fallbacks so the remaining surface is measurable. Advisor-caught: deleting the fallback
+  now would drop the auto-inserted majority.
+- **String-equality contract** — a typed entry routes only if type/category/sub byte-match
+  taxonomy.json; wrong spelling → warn+skip (never silent misroute). So when the classifier emits
+  type (5.R4) it must produce taxonomy-exact strings.
+- **Sequencing** — Plan A (T-05) ✅ + Plan B (T-04) ✅ implemented (branch `feat/full-path-entry-routing`
+  on top of `feat/persist-expense-type` / PR #29); next: classifier full-path label (5.R4/RUI-4).
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure

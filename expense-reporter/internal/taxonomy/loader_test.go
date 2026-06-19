@@ -214,7 +214,7 @@ func TestLoadTaxonomy_AmbiguousEntrySkipped(t *testing.T) {
 	dir := t.TempDir()
 	taxonomyPath := filepath.Join(dir, "taxonomy.json")
 	require.NoError(t, os.WriteFile(taxonomyPath, []byte(`{
-    "sheets": [
+    "types": [
         { "name": "Fixas", "categories": [
             { "name": "Pet", "subcategories": ["Orion"] } ] },
         { "name": "Variáveis", "categories": [
@@ -239,6 +239,112 @@ func TestLoadTaxonomy_AmbiguousEntrySkipped(t *testing.T) {
 			}
 		}
 	}
+}
+
+// orionTaxonomy is the three-sheet taxonomy where the leaf "Orion" is ambiguous by
+// bare name (Fixas/Pet, Variáveis/Pets, Extras/Pets) — reused by the typed-routing tests.
+const orionTaxonomy = `{
+    "types": [
+        { "name": "Fixas", "categories": [
+            { "name": "Pet", "subcategories": ["Orion"] } ] },
+        { "name": "Variáveis", "categories": [
+            { "name": "Pets", "subcategories": ["Orion"] } ] },
+        { "name": "Extras", "categories": [
+            { "name": "Pets", "subcategories": ["Orion"] } ] }
+    ],
+    "incomeCategories": []
+}`
+
+// TestLoadTaxonomy_AmbiguousEntryRoutedByFullPath is the new capability (Plan B): when
+// entries carry a type, the ambiguous leaf "Orion" routes to EXACTLY the block named by
+// its full path — type/category/subcategory — and to none of the others. This is also
+// the discriminating test for the full-path string-equality assumption: the entry's
+// type+category must byte-match the taxonomy spelling, or it would route nowhere.
+func TestLoadTaxonomy_AmbiguousEntryRoutedByFullPath(t *testing.T) {
+	dir := t.TempDir()
+	taxonomyPath := filepath.Join(dir, "taxonomy.json")
+	require.NoError(t, os.WriteFile(taxonomyPath, []byte(orionTaxonomy), 0644))
+
+	entriesPath := filepath.Join(dir, "entries.jsonl")
+	require.NoError(t, os.WriteFile(entriesPath, []byte(
+		`{"item":"Ração Fixas","date":"05/01","value":120.0,"type":"Fixas","category":"Pet","subcategory":"Orion"}`+"\n"+
+			`{"item":"Ração Var","date":"06/02","value":121.0,"type":"Variáveis","category":"Pets","subcategory":"Orion"}`+"\n"+
+			`{"item":"Ração Extra","date":"07/03","value":122.0,"type":"Extras","category":"Pets","subcategory":"Orion"}`+"\n"),
+		0644))
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	require.NoError(t, err)
+
+	// Each Orion block holds exactly its own entry, in the entry's month.
+	fixasOrion := sheets[0].Cats[0].Subs[0]
+	require.Len(t, fixasOrion.Months[0], 1) // Jan
+	assert.Equal(t, "Ração Fixas", fixasOrion.Months[0][0].Item)
+
+	varOrion := sheets[1].Cats[0].Subs[0]
+	require.Len(t, varOrion.Months[1], 1) // Feb
+	assert.Equal(t, "Ração Var", varOrion.Months[1][0].Item)
+
+	extraOrion := sheets[2].Cats[0].Subs[0]
+	require.Len(t, extraOrion.Months[2], 1) // Mar
+	assert.Equal(t, "Ração Extra", extraOrion.Months[2][0].Item)
+
+	// No cross-contamination: each block has exactly one entry total.
+	assert.Equal(t, 1, fixasOrion.MaxEntries())
+	assert.Equal(t, 1, varOrion.MaxEntries())
+	assert.Equal(t, 1, extraOrion.MaxEntries())
+}
+
+// TestLoadTaxonomy_TypedEntryWrongPathSkipped guards the string-equality contract from
+// the other side: a typed entry whose category does NOT match the taxonomy spelling
+// fails to route (warn+skip, exit 0) rather than silently landing in the wrong block.
+func TestLoadTaxonomy_TypedEntryWrongPathSkipped(t *testing.T) {
+	dir := t.TempDir()
+	taxonomyPath := filepath.Join(dir, "taxonomy.json")
+	require.NoError(t, os.WriteFile(taxonomyPath, []byte(orionTaxonomy), 0644))
+
+	entriesPath := filepath.Join(dir, "entries.jsonl")
+	// category "Petz" (wrong spelling) under a valid type — must not route anywhere.
+	require.NoError(t, os.WriteFile(entriesPath, []byte(
+		`{"item":"Ração","date":"05/01","value":120.0,"type":"Fixas","category":"Petz","subcategory":"Orion"}`+"\n"),
+		0644))
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	require.NoError(t, err)
+
+	for _, sheet := range sheets {
+		for _, cat := range sheet.Cats {
+			for _, sub := range cat.Subs {
+				assert.Zero(t, sub.MaxEntries(),
+					"typed entry with wrong category must not route into %s/%s/%s", sheet.Name, cat.Name, sub.Name)
+			}
+		}
+	}
+}
+
+// TestLoadTaxonomy_TypelessUnambiguousEntryRoutes guards the no-regression-on-auto-path
+// promise: a type-less entry with a unique (unambiguous) leaf still routes via the
+// retained bare-name fallback, exactly as before Plan B.
+func TestLoadTaxonomy_TypelessUnambiguousEntryRoutes(t *testing.T) {
+	dir := t.TempDir()
+	taxonomyPath := filepath.Join(dir, "taxonomy.json")
+	require.NoError(t, os.WriteFile(taxonomyPath, []byte(`{
+    "types": [
+        { "name": "Fixas", "categories": [
+            { "name": "Casa", "subcategories": ["Aluguel"] } ] }
+    ],
+    "incomeCategories": []
+}`), 0644))
+
+	entriesPath := filepath.Join(dir, "entries.jsonl")
+	require.NoError(t, os.WriteFile(entriesPath,
+		[]byte(`{"item":"Aluguel Jan","date":"05/01","value":2000.0,"subcategory":"Aluguel"}`+"\n"), 0644))
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	require.NoError(t, err)
+
+	aluguel := sheets[0].Cats[0].Subs[0]
+	require.Len(t, aluguel.Months[0], 1)
+	assert.Equal(t, "Aluguel Jan", aluguel.Months[0][0].Item)
 }
 
 func TestParseDate_Malformed(t *testing.T) {
