@@ -7,9 +7,9 @@ import (
 
 const lastExpenseCol = "AL" // col 38 (index 37)
 
-// buildExpenseSheet writes one expense sheet (Fixas/Variáveis/Extras/Adicionais) and
+// buildExpenseType writes one expense sheet (Fixas/Variáveis/Extras/Adicionais) and
 // records its subcategory total-row positions into reg.
-func buildExpenseSheet(f *excelize.File, st *styleSet, lbl Labels, sh taxonomy.ExpenseSheet, reg *layoutRegistry) error {
+func buildExpenseType(f *excelize.File, st *styleSet, lbl Labels, sh taxonomy.ExpenseType, reg *layoutRegistry) error {
 	name := sh.Name
 	if _, err := f.NewSheet(name); err != nil {
 		return err

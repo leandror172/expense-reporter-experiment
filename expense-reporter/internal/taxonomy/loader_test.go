@@ -170,7 +170,7 @@ func writeTempFile(t *testing.T, name, content string) string {
 // twice in the same sheet+category -> still an error.
 func TestLoadTaxonomy_SamePathDuplicate(t *testing.T) {
 	taxonomyPath := writeTempFile(t, "taxonomy.json", `{
-    "sheets": [
+    "types": [
         { "name": "Sheet1", "categories": [
             { "name": "Category1", "subcategories": ["Diarista", "Diarista"] } ] }
     ],
@@ -189,7 +189,7 @@ func TestLoadTaxonomy_SamePathDuplicate(t *testing.T) {
 // Fixas expense and a Receitas income block). Reason: identity is the full path.
 func TestLoadTaxonomy_CrossPathDuplicateAllowed(t *testing.T) {
 	taxonomyPath := writeTempFile(t, "taxonomy.json", `{
-    "sheets": [
+    "types": [
         { "name": "Sheet1", "categories": [
             { "name": "Category1", "subcategories": ["Diarista"] } ] },
         { "name": "Sheet2", "categories": [

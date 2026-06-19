@@ -67,3 +67,20 @@ expense-reporter/expense-reporter
 .claude/workbook-screenshots/
 # workbook-inspect build output
 expense-reporter/workbook-inspect
+
+# Runtime classification logs (personal expense data — never commit).
+# Anchored to repo root + expense-reporter/ so test fixtures under test/ are NOT ignored.
+/classified.csv
+/review-*.html
+/expense-reporter/classifications.jsonl
+/expense-reporter/expenses_log.jsonl
+
+# Session transcript dumps + local Claude scaffolding (personal paths, not source)
+/*.txt
+/expense-reporter/*.txt
+/.claude/.claude/
+/.claude/settings.json
+/.claude/expense-report-career-positioning-report-*.md
+/.claude/scratch/template-builder/template-builder
+/.claude/skills/**/*.bak-p4
+/.claude/workbook-template/backup-*/

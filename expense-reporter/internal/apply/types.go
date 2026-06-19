@@ -1,5 +1,9 @@
 package apply
 
+import (
+	"encoding/json"
+)
+
 // Action constants for reviewed entries
 const (
 	ActionConfirmed = "confirmed"
@@ -27,10 +31,10 @@ type ReviewedEntry struct {
 	Reviewed   *ReviewedLocation `json:"reviewed"`
 }
 
-// ReviewedLocation represents a sheet/category/subcategory triple
+// ReviewedLocation represents a type/category/subcategory triple
 type ReviewedLocation struct {
-	Sheet     string `json:"sheet,omitempty"`
-	Category  string `json:"category"`
+	Type        string `json:"type,omitempty"`
+	Category    string `json:"category"`
 	Subcategory string `json:"subcategory"`
 }
 
@@ -39,7 +43,7 @@ func (e *ReviewedEntry) IsInsertable() bool {
 	if e.Reviewed == nil {
 		return false
 	}
-	
+
 	switch e.Action {
 	case ActionConfirmed, ActionCorrected:
 		return true
@@ -53,3 +57,19 @@ func (e *ReviewedEntry) IsAlreadyHandled(priorFound bool) bool {
 	return priorFound
 }
 
+// UnmarshalJSON handles backward compatibility: legacy "sheet" key → Type field.
+func (l *ReviewedLocation) UnmarshalJSON(b []byte) error {
+	type alias ReviewedLocation // avoid recursion
+	var withType struct {
+		alias
+		LegacySheet string `json:"sheet"`
+	}
+	if err := json.Unmarshal(b, &withType); err != nil {
+		return err
+	}
+	*l = ReviewedLocation(withType.alias)
+	if l.Type == "" {
+		l.Type = withType.LegacySheet // fall back to pre-migration key
+	}
+	return nil
+}

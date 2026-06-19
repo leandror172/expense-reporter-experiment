@@ -194,6 +194,7 @@ func logExpense(appCfg *config.Config, item, date string, value float64, subcate
 		return
 	}
 	entry := feedback.NewExpenseEntry(item, date, value, subcategory, category)
+	// TODO(type): classifier does not yet emit expense type
 	if err := feedback.AppendExpense(path, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
 	}

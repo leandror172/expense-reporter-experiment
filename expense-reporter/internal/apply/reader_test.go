@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -113,5 +114,99 @@ func TestReadReviewed(t *testing.T) {
 	t.Run("file not found returns error", func(t *testing.T) {
 		_, err := ReadReviewed("/path/that/does/not/exist/reviewed.json")
 		assert.Error(t, err)
+	})
+}
+
+func TestReviewedLocation_TypeFieldUnmarshal(t *testing.T) {
+	tests := []struct {
+		name       string
+		jsonInput  string
+		wantType   string
+		wantCat    string
+		wantSubcat string
+	}{
+		{
+			"new type key",
+			`{"type":"Fixas","category":"Habitação","subcategory":"Aluguel"}`,
+			"Fixas",
+			"Habitação",
+			"Aluguel",
+		},
+		{
+			"empty type",
+			`{"category":"Habitação","subcategory":"Aluguel"}`,
+			"",
+			"Habitação",
+			"Aluguel",
+		},
+		{
+			"Variáveis type",
+			`{"type":"Variáveis","category":"Despesas","subcategory":"Internet"}`,
+			"Variáveis",
+			"Despesas",
+			"Internet",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var loc ReviewedLocation
+			err := json.Unmarshal([]byte(tt.jsonInput), &loc)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantType, loc.Type)
+			assert.Equal(t, tt.wantCat, loc.Category)
+			assert.Equal(t, tt.wantSubcat, loc.Subcategory)
+		})
+	}
+}
+
+func TestReviewedLocation_LegacySheetBackwardCompat(t *testing.T) {
+	tests := []struct {
+		name      string
+		jsonInput string
+		wantType  string
+	}{
+		{
+			"legacy sheet key only",
+			`{"sheet":"Fixas","category":"Habitação","subcategory":"Aluguel"}`,
+			"Fixas",
+		},
+		{
+			"legacy sheet with empty type",
+			`{"type":"","sheet":"Variáveis","category":"Despesas","subcategory":"Internet"}`,
+			"Variáveis",
+		},
+		{
+			"Extras via legacy sheet",
+			`{"sheet":"Extras","category":"Lazer","subcategory":"Cinema"}`,
+			"Extras",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var loc ReviewedLocation
+			err := json.Unmarshal([]byte(tt.jsonInput), &loc)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantType, loc.Type, "Type should load from legacy sheet key")
+		})
+	}
+}
+
+func TestReviewedLocation_TypeWinsOverSheet(t *testing.T) {
+	t.Run("type key takes precedence when both present and non-empty", func(t *testing.T) {
+		jsonInput := `{"type":"Fixas","sheet":"Variáveis","category":"Habitação","subcategory":"Aluguel"}`
+		var loc ReviewedLocation
+		err := json.Unmarshal([]byte(jsonInput), &loc)
+		require.NoError(t, err)
+		assert.Equal(t, "Fixas", loc.Type)
+	})
+
+	t.Run("sheet fallback when type is empty", func(t *testing.T) {
+		jsonInput := `{"type":"","sheet":"Variáveis","category":"Habitação","subcategory":"Aluguel"}`
+		var loc ReviewedLocation
+		err := json.Unmarshal([]byte(jsonInput), &loc)
+		require.NoError(t, err)
+		assert.Equal(t, "Variáveis", loc.Type)
 	})
 }

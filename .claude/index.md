@@ -40,6 +40,8 @@
 | Workbook generator spec v2 (Layer 3 + hand-review, session 27) | `.claude/plans/workbook-generator-spec.md` |
 | Workbook generator implementation plan + next-session brief | `.claude/plans/workbook-generator-implementation-plan.md` |
 | Taxonomy identity key (full-path decision + ambiguity guard, task #5 deferred) | `.claude/plans/taxonomy-identity-key.md` [ref:taxonomy-identity-key] |
+| Plan A — persist expense *type* + rename/JSON migration + backfill (session 32) | `.claude/plans/persist-expense-type.md` |
+| Plan B — full-path entry routing (T-04, session 32) | `.claude/plans/full-path-entry-routing.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
@@ -358,7 +360,11 @@ Desktop-era planning documents — read for context, do not modify.
 |--------|-------|---------|
 | `.memories/` | QUICK.md, KNOWLEDGE.md | Repo-wide status, architecture, cross-repo relationships |
 | `expense-reporter/.memories/` | QUICK.md, KNOWLEDGE.md | Go app structure, command hierarchy, batch pipeline, config |
+| `expense-reporter/internal/apply/.memories/` | QUICK.md | Review UI ingestion, workbook row insertion, feedback + expense log output; entry type drop point (Plan A) |
 | `expense-reporter/internal/classifier/.memories/` | QUICK.md, KNOWLEDGE.md | Few-shot algorithm, prompt architecture, empirical findings |
+| `expense-reporter/internal/feedback/.memories/` | QUICK.md, KNOWLEDGE.md | Two-file JSONL structure (classifications.jsonl + expenses_log.jsonl), GenerateID join key, type persistence gap (Plan A) |
+| `expense-reporter/internal/review/.memories/` | QUICK.md | HTML review page builder, taxonomy re-derivation from CSV, localStorage state, type-aware UI already in place |
+| `expense-reporter/internal/taxonomy/.memories/` | QUICK.md, KNOWLEDGE.md | Full-path identity, bare-name routing + ambiguous fallback, classifier/generator taxonomy disconnect (Plan B two-tier routing) |
 | `expense-reporter/test/.memories/` | QUICK.md, KNOWLEDGE.md | BDD harness design, fixture format, soft/hard assertions |
 | `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
 | `expense-reporter/internal/excel/.memories/` | QUICK.md, KNOWLEDGE.md | Reference-sheet columns, boundary detection, and the workbook structural map (sheet families, palette, fill-down vs merge, separators, cross-sheet wiring) |
@@ -387,4 +393,5 @@ Desktop-era planning documents — read for context, do not modify.
 | `rotate-session-log.sh` | `.claude/tools/rotate-session-log.sh` | Archive old session log entries |
 | `reconstruct-csvs.py` | `.claude/tools/reconstruct-csvs.py` | Reconstruct classified/review CSVs from batch-auto log + original input CSV (line-matched) |
 | `lookup-category.py` | `.claude/tools/lookup-category.py` | Look up canonical category for one or more subcategories (`<sub> [...]` or `--list`) |
+| `backfill-type.py` | `.claude/tools/backfill-type.py` | Backfill expense type into log files from reviewed.json exports (Plan A Phase B-fill recovery) |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |

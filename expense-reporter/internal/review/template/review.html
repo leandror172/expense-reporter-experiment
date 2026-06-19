@@ -646,7 +646,7 @@
       <select id="group-by" style="appearance:none; -webkit-appearance:none; border:none; background:transparent; font: inherit; font-size:12.5px; color: var(--ink); padding: 3px 18px 3px 4px; cursor:pointer; background-image: linear-gradient(45deg, transparent 50%, var(--ink-mute) 50%), linear-gradient(135deg, var(--ink-mute) 50%, transparent 50%); background-position: calc(100% - 8px) 50%, calc(100% - 4px) 50%; background-size: 4px 4px, 4px 4px; background-repeat: no-repeat;">
         <option value="queue">Queue order</option>
         <option value="category">Predicted category</option>
-        <option value="sheet">Predicted sheet</option>
+        <option value="type">Predicted type</option>
         <option value="status">Status</option>
       </select>
     </div>
@@ -707,7 +707,7 @@ const TAX = DATA.taxonomy;
 
 // Index: cat+sub → array of sheet names that contain it.
 const SHEETS_FOR = new Map(); // key "cat||sub" → [sheetName]
-for (const sheet of TAX.sheets) {
+for (const sheet of TAX.types) {
   for (const cat of sheet.categories) {
     for (const sub of cat.subcategories) {
       const k = cat.name + "||" + sub;
@@ -716,9 +716,9 @@ for (const sheet of TAX.sheets) {
     }
   }
 }
-function sheetByName(n) { return TAX.sheets.find(s => s.name === n) || null; }
+function typeByName(n) { return TAX.types.find(s => s.name === n) || null; }
 function catByName(sheetName, n) {
-  const s = sheetByName(sheetName); if (!s) return null;
+  const s = typeByName(sheetName); if (!s) return null;
   return s.categories.find(c => c.name === n) || null;
 }
 function sheetHasCategory(sheetName, catName) {
@@ -732,7 +732,7 @@ function categoryHasSub(sheetName, catName, sub) {
 /* ============================================================================
    2. Per-entry state (sheet/cat/sub + status)
       Pre-fill rule from the brief:
-       (1) predicted.sheet present + valid → all 3
+       (1) predicted.type present + valid → all 3
        (2) else: search taxonomy for sheets matching (cat, sub)
             - exactly 1 → all 3
             - >1        → cat+sub, sheet empty + flagged
@@ -741,35 +741,35 @@ function categoryHasSub(sheetName, catName, sub) {
 function prefillFor(entry) {
   const p = entry.predicted;
   // case 1
-  if (p.sheet && categoryHasSub(p.sheet, p.category, p.subcategory)) {
-    return { sheet: p.sheet, category: p.category, subcategory: p.subcategory,
-             needsSheet: false, noMatch: false, sheetOptions: [] };
+  if (p.type && categoryHasSub(p.type, p.category, p.subcategory)) {
+    return { sheet: p.type, category: p.category, subcategory: p.subcategory,
+             needsSheet: false, noMatch: false, typeOptions: [] };
   }
   // case 2: search
   const k = p.category + "||" + p.subcategory;
   const matches = SHEETS_FOR.get(k) || [];
   if (matches.length === 1) {
     return { sheet: matches[0], category: p.category, subcategory: p.subcategory,
-             needsSheet: false, noMatch: false, sheetOptions: [] };
+             needsSheet: false, noMatch: false, typeOptions: [] };
   }
   if (matches.length > 1) {
     return { sheet: null, category: p.category, subcategory: p.subcategory,
-             needsSheet: true, noMatch: false, sheetOptions: matches.slice() };
+             needsSheet: true, noMatch: false, typeOptions: matches.slice() };
   }
   return { sheet: null, category: null, subcategory: null,
-           needsSheet: false, noMatch: true, sheetOptions: [] };
+           needsSheet: false, noMatch: true, typeOptions: [] };
 }
 
 const STATE = DATA.queue.map(entry => {
   const pre = prefillFor(entry);
   return {
     entry,
-    sheet: pre.sheet,
+    sheet: pre.type,
     category: pre.category,
     subcategory: pre.subcategory,
     initialAmbiguousSheet: pre.needsSheet,   // ambiguous sheet at load
     initialNoMatch: pre.noMatch,             // could not find anything
-    ambiguousSheetOptions: pre.sheetOptions, // sheets that could host this cat/sub
+    ambiguousSheetOptions: pre.typeOptions, // sheets that could host this cat/sub
     status: "pending",                       // "pending" | "reviewed" | "skipped"
   };
 });
@@ -782,7 +782,7 @@ const UI = {
   query: "",
   confMin: 0,
   confMax: 100,
-  grouping: "queue",    // "queue" | "category" | "sheet" | "status"
+  grouping: "queue",    // "queue" | "category" | "type" | "status"
   selectedId: null,
 };
 
@@ -824,7 +824,7 @@ function scheduleSaveRows() {
       const payload = {
         savedAt: new Date().toISOString(),
         rows: Object.fromEntries(STATE.map(s => [s.entry.id, {
-          sheet: s.sheet, category: s.category, subcategory: s.subcategory, status: s.status,
+          sheet: s.type, category: s.category, subcategory: s.subcategory, status: s.status,
         }])),
       };
       localStorage.setItem(storageKey(), JSON.stringify(payload));
@@ -853,11 +853,11 @@ function applySavedRows(saved) {
     const r = saved.rows[s.entry.id];
     if (!r) continue;
     // validate sheet/cat/sub: drop downstream if any link is now invalid
-    let sheet = r.sheet, category = r.category, subcategory = r.subcategory;
-    if (sheet && !sheetByName(sheet)) sheet = category = subcategory = null;
+    let sheet = r.type, category = r.category, subcategory = r.subcategory;
+    if (sheet && !typeByName(sheet)) sheet = category = subcategory = null;
     if (sheet && category && !sheetHasCategory(sheet, category)) category = subcategory = null;
     if (sheet && category && subcategory && !categoryHasSub(sheet, category, subcategory)) subcategory = null;
-    s.sheet = sheet;
+    s.type = sheet;
     s.category = category;
     s.subcategory = subcategory;
     s.status = (r.status === "reviewed" || r.status === "skipped") ? r.status : "pending";
@@ -889,7 +889,7 @@ function escapeHtml(str) {
 
 // (#5) Build a compact "predicted → reviewed" diff element for corrected rows.
 // Renders as 3 lines (Sheet/Cat/Sub), each either dimmed (matches) or
-// strikethrough-old → new-bold (differs). Sheet line only renders if predicted.sheet
+// strikethrough-old → new-bold (differs). Sheet line only renders if predicted.type
 // existed AND differs — disambiguation alone isn't a "correction".
 function buildDiffEl(s) {
   const p = s.entry.predicted;
@@ -913,8 +913,8 @@ function buildDiffEl(s) {
     }
   }
 
-  // Sheet line: only show if predicted.sheet was provided
-  if (p.sheet !== undefined) line(p.sheet, s.sheet);
+  // Sheet line: only show if predicted.type was provided
+  if (p.type !== undefined) line(p.type, s.type);
   line(p.category, s.category);
   line(p.subcategory, s.subcategory);
 
@@ -927,13 +927,13 @@ function deriveAction(s) {
   if (s.status !== "reviewed") return "pending";
 
   // reviewed: must have all 3 to actually be exportable as confirmed/corrected
-  if (!s.sheet || !s.category || !s.subcategory) return "skipped";
+  if (!s.type || !s.category || !s.subcategory) return "skipped";
 
   const p = s.entry.predicted;
   const catMatch = s.category === p.category;
   const subMatch = s.subcategory === p.subcategory;
-  const sheetMatch = p.sheet ? (s.sheet === p.sheet) : true;
-  return (catMatch && subMatch && sheetMatch) ? "confirmed" : "corrected";
+  const typeMatch = p.type ? (s.type === p.type) : true;
+  return (catMatch && subMatch && typeMatch) ? "confirmed" : "corrected";
 }
 
 // Visible action *label* (what we render as the row badge — includes pending nuance)
@@ -948,7 +948,7 @@ function rowBadge(s) {
   // pending
   if (s.initialNoMatch)         return { cls: "needs",  text: "Unmatched — needs all 3" };
   if (s.initialAmbiguousSheet
-      && !s.sheet)              return { cls: "needs",  text: "Pick a sheet" };
+      && !s.type)              return { cls: "needs",  text: "Pick a type" };
   return { cls: "pending", text: "Pending" };
 }
 
@@ -988,7 +988,7 @@ function bulkAcceptCandidates() {
   return STATE.filter(s =>
     s.entry.autoInserted &&
     s.status === "pending" &&
-    s.sheet && s.category && s.subcategory
+    s.type && s.category && s.subcategory
   );
 }
 
@@ -1095,19 +1095,19 @@ function rowEl(s) {
   pickers.className = "pickers";
 
   // — Sheet
-  const sheetNames = TAX.sheets.map(x => x.name);
+  const typeNames = TAX.types.map(x => x.name);
   const sheetWrap = document.createElement("div");
   sheetWrap.className = "sel";
-  const sheetSel = buildSelect(sheetNames, s.sheet, "Sheet…", false);
-  if (!s.sheet && s.initialAmbiguousSheet) sheetWrap.classList.add("needs");
-  else if (!s.sheet) sheetWrap.classList.add("empty");
+  const sheetSel = buildSelect(typeNames, s.type, "Sheet…", false);
+  if (!s.type && s.initialAmbiguousSheet) sheetWrap.classList.add("needs");
+  else if (!s.type) sheetWrap.classList.add("empty");
   sheetWrap.appendChild(sheetSel);
   sheetSel.addEventListener("change", () => {
-    s.sheet = sheetSel.value || null;
+    s.type = sheetSel.value || null;
     // changing parent must clear children if no longer valid under it
-    if (s.category && !sheetHasCategory(s.sheet, s.category)) {
+    if (s.category && !sheetHasCategory(s.type, s.category)) {
       s.category = null; s.subcategory = null;
-    } else if (s.category && s.subcategory && !categoryHasSub(s.sheet, s.category, s.subcategory)) {
+    } else if (s.category && s.subcategory && !categoryHasSub(s.type, s.category, s.subcategory)) {
       s.subcategory = null;
     }
     s.initialAmbiguousSheet = false;
@@ -1123,21 +1123,21 @@ function rowEl(s) {
   const catWrap = document.createElement("div");
   catWrap.className = "sel";
   let catNames;
-  if (s.sheet) {
-    catNames = sheetByName(s.sheet).categories.map(c => c.name);
+  if (s.type) {
+    catNames = typeByName(s.type).categories.map(c => c.name);
   } else if (s.category) {
     // Ambiguous-sheet case: keep the pre-filled category visible until a sheet is picked.
     catNames = [s.category];
   } else {
     catNames = [];
   }
-  const catSel = buildSelect(catNames, s.category, s.sheet ? "Category…" : (s.category ? "" : "—"), !s.sheet);
-  if (!s.sheet) catWrap.classList.add("disabled");
+  const catSel = buildSelect(catNames, s.category, s.type ? "Category…" : (s.category ? "" : "—"), !s.type);
+  if (!s.type) catWrap.classList.add("disabled");
   else if (!s.category) catWrap.classList.add("empty");
   catWrap.appendChild(catSel);
   catSel.addEventListener("change", () => {
     s.category = catSel.value || null;
-    if (s.category && s.subcategory && !categoryHasSub(s.sheet, s.category, s.subcategory)) {
+    if (s.category && s.subcategory && !categoryHasSub(s.type, s.category, s.subcategory)) {
       s.subcategory = null;
     }
     if (s.status === "skipped") s.status = "pending";
@@ -1151,16 +1151,16 @@ function rowEl(s) {
   const subWrap = document.createElement("div");
   subWrap.className = "sel";
   let subNames;
-  if (s.sheet && s.category) {
-    subNames = catByName(s.sheet, s.category).subcategories;
+  if (s.type && s.category) {
+    subNames = catByName(s.type, s.category).subcategories;
   } else if (s.subcategory) {
     // Ambiguous-sheet case: keep the pre-filled subcategory visible until a sheet is picked.
     subNames = [s.subcategory];
   } else {
     subNames = [];
   }
-  const subSel = buildSelect(subNames, s.subcategory, (s.sheet && s.category) ? "Subcategory…" : (s.subcategory ? "" : "—"), !(s.sheet && s.category));
-  if (!(s.sheet && s.category)) subWrap.classList.add("disabled");
+  const subSel = buildSelect(subNames, s.subcategory, (s.type && s.category) ? "Subcategory…" : (s.subcategory ? "" : "—"), !(s.type && s.category));
+  if (!(s.type && s.category)) subWrap.classList.add("disabled");
   else if (!s.subcategory) subWrap.classList.add("empty");
   subWrap.appendChild(subSel);
   subSel.addEventListener("change", () => {
@@ -1174,7 +1174,7 @@ function rowEl(s) {
   row.appendChild(pickers);
 
   // (#3) Ambiguous-sheet hint — only when sheet is still empty AND prefill flagged ambiguity
-  if (!s.sheet && s.initialAmbiguousSheet && s.ambiguousSheetOptions && s.ambiguousSheetOptions.length > 1) {
+  if (!s.type && s.initialAmbiguousSheet && s.ambiguousSheetOptions && s.ambiguousSheetOptions.length > 1) {
     const hint = document.createElement("div");
     hint.className = "ambig-hint";
     const optsText = s.ambiguousSheetOptions.slice(0, -1).join(", ") + " + " + s.ambiguousSheetOptions[s.ambiguousSheetOptions.length - 1];
@@ -1225,14 +1225,14 @@ function groupedView(items) {
   const buckets = new Map();
   const keyFor = (s) => {
     if (UI.grouping === "category") return s.entry.predicted.category || "(no category)";
-    if (UI.grouping === "sheet")    return s.sheet || (s.initialAmbiguousSheet ? "(ambiguous sheet)" : "(no sheet)");
+    if (UI.grouping === "type")    return s.type || (s.initialAmbiguousSheet ? "(ambiguous type)" : "(no type)");
     if (UI.grouping === "status") {
       if (s.status === "reviewed") {
         const a = deriveAction(s);
         return a === "confirmed" ? "Confirmed" : a === "corrected" ? "Corrected" : "Incomplete";
       }
       if (s.status === "skipped") return "Skipped";
-      if (s.initialNoMatch || (s.initialAmbiguousSheet && !s.sheet)) return "Needs attention";
+      if (s.initialNoMatch || (s.initialAmbiguousSheet && !s.type)) return "Needs attention";
       return "Pending";
     }
     return "";
@@ -1251,8 +1251,8 @@ function groupedView(items) {
       const ai = order.indexOf(a); const bi = order.indexOf(b);
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
-  } else if (UI.grouping === "sheet") {
-    const sheetOrder = TAX.sheets.map(x => x.name);
+  } else if (UI.grouping === "type") {
+    const sheetOrder = TAX.types.map(x => x.name);
     orderedKeys.sort((a, b) => {
       const ai = sheetOrder.indexOf(a); const bi = sheetOrder.indexOf(b);
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
@@ -1327,8 +1327,8 @@ function selectRow(id) {
 function acceptRow(id) {
   const s = STATE.find(x => x.entry.id === id);
   if (!s) return;
-  if (!s.sheet || !s.category || !s.subcategory) {
-    toast("Need all 3 selected — pick a " + (!s.sheet ? "sheet" : !s.category ? "category" : "subcategory"));
+  if (!s.type || !s.category || !s.subcategory) {
+    toast("Need all 3 selected — pick a " + (!s.type ? "type" : !s.category ? "category" : "subcategory"));
     return;
   }
   s.status = "reviewed";
@@ -1368,11 +1368,11 @@ function moveSelection(delta) {
 function setSheetOnSelected(sheetName) {
   const s = STATE.find(x => x.entry.id === UI.selectedId);
   if (!s) return;
-  if (!sheetByName(sheetName)) return;
-  s.sheet = sheetName;
-  if (s.category && !sheetHasCategory(s.sheet, s.category)) {
+  if (!typeByName(sheetName)) return;
+  s.type = sheetName;
+  if (s.category && !sheetHasCategory(s.type, s.category)) {
     s.category = null; s.subcategory = null;
-  } else if (s.category && s.subcategory && !categoryHasSub(s.sheet, s.category, s.subcategory)) {
+  } else if (s.category && s.subcategory && !categoryHasSub(s.type, s.category, s.subcategory)) {
     s.subcategory = null;
   }
   s.initialAmbiguousSheet = false;
@@ -1426,7 +1426,7 @@ document.addEventListener("keydown", (ev) => {
       const id = ownRow.dataset.id;
       const s = STATE.find(x => x.entry.id === id);
       if (!s) return;
-      if (s.sheet && s.category && s.subcategory) {
+      if (s.type && s.category && s.subcategory) {
         s.status = "reviewed";
         renderRow(id);
         renderCounts();
@@ -1464,7 +1464,7 @@ document.addEventListener("keydown", (ev) => {
     ev.preventDefault();
     if (UI.selectedId) {
       const s = STATE.find(x => x.entry.id === UI.selectedId);
-      if (s && s.sheet && s.category && s.subcategory) {
+      if (s && s.type && s.category && s.subcategory) {
         s.status = "reviewed";
         renderRow(s.entry.id);
         renderCounts();
@@ -1501,7 +1501,7 @@ function exportReviewed() {
       if (action === "skipped") {
         base.reviewed = null;
       } else {
-        base.reviewed = { sheet: s.sheet, category: s.category, subcategory: s.subcategory };
+        base.reviewed = { type: s.type, category: s.category, subcategory: s.subcategory };
       }
       return base;
     }),
@@ -1589,12 +1589,12 @@ document.getElementById("reset-btn").addEventListener("click", () => {
   if (!confirm("Reset all rows to the original pre-fill state? Your in-progress edits will be lost.")) return;
   for (const s of STATE) {
     const pre = prefillFor(s.entry);
-    s.sheet = pre.sheet;
+    s.type = pre.type;
     s.category = pre.category;
     s.subcategory = pre.subcategory;
     s.initialAmbiguousSheet = pre.needsSheet;
     s.initialNoMatch = pre.noMatch;
-    s.ambiguousSheetOptions = pre.sheetOptions;
+    s.ambiguousSheetOptions = pre.typeOptions;
     s.status = "pending";
   }
   clearSavedRows(); // (#1) also wipe the saved state, otherwise next save undoes us
@@ -1659,7 +1659,7 @@ function replaceData(newData) {
   DATA.taxonomy = TAX;
   // Rebuild the taxonomy index
   SHEETS_FOR.clear();
-  for (const sheet of TAX.sheets) {
+  for (const sheet of TAX.types) {
     for (const cat of sheet.categories) {
       for (const sub of cat.subcategories) {
         const k = cat.name + "||" + sub;
@@ -1674,10 +1674,10 @@ function replaceData(newData) {
     const pre = prefillFor(entry);
     STATE.push({
       entry,
-      sheet: pre.sheet, category: pre.category, subcategory: pre.subcategory,
+      sheet: pre.type, category: pre.category, subcategory: pre.subcategory,
       initialAmbiguousSheet: pre.needsSheet,
       initialNoMatch: pre.noMatch,
-      ambiguousSheetOptions: pre.sheetOptions,
+      ambiguousSheetOptions: pre.typeOptions,
       status: "pending",
     });
   }
@@ -1709,7 +1709,7 @@ function replaceData(newData) {
     if (typeof sf.query === "string") { UI.query = sf.query; qEl.value = sf.query; }
     if (typeof sf.confMin === "number") { UI.confMin = sf.confMin; cMin.value = String(sf.confMin); cMinL.textContent = sf.confMin + "%"; }
     if (typeof sf.confMax === "number") { UI.confMax = sf.confMax; cMax.value = String(sf.confMax); cMaxL.textContent = sf.confMax + "%"; }
-    if (sf.grouping && ["queue", "category", "sheet", "status"].includes(sf.grouping)) {
+    if (sf.grouping && ["queue", "category", "type", "status"].includes(sf.grouping)) {
       UI.grouping = sf.grouping;
       groupSel.value = sf.grouping;
     }

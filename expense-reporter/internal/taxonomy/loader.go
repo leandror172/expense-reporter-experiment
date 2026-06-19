@@ -10,7 +10,7 @@ import (
 )
 
 // LoadTaxonomy loads taxonomy and entries from JSON files.
-func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseSheet, []RevenueBlock, error) {
+func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlock, error) {
 	sheets, incomeBlocks, err := loadTaxonomyFile(taxonomyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
@@ -35,8 +35,8 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseSheet, []RevenueBl
 	return sheets, incomeBlocks, nil
 }
 
-// rawSheet mirrors one element of the taxonomy file's "sheets" array.
-type rawSheet struct {
+// rawType mirrors one element of the taxonomy file's "sheets" array.
+type rawType struct {
 	Name       string `json:"name"`
 	Categories []struct {
 		Name          string   `json:"name"`
@@ -45,14 +45,14 @@ type rawSheet struct {
 }
 
 // loadTaxonomyFile parses the taxonomy JSON file.
-func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
+func loadTaxonomyFile(path string) ([]ExpenseType, []RevenueBlock, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading taxonomy file: %w", err)
 	}
 
 	var raw struct {
-		Sheets           []rawSheet `json:"sheets"`
+		Sheets           []rawType `json:"types"`
 		IncomeCategories []struct {
 			Name   string   `json:"name"`
 			Blocks []string `json:"blocks"`
@@ -62,17 +62,17 @@ func loadTaxonomyFile(path string) ([]ExpenseSheet, []RevenueBlock, error) {
 		return nil, nil, fmt.Errorf("parsing taxonomy JSON: %w", err)
 	}
 
-	sheets := rawSheetsToExpenseSheets(raw.Sheets)
+	sheets := rawTypesToExpenseTypes(raw.Sheets)
 	incomeBlocks := incomeCatsToRevenueBlocks(raw.IncomeCategories)
 
 	return sheets, incomeBlocks, nil
 }
 
-// rawSheetsToExpenseSheets builds the ExpenseSheet tree from the raw taxonomy sheets.
-func rawSheetsToExpenseSheets(raw []rawSheet) []ExpenseSheet {
-	sheets := make([]ExpenseSheet, len(raw))
+// rawTypesToExpenseTypes builds the ExpenseType tree from the raw taxonomy sheets.
+func rawTypesToExpenseTypes(raw []rawType) []ExpenseType {
+	sheets := make([]ExpenseType, len(raw))
 	for i, rs := range raw {
-		sheets[i] = ExpenseSheet{Name: rs.Name}
+		sheets[i] = ExpenseType{Name: rs.Name}
 		cats := make([]Category, len(rs.Categories))
 		for j, rc := range rs.Categories {
 			cats[j] = Category{Name: rc.Name}
@@ -170,7 +170,7 @@ func warnUnroutable(item, subcategory string, isAmbiguous bool) {
 // (sheet/category/sub for expenses; group/label for income); only an exact
 // repeat of a full path is a validation error. A bare name that resolves to more
 // than one full path is ambiguous and is not routable (see registerTarget).
-func buildSubcategoryMap(sheets []ExpenseSheet, incomeBlocks []RevenueBlock) (map[string]subcatTarget, map[string]bool, error) {
+func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (map[string]subcatTarget, map[string]bool, error) {
 	result := make(map[string]subcatTarget)
 	ambiguous := make(map[string]bool)
 	seen := make(map[string]bool) // full paths, for true-duplicate detection

@@ -11,8 +11,8 @@ func mo(entries ...Entry) []Entry                 { return entries }
 //     total (Aluguel: 2 in Jan, 1 in Feb),
 //   - 1-row blocks (everything else),
 //   - income blocks feeding the Listas percent denominators.
-func buildTaxonomy() ([]ExpenseSheet, []RevenueBlock) {
-	fixas := ExpenseSheet{Name: "Fixas", Cats: []Category{
+func buildTaxonomy() ([]ExpenseType, []RevenueBlock) {
+	fixas := ExpenseType{Name: "Fixas", Cats: []Category{
 		{Name: "Habitação", Subs: []Subcat{
 			{Name: "Diarista", Months: [12][]Entry{
 				mo(e("Diarista", 3, 150.00), e("Diarista", 10, 160.00), e("Diarista", 17, 155.50)),
@@ -32,7 +32,7 @@ func buildTaxonomy() ([]ExpenseSheet, []RevenueBlock) {
 			}},
 		}},
 	}}
-	variaveis := ExpenseSheet{Name: "Variáveis", Cats: []Category{
+	variaveis := ExpenseType{Name: "Variáveis", Cats: []Category{
 		{Name: "Alimentação / Limpeza", Subs: []Subcat{
 			{Name: "Supermercado", Months: [12][]Entry{
 				mo(e("Mercado", 6, 543.21)), mo(e("Mercado", 9, 612.00)),
@@ -55,7 +55,7 @@ func buildTaxonomy() ([]ExpenseSheet, []RevenueBlock) {
 			}},
 		}},
 	}}
-	extras := ExpenseSheet{Name: "Extras", Cats: []Category{
+	extras := ExpenseType{Name: "Extras", Cats: []Category{
 		{Name: "Saúde", Subs: []Subcat{
 			{Name: "Médico", Months: [12][]Entry{
 				mo(e("Consulta", 10, 300.00)), mo(e("Consulta", 20, 320.00)),
@@ -73,7 +73,7 @@ func buildTaxonomy() ([]ExpenseSheet, []RevenueBlock) {
 			}},
 		}},
 	}}
-	adicionais := ExpenseSheet{Name: "Adicionais", Cats: []Category{
+	adicionais := ExpenseType{Name: "Adicionais", Cats: []Category{
 		{Name: "Lazer", Subs: []Subcat{
 			{Name: "Viagens", Months: [12][]Entry{
 				mo(e("Hotel", 3, 800.00)), mo(e("Passagem", 4, 950.00)),
@@ -99,5 +99,5 @@ func buildTaxonomy() ([]ExpenseSheet, []RevenueBlock) {
 			mo(e("13° parcela", 20, 2500.00)), mo(e("13° parcela", 20, 2500.00)),
 		}},
 	}
-	return []ExpenseSheet{fixas, variaveis, extras, adicionais}, revenue
+	return []ExpenseType{fixas, variaveis, extras, adicionais}, revenue
 }

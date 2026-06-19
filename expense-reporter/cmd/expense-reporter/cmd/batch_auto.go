@@ -290,6 +290,7 @@ func logBatchFeedback(appCfg *config.Config, results []classifiedRow, srcIdx []i
 			Confidence:  r.Confidence,
 		}
 		entry := feedback.NewConfirmedEntry(r.Item, r.Date, perInstallment, predicted, model)
+		// TODO(type): classifier does not yet emit expense type
 		if err := feedback.Append(path, entry); err != nil {
 			fmt.Fprintf(os.Stderr, "⚠  feedback log %q: %v\n", r.Item, err)
 		}
