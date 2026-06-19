@@ -9,9 +9,10 @@ the workbook is a projection of the data, never an insertion target.
 ## Entry points
 - `Generate(Options{TaxonomyPath, EntriesPath, OutPath, Year, Headroom})` — CLI:
   `generate-workbook -o out.xlsx --taxonomy t.json [--entries log.jsonl --year N --headroom N]`
-- `LoadTaxonomy(taxonomyPath, entriesPath)` — join layer (loader.go): DD/MM dates (year from
-  Options), unknown subcategory → warn+skip exit 0, taxonomy authority on category mismatch,
-  duplicate subcategory names = error.
+- `LoadTaxonomy(taxonomyPath, entriesPath)` — **moved to `internal/taxonomy`** (loader.go):
+  DD/MM dates (year from Options), unknown subcategory → warn+skip exit 0, taxonomy authority on
+  category mismatch. Identity = full path (sheet/category/sub); only an exact full-path repeat
+  errors; a bare name shared by >1 path is *ambiguous* → warn+skip (`[ref:taxonomy-identity-key]`).
 
 ## Key facts
 - **Identifiers English, strings pt-BR** — all user-visible text in `Labels` (labels.go);
@@ -47,8 +48,8 @@ the workbook is a projection of the data, never an insertion target.
 - **Method-extraction convention:** sheet-builder bodies read as named delegated steps ≤~15 lines
   (exemplars: summary_sheet.go `revenueSection`/`balanceBlock`); inline step comments promote to
   doc comments.
-- **Package stays flat** (Go idiom; styleSet/layoutRegistry/Labels/domain types too coupled to
-  subpackage). One split penciled: `internal/taxonomy` (pure input layer) alongside the T-02
-  real-taxonomy export — non-trivial: `taxonomy.go` mixes the domain types (used pervasively)
-  with mutable RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()`,
-  read by builders) that must relocate to `generate` first.
+- **Package stays flat** (Go idiom; styleSet/layoutRegistry/Labels too coupled to subpackage).
+  The one penciled split is **DONE** (2026-06-16, commits 07f395a + 21c6d4e): domain types +
+  loader extracted to `internal/taxonomy`; render config (`dataYear`/`headroomRows`/
+  `perGroupPctRows`) relocated into `generate` first (cycle-free). Builders now reference
+  `taxonomy.Entry`/`taxonomy.ExpenseSheet` etc. via full qualification.

@@ -173,3 +173,25 @@ layer during the T-02 real-taxonomy export — is non-trivial: `taxonomy.go` cur
 domain types (`Entry`/`Subcat`/`Category`/`ExpenseSheet`/`RevenueBlock`, used by every builder)
 with mutable RENDER config (`dataYear`/`headroomRows`/`perGroupPctRows`, set by `Generate()` and
 read by builders) that must relocate into `generate` before any split.
+
+## internal/taxonomy extraction + full-path identity key (2026-06-16/17)
+The penciled split landed (commits 07f395a render-config relocation, 21c6d4e extraction,
+47b2379 identity key). Domain types + the loader (`LoadTaxonomy`, join layer) now live in
+`internal/taxonomy`; render config relocated into `generate` FIRST so the new package imports
+nothing from generate (`go list -deps ./internal/taxonomy` → cycle-free). Generate builders
+reference `taxonomy.X` by full qualification (no alias shim).
+**Identity key decision** (full record: `.claude/plans/taxonomy-identity-key.md`,
+`[ref:taxonomy-identity-key]`): a subcategory's identity is its FULL PATH (sheet/category/sub;
+income group/label), NOT the bare leaf name. The old global bare-name guard rejected the real
+taxonomy, which legitimately repeats leaves (`Orion` across 3 Pet blocks; `Aluguel` as both a
+Fixas expense and a Receitas income block). Now: only an exact repeated full path errors;
+cross-path repeats are legal; a bare name shared by >1 full path is *ambiguous* and dropped from
+routing (entry warn+skip, exit 0). `registerTarget` keeps the ambiguous set **sticky** (guards
+the 3× re-add trap); full paths join on a **null byte** because real names contain `/`
+(`Uber/Taxi`, `Óleo/flor cannabis`).
+**Rationale:** real-data identity is hierarchical; bare leaf names are not unique.
+**Implication:** routing logged entries by full path is **DEFERRED** (task #5) — it changes the
+entry contract (entries carry only a bare `subcategory` today), the classifier, `scanEntries`,
+and entry-fed fixtures. Until then the ambiguity guard keeps entry-fed generation safe (never a
+silent misroute). The real `config/taxonomy.json` (112 subs) is gitignored; the fixture is the
+test input. Fidelity verified by CSV↔JSON symmetric-difference (empty) + oracle dumps unchanged.

@@ -1,4 +1,7 @@
-package generate
+// Package taxonomy holds the domain types and loader for the expense taxonomy.
+// It is a pure-input package: it imports nothing from the generate package,
+// preventing import cycles.
+package taxonomy
 
 // Entry is one expense/income line within a subcategory's month.
 // Day is the day-of-month; the builder pairs it with the column's month + the
@@ -57,15 +60,3 @@ func (b RevenueBlock) MaxEntries() int {
 	}
 	return max
 }
-
-// headroomRows, perGroupPctRows and dataYear are package state set by Generate()
-// from its Options before building (ported from the scratch builder's consts;
-// the CLI is single-shot, so mutable package state is acceptable here).
-var headroomRows = 0 // §3.2: regenerate-don't-insert → no spare rows by default
-
-// perGroupPctRows toggles the per-group "% sobre despesas/receita" rows (§4.2).
-var perGroupPctRows = true
-
-// dataYear is the config year applied to entry dates.
-var dataYear = 2026
-

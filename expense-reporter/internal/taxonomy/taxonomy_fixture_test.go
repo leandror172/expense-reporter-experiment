@@ -1,8 +1,8 @@
-package generate
+package taxonomy
 
 // e and mo are terse constructors for the Phase-B fake dataset below.
 func e(item string, day int, value float64) Entry { return Entry{Item: item, Day: day, Value: value} }
-func mo(entries ...Entry) []Entry                  { return entries }
+func mo(entries ...Entry) []Entry                 { return entries }
 
 // buildTaxonomy returns the taxonomy plus a SMALL purpose-built Phase-B dataset
 // (Janeiro + Fevereiro only) whose fill counts deliberately vary to exercise:

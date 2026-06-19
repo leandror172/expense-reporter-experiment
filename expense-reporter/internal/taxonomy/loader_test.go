@@ -1,4 +1,4 @@
-package generate
+package taxonomy
 
 import (
 	"os"
@@ -155,41 +155,90 @@ func TestLoadTaxonomy_UnmappedSubcategory(t *testing.T) {
 	}
 }
 
-func TestLoadTaxonomy_DuplicateSubcategory(t *testing.T) {
-	tempDir := t.TempDir()
-	taxonomyPath := filepath.Join(tempDir, "taxonomy.json")
+// writeTempFile writes content to a temp file and returns its path.
+func writeTempFile(t *testing.T, name, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	require.NoError(t, os.WriteFile(path, []byte(content), 0644))
+	return path
+}
 
-	// Create a taxonomy with duplicate subcategory
-	content := `{
+// TestLoadTaxonomy_SamePathDuplicate is the surviving half of the old duplicate
+// guard. Behavior change (full-path identity, task #5 routing decision): a
+// subcategory's identity is now its full sheet/category/subcategory path, so only
+// an EXACT repeat of that path is a validation error. Here "Diarista" is listed
+// twice in the same sheet+category -> still an error.
+func TestLoadTaxonomy_SamePathDuplicate(t *testing.T) {
+	taxonomyPath := writeTempFile(t, "taxonomy.json", `{
     "sheets": [
-        {
-            "name": "Sheet1",
-            "categories": [
-                {
-                    "name": "Category1",
-                    "subcategories": ["Diarista"]
-                }
-            ]
-        },
-        {
-            "name": "Sheet2",
-            "categories": [
-                {
-                    "name": "Category2",
-                    "subcategories": ["Diarista"]
-                }
-            ]
-        }
+        { "name": "Sheet1", "categories": [
+            { "name": "Category1", "subcategories": ["Diarista", "Diarista"] } ] }
     ],
     "incomeCategories": []
-}`
+}`)
 
-	err := os.WriteFile(taxonomyPath, []byte(content), 0644)
-	require.NoError(t, err)
-
-	_, _, err = LoadTaxonomy(taxonomyPath, "")
+	_, _, err := LoadTaxonomy(taxonomyPath, "")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Diarista")
+}
+
+// TestLoadTaxonomy_CrossPathDuplicateAllowed documents the relaxed invariant.
+// Previous behavior: the same bare name in two different sheets/categories was a
+// hard error. New behavior: cross-path repeats are legal — the real taxonomy
+// legitimately repeats leaf names (Orion across Pet blocks; Aluguel as both a
+// Fixas expense and a Receitas income block). Reason: identity is the full path.
+func TestLoadTaxonomy_CrossPathDuplicateAllowed(t *testing.T) {
+	taxonomyPath := writeTempFile(t, "taxonomy.json", `{
+    "sheets": [
+        { "name": "Sheet1", "categories": [
+            { "name": "Category1", "subcategories": ["Diarista"] } ] },
+        { "name": "Sheet2", "categories": [
+            { "name": "Category2", "subcategories": ["Diarista"] } ] }
+    ],
+    "incomeCategories": []
+}`)
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, "")
+	require.NoError(t, err)
+	assert.Equal(t, "Diarista", sheets[0].Cats[0].Subs[0].Name)
+	assert.Equal(t, "Diarista", sheets[1].Cats[0].Subs[0].Name)
+}
+
+// TestLoadTaxonomy_AmbiguousEntrySkipped is the real coverage for the
+// ambiguous-routing safety: a bare name that maps to 3+ full paths (Orion in
+// Pet/Pets across three sheets) must NOT route an entry to any of them while the
+// full-path routing redesign (task #5) is deferred. The entry is skipped (warned
+// to stderr, exit 0), never silently misrouted. This guards the 3x re-add trap:
+// a naive delete-on-collision would re-add Orion on the third occurrence.
+func TestLoadTaxonomy_AmbiguousEntrySkipped(t *testing.T) {
+	dir := t.TempDir()
+	taxonomyPath := filepath.Join(dir, "taxonomy.json")
+	require.NoError(t, os.WriteFile(taxonomyPath, []byte(`{
+    "sheets": [
+        { "name": "Fixas", "categories": [
+            { "name": "Pet", "subcategories": ["Orion"] } ] },
+        { "name": "Variáveis", "categories": [
+            { "name": "Pets", "subcategories": ["Orion"] } ] },
+        { "name": "Extras", "categories": [
+            { "name": "Pets", "subcategories": ["Orion"] } ] }
+    ],
+    "incomeCategories": []
+}`), 0644))
+	entriesPath := filepath.Join(dir, "entries.jsonl")
+	require.NoError(t, os.WriteFile(entriesPath,
+		[]byte(`{"item":"Ração","date":"05/01","value":120.0,"subcategory":"Orion"}`+"\n"), 0644))
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	require.NoError(t, err)
+
+	for _, sheet := range sheets {
+		for _, cat := range sheet.Cats {
+			for _, sub := range cat.Subs {
+				assert.Zero(t, sub.MaxEntries(),
+					"ambiguous entry must not route into %s/%s/%s", sheet.Name, cat.Name, sub.Name)
+			}
+		}
+	}
 }
 
 func TestParseDate_Malformed(t *testing.T) {
@@ -198,10 +247,10 @@ func TestParseDate_Malformed(t *testing.T) {
 		dayErr   bool
 		monthErr bool
 	}{
-		{"5/13", false, true},     // Invalid month
+		{"5/13", false, true},      // Invalid month
 		{"32/01", true, false},     // Invalid day
-		{"x/y", true, true},       // Non-numeric values
-		{"05/01", false, false},   // Valid date
+		{"x/y", true, true},        // Non-numeric values
+		{"05/01", false, false},    // Valid date
 		{"2026-01-05", true, true}, // Wrong format
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"expense-reporter/internal/taxonomy"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -81,7 +82,7 @@ func calculateBlockRows(row, maxEntries int) (firstData, lastData, totalRow int)
 
 // writeDataBand sets row heights and cell styles for a data-row band, then fills in
 // the typed entries. rowHeight is 12.75 for expense sheets and 15 for revenue sheets.
-func writeDataBand(f *excelize.File, st *styleSet, name string, months [12][]Entry,
+func writeDataBand(f *excelize.File, st *styleSet, name string, months [12][]taxonomy.Entry,
 	firstData, lastData int, rowHeight float64, lastCol string) {
 	for r := firstData; r <= lastData; r++ {
 		f.SetRowHeight(name, r, rowHeight)

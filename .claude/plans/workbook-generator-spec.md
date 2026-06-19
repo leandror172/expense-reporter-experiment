@@ -70,7 +70,13 @@ against income block labels. Rules:
   fallback — that's a product decision requiring a Diversos bucket in the taxonomy.)
 - **Category mismatch (entry.category ≠ taxonomy categoria for that subcategory):
   trust the taxonomy**, ignore the entry's category field.
-- Duplicate subcategory names across sheets are a taxonomy validation error.
+- Duplicate subcategory names across sheets are **allowed** (invariant relaxed
+  2026-06-16): a subcategory's identity is its full path (sheet/category/sub;
+  income: group/label), so only an exact repeated full path is a validation error.
+  Real data legitimately repeats leaf names (e.g. `Orion` across three Pet blocks;
+  `Aluguel` as both a Fixas expense and a Receitas income block). Until the
+  full-path routing redesign lands, a bare name shared by multiple full paths is
+  *ambiguous* and is skipped (warn to stderr, exit 0) rather than routed.
 
 ## 2. Workbook-wide canonical conventions
 

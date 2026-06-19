@@ -9,8 +9,20 @@ import (
 	"os"
 	"path/filepath"
 
+	"expense-reporter/internal/taxonomy"
 	"github.com/xuri/excelize/v2"
 )
+
+// headroomRows, perGroupPctRows and dataYear are package state set by Generate()
+// from its Options before building (ported from the scratch builder's consts;
+// the CLI is single-shot, so mutable package state is acceptable here).
+var headroomRows = 0 // §3.2: regenerate-don't-insert → no spare rows by default
+
+// perGroupPctRows toggles the per-group "% sobre despesas/receita" rows (§4.2).
+var perGroupPctRows = true
+
+// dataYear is the config year applied to entry dates.
+var dataYear = 2026
 
 // Options configures one workbook generation run.
 type Options struct {
@@ -32,7 +44,7 @@ func Generate(opts Options) error {
 	dataYear = opts.Year
 	headroomRows = opts.Headroom
 
-	expenseSheets, revenueBlocks, err := LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
+	expenseSheets, revenueBlocks, err := taxonomy.LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
 	if err != nil {
 		return err
 	}
@@ -41,7 +53,7 @@ func Generate(opts Options) error {
 
 // buildWorkbook renders the loaded taxonomy+entries into an xlsx file (port of
 // the scratch builder's run()).
-func buildWorkbook(expenseSheets []ExpenseSheet, revenueBlocks []RevenueBlock, outPath string) error {
+func buildWorkbook(expenseSheets []taxonomy.ExpenseSheet, revenueBlocks []taxonomy.RevenueBlock, outPath string) error {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -84,7 +96,7 @@ func buildWorkbook(expenseSheets []ExpenseSheet, revenueBlocks []RevenueBlock, o
 // orderSheets removes the default sheet and orders: Listas, Receitas, then the
 // expense sheets in taxonomy order. MoveSheet(source, target) moves source
 // before target, so we walk the order backward.
-func orderSheets(f *excelize.File, lbl Labels, expenseSheets []ExpenseSheet) error {
+func orderSheets(f *excelize.File, lbl Labels, expenseSheets []taxonomy.ExpenseSheet) error {
 	if err := f.DeleteSheet("Sheet1"); err != nil {
 		return err
 	}

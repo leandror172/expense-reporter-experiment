@@ -29,6 +29,24 @@ class LogEntry:
             raise ValueError("log-entry requires a non-empty 'next' slot")
 
 
+def _bullet_section(title: str, items: List[str]) -> List[str]:
+    """Return markdown lines for a bullet-list section, or [] when items is empty."""
+    if not items:
+        return []
+    lines: List[str] = [f"### {title}\n", "\n"]
+    for item in items:
+        lines.append(f"- {item}\n")
+    lines.append("\n")
+    return lines
+
+
+def _paragraph_section(title: str, text: str) -> List[str]:
+    """Return markdown lines for a paragraph section, or [] when text is falsy."""
+    if not text:
+        return []
+    return [f"### {title}\n", "\n", f"{text}\n", "\n"]
+
+
 def render_log_entry(
     log_entry: LogEntry,
     *,
@@ -51,42 +69,11 @@ def render_log_entry(
     parts.append(f"## {date} - Session {session_number}: {session_title}\n")
     parts.append("\n")
 
-    # Optional: Context (plain paragraph, not a bullet list)
-    if log_entry.context:
-        parts.append("### Context\n")
-        parts.append("\n")
-        parts.append(f"{log_entry.context}\n")
-        parts.append("\n")
-
-    # Required: What Was Done (bullet list)
-    parts.append("### What Was Done\n")
-    parts.append("\n")
-    for item in log_entry.what_was_done:
-        parts.append(f"- {item}\n")
-    parts.append("\n")
-
-    # Optional: Decisions Made (bullet list)
-    if log_entry.decisions:
-        parts.append("### Decisions Made\n")
-        parts.append("\n")
-        for item in log_entry.decisions:
-            parts.append(f"- {item}\n")
-        parts.append("\n")
-
-    # Required: Next (bullet list)
-    parts.append("### Next\n")
-    parts.append("\n")
-    for item in log_entry.next:
-        parts.append(f"- {item}\n")
-    parts.append("\n")
-
-    # Optional: Gotchas (bullet list)
-    if log_entry.gotchas:
-        parts.append("### Gotchas\n")
-        parts.append("\n")
-        for item in log_entry.gotchas:
-            parts.append(f"- {item}\n")
-        parts.append("\n")
+    parts += _paragraph_section("Context", log_entry.context)
+    parts += _bullet_section("What Was Done", log_entry.what_was_done)
+    parts += _bullet_section("Decisions Made", log_entry.decisions)
+    parts += _bullet_section("Next", log_entry.next)
+    parts += _bullet_section("Gotchas", log_entry.gotchas)
 
     result = "".join(parts)
     # Guarantee exactly one trailing newline (session-86 contract: no double-newline glue)
