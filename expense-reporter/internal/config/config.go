@@ -15,6 +15,23 @@ type Config struct {
 	AutoInsertExcluded  []string `json:"auto_insert_excluded"`
 	ClassificationsPath string   `json:"classifications_path"`
 	ExpensesLogPath     string   `json:"expenses_log_path"`
+	TaxonomyPath        string   `json:"taxonomy_path"`
+}
+
+// TaxonomyFilePath returns the absolute path to the taxonomy JSON file.
+// Same resolution logic as ClassificationsFilePath.
+func (c *Config) TaxonomyFilePath() string {
+	if c.TaxonomyPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(c.TaxonomyPath) {
+		return c.TaxonomyPath
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return c.TaxonomyPath
+	}
+	return filepath.Join(filepath.Dir(exe), c.TaxonomyPath)
 }
 
 // WorkbookFilePath returns the absolute path to the Excel workbook.

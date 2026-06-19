@@ -1,0 +1,17 @@
+{
+  "types": [
+    {
+      "name": "Fixas",
+      "categories": [
+        { "name": "Lazer", "subcategories": ["Netflix", "Amazon", "Spotify"] }
+      ]
+    },
+    {
+      "name": "Variáveis",
+      "categories": [
+        { "name": "Transporte", "subcategories": ["Uber/Taxi", "Combustível", "Metrô"] }
+      ]
+    }
+  ],
+  "incomeCategories": []
+}

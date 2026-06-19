@@ -6,6 +6,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewExpenseEntry(t *testing.T) {
@@ -87,6 +90,33 @@ func TestAppendExpense(t *testing.T) {
 	if got2.Item != "Padaria Maeda" {
 		t.Errorf("line 2 Item = %q, want Padaria Maeda", got2.Item)
 	}
+}
+
+func TestNewExpenseEntry_TypeFieldIsEmpty(t *testing.T) {
+	entry := NewExpenseEntry("Test Item", "01/01/2025", 10.0, "Test Subcategory", "Test Category")
+	assert.Empty(t, entry.Type)
+}
+
+func TestExpenseEntry_SetTypePostConstruction(t *testing.T) {
+	entry := NewExpenseEntry("Test Item", "01/01/2025", 10.0, "Test Subcategory", "Test Category")
+	entry.Type = "Fixas"
+
+	data, err := json.Marshal(entry)
+	require.NoError(t, err)
+
+	var unmarshaled ExpenseEntry
+	err = json.Unmarshal(data, &unmarshaled)
+	require.NoError(t, err)
+	assert.Equal(t, "Fixas", unmarshaled.Type)
+}
+
+func TestExpenseEntry_OmitEmptyType(t *testing.T) {
+	entry := NewExpenseEntry("Test Item", "01/01/2025", 10.0, "Test Subcategory", "Test Category")
+
+	data, err := json.Marshal(entry)
+	require.NoError(t, err)
+
+	assert.NotContains(t, string(data), `"type"`)
 }
 
 func TestAppendExpense_CreatesFile(t *testing.T) {

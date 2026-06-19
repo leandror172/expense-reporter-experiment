@@ -92,7 +92,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 				addConfidence, addModel)
 		} else {
 			logManualFeedback(appCfg, item, date, value, subcategory, category)
-			logExpense(appCfg, item, date, value, subcategory, category)
+			logExpense(appCfg, item, date, value, subcategory, category, "")
 		}
 	}
 
@@ -142,7 +142,7 @@ func logParsedManualFeedback(item, date string, value float64, subcategory, cate
 		return
 	}
 	logManualFeedback(appCfg, item, date, value, subcategory, category)
-	logExpense(appCfg, item, date, value, subcategory, category)
+	logExpense(appCfg, item, date, value, subcategory, category, "")
 }
 
 // parseExpenseForFeedback splits "item;DD/MM;value;subcategory" and parses the value.
@@ -223,5 +223,5 @@ func logPredictedFeedback(appCfg *config.Config, item, date string, value float6
 		}
 	}
 
-	logExpense(appCfg, item, date, value, chosenSubcategory, chosenCategory)
+	logExpense(appCfg, item, date, value, chosenSubcategory, chosenCategory, "")
 }

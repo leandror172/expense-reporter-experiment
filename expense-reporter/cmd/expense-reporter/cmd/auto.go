@@ -6,6 +6,7 @@ import (
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
 	"expense-reporter/internal/models"
+	taxdb "expense-reporter/internal/taxonomy"
 	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 	"fmt"
@@ -169,7 +170,9 @@ func insertExpense(item, date string, value float64, result classifier.Result, a
 	fmt.Printf("✓ Inserted: %s → %s (%s) — %.0f%% confidence\n",
 		item, result.Subcategory, result.Category, result.Confidence*100)
 	logConfirmedFeedback(appCfg, item, date, value, result, autoModel)
-	logExpense(appCfg, item, date, value, result.Subcategory, result.Category)
+	typeIdx := loadTypeIndex(appCfg)
+	typ := resolveExpenseType(typeIdx, result.Category, result.Subcategory)
+	logExpense(appCfg, item, date, value, result.Subcategory, result.Category, typ)
 	return nil
 }
 
@@ -186,18 +189,45 @@ func logConfirmedFeedback(appCfg *config.Config, item, date string, value float6
 	}
 }
 
-// logExpense appends a slim expense entry to expenses_log.jsonl.
+// logExpense appends a slim expense entry to expenses_log.jsonl with the resolved type.
 // Non-fatal: logs a warning to stderr if the write fails.
-func logExpense(appCfg *config.Config, item, date string, value float64, subcategory, category string) {
+func logExpense(appCfg *config.Config, item, date string, value float64, subcategory, category, typ string) {
 	path := appCfg.ExpensesLogFilePath()
 	if path == "" {
 		return
 	}
 	entry := feedback.NewExpenseEntry(item, date, value, subcategory, category)
-	// TODO(type): classifier does not yet emit expense type
+	entry.Type = typ
 	if err := feedback.AppendExpense(path, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
 	}
+}
+
+// resolveExpenseType returns the expense type name for the given (category, subcategory)
+// pair. Returns "" silently on ErrTypeNotFound or ErrTypeAmbiguous — both degrade to
+// the bare-name fallback in generate-workbook.
+func resolveExpenseType(idx taxdb.TypeIndex, category, subcategory string) string {
+	typeName, err := idx.LookupType(category, subcategory)
+	if err != nil {
+		return ""
+	}
+	return typeName
+}
+
+// loadTypeIndex builds a TypeIndex from the taxonomy file configured in appCfg.
+// If the path is unconfigured or the file fails to load, returns a zero-value
+// TypeIndex (which resolves every pair to ErrTypeNotFound — graceful degradation).
+func loadTypeIndex(appCfg *config.Config) taxdb.TypeIndex {
+	path := appCfg.TaxonomyFilePath()
+	if path == "" {
+		return taxdb.TypeIndex{}
+	}
+	expenseTypes, _, err := taxdb.LoadTaxonomy(path, "")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  taxonomy load: %v\n", err)
+		return taxdb.TypeIndex{}
+	}
+	return taxdb.BuildTypeIndex(expenseTypes)
 }
 
 func printCandidates(item string, value float64, date string, results []classifier.Result) {
