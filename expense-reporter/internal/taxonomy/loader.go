@@ -7,7 +7,18 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
+
+// normalizeKey canonicalizes a routing-key segment to Unicode NFC so that taxonomy
+// strings (from config/taxonomy.json) and entry strings (from the review→apply→log
+// path, which reads the workbook) compare equal even if one source emits decomposed
+// accents (NFD: a+◌́) and the other composed (NFC: á). Applied to map KEYS only —
+// stored display names (Subcat.Name etc.) are left exactly as authored.
+func normalizeKey(s string) string {
+	return norm.NFC.String(s)
+}
 
 // LoadTaxonomy loads taxonomy and entries from JSON files.
 func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlock, error) {
@@ -143,6 +154,12 @@ func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget,
 			return fmt.Errorf("parsing entry line: %w", err)
 		}
 
+		// NFC-normalize the routing fields so they match the (also-NFC) map keys
+		// regardless of how the source encoded accents. Item is display-only — left as-is.
+		entry.Type = normalizeKey(entry.Type)
+		entry.Category = normalizeKey(entry.Category)
+		entry.Subcategory = normalizeKey(entry.Subcategory)
+
 		subcat, exists := routeEntry(entry.Type, entry.Category, entry.Subcategory, byPath, byName)
 		if !exists {
 			warnUnroutable(entry.Item, entry.Subcategory, entry.Type == "" && ambiguous[entry.Subcategory])
@@ -255,6 +272,7 @@ func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (byP
 // ambiguous, is removed from the map, and stays ambiguous permanently — which
 // also stops a third occurrence from re-adding it.
 func registerTarget(result map[string]subcatTarget, ambiguous map[string]bool, name string, target subcatTarget) {
+	name = normalizeKey(name) // keys are NFC so type-less lookups match regardless of source encoding
 	if ambiguous[name] {
 		return
 	}
@@ -271,11 +289,11 @@ func registerTarget(result map[string]subcatTarget, ambiguous map[string]bool, n
 // The kind prefix keeps a 3-segment expense path from ever equalling a 2-segment
 // income path.
 func expensePath(sheet, category, sub string) string {
-	return "expense\x00" + sheet + "\x00" + category + "\x00" + sub
+	return "expense\x00" + normalizeKey(sheet) + "\x00" + normalizeKey(category) + "\x00" + normalizeKey(sub)
 }
 
 func incomePath(category, label string) string {
-	return "income\x00" + category + "\x00" + label
+	return "income\x00" + normalizeKey(category) + "\x00" + normalizeKey(label)
 }
 
 // parseDate converts DD/MM to day and month integers.

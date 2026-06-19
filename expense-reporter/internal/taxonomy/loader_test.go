@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestLoadTaxonomy_SkeletonOnly(t *testing.T) {
@@ -345,6 +346,43 @@ func TestLoadTaxonomy_TypelessUnambiguousEntryRoutes(t *testing.T) {
 	aluguel := sheets[0].Cats[0].Subs[0]
 	require.Len(t, aluguel.Months[0], 1)
 	assert.Equal(t, "Aluguel Jan", aluguel.Months[0][0].Item)
+}
+
+// TestLoadTaxonomy_NFDEntryRoutesToNFCTaxonomy guards the Unicode-normalization
+// safeguard: the apply path (workbook-derived) and config/taxonomy.json are authored
+// independently and may differ in accent encoding. Here the taxonomy uses composed
+// (NFC) accents and the entry uses decomposed (NFD) accents for the SAME human-visible
+// names ("Variáveis"/"Transporte" — wait, those carry the accent on Variáveis). The
+// entry must still route, not silently warn+skip.
+func TestLoadTaxonomy_NFDEntryRoutesToNFCTaxonomy(t *testing.T) {
+	dir := t.TempDir()
+
+	// NFC taxonomy: "Variáveis" with composed á.
+	taxonomyPath := filepath.Join(dir, "taxonomy.json")
+	require.NoError(t, os.WriteFile(taxonomyPath, []byte(`{
+    "types": [
+        { "name": "Variáveis", "categories": [
+            { "name": "Alimentação", "subcategories": ["Feira"] } ] }
+    ],
+    "incomeCategories": []
+}`), 0644))
+
+	// NFD entry: decompose the type+category accents (á → a +  ́, ç → c +  ̧).
+	nfdType := norm.NFD.String("Variáveis")
+	nfdCat := norm.NFD.String("Alimentação")
+	require.NotEqual(t, "Variáveis", nfdType, "precondition: NFD form must differ byte-wise from NFC")
+
+	entriesPath := filepath.Join(dir, "entries.jsonl")
+	line := `{"item":"Feira sem","date":"05/01","value":80.0,"type":"` + nfdType +
+		`","category":"` + nfdCat + `","subcategory":"Feira"}` + "\n"
+	require.NoError(t, os.WriteFile(entriesPath, []byte(line), 0644))
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	require.NoError(t, err)
+
+	feira := sheets[0].Cats[0].Subs[0]
+	require.Len(t, feira.Months[0], 1, "NFD-encoded typed entry must route despite NFC taxonomy")
+	assert.Equal(t, "Feira sem", feira.Months[0][0].Item)
 }
 
 func TestParseDate_Malformed(t *testing.T) {
