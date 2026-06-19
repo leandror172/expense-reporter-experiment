@@ -15,8 +15,17 @@ Sessions 30–31: `internal/generate` internal refactor (styles vocabulary + Eng
 loader/revenue/summary step-extraction; shared helpers → `util.go`/new `data_sheet.go`; unified
 block-sizing + data-band writers) — behavior-preserving, oracle dumps unchanged, 2 commits on the
 branch (uncommitted-then-committed). See generate `.memories/QUICK.md` for the conventions.
-Next: merge PR #27; real-taxonomy export (113 subcats from Referência → taxonomy.json);
-year-rollover workflow; then TF-IDF (5.R1).
+**Session 33 (2026-06-19) — Plan A (T-05) + Plan B (T-04) implemented** (PRs #29 + #30,
+branches `feat/persist-expense-type` → stacked `feat/full-path-entry-routing`): expense
+**type** persisted end-to-end (feedback structs carry `Type`, set on the apply path);
+`ExpenseSheet`→`ExpenseType` rename + JSON migration (`sheets`→`types`, `sheet`→`type`
+with legacy read-compat); generator **two-tier routing** — full-path for typed entries,
+**transitional** bare-name fallback (+ambiguous-skip) for type-less — with NFC-normalized
+keys; `backfill-type.py` recovery tool. Also remediated a `git add -A` data leak (runtime
+logs now gitignored). PR #27 already merged.
+Next: classifier full-path label (5.R4/RUI-4, closes the type-less producer gap);
+year-rollover workflow; TF-IDF (5.R1). Real-data proof of the A→B chain pending Bf3
+(export reviewed.json → backfill → confirm `expensePath` is a taxonomy key).
 
 ## Repo Structure
 ```
