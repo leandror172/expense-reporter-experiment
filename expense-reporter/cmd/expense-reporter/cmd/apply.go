@@ -138,6 +138,7 @@ func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, newRows, c
 			predicted, prior.Model,
 			entry.Reviewed.Subcategory, entry.Reviewed.Category,
 		)
+		corrEntry.Type = entry.Reviewed.Type
 		if err := feedback.Append(classifPath, corrEntry); err != nil {
 			return fmt.Errorf("appending corrected entry: %w", err)
 		}
@@ -191,7 +192,7 @@ func buildSubcatRequests(newRows []apply.ReviewedEntry) []excel.SubcategoryLooku
 	reqs := make([]excel.SubcategoryLookupRequest, len(newRows))
 	for i, entry := range newRows {
 		reqs[i] = excel.SubcategoryLookupRequest{
-			SheetName:   entry.Reviewed.Sheet,
+			SheetName:   entry.Reviewed.Type,
 			Subcategory: entry.Reviewed.Subcategory,
 		}
 	}
@@ -209,7 +210,7 @@ func buildEmptyRowRequests(newRows []apply.ReviewedEntry, subcatRows map[string]
 		}
 		dates[i] = t
 
-		subcatRow, ok := subcatRows[entry.Reviewed.Sheet][entry.Reviewed.Subcategory]
+		subcatRow, ok := subcatRows[entry.Reviewed.Type][entry.Reviewed.Subcategory]
 		if !ok {
 			notFound = append(notFound, entry)
 			continue
@@ -219,7 +220,7 @@ func buildEmptyRowRequests(newRows []apply.ReviewedEntry, subcatRows map[string]
 			return nil, nil, nil, fmt.Errorf("getting month columns for %q: %w", entry.Item, err)
 		}
 		reqs = append(reqs, excel.EmptyRowRequest{
-			SheetName:       entry.Reviewed.Sheet,
+			SheetName:       entry.Reviewed.Type,
 			ColumnLetter:    itemCol,
 			StartRow:        subcatRow + 1,
 			SubcategoryName: entry.Reviewed.Subcategory,
@@ -245,7 +246,7 @@ func buildExpenseBatch(newRows []apply.ReviewedEntry, dates []time.Time, subcatR
 		}
 		i := req.ExpenseIndex // original index into newRows
 		entry := newRows[i]
-		subcatRow := subcatRows[entry.Reviewed.Sheet][entry.Reviewed.Subcategory]
+		subcatRow := subcatRows[entry.Reviewed.Type][entry.Reviewed.Subcategory]
 		itemCol, _, _, _ := excel.GetMonthColumns(dates[i].Month())
 		exp := &models.Expense{
 			Item:        entry.Item,
@@ -254,7 +255,7 @@ func buildExpenseBatch(newRows []apply.ReviewedEntry, dates []time.Time, subcatR
 			Subcategory: entry.Reviewed.Subcategory,
 		}
 		loc := &models.SheetLocation{
-			SheetName:   entry.Reviewed.Sheet,
+			SheetName:   entry.Reviewed.Type,
 			Category:    entry.Reviewed.Category,
 			SubcatRow:   subcatRow,
 			TargetRow:   targetRow,
@@ -280,6 +281,7 @@ func writeFeedbackForNewRows(newRows []apply.ReviewedEntry, indices []int, class
 		}
 		if expensesLogPath != "" {
 			expEntry := feedback.NewExpenseEntry(entry.Item, entry.Date, entry.Value, entry.Reviewed.Subcategory, entry.Reviewed.Category)
+			expEntry.Type = entry.Reviewed.Type
 			if err := feedback.AppendExpense(expensesLogPath, expEntry); err != nil {
 				return insertedConfirmed, insertedCorrected, fmt.Errorf("appending expense log: %w", err)
 			}
@@ -295,15 +297,19 @@ func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {
 			Category:    entry.Reviewed.Category,
 			Confidence:  entry.Confidence,
 		}
-		return feedback.NewConfirmedEntry(entry.Item, entry.Date, entry.Value, predicted, "review"), true
+		fbEntry := feedback.NewConfirmedEntry(entry.Item, entry.Date, entry.Value, predicted, "review")
+		fbEntry.Type = entry.Reviewed.Type
+		return fbEntry, true
 	}
 	predicted := classifier.Result{
 		Subcategory: entry.Predicted.Subcategory,
 		Category:    entry.Predicted.Category,
 		Confidence:  entry.Confidence,
 	}
-	return feedback.NewCorrectedEntry(entry.Item, entry.Date, entry.Value, predicted, "review",
-		entry.Reviewed.Subcategory, entry.Reviewed.Category), false
+	fbEntry := feedback.NewCorrectedEntry(entry.Item, entry.Date, entry.Value, predicted, "review",
+		entry.Reviewed.Subcategory, entry.Reviewed.Category)
+	fbEntry.Type = entry.Reviewed.Type
+	return fbEntry, false
 }
 
 func printSummary(w io.Writer, source string, total int, pendingEntries, skippedEntries []apply.ReviewedEntry, insertedConfirmed, insertedCorrected int, corrections, uninsertable []apply.ReviewedEntry) {
@@ -333,7 +339,7 @@ func printSummary(w io.Writer, source string, total int, pendingEntries, skipped
 		fmt.Fprintf(w, "\n⚠  %d rows could not be inserted (subcategory not found or no empty slot):\n", len(uninsertable))
 		for _, u := range uninsertable {
 			fmt.Fprintf(w, "   %s (%s, R$%.2f) — %s / %s [%s]\n",
-				u.Item, u.Date, u.Value, u.Reviewed.Category, u.Reviewed.Subcategory, u.Reviewed.Sheet)
+				u.Item, u.Date, u.Value, u.Reviewed.Category, u.Reviewed.Subcategory, u.Reviewed.Type)
 		}
 	}
 

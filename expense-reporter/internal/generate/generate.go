@@ -53,7 +53,7 @@ func Generate(opts Options) error {
 
 // buildWorkbook renders the loaded taxonomy+entries into an xlsx file (port of
 // the scratch builder's run()).
-func buildWorkbook(expenseSheets []taxonomy.ExpenseSheet, revenueBlocks []taxonomy.RevenueBlock, outPath string) error {
+func buildWorkbook(expenseSheets []taxonomy.ExpenseType, revenueBlocks []taxonomy.RevenueBlock, outPath string) error {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -69,7 +69,7 @@ func buildWorkbook(expenseSheets []taxonomy.ExpenseSheet, revenueBlocks []taxono
 		return fmt.Errorf("revenue: %w", err)
 	}
 	for _, sh := range expenseSheets {
-		if err := buildExpenseSheet(f, st, lbl, sh, reg); err != nil {
+		if err := buildExpenseType(f, st, lbl, sh, reg); err != nil {
 			return fmt.Errorf("expense %s: %w", sh.Name, err)
 		}
 	}
@@ -96,7 +96,7 @@ func buildWorkbook(expenseSheets []taxonomy.ExpenseSheet, revenueBlocks []taxono
 // orderSheets removes the default sheet and orders: Listas, Receitas, then the
 // expense sheets in taxonomy order. MoveSheet(source, target) moves source
 // before target, so we walk the order backward.
-func orderSheets(f *excelize.File, lbl Labels, expenseSheets []taxonomy.ExpenseSheet) error {
+func orderSheets(f *excelize.File, lbl Labels, expenseSheets []taxonomy.ExpenseType) error {
 	if err := f.DeleteSheet("Sheet1"); err != nil {
 		return err
 	}

@@ -419,3 +419,51 @@ func TestAppend_CreatesFile(t *testing.T) {
 		t.Errorf("Item = %q, want Test Item", got.Item)
 	}
 }
+
+func TestEntry_TypeFieldRoundTrip(t *testing.T) {
+	tests := []struct {
+		name string
+		typ  string
+	}{
+		{"Fixas", "Fixas"},
+		{"Variáveis", "Variáveis"},
+		{"empty type", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			predicted := classifier.Result{
+				Subcategory: "Uber/Taxi",
+				Category:    "Transporte",
+				Confidence:  0.92,
+			}
+			entry := NewConfirmedEntry("Test", "15/04/2025", 35.50, predicted, "model")
+			entry.Type = tt.typ
+
+			data, err := json.Marshal(entry)
+			if err != nil {
+				t.Fatalf("Marshal failed: %v", err)
+			}
+
+			var unmarshaled Entry
+			if err := json.Unmarshal(data, &unmarshaled); err != nil {
+				t.Fatalf("Unmarshal failed: %v", err)
+			}
+
+			if unmarshaled.Type != tt.typ {
+				t.Errorf("Type = %q, want %q", unmarshaled.Type, tt.typ)
+			}
+
+			// Check omitempty: empty type should not appear in JSON
+			if tt.typ == "" {
+				if strings.Contains(string(data), `"type"`) {
+					t.Errorf("empty Type should not appear in JSON, got: %s", string(data))
+				}
+			} else {
+				if !strings.Contains(string(data), `"type"`+`:"`+tt.typ+`"`) {
+					t.Errorf("Type not found in JSON: %s", string(data))
+				}
+			}
+		})
+	}
+}

@@ -158,19 +158,19 @@ func TestBuildRevenueSumRangeMultiEntry(t *testing.T) {
 	assert.Equal(t, "SUM(E3:E4)", formula)
 }
 
-// TestBuildExpenseSheetSizingAndSum checks max-entries sizing + the total SUM spans
+// TestBuildExpenseTypeSizingAndSum checks max-entries sizing + the total SUM spans
 // exactly the data rows, and a typed entry lands in the right cell.
-func TestBuildExpenseSheetSizingAndSum(t *testing.T) {
+func TestBuildExpenseTypeSizingAndSum(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
-	sh := taxonomy.ExpenseSheet{Name: "Fixas", Cats: []taxonomy.Category{
+	sh := taxonomy.ExpenseType{Name: "Fixas", Cats: []taxonomy.Category{
 		{Name: "Habitação", Subs: []taxonomy.Subcat{
 			{Name: "Diarista", Months: [12][]taxonomy.Entry{
 				0: {{Item: "Diarista", Day: 3, Value: 150}, {Item: "Diarista", Day: 10, Value: 160}, {Item: "Diarista", Day: 17, Value: 155.5}},
 			}},
 		}},
 	}}
-	require.NoError(t, buildExpenseSheet(f, st, lbl, sh, reg))
+	require.NoError(t, buildExpenseType(f, st, lbl, sh, reg))
 
 	// 3 entries -> data rows 3..5, total row 6. Jan valor column E.
 	formula, err := f.GetCellFormula("Fixas", "E6")
@@ -203,12 +203,12 @@ func TestBuildSummaryPerGroupPctRows(t *testing.T) {
 		{Category: "Receita", Label: "Salário", Months: [12][]taxonomy.Entry{0: {{Item: "Salário", Day: 5, Value: 5000}}}},
 	}
 	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
-	sh := taxonomy.ExpenseSheet{Name: "Fixas", Cats: []taxonomy.Category{
+	sh := taxonomy.ExpenseType{Name: "Fixas", Cats: []taxonomy.Category{
 		{Name: "Habitação", Subs: []taxonomy.Subcat{
 			{Name: "Aluguel", Months: [12][]taxonomy.Entry{0: {{Item: "Aluguel", Day: 5, Value: 1200}}}},
 		}},
 	}}
-	require.NoError(t, buildExpenseSheet(f, st, lbl, sh, reg))
+	require.NoError(t, buildExpenseType(f, st, lbl, sh, reg))
 	require.NoError(t, buildSummarySheet(f, st, lbl, reg))
 
 	// Scan column B of Listas for the per-group percent labels.

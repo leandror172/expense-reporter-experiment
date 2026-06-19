@@ -37,8 +37,8 @@ type Category struct {
 	Subs []Subcat
 }
 
-// ExpenseSheet is one of Fixas/Variáveis/Extras/Adicionais.
-type ExpenseSheet struct {
+// ExpenseType is one of Fixas/Variáveis/Extras/Adicionais.
+type ExpenseType struct {
 	Name string
 	Cats []Category
 }

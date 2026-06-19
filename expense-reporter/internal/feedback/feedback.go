@@ -34,6 +34,7 @@ type Entry struct {
 	Confidence           float64 `json:"confidence"`
 	ActualSubcategory    string  `json:"actual_subcategory"`
 	ActualCategory       string  `json:"actual_category"`
+	Type                 string  `json:"type,omitempty"`
 	Model                string  `json:"model"`
 	Status               Status  `json:"status"`
 	Timestamp            string  `json:"timestamp"`

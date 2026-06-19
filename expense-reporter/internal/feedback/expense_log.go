@@ -15,6 +15,7 @@ type ExpenseEntry struct {
 	Value       float64 `json:"value"`
 	Subcategory string  `json:"subcategory"`
 	Category    string  `json:"category"`
+	Type        string  `json:"type,omitempty"`
 	Timestamp   string  `json:"timestamp"`
 }
 
