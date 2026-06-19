@@ -1,7 +1,8 @@
 # Taxonomy Identity Key — Full Path (sheet/category/subcategory)
 
-**Status:** decided & partially implemented (2026-06-16). Validation relaxed +
-interim ambiguity guard shipped; full entry-routing redesign **deferred** (task #5).
+**Status:** decided & fully implemented (validation relaxed + two-tier routing,
+T-04/Plan B, 2026-06-19). Full-path routing landed for typed entries; bare-name
+fallback (with ambiguous-skip) retained as a transitional bridge for type-less entries.
 
 **Authority:** this document is the decision record for *how a subcategory is
 identified* in the taxonomy. It supplements the workbook generator spec
@@ -147,34 +148,39 @@ output, and used `/` as the separator. Rewritten from scratch (sanctioned for
 conceptual defects). The null-byte separator and the sticky-ambiguous
 `registerTarget` are exactly the parts the model got wrong.
 
-## 6. Deferred — full-path entry routing redesign (task #5)
+## 6. DONE — full-path entry routing (T-04, Plan B, implemented)
 
-What is **not** done: routing logged entries by full path. Today an entry in
-`expenses_log.jsonl` carries only a bare `subcategory` string (no sheet, no
-category — see `scanEntries`'s entry struct). So an entry tagged `Orion` is
-genuinely unroutable and is correctly skipped. To route it, the redesign must touch:
+Routing logged entries by full path is now implemented (two-tier). What changed:
 
-- **Entry contract** — `expenses_log.jsonl` lines (`item/date/value/subcategory`)
-  must also carry category + sheet (or a composed full-path key).
-- **The classifier** that produces those entries (it knows the path from the
-  taxonomy, so it can emit it).
-- **`scanEntries` / `buildSubcategoryMap`** — route on the full-path key instead of
-  bare name; the `ambiguous` set then disappears (every entry is unambiguous).
-- **Existing entry-fed fixtures/tests** — updated to the new entry shape.
+- **Entry contract** — `scanEntries` reads `type` + `category` (added by Plan A to
+  `ExpenseEntry`) alongside `subcategory`, forming the full-path key.
+- **`buildSubcategoryMap`** — returns `(byPath, byName, ambiguous)`: `byPath` keyed by
+  `expensePath`/`incomePath` (full-path routing), `byName` + `ambiguous` retained.
+- **`scanEntries` / `routeEntry`** — typed entry → `byPath`; type-less entry → `byName`
+  fallback (ambiguous-skip preserved). The `ambiguous` set did **NOT** disappear — it is
+  still needed by the type-less fallback. (This corrects the original §6 expectation that
+  it would vanish: type-less entries are the majority — ~355 legacy lines + all
+  auto/batch-auto output — so the bare-name tier is retained.)
+- **Fixtures/tests** — `generate-basic/entries.jsonl` keeps a typed/type-less mix;
+  `loader_test.go` adds `AmbiguousEntryRoutedByFullPath`, `TypedEntryWrongPathSkipped`,
+  `TypelessUnambiguousEntryRoutes`.
 
-This is its own change, advisor-reviewed, because the entry contract ripples into
-the classification pipeline. Until it lands, the interim guard above keeps the
-behavior **safe** (warn + skip, never silent misroute), so entry-fed generation can
-run today — ambiguous entries simply don't populate.
+The bare-name fallback is **transitional, not permanent** — a bridge retired once the
+classifier emits a taxonomy-exact type for every entry (5.R4/RUI-4). `scanEntries` logs
+a one-line count of type-less fallbacks to measure the remaining surface. Routing is
+value-equality on the full path: a typed entry whose type/category/sub don't byte-match
+the taxonomy warn+skips rather than misrouting.
 
 <!-- ref:taxonomy-identity-key -->
 **Taxonomy identity = full path.** Expense identity is `sheet/category/subcategory`;
 income identity is `incomeGroup/blockLabel`. Only an exact repeated full path is a
 validation error; cross-path repeats of a bare leaf name are legal (real data
 repeats names, e.g. `Orion` across three Pet blocks, `Aluguel` as expense + income).
-Bare names are NOT a safe routing key: a bare name shared by >1 full path is
-*ambiguous* and is dropped from routing (warn + skip entry, exit 0) until the
-full-path entry-routing redesign lands. Full-path keys are joined with a null byte
-(names contain `/`) and a `expense`/`income` kind prefix. The ambiguous set must be
-sticky — a name appearing 3+ times must not re-add itself after removal.
+Routing is two-tier (T-04, implemented): typed entries route by full-path key
+(`byPath`); type-less entries fall back to the bare-name map (`byName`), where a name
+shared by >1 full path is *ambiguous* and dropped (warn + skip entry, exit 0; never a
+silent misroute). Full-path keys are joined with a null byte (names contain `/`) and a
+`expense`/`income` kind prefix. The ambiguous set must be sticky — a name appearing 3+
+times must not re-add itself after removal. The bare-name fallback is transitional,
+retired once the classifier emits a taxonomy-exact type for every entry.
 <!-- /ref:taxonomy-identity-key -->

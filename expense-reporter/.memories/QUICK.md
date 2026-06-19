@@ -17,7 +17,14 @@ Acceptance: `test/fixtures/generate-basic/` with oracle-frozen expected dumps;
 **`internal/taxonomy` extracted (2026-06-16, PR #27 merged):** pure input layer (domain types
 + loader) split from generate; identity = **full path**, not bare leaf name —
 `[ref:taxonomy-identity-key]`. Real `config/taxonomy.json` authored (112 subs, **gitignored**).
-Next: year rollover; full-path entry routing (DEFERRED, task #5); TF-IDF (5.R1).
+**Plan A (T-05) + Plan B (T-04) IMPLEMENTED (2026-06-19, PRs #29 + #30):** expense **type**
+now persisted end-to-end (feedback.Entry/ExpenseEntry carry `Type`, set on the apply path);
+`ExpenseSheet`→`ExpenseType` rename + JSON key `sheets`→`types`/`sheet`→`type` (legacy
+read-compat in apply); generator routes typed entries by full path (two-tier: `byPath` for
+typed, retained bare-name `byName` + ambiguous-skip for type-less — a **transitional**
+fallback), NFC-normalized keys. `backfill-type.py` recovers type into existing logs.
+Next: classifier full-path label (5.R4/RUI-4 — closes the type-less producer gap); year
+rollover; TF-IDF (5.R1). Real-data proof of A→B chain pending Bf3 (export+backfill check).
 
 ## Structure
 ```

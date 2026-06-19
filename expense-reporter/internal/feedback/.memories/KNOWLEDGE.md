@@ -16,4 +16,13 @@ and actual (`ActualSubcategory/Category`); confirmed sets predicted==actual, man
 leaves predicted empty, corrected differs. `Now` is a `var` so tests inject a fixed
 timestamp.
 
+**Type field (Plan A / T-05).** Both `Entry` and `ExpenseEntry` carry
+`Type string json:"type,omitempty"` (expense type: Fixas/Variáveis/Extras/Adicionais).
+It is set **post-construction** (constructor signatures unchanged) and **only on the
+apply path** — `apply.go` assigns `.Type = entry.Reviewed.Type`. `omitempty` means
+type-less entries (auto/batch-auto/add/correct, which build from the classifier — no
+type yet) serialize byte-identically to before. The type is the join field the generator
+uses for full-path routing ([[taxonomy]] two-tier). Closing the type-less producer gap =
+classifier full-path label (5.R4/RUI-4).
+
 **Time:** timestamps are RFC3339 UTC.

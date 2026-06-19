@@ -47,29 +47,12 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Active layer:** Workbook Generator — **COMPLETE**; **PR #27 MERGED to master**. Follow-on (T-02)
-  on branch `refactor/internal-taxonomy` (not yet merged): `internal/taxonomy` extracted + real
-  `config/taxonomy.json` authored + full-path identity key.
-- **Last checkpoint (this session):** PLANNING ONLY (no commits). Authored two advisor-reviewed
-  implementation plans + a proposed-memories file, all on `refactor/internal-taxonomy`:
-  - `.claude/plans/persist-expense-type.md` (Plan A / **T-05**) — persist expense type end-to-end,
-    rename ExpenseSheet→ExpenseType, migrate JSON keys (`sheet`→`type`), partial backfill.
-  - `.claude/plans/full-path-entry-routing.md` (Plan B / **T-04**) — two-tier routing (typed →
-    full-path key; type-less → retained bare-name map + ambiguous-skip fallback).
-  - `.claude/plans/proposed-memories.md` — memories to author + updates to existing ones.
-- **Identity decision:** a subcategory's identity is its FULL PATH (sheet/category/sub; income
-  group/label), not the bare leaf name — only an exact full-path repeat errors; a bare name shared
-  by >1 path is *ambiguous* → warn+skip (`[ref:taxonomy-identity-key]`,
-  `.claude/plans/taxonomy-identity-key.md`).
-- **Type-persistence decision (this session):** option 1 (full path as model label / struct
-  identity); rename "Expense Sheet"→"Expense Type" with JSON key migration; the ambiguity guard
-  is a **permanent fallback** for type-less entries, NOT removed by T-04.
-- **Input contract (spec §1.1):** taxonomy JSON (sheets→cats→subcats; incomeCategories→blocks)
-  + `expenses_log.jsonl` entries (date `DD/MM`, no year — `--year` supplies it); unknown
-  subcategory → warn+skip exit 0; taxonomy wins on category mismatch.
-- **Next:** merge PR for `refactor/internal-taxonomy`; then (awaiting go-ahead) implement Plan A
-  (T-05) → Plan B (T-04) → classifier full-path label (later, 5.R4/RUI-4); T-03 year-rollover;
-  then TF-IDF (5.R1). **No implementation until the user says so.**
+- **Workbook Generator:** COMPLETE; PR #27 merged. `internal/taxonomy` extracted (T-02) + real `config/taxonomy.json` (112 subs, gitignored) + full-path identity key.
+- **Plan A (T-05) — IMPLEMENTED** (branch `feat/persist-expense-type`, PR #29): expense `Type` persisted end-to-end (feedback structs carry it, set on the apply path, `omitempty`); `ExpenseSheet`→`ExpenseType` rename + JSON migration (`sheets`→`types`, `sheet`→`type` with legacy read-compat in apply); `backfill-type.py` recovery tool.
+- **Plan B (T-04) — IMPLEMENTED** (stacked branch `feat/full-path-entry-routing`, PR #30): two-tier routing — typed entries by full path (`byPath`), type-less via retained bare-name fallback (`byName` + ambiguous-skip, **transitional**); NFC-normalized keys; one-line stderr fallback count.
+- **Verification status:** unit suite green; apply-basic + generate skeleton/with-entries acceptance green *in isolation*; oracle dumps byte-identical; manual Orion check passed. **NOT yet proven on real data** — all routing tests use synthetic literals; the real-data proof is the Bf runbook (T-06).
+- **Data-leak remediated:** a `git add -A` had committed+pushed personal logs to PR #29; rewritten clean, force-pushed, runtime logs now gitignored. Local backup at `~/expense-data-backup-20260619-121709/`. (GitHub may retain dangling objects until GC.)
+- **Next:** execute Bf real-data verification runbook (T-06, `.claude/plans/bf-real-data-verification-runbook.md`); merge PR #29 → #30; then classifier full-path label (5.R4/RUI-4), year-rollover (T-03), TF-IDF (5.R1).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
 <!-- /ref:current-status -->
 
@@ -135,32 +118,40 @@ Or manually:
   group/label), NOT its bare leaf name. Only an exact repeated full path is a validation error;
   cross-path repeats are legal (real data repeats leaves: `Orion` ×3 across Pet blocks; `Aluguel`
   as expense + income).
-- **Bare-name routing kept but guarded** — a bare name shared by >1 full path is *ambiguous* and
-  dropped from routing (entry warn+skip, exit 0; never a silent misroute). `registerTarget` keeps
-  the ambiguous set sticky (guards the 3× re-add trap); full paths join on a null byte (names
-  contain `/`, e.g. `Uber/Taxi`).
+- **Two-tier routing (T-04 landed)** — typed entries route by full-path key (`byPath`,
+  `expensePath`), resolving ambiguous leaves to one block; type-less entries fall back to the
+  retained bare-name map (`byName`) where a name shared by >1 full path is *ambiguous* and dropped
+  (entry warn+skip, exit 0; never a silent misroute). `registerTarget` keeps the ambiguous set
+  sticky (3× re-add trap); full paths join on a null byte (names contain `/`, e.g. `Uber/Taxi`).
+  The bare-name tier is **transitional** — retired once the classifier emits type for all entries.
 - **T-02 reframed** — NO export command/writer; the real taxonomy is a one-shot hand-authored file
   (`config/taxonomy.json`, 112 subs, gitignored). Long-term direction is DB ingestion, not workbook
   insertion.
 
-### Type Persistence & Full-Path Routing (this session — Plans A & B, NOT yet implemented)
+### Type Persistence & Full-Path Routing (Plans A & B — IMPLEMENTED session 33)
 - **Option 1 chosen** — the classifier emits the FULL PATH (type/category/subcategory) as its label /
   struct identity, not a bare name + ambiguity-only sheet. Cleaner; re-training data exists (607/694
   training examples carry the type in `source`; reviewed entries carry it). Tracked 5.R4 / RUI-4.
 - **"Expense Sheet" → "Expense Type"** domain rename WITH JSON key migration (`sheet`→`type`,
   `sheets`→`types`); "sheet" stays reserved for Excel worksheet addressing only
-  (`models.SheetLocation.SheetName`, `internal/inspect`, `sheetOrder`). Plan A.
-- **Type is currently dropped at every log-write layer** — captured in review + apply (workbook
-  insertion) but absent from `expenses_log.jsonl`, `classifications.jsonl`, and the 7-field
-  classified CSV. This is a retraining data loss. Plan A Phase F captures it; B-fill backfills
-  (partial — only reviewed entries carry the type).
-- **Routing is two-tier, guard is PERMANENT (T-04, Plan B)** — typed entries route by full-path key
-  (`expensePath`); type-less entries (auto.go:172 + batch_auto.go:296 + ~355 existing log lines)
-  fall back to the retained bare-name map with ambiguous-skip. The earlier "guard removal / DEFERRED"
-  framing is RETRACTED — the guard is a fallback, not removed. Advisor-caught: deleting it would drop
-  the auto-inserted majority.
-- **Sequencing** — merge branch → Plan A (T-05) Phase F + recover → Plan B (T-04) → classifier
-  full-path label (later). No impl until user authorizes.
+  (`models.SheetLocation.SheetName`, `internal/inspect`, `sheetOrder`). Plan A — DONE.
+- **Type was dropped at every log-write layer** — now captured: feedback.Entry + ExpenseEntry carry
+  `Type` (`omitempty`), set post-construction on the apply path. `expenses_log.jsonl` /
+  `classifications.jsonl` carry it; `backfill-type.py` recovers it into pre-existing logs (partial —
+  only reviewed entries). The 7-field classified CSV still lacks a type column (RUI-4).
+- **Routing is two-tier, guard is TRANSITIONAL (T-04, Plan B — IMPLEMENTED)** — typed entries route
+  by full-path key (`expensePath`); type-less entries (auto.go + batch_auto.go + ~355 existing log
+  lines) fall back to the retained bare-name map with ambiguous-skip. The fallback is a **bridge**, to
+  be retired once the classifier emits type for every entry (5.R4/RUI-4). `scanEntries` logs a
+  one-line count of type-less fallbacks so the remaining surface is measurable. Advisor-caught:
+  deleting the fallback now would drop the auto-inserted majority.
+- **String-equality contract** — a typed entry routes only if type/category/sub byte-match
+  taxonomy.json; wrong spelling → warn+skip (never silent misroute). NFC-normalization (`normalizeKey`,
+  via `golang.org/x/text`) is applied at every key boundary so accent NFC/NFD skew can't drop entries.
+  So when the classifier emits type (5.R4) it must produce taxonomy-exact strings.
+- **Sequencing** — Plan A (T-05) ✅ + Plan B (T-04) ✅ implemented (stacked branches `feat/persist-expense-type`
+  / PR #29 → `feat/full-path-entry-routing` / PR #30). Real-data proof pending (Bf runbook / T-06).
+  Next: classifier full-path label (5.R4/RUI-4).
 
 ### Domain Boundary (decided session 32 in LLM repo context)
 - **Classification logic in expense-reporter (Go)** — it's a product feature, not LLM infrastructure
@@ -173,11 +164,11 @@ Or manually:
   bakes data into. Lovable cloud plan (`docs/plans/lovable-suggestion-plan.md`) superseded.
 - **`review` is a producer, not a server** — bakes queue + 3-level taxonomy into an HTML
   template via `__REVIEW_DATA__` placeholder replacement; no HTTP server, no endpoints.
-- **Workbook write out of scope for `review`** — UI emits `reviewed.json`; a separate
-  future `apply` command (RUI-3) ingests it into workbook + feedback logs.
-- **Review UI is the only type producer (this session)** — the type/sheet choice is made in the
-  review page and exported in `reviewed.json`; saved corrections live in localStorage and are
-  recoverable by re-export (no page change needed for Plan A backfill).
+- **Workbook write out of scope for `review`** — UI emits `reviewed.json`; the `apply`
+  command ingests it into workbook + feedback logs.
+- **Review UI is the only type producer** — the type choice is made in the review page and
+  exported in `reviewed.json` (key `type`, legacy `sheet` still read); saved corrections live in
+  localStorage and are recoverable by re-export (no page change needed for backfill).
 - **Taxonomy source** — workbook's "Referência de Categorias" sheet via
   `excel.LoadReferenceSheet`, grouped sheet→category→subcategory at runtime.
 
@@ -186,7 +177,7 @@ Or manually:
 - **Confidence threshold:** HIGH ≥ 0.85 (auto-insert), LOW < 0.85 (print candidates + ⚠ signal)
 - **Feature dictionary pre-filter:** skipped in 5.2; deferred to 5.7 (few-shot injection task)
 - **Few-shot injection (5.7):** implemented — keyword layer (layer 1 of 3-layer cascade) complete; SelectExamples in `internal/classifier/examples.go`; loaders in `loader.go`; injected as user/assistant pairs in buildRequest; TF-IDF/embeddings deferred to future sessions
-- **`expenses_log.jsonl`** — slim insert log (`id`, `item`, `date`, `value`, `subcategory`, `category`, `timestamp`); separate from `classifications.jsonl`; ID is sha256[:12] shared across both files for cross-file correlation. NOTE: `date` is `DD/MM` (no year). Plan A adds an optional `type` field.
+- **`expenses_log.jsonl`** — slim insert log (`id`, `item`, `date`, `value`, `subcategory`, `category`, `type` (omitempty), `timestamp`); separate from `classifications.jsonl`; ID is sha256[:12] shared across both files for cross-file correlation. NOTE: `date` is `DD/MM` (no year).
 
 ### Go Conventions
 - **Cobra pattern:** Each subcommand is a `.go` file in `cmd/expense-reporter/cmd/`
@@ -257,10 +248,10 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Merge `refactor/internal-taxonomy` (START HERE)** | the open PR; `expense-reporter/internal/taxonomy/.memories/QUICK.md`; `.claude/plans/taxonomy-identity-key.md` | T-02 work (render-config relocation → package extraction → real `taxonomy.json` → full-path identity key). All green; CSV↔JSON fidelity verified (symmetric-difference empty), oracle dumps unchanged. Review + merge. |
-| **T-05 persist expense type (Plan A — do AFTER merge)** | `.claude/plans/persist-expense-type.md` (full step list); `internal/feedback/feedback.go` + `expense_log.go`; `internal/apply/types.go`; `internal/review/template/review.html` (export) | Persist the expense type end-to-end + rename ExpenseSheet→ExpenseType + migrate JSON keys (`sheet`→`type`) + partial backfill. Phase F first (add `type,omitempty`, legacy-`sheet` UnmarshalJSON fallback). Hard prereq for Plan B/T-04. Advisor-reviewed. No impl until user authorizes. |
-| **T-04 full-path entry routing (Plan B — AFTER Plan A)** | `.claude/plans/full-path-entry-routing.md` (full step list); `[ref:taxonomy-identity-key]`; `internal/taxonomy/loader.go` (`buildSubcategoryMap`/`scanEntries`); fixtures `test/fixtures/generate-basic/` | Two-tier routing: typed entries → full-path key; type-less → retained bare-name map + ambiguous-skip. The guard is a PERMANENT fallback (not removed) — type-less entries are the auto-inserted majority. Keep a typed/type-less fixture MIX. Advisor-reviewed. |
-| Year-rollover workflow (T-03) | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. Real `config/taxonomy.json` (gitignored) is the input. |
-| Classifier full-path label (5.R4 / RUI-4) | `internal/excel/reader.go` `LoadReferenceSheet`; `internal/models/`; `cmd/expense-reporter/cmd/classify.go`; `.claude/plans/persist-expense-type.md` follow-on | Make the classifier emit the type for *auto* entries (option 1, full-path label) using type-labeled training data + backfilled gold corrections. Out of scope of Plans A/B. |
+| **Bf real-data verification (T-06 — START HERE)** | `.claude/plans/bf-real-data-verification-runbook.md`; `.claude/tools/backfill-type.py`; real `config/taxonomy.json` + `expenses_log.jsonl` | The only end-to-end proof of the Plan A→B chain. Export `reviewed.json` from the saved `review-2026-05-25.html` (browser localStorage) → run `backfill-type.py` → `generate-workbook` against real taxonomy; watch stderr for `not in taxonomy` on **typed** entries (the string-match failure mode). Pass/fail + diagnose path in the runbook. |
+| **Merge PRs #29 → #30** | PR #29 (`feat/persist-expense-type`), PR #30 (stacked `feat/full-path-entry-routing`) | #29 first, then #30. Both pushed, clean (no data). Verify CI/diff. |
+| Classifier full-path label (5.R4 / RUI-4) | `internal/excel/reader.go` `LoadReferenceSheet`; `cmd/.../classify.go`; `internal/feedback/.memories/KNOWLEDGE.md` (Type field); `.claude/plans/persist-expense-type.md` follow-on | Make the classifier emit a **taxonomy-exact** type for auto/batch-auto entries (option 1, full-path label), shrinking the transitional bare-name fallback toward zero. Backfilled gold corrections from T-06 become few-shot labels. Strings must byte-match taxonomy (NFC already handled; watch whitespace/casing). |
+| Year-rollover workflow (T-03) | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. |
+| Generate full-suite flake (T-08, low) | `test/.memories/QUICK.md` (Infrastructure timeout gotcha); `test/verify/workbook_structure.go` | `TestGenerateWorkbook_Skeleton` fails only under full-suite timeout, passes isolated. Benign artifact; investigate test parallel-safety only if it recurs in isolation. |
 | 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
 <!-- /ref:session-reading-guide -->

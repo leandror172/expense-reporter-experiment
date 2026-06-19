@@ -42,6 +42,7 @@
 | Taxonomy identity key (full-path decision + ambiguity guard, task #5 deferred) | `.claude/plans/taxonomy-identity-key.md` [ref:taxonomy-identity-key] |
 | Plan A — persist expense *type* + rename/JSON migration + backfill (session 32) | `.claude/plans/persist-expense-type.md` |
 | Plan B — full-path entry routing (T-04, session 32) | `.claude/plans/full-path-entry-routing.md` |
+| Bf real-data verification runbook (execute next session — Bf1/Bf3 + routing proof) | `.claude/plans/bf-real-data-verification-runbook.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |

@@ -7,7 +7,18 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
+
+// normalizeKey canonicalizes a routing-key segment to Unicode NFC so that taxonomy
+// strings (from config/taxonomy.json) and entry strings (from the review→apply→log
+// path, which reads the workbook) compare equal even if one source emits decomposed
+// accents (NFD: a+◌́) and the other composed (NFC: á). Applied to map KEYS only —
+// stored display names (Subcat.Name etc.) are left exactly as authored.
+func normalizeKey(s string) string {
+	return norm.NFC.String(s)
+}
 
 // LoadTaxonomy loads taxonomy and entries from JSON files.
 func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlock, error) {
@@ -17,9 +28,9 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlo
 	}
 
 	// Duplicate-subcategory validation applies to the taxonomy itself,
-	// even when no entries are loaded. The routing map + ambiguity set are
+	// even when no entries are loaded. Both routing maps + the ambiguity set are
 	// reused below when entries are present.
-	subcatMap, ambiguous, err := buildSubcategoryMap(sheets, incomeBlocks)
+	byPath, byName, ambiguous, err := buildSubcategoryMap(sheets, incomeBlocks)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
@@ -28,7 +39,7 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlo
 		return sheets, incomeBlocks, nil
 	}
 
-	if err := loadEntries(entriesPath, subcatMap, ambiguous); err != nil {
+	if err := loadEntries(entriesPath, byPath, byName, ambiguous); err != nil {
 		return nil, nil, fmt.Errorf("loading entries: %w", err)
 	}
 
@@ -104,21 +115,27 @@ func incomeCatsToRevenueBlocks(raw []struct {
 	return incomeBlocks
 }
 
-// loadEntries reads entries from a JSONL file and routes them using the
-// pre-built subcategory map and ambiguity set.
-func loadEntries(path string, subcatMap map[string]subcatTarget, ambiguous map[string]bool) error {
+// loadEntries reads entries from a JSONL file and routes them using the two
+// pre-built routing maps and the ambiguity set.
+func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous map[string]bool) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("opening entries file: %w", err)
 	}
 	defer file.Close()
 
-	return scanEntries(bufio.NewScanner(file), subcatMap, ambiguous)
+	return scanEntries(bufio.NewScanner(file), byPath, byName, ambiguous)
 }
 
-// scanEntries reads each non-blank JSONL line, parses it, looks up its subcategory,
-// and attaches the entry to the appropriate month slice.
-func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget, ambiguous map[string]bool) error {
+// scanEntries reads each non-blank JSONL line, parses it, routes it to a target via
+// two-tier lookup, and attaches the entry to the appropriate month slice.
+//
+// Tier 1 (typed entry): if the entry carries a type, route on the full-path key —
+// this resolves ambiguous leaf names to exactly one block.
+// Tier 2 (type-less entry): fall back to the bare-name map (today's behavior), which
+// still skips genuinely-ambiguous names. Legacy/auto/batch-auto lines take this path.
+func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget, ambiguous map[string]bool) error {
+	fallbackCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" {
@@ -129,16 +146,27 @@ func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget, ambi
 			Item        string  `json:"item"`
 			Date        string  `json:"date"`
 			Value       float64 `json:"value"`
+			Type        string  `json:"type"` // expense type (Plan A); "" for legacy/auto entries
+			Category    string  `json:"category"`
 			Subcategory string  `json:"subcategory"`
 		}
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			return fmt.Errorf("parsing entry line: %w", err)
 		}
 
-		subcat, exists := subcatMap[entry.Subcategory]
+		// NFC-normalize the routing fields so they match the (also-NFC) map keys
+		// regardless of how the source encoded accents. Item is display-only — left as-is.
+		entry.Type = normalizeKey(entry.Type)
+		entry.Category = normalizeKey(entry.Category)
+		entry.Subcategory = normalizeKey(entry.Subcategory)
+
+		subcat, exists := routeEntry(entry.Type, entry.Category, entry.Subcategory, byPath, byName)
 		if !exists {
-			warnUnroutable(entry.Item, entry.Subcategory, ambiguous[entry.Subcategory])
+			warnUnroutable(entry.Item, entry.Subcategory, entry.Type == "" && ambiguous[entry.Subcategory])
 			continue
+		}
+		if entry.Type == "" {
+			fallbackCount++
 		}
 
 		day, month, err := parseDate(entry.Date)
@@ -149,7 +177,33 @@ func scanEntries(scanner *bufio.Scanner, subcatMap map[string]subcatTarget, ambi
 		subcat.attachEntry(Entry{Item: entry.Item, Day: day, Value: entry.Value}, month-1)
 	}
 
+	if fallbackCount > 0 {
+		// Transitional: surfaces how many entries still lack a type (bare-name routed).
+		// Drops to zero once the classifier emits a type for every entry.
+		fmt.Fprintf(os.Stderr, "note: %d entr%s routed via the type-less bare-name fallback\n",
+			fallbackCount, plural(fallbackCount, "y", "ies"))
+	}
+
 	return scanner.Err()
+}
+
+// routeEntry resolves an entry to a target using two-tier lookup: full-path key when a
+// type is present, bare-name fallback otherwise.
+func routeEntry(typ, category, subcategory string, byPath, byName map[string]subcatTarget) (subcatTarget, bool) {
+	if typ != "" {
+		target, ok := byPath[expensePath(typ, category, subcategory)]
+		return target, ok
+	}
+	target, ok := byName[subcategory]
+	return target, ok
+}
+
+// plural picks the singular or plural suffix for n.
+func plural(n int, singular, pluralForm string) string {
+	if n == 1 {
+		return singular
+	}
+	return pluralForm
 }
 
 // warnUnroutable reports a skipped entry, distinguishing an ambiguous subcategory
@@ -165,15 +219,22 @@ func warnUnroutable(item, subcategory string, isAmbiguous bool) {
 	fmt.Fprintf(os.Stderr, "skipping entry %q: subcategory %q not in taxonomy\n", item, subcategory)
 }
 
-// buildSubcategoryMap builds the bare-name → target routing map plus the set of
-// ambiguous bare names. A subcategory's identity is its full path
-// (sheet/category/sub for expenses; group/label for income); only an exact
-// repeat of a full path is a validation error. A bare name that resolves to more
-// than one full path is ambiguous and is not routable (see registerTarget).
-func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (map[string]subcatTarget, map[string]bool, error) {
-	result := make(map[string]subcatTarget)
-	ambiguous := make(map[string]bool)
-	seen := make(map[string]bool) // full paths, for true-duplicate detection
+// buildSubcategoryMap builds TWO routing maps plus the set of ambiguous bare names:
+//
+//   - byPath: full-path key (expensePath/incomePath) → target. Used to route entries
+//     that carry a type (Plan A field). A full path resolves to exactly one target, so
+//     ambiguity never applies here — this is what lets ambiguous leaf names route.
+//   - byName: bare subcategory/label → target, with ambiguous names dropped (see
+//     registerTarget). RETAINED as the fallback for type-less entries (legacy logs,
+//     auto/batch-auto output). This is a transitional bridge, kept until the classifier
+//     emits a type for every entry; do not treat it as permanent.
+//
+// A subcategory's identity is its full path; only an exact repeat of a full path is a
+// validation error (detected via byPath presence).
+func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (byPath, byName map[string]subcatTarget, ambiguous map[string]bool, err error) {
+	byPath = make(map[string]subcatTarget)
+	byName = make(map[string]subcatTarget)
+	ambiguous = make(map[string]bool)
 
 	// Index into the backing slices — pointers to range copies would lose appends.
 	for i := range sheets {
@@ -181,11 +242,12 @@ func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (map
 			for k := range sheets[i].Cats[j].Subs {
 				sub := &sheets[i].Cats[j].Subs[k]
 				path := expensePath(sheets[i].Name, sheets[i].Cats[j].Name, sub.Name)
-				if seen[path] {
-					return nil, nil, fmt.Errorf("subcategory %q appears more than once in %s/%s", sub.Name, sheets[i].Name, sheets[i].Cats[j].Name)
+				if _, dup := byPath[path]; dup {
+					return nil, nil, nil, fmt.Errorf("subcategory %q appears more than once in %s/%s", sub.Name, sheets[i].Name, sheets[i].Cats[j].Name)
 				}
-				seen[path] = true
-				registerTarget(result, ambiguous, sub.Name, subcatTarget{kind: "expense", expense: sub})
+				target := subcatTarget{kind: "expense", expense: sub}
+				byPath[path] = target
+				registerTarget(byName, ambiguous, sub.Name, target)
 			}
 		}
 	}
@@ -193,14 +255,15 @@ func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (map
 	for i := range incomeBlocks {
 		block := &incomeBlocks[i]
 		path := incomePath(block.Category, block.Label)
-		if seen[path] {
-			return nil, nil, fmt.Errorf("income block %q appears more than once in %s", block.Label, block.Category)
+		if _, dup := byPath[path]; dup {
+			return nil, nil, nil, fmt.Errorf("income block %q appears more than once in %s", block.Label, block.Category)
 		}
-		seen[path] = true
-		registerTarget(result, ambiguous, block.Label, subcatTarget{kind: "income", income: block})
+		target := subcatTarget{kind: "income", income: block}
+		byPath[path] = target
+		registerTarget(byName, ambiguous, block.Label, target)
 	}
 
-	return result, ambiguous, nil
+	return byPath, byName, ambiguous, nil
 }
 
 // registerTarget records target under name for bare-name routing. Each call is a
@@ -209,6 +272,7 @@ func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (map
 // ambiguous, is removed from the map, and stays ambiguous permanently — which
 // also stops a third occurrence from re-adding it.
 func registerTarget(result map[string]subcatTarget, ambiguous map[string]bool, name string, target subcatTarget) {
+	name = normalizeKey(name) // keys are NFC so type-less lookups match regardless of source encoding
 	if ambiguous[name] {
 		return
 	}
@@ -225,11 +289,11 @@ func registerTarget(result map[string]subcatTarget, ambiguous map[string]bool, n
 // The kind prefix keeps a 3-segment expense path from ever equalling a 2-segment
 // income path.
 func expensePath(sheet, category, sub string) string {
-	return "expense\x00" + sheet + "\x00" + category + "\x00" + sub
+	return "expense\x00" + normalizeKey(sheet) + "\x00" + normalizeKey(category) + "\x00" + normalizeKey(sub)
 }
 
 func incomePath(category, label string) string {
-	return "income\x00" + category + "\x00" + label
+	return "income\x00" + normalizeKey(category) + "\x00" + normalizeKey(label)
 }
 
 // parseDate converts DD/MM to day and month integers.

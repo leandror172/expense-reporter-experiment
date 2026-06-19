@@ -4,19 +4,22 @@
 `BuildTaxonomy` (tree from workbook mappings) + `Render` (inject JSON into
 `template/review.html` via go:embed).
 
-- Types (types.go): `QueueEntry` with `Predicted{Sheet,Category,Subcategory}`
-  (`Sheet` = expense type; `omitempty`). `Taxonomy{Sheets[]}` → `Sheet{Name,Categories}`
-  → `Category{Name,Subcategories}`.
+- Types (types.go): `QueueEntry` with `Predicted{Type,Category,Subcategory}`
+  (`Type` = expense type, renamed from `Sheet`, Plan A R4; `omitempty`).
+  `Taxonomy{Types[]}` → `ExpenseType{Name,Categories}` → `Category{Name,Subcategories}`.
 - Classified CSV input (`queue.go`) is **7 fields**: item,date,value,subcategory,
-  category,confidence,autoInserted — **no sheet/type column** (RUI-4 would add it,
-  still open). The page re-derives candidate types from the taxonomy (`SHEETS_FOR`).
-- `taxonomy.go`: `sheetOrder = [Fixas, Variáveis, Extras, Adicionais]`.
+  category,confidence,autoInserted — **no type column** (RUI-4 would add it, still open).
+  The page re-derives candidate types from the taxonomy (`typeByName`/`SHEETS_FOR`).
+- `taxonomy.go`: `sheetOrder = [Fixas, Variáveis, Extras, Adicionais]` (still named
+  `sheetOrder` — it orders worksheets; the review-facing identifiers are `type`).
 
-**Key facts (session 32):**
+**Key facts:**
 - The page **is fully type-aware**: keys 1–4 set the type, it flags ambiguous (cat,sub)
-  for the user to choose, and `exportReviewed()` (template ~line 1486) **already emits**
-  `reviewed:{sheet,category,subcategory}` — full path. No page change needed to capture
-  type; the loss is purely on the Go ingest/log side.
+  for the user to choose, and `exportReviewed()` (template ~line 1504) emits
+  `reviewed:{type,category,subcategory}` — full path. JSON export key migrated
+  `sheet`→`type` (Plan A R6); apply's `UnmarshalJSON` still reads legacy `sheet`.
+- The Go ingest/log loss is **fixed** (Plan A): apply now persists the type. The
+  generator routes typed entries by full path ([[taxonomy]] two-tier routing).
 - In-progress state persists in browser `localStorage`, key
   `expense-review:v1:rows:<source>:<generatedAt>` → saved corrections are recoverable by
   reopening the same HTML and re-exporting.

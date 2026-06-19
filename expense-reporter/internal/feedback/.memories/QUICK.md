@@ -15,11 +15,14 @@ two separate structs.
 - Status values: `confirmed` (auto accepted), `manual` (add, no model), `corrected`
   (user overrode model).
 
-**Gotcha / known gap (session 32):** neither struct carries the expense **type**
-(Fixas/Variáveis/Extras/Adicionais). The review UI + apply path *know* the type and
-insert into the right worksheet, but it is **dropped at log-write time** → retraining
-data loses it. Fix = Plan A (`.claude/plans/persist-expense-type.md`): add
-`Type string json:"type,omitempty"`, set post-construction on the apply path only.
+**Type field (Plan A / T-05, IMPLEMENTED):** both `Entry` and `ExpenseEntry` now carry
+`Type string json:"type,omitempty"` (Fixas/Variáveis/Extras/Adicionais). Set
+**post-construction on the apply path only** (constructors unchanged) — apply.go assigns
+`.Type = entry.Reviewed.Type` after building each entry. `omitempty` keeps type-less
+entries byte-identical on disk (so non-apply fixtures didn't churn).
 
-**Producers without a type:** auto/batch-auto/add/correct build entries from the
-classifier, which doesn't emit type. Only the review→apply path has it.
+**Producers without a type (still type-less by design):** auto/batch-auto/add/correct
+build entries from the classifier, which doesn't emit type yet (TODO(type) marks in
+auto.go/batch_auto.go). Only the review→apply path emits a type. Closing this gap =
+classifier full-path label, 5.R4/RUI-4. The generator's two-tier routing
+([[taxonomy]] loader) handles type-less entries via a bare-name fallback.
