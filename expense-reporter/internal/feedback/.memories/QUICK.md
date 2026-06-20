@@ -21,8 +21,18 @@ two separate structs.
 `.Type = entry.Reviewed.Type` after building each entry. `omitempty` keeps type-less
 entries byte-identical on disk (so non-apply fixtures didn't churn).
 
-**Producers without a type (still type-less by design):** auto/batch-auto/add/correct
-build entries from the classifier, which doesn't emit type yet (TODO(type) marks in
-auto.go/batch_auto.go). Only the review→apply path emits a type. Closing this gap =
-classifier full-path label, 5.R4/RUI-4. The generator's two-tier routing
-([[taxonomy]] loader) handles type-less entries via a bare-name fallback.
+**Type emission — 5.R4 DONE (was "apply path only"; now updated).** `auto`
+(auto.go:200 `entry.Type=typ`), `batch-auto` (batch_auto.go:215 `resolveExpenseType`),
+and `apply` all populate `ExpenseEntry.Type` → **`expenses_log.jsonl` is fully typed
+going forward.** Remaining type-less producers write ONLY to `classifications.jsonl`
+(training/audit log, NOT the generator input): `add` (NewManualEntry, no type) and
+`correct`. **Income entries are type-less by nature** (no expense type) and still route
+via the [[taxonomy]] bare-name fallback. So the generator's bare-name tier is retirable
+for EXPENSES; income needs a dedicated `incomePath` route first (T-09).
+
+**expenses_log is year-implicit** (`DD/MM`; `taxonomy.parseDate` requires exactly 2
+parts). Multi-year history (2022–2025 historical extraction, 5.R4 —
+[[project_workbook_extraction_5r4]]) is therefore stored as per-year files
+`expenses_log-{year}.jsonl` (2025 merged into the base file), fed to generate via
+`--year`. **FUTURE: "year adaptation"** — let `parseDate` accept `DD/MM/YYYY` + generate
+use a per-entry year, so one multi-year log suffices and the per-year split retires.

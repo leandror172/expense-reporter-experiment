@@ -38,6 +38,7 @@ categorized_expenses_*.csv
 # Classification training data (personal expense data — never commit)
 data/classification/*.json
 data/classification/*.csv
+data/classification/*.bak-*
 !data/classification/algorithm_parameters.json
 
 # Real taxonomy (derived from personal Referência sheet — reveals personal categories)
@@ -74,6 +75,8 @@ expense-reporter/workbook-inspect
 /review-*.html
 /expense-reporter/classifications.jsonl
 /expense-reporter/expenses_log.jsonl
+/expense-reporter/expenses_log-*.jsonl
+/expense-reporter/expenses_log.jsonl.bak-*
 
 # Session transcript dumps + local Claude scaffolding (personal paths, not source)
 /*.txt

@@ -18,11 +18,15 @@ timestamp.
 
 **Type field (Plan A / T-05).** Both `Entry` and `ExpenseEntry` carry
 `Type string json:"type,omitempty"` (expense type: Fixas/Variáveis/Extras/Adicionais).
-It is set **post-construction** (constructor signatures unchanged) and **only on the
-apply path** — `apply.go` assigns `.Type = entry.Reviewed.Type`. `omitempty` means
-type-less entries (auto/batch-auto/add/correct, which build from the classifier — no
-type yet) serialize byte-identically to before. The type is the join field the generator
-uses for full-path routing ([[taxonomy]] two-tier). Closing the type-less producer gap =
-classifier full-path label (5.R4/RUI-4).
+Set **post-construction** (constructor signatures unchanged). **5.R4 landed:** the
+expenses_log producers all assign it — `apply.go` (`.Type = entry.Reviewed.Type`),
+`auto.go:200`, `batch_auto.go:215` (`resolveExpenseType`) — so **expenses_log is fully
+typed going forward**; `omitempty` keeps any residual type-less line byte-identical. The
+type is the join field the generator uses for full-path routing ([[taxonomy]] two-tier).
+Remaining type-less writers (`add`, `correct`) target only `classifications.jsonl`, not
+the generator input. **Income is structurally type-less** → still uses the bare-name
+fallback, which is why retiring it (T-09) needs a dedicated income route, not just the
+classifier. See [[project_workbook_extraction_5r4]] for the per-year/year-implicit log
+constraint and the pending "year adaptation".
 
 **Time:** timestamps are RFC3339 UTC.
