@@ -23,14 +23,14 @@ func TestRender(t *testing.T) {
 					Confidence:   0.95,
 					AutoInserted: false,
 					Predicted: Predicted{
-						Sheet:       "sheet1",
+						Type:        "sheet1",
 						Category:    "category1",
 						Subcategory: "subcategory1",
 					},
 				},
 			},
 			Taxonomy: Taxonomy{
-				Sheets: []Sheet{
+				Types: []Type{
 					{
 						Name: "sheet1",
 						Categories: []Category{
@@ -49,6 +49,15 @@ func TestRender(t *testing.T) {
 
 		assert.NotContains(t, result, "__REVIEW_DATA__")
 		assert.Contains(t, result, `"source":"test-source"`)
+
+		// JSON key contract consumed by the review template's JS: the taxonomy
+		// list must serialize as "types" and a predicted entry's type as "type"
+		// (domain terms). The legacy "sheets"/"sheet" keys must NOT appear — the
+		// template reads DATA.taxonomy.types and entry.predicted.type.
+		assert.Contains(t, result, `"types":`)
+		assert.Contains(t, result, `"type":"sheet1"`)
+		assert.NotContains(t, result, `"sheets":`)
+		assert.NotContains(t, result, `"sheet":`)
 	})
 
 	t.Run("missing placeholder", func(t *testing.T) {

@@ -19,16 +19,16 @@ type QueueEntry struct {
 }
 
 type Predicted struct {
-	Sheet       string `json:"sheet,omitempty"`
+	Type        string `json:"type,omitempty"`
 	Category    string `json:"category"`
 	Subcategory string `json:"subcategory"`
 }
 
 type Taxonomy struct {
-	Sheets []Sheet `json:"sheets"`
+	Types []Type `json:"types"`
 }
 
-type Sheet struct {
+type Type struct {
 	Name       string     `json:"name"`
 	Categories []Category `json:"categories"`
 }

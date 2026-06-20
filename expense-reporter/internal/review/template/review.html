@@ -1634,7 +1634,7 @@ window.addEventListener("drop", async (ev) => {
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
-    if (!parsed || !Array.isArray(parsed.queue) || !parsed.taxonomy || !Array.isArray(parsed.taxonomy.sheets)) {
+    if (!parsed || !Array.isArray(parsed.queue) || !parsed.taxonomy || !Array.isArray(parsed.taxonomy.types)) {
       toast("That JSON doesn't match the ReviewData shape.");
       return;
     }

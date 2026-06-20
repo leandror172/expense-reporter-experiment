@@ -13,11 +13,11 @@ func BuildTaxonomy(mappings map[string][]resolver.SubcategoryMapping) Taxonomy {
 	tree := buildTree(mappings)
 	names := sortedSheetNames(tree)
 
-	sheets := make([]Sheet, 0, len(names))
+	types := make([]Type, 0, len(names))
 	for _, name := range names {
-		sheets = append(sheets, buildSheet(name, tree[name]))
+		types = append(types, buildType(name, tree[name]))
 	}
-	return Taxonomy{Sheets: sheets}
+	return Taxonomy{Types: types}
 }
 
 // buildTree converts flat SubcategoryMappings into a 3-level nested set:
@@ -54,8 +54,10 @@ func sortedSheetNames(tree map[string]map[string]map[string]struct{}) []string {
 	return names
 }
 
-// buildSheet converts one sheet's category map into a Sheet with sorted categories and subcategories.
-func buildSheet(name string, catMap map[string]map[string]struct{}) Sheet {
+// buildType converts one type's category map into a Type with sorted categories and subcategories.
+// The name originates from the workbook-facing resolver mapping (SheetName); the returned Type is
+// the domain representation surfaced to the review UI.
+func buildType(name string, catMap map[string]map[string]struct{}) Type {
 	catNames := make([]string, 0, len(catMap))
 	for n := range catMap {
 		catNames = append(catNames, n)
@@ -72,7 +74,7 @@ func buildSheet(name string, catMap map[string]map[string]struct{}) Sheet {
 		categories = append(categories, Category{Name: catName, Subcategories: subs})
 	}
 
-	return Sheet{Name: name, Categories: categories}
+	return Type{Name: name, Categories: categories}
 }
 
 func sheetRank(name string) int {

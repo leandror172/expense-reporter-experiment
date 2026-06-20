@@ -92,7 +92,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 			Predicted: Predicted{
 				Category:    category,
 				Subcategory: subcategory,
-				Sheet:       expenseType,
+				Type:        expenseType,
 			},
 		})
 	}

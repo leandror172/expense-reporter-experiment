@@ -35,17 +35,17 @@ func TestReadQueue(t *testing.T) {
 				assert.True(t, e.AutoInserted)
 				assert.Equal(t, "Transporte", e.Predicted.Category)
 				assert.Equal(t, "Taxi", e.Predicted.Subcategory)
-				assert.Empty(t, e.Predicted.Sheet)
+				assert.Empty(t, e.Predicted.Type)
 				assert.NotEmpty(t, e.ID)
 			},
 		},
 		{
-			name:       "good row with type populates Predicted.Sheet",
+			name:       "good row with type populates Predicted.Type",
 			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nAluguel;05/01;2500,00;Aluguel;Moradia;0.95;0;Fixas",
 			wantCount:  1,
 			assertions: func(t *testing.T, entries []QueueEntry) {
 				e := entries[0]
-				assert.Equal(t, "Fixas", e.Predicted.Sheet)
+				assert.Equal(t, "Fixas", e.Predicted.Type)
 				assert.Equal(t, "Moradia", e.Predicted.Category)
 				assert.Equal(t, "Aluguel", e.Predicted.Subcategory)
 			},
