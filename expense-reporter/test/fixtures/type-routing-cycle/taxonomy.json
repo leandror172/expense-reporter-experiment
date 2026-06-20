@@ -1,0 +1,10 @@
+{
+  "types": [
+    { "name": "Fixas", "categories": [ { "name": "Habitação", "subcategories": ["Diarista"] } ] },
+    { "name": "Variáveis", "categories": [
+        { "name": "Saúde", "subcategories": ["Dentista"] },
+        { "name": "Transporte", "subcategories": ["Uber/Taxi"] } ] },
+    { "name": "Extras", "categories": [ { "name": "Saúde", "subcategories": ["Dentista"] } ] }
+  ],
+  "incomeCategories": [ { "name": "Receita", "blocks": ["Salário"] } ]
+}

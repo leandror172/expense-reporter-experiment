@@ -104,3 +104,24 @@ would turn cosmetic excelize quirks into red tests.
 **Implication:** when extending the generator, run the acceptance tests first; if a deliberate
 output change is intended, regenerate `expected-dump-*` with the fixed binary + workbook-inspect
 and diff old-vs-new dumps before committing.
+
+## Incremental Full-Cycle Test (type-routing-cycle, session 34)
+`type_routing_cycle_test.go` proves the batch-auto→review→apply→generate-workbook chain that
+validated the `sheets`→`types` fix. Design decisions worth reusing:
+- **One CLI step per test, Given accumulates.** Each test's When is one command; prior steps
+  become Given preparation. The last test (`_4_…RoutesByType`) seeds the cumulative typed log
+  and runs ONLY generate-workbook — its Then is the payoff (ambiguous leaf Dentista ∈
+  Variáveis+Extras routes to its chosen sheet, and is ABSENT from the other candidate).
+- **Non-CLI steps fold into fixtures**, documented at the fold point: the true/false→1/0 CSV
+  bridge lives in `review-input.csv`; the browser pick+export lives in `reviewed.json`. The
+  harness can't run a transform or drive a browser, so don't model them as When steps.
+- **Hermetic skeleton trick:** apply's new-row insert needs a workbook with the target slot.
+  Instead of committing a binary `.xlsx`, the Given builds one with `generate-workbook` (no
+  `--entries`). So generate-workbook is both the *subject* of the last test and a *setup tool*
+  in apply's Given — empty skeleton vs `--entries`-filled.
+- **Determinism split:** only the batch-auto step needs Ollama (gated, ~38s, asserts just the
+  8-column type contract — not LLM values). Review/apply/generate are deterministic (<0.05s),
+  so the fix's regression guard never depends on Ollama.
+- **Routing assertion without a frozen oracle:** for a single-value routing check, scan the
+  generated sheet's cells for the entry's unique value (inline excelize) rather than
+  `WorkbookStructureMatches` — cheaper than freezing/maintaining dump fixtures.
