@@ -56,6 +56,11 @@ docs/archive/transients/
 # Backup files
 *.bak
 expense-reporter/*.bak
+# Timestamped backups (*.bak-YYYYMMDD-HHMMSS) — plain *.bak does NOT match these.
+# Global rule so personal-data backups (taxonomy, logs) never leak regardless of dir.
+*.bak-*
+# LibreOffice/OpenOffice lock files (appear when a generated workbook is open)
+.~lock.*#
 
 # Acceptance test results (drift tracking JSON)
 expense-reporter/test/results/

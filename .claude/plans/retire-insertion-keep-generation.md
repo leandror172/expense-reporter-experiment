@@ -64,10 +64,36 @@ is. Run it **first**:
 4. The diff is a concrete list of what generation is missing: income (known), and anything else
    (formulas, manual notes, Referência curation). **That list reshapes WS-C and confirms WS-0b.**
 
+#### WS-0 RESULTS (executed session 36, 2026-06-22 — sonnet subagent diff)
+Inputs: 4 per-year generated workbooks vs real `Planilha_Normalized_Final.xlsx` + the Jun-9
+`.claude/workbook-dump/`. Verified against project decisions afterward (raw report over-flagged):
+- ❌ **"Referência de Categorias missing"** and ❌ **"month columns offset (gen col C vs real col D)"**
+  are **BY DESIGN**, not gaps — spec-v2 active decisions ("2 label cols; months start col C;
+  Referência omitted"). Discard both.
+- ✅ **Income is the sole real gap**, and it is two-part:
+  1. **Data:** every generated `Receitas` is an empty shell (0 values, all years) — historical
+     income was never logged → **WS-0b**.
+  2. **Structure:** the taxonomy's revenue side is **8 flat categories** vs the real workbook's
+     **~25-line payslip taxonomy** (Salário + 14 sub-lines, 13°, Férias, Presente, Outros) → the
+     **revenue taxonomy must be enriched** before generation can even hold that detail. *(NEW —
+     fold into WS-0b/WS-C.)*
+- ✅ **Currency formatting (DECIDED, user, session 36):** generated value cells should hold a **bare
+  number**; the **cell number-format** carries `R$ …` (display only). Today generation writes the
+  `"R$ 200.00"` string into the value — change it to a numeric value + currency cell format. Small
+  generator change (`internal/generate` styles/number-format).
+- Row-count differences are the intentional derived layout (1 row/subcat) + half-year real dump —
+  not data loss.
+- Expenses reproduce faithfully → **premise validated for expenses; income is the one blocker.**
+
 ### WS-0b — Historical income extraction (5.R4-for-Receitas)
 Parallel to 5.R4 but for the **Receitas** sheet across the old workbooks → income log entries.
-Required because WS-0 will show historical income missing. Scope/format mirrors the 5.R4 scripts;
-output is income-typed log entries consumable by WS-C's income route.
+Confirmed required by WS-0 (income wholly absent). **Method (user, session 36):**
+- **Use a subagent** for the extraction (ask which model per session preference).
+- **Source:** old workbooks at `~/workspaces/expenses/old/` — mine them for **both** the revenue
+  **taxonomy structure** (the ~25-line payslip breakdown → enrich `config/taxonomy.json` revenue
+  side) **and** the reported income **values** (→ income-typed log entries).
+- Output: income-typed log entries consumable by WS-C's income route, plus a taxonomy enrichment PR.
+- Mirror 5.R4 hygiene: outputs/backups outside the repo or gitignored; no personal values in scripts.
 
 ### WS-A — T-11: multi-year log (PREREQUISITE, smallest)
 **Goal:** one unified `expenses_log.jsonl` spanning years, feeding generation directly; retire the
