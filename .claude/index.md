@@ -318,6 +318,7 @@ The feedback system logs classification decisions to `classifications.jsonl` for
 | `data/classification/vector_representations.json` | ❌ Gitignored | Feature vectors |
 | `data/classification/statistical_summary.json` | ❌ Gitignored | Statistical results |
 | `data/classification/confusion_analysis.json` | ❌ Gitignored | Per item analysis (may contain real descriptions) |
+| `data/classification/extraction-aliases.json` | ❌ Gitignored | 5.R4 source→taxonomy alias map (taxonomy-label fragments); loaded by `extract_old_workbooks.py` |
 
 ---
 
@@ -396,4 +397,5 @@ Desktop-era planning documents — read for context, do not modify.
 | `reconstruct-csvs.py` | `.claude/tools/reconstruct-csvs.py` | Reconstruct classified/review CSVs from batch-auto log + original input CSV (line-matched) |
 | `lookup-category.py` | `.claude/tools/lookup-category.py` | Look up canonical category for one or more subcategories (`<sub> [...]` or `--list`) |
 | `backfill-type.py` | `.claude/tools/backfill-type.py` | Backfill expense type into log files from reviewed.json exports (Plan A Phase B-fill recovery) |
+| 5.R4 extraction scripts | `.claude/scratch/{extract_old_workbooks,dedup_corpus,build_corpus,build_logs}.py` | One-off (session 35): 2022–2024 workbooks → deduped corpus + per-year logs. Alias map externalized to gitignored `extraction-aliases.json`. |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |
