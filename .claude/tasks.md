@@ -80,9 +80,10 @@ layer — see `data/classification/retrieval-strategy.md` for the full pipeline 
   or post-validate subcategory candidates. Example: R$5000 expense matching "Diarista"
   (max 220) should be flagged as implausible. Orthogonal to few-shot injection — can be
   a separate scoring modifier or pre-filter on the taxonomy sent to the model.
-- [ ] **5.R4** Historical workbook extraction: extract labeled expenses from pre-2024
+- [x] **5.R4** Historical workbook extraction: extract labeled expenses from pre-2024
   workbooks to expand training set beyond 694 entries. Benefits all retrieval layers
   equally (more examples = better keyword coverage, TF-IDF vocabulary, embedding space).
+  DONE session 35 (one-off Python; 2022–2025 → corpus 694→1788 + per-year expense logs).
 - [ ] **5.R5** Correction-weighted example selection: when `classifications.jsonl` has
   enough corrected entries, prioritize them as few-shot examples over confirmed/training
   entries. Simple sort order initially (corrected > training > confirmed). Refine to
@@ -152,6 +153,7 @@ Local-first review surface — supersedes the Lovable cloud plan
 - [x] (T-05) **Persist expense type end-to-end (Plan A)** — add `type,omitempty` to feedback.Entry + ExpenseEntry, rename ExpenseSheet→ExpenseType, migrate JSON keys (`sheet`→`type`, `sheets`→`types`) with legacy-read fallback, partial backfill from re-exported reviewed.json. Plan: `.claude/plans/persist-expense-type.md`. Hard prereq for T-04. Advisor-reviewed; not yet implemented.
 - [x] (T-06) **Bf real-data verification** — execute `.claude/plans/bf-real-data-verification-runbook.md`: export reviewed.json → backfill-type.py → generate-workbook against real config/taxonomy.json; confirm typed entries route (no `not in taxonomy` warnings on typed lines), ambiguous leaves land in the right sheet. The only end-to-end proof of the Plan A→B chain on real data.
 - [ ] (T-08) **Generate full-suite acceptance flake (low priority)** — `TestGenerateWorkbook_Skeleton` fails under full-suite timeout (partial actual-dump → nil panic) but passes in isolation. Confirmed benign timeout artifact, not a Phase-R/Type regression. Investigate `test/verify` parallel-safety / temp-dir isolation only if it recurs when run alone.
-- [ ] (T-09) **Retire bare-name routing fallback** — now that the classifier emits type (plan 5.R4, done), shrink/retire the transitional bare-name `byName` fallback in `internal/taxonomy` `scanEntries` as typed coverage approaches 100%; gate retirement on the stderr type-less fallback count reaching ~0. Advisor-flagged risk: deleting it prematurely drops the auto-inserted majority.
-- [ ] (T-10) **Disambiguate the `5.R4` id collision** — `.claude/tasks.md` `5.R4` = "Historical workbook extraction (pre-2024)", but `.claude/plans/5r4-classifier-emits-type.md` + current-status/reading-guide use `5.R4` for "classifier emits type into the log" (done this session). Rename one id so the boards agree.
+- [ ] (T-09) **Retire bare-name routing fallback** — now that the classifier emits type (5.R4-classifier, done), shrink/retire the transitional bare-name `byName` fallback in `internal/taxonomy` `scanEntries` as typed coverage approaches 100%; gate retirement on the stderr type-less fallback count reaching ~0. Advisor-flagged risk: deleting it prematurely drops the auto-inserted majority.
+- [x] (T-10) **Disambiguate the `5.R4` id collision** — RESOLVED session 35: `5.R4` stays the historical-extraction task (its original owner in the 5.R1–5.R5 series, now done); the classifier-emits-type work is referred to as **`5.R4-classifier`** (adopted in current-status/reading-guide and T-09). Boards now agree.
+- [ ] (T-11) **Year adaptation for expenses_log** — `parseDate` requires exactly `DD/MM`, forcing per-year log files (5.R4). Accept `DD/MM/YYYY` + have `generate` use a per-entry year (fallback `--year`) so one multi-year log routes directly and the per-year split retires.
 <!-- /ref:deferred -->

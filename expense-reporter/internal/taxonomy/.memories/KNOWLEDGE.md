@@ -12,14 +12,26 @@ the old bare-name validation.
 
 **Two-tier routing landed (Plan B / T-04).** Typed entries route by full path
 (`byPath`), which resolves ambiguous leaves to exactly one block. Type-less entries
-(legacy/auto/batch-auto) fall back to the retained bare-name map (`byName`) with its
-ambiguous-skip — behavior unchanged for them. Plan A (persist type) landed first so the
-entry contract could carry type. The bare-name fallback is **transitional, not
-permanent**: it's a bridge to be retired once the classifier emits a type for every
-entry (5.R4/RUI-4); `scanEntries` logs a one-line count of type-less fallbacks so the
-remaining surface is measurable. Routing is value-equality on the full path — a typed
-entry whose type/category/sub don't byte-match the taxonomy warn+skips (never silent
-misroute), so the classifier MUST emit taxonomy-exact strings when 5.R4 lands.
+fall back to the retained bare-name map (`byName`) with its ambiguous-skip. Plan A
+(persist type) landed first so the entry contract could carry type. The bare-name
+fallback is **transitional, not permanent**: `scanEntries` logs a one-line count of
+type-less fallbacks so the remaining surface is measurable. Routing is value-equality on
+the full path — a typed entry whose type/category/sub don't byte-match the taxonomy
+warn+skips (never silent misroute), so emitters MUST produce taxonomy-exact strings.
+
+**5.R4 LANDED — fallback retirement (T-09) reassessed.** The classifier now emits type
+(auto/batch-auto/apply populate `ExpenseEntry.Type`) and the historical logs were
+backfilled with type ([[project_workbook_extraction_5r4]]) — so the type-less EXPENSE
+surface is ~0. Retiring the bare-name tier is now gated NOT on the classifier but on:
+(1) **income is structurally type-less** and routes via the SAME `byName` map — it needs
+its own `incomePath` route before `byName` can be deleted; (2) `add`/`correct` still
+emit type-less (but only to classifications.jsonl, not generator input); (3) confirm the
+stderr fallback count is ~0 on real typed data.
+
+**Pending "year adaptation":** `parseDate` requires exactly `DD/MM` (2 parts), making
+expenses_log year-implicit (year comes from generate `--year`). Multi-year data is split
+into per-year logs as a workaround. Future: accept `DD/MM/YYYY` + per-entry year so one
+multi-year log routes directly.
 
 **Two taxonomy sources exist and don't know about each other** (cross-cutting, also
 noted in classifier memory):

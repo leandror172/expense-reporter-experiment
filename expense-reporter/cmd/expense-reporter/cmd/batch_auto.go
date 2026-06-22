@@ -9,8 +9,8 @@ import (
 
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
-	"expense-reporter/internal/excel"
 	"expense-reporter/internal/config"
+	"expense-reporter/internal/excel"
 	"expense-reporter/internal/feedback"
 	"expense-reporter/internal/models"
 	"expense-reporter/internal/taxonomy"
@@ -177,7 +177,7 @@ func loadBatchAutoDeps(dataDir string) (classifier.Taxonomy, *config.Config, err
 	return taxonomy, appCfg, nil
 }
 
-func classifyLines(lines []string, tx classifier.Taxonomy, appCfg *config.Config, cfg classifier.Config, threshold float64, typeIdx taxonomy.TypeIndex) []classifiedRow {
+func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.Config, cfg classifier.Config, threshold float64, typeIdx taxonomy.TypeIndex) []classifiedRow {
 	total := len(lines)
 	results := make([]classifiedRow, 0, total)
 
@@ -189,7 +189,7 @@ func classifyLines(lines []string, tx classifier.Taxonomy, appCfg *config.Config
 			continue
 		}
 
-		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, tx, cfg)
+		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, taxonomy, cfg)
 		if err != nil || len(classResults) == 0 {
 			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, row.Item, err)
 			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Error: err})

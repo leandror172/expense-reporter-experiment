@@ -7,6 +7,10 @@ Keyword-based few-shot injection (layer 1 of 3) complete.
 TF-IDF retrieval (layer 2) planned as 5.R1 — would replace keyword specificity
 with corpus-level term frequency for better example selection.
 Embedding retrieval (layer 3) deferred — requires vector storage.
+**Training corpus expanded 694→1788 (2026-06-20, 5.R4):** historical workbook
+extraction 2022–2025 deduped + merged into `training_data_complete.json` (now
+multi-year, 15 cats / 81 subs). Bigger few-shot/keyword pool. See
+[[project_workbook_extraction_5r4]]. Classifier now emits expense `type` (5.R4).
 
 ## Structure
 ```
