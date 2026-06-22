@@ -107,9 +107,9 @@ func pendingExpensesQueued(expectedCount int) []func(*harness.Context) {
 
 type reviewTaxonomyOnly struct {
 	Taxonomy struct {
-		Sheets []struct {
+		Types []struct {
 			Name string `json:"name"`
-		} `json:"sheets"`
+		} `json:"types"`
 	} `json:"taxonomy"`
 }
 
@@ -119,11 +119,11 @@ func workbookSheetsInTaxonomy(expectedSheets []string) []func(*harness.Context) 
 			ctx.T.Helper()
 			var data reviewTaxonomyOnly
 			verify.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
-			actualNames := make([]string, len(data.Taxonomy.Sheets))
-			for i, s := range data.Taxonomy.Sheets {
+			actualNames := make([]string, len(data.Taxonomy.Types))
+			for i, s := range data.Taxonomy.Types {
 				actualNames[i] = s.Name
 			}
-			assert.ElementsMatch(ctx.T, expectedSheets, actualNames, "taxonomy sheets mismatch")
+			assert.ElementsMatch(ctx.T, expectedSheets, actualNames, "taxonomy types mismatch")
 		},
 	}
 }

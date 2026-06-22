@@ -13,6 +13,7 @@ import (
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
 	"expense-reporter/internal/models"
+	"expense-reporter/internal/taxonomy"
 	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 
@@ -69,6 +70,7 @@ type classifiedRow struct {
 	Category     string
 	Confidence   float64
 	AutoInserted bool
+	Type         string // resolved expense type name (empty if not found or ambiguous)
 	Error        error
 }
 
@@ -85,7 +87,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	taxonomy, appCfg, err := loadBatchAutoDeps(batchAutoDataDir)
+	tx, appCfg, err := loadBatchAutoDeps(batchAutoDataDir)
 	if err != nil {
 		return err
 	}
@@ -108,7 +110,8 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	results := classifyLines(lines, taxonomy, appCfg, cfg, batchAutoThreshold)
+	typeIdx := loadTypeIndex(appCfg)
+	results := classifyLines(lines, tx, appCfg, cfg, batchAutoThreshold, typeIdx)
 
 	var rollovers []workflow.RolloverExpense
 	var insertErr error
@@ -174,7 +177,7 @@ func loadBatchAutoDeps(dataDir string) (classifier.Taxonomy, *config.Config, err
 	return taxonomy, appCfg, nil
 }
 
-func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.Config, cfg classifier.Config, threshold float64) []classifiedRow {
+func classifyLines(lines []string, tx classifier.Taxonomy, appCfg *config.Config, cfg classifier.Config, threshold float64, typeIdx taxonomy.TypeIndex) []classifiedRow {
 	total := len(lines)
 	results := make([]classifiedRow, 0, total)
 
@@ -186,7 +189,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 			continue
 		}
 
-		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, taxonomy, cfg)
+		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, tx, cfg)
 		if err != nil || len(classResults) == 0 {
 			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, row.Item, err)
 			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Error: err})
@@ -209,6 +212,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 			Category:     top.Category,
 			Confidence:   top.Confidence,
 			AutoInserted: autoInsert,
+			Type:         resolveExpenseType(typeIdx, top.Category, top.Subcategory),
 		})
 	}
 	return results
@@ -290,11 +294,11 @@ func logBatchFeedback(appCfg *config.Config, results []classifiedRow, srcIdx []i
 			Confidence:  r.Confidence,
 		}
 		entry := feedback.NewConfirmedEntry(r.Item, r.Date, perInstallment, predicted, model)
-		// TODO(type): classifier does not yet emit expense type
 		if err := feedback.Append(path, entry); err != nil {
 			fmt.Fprintf(os.Stderr, "⚠  feedback log %q: %v\n", r.Item, err)
 		}
-		logExpense(appCfg, r.Item, r.Date, perInstallment, r.Subcategory, r.Category)
+		// r.Type was resolved once in classifyLines; reuse it (no second taxonomy load).
+		logExpense(appCfg, r.Item, r.Date, perInstallment, r.Subcategory, r.Category, r.Type)
 	}
 }
 
@@ -354,7 +358,7 @@ func parse3FieldLine(line string) (inputRow, error) {
 }
 
 // writeClassifiedCSV writes all classified rows to path.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type
 func writeClassifiedCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -364,7 +368,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -376,6 +380,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 			r.Category,
 			fmt.Sprintf("%.4f", r.Confidence),
 			fmt.Sprintf("%v", r.AutoInserted),
+			r.Type,
 		})
 	}
 	w.Flush()
@@ -383,6 +388,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 }
 
 // writeReviewCSV writes only rows where auto_inserted == false.
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type
 func writeReviewCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -392,7 +398,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -407,6 +413,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 			r.Category,
 			fmt.Sprintf("%.4f", r.Confidence),
 			"false",
+			r.Type,
 		})
 	}
 	w.Flush()

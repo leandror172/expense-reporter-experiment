@@ -9,6 +9,12 @@ correct, installments, rollover, exclusion, add-with-prediction, apply, review, 
 entries.jsonl + oracle-frozen `expected-dump-*/`, NOT config.json+input.csv; see PATTERNS.md
 "Generate-Workbook Fixture Sub-Format"). Workbook structure assertions live:
 `verify.WorkbookStructureMatches(expectedDumpDir)` on `internal/inspect` dumps.
+`type_routing_cycle_test.go` (`type-routing-cycle` fixture) is an INCREMENTAL full-cycle
+suite (batch-auto→review→apply→generate-workbook): each test = one CLI step, each folds prior
+steps into Given; the last seeds the cumulative typed log and runs only generate-workbook,
+asserting the ambiguous leaf (Dentista ∈ Variáveis+Extras) routes by type. T1 is Ollama-gated
+(~38s); T2-T4 are deterministic (<0.05s). apply's skeleton workbook is built hermetically via
+generate-workbook in the Given.
 
 ## Structure
 ```

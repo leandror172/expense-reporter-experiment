@@ -20,16 +20,16 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Len(t, result.Sheets, 1)
-		sheet := result.Sheets[0]
-		assert.Equal(t, "sheet1", sheet.Name)
-		assert.Len(t, sheet.Categories, 2)
+		assert.Len(t, result.Types, 1)
+		typ := result.Types[0]
+		assert.Equal(t, "sheet1", typ.Name)
+		assert.Len(t, typ.Categories, 2)
 
-		cat1 := sheet.Categories[0]
+		cat1 := typ.Categories[0]
 		assert.Equal(t, "cat1", cat1.Name)
 		assert.Equal(t, []string{"sub1", "sub2"}, cat1.Subcategories)
 
-		cat2 := sheet.Categories[1]
+		cat2 := typ.Categories[1]
 		assert.Equal(t, "cat2", cat2.Name)
 		assert.Equal(t, []string{"sub3"}, cat2.Subcategories)
 	})
@@ -44,8 +44,8 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Len(t, result.Sheets, 1)
-		cat := result.Sheets[0].Categories[0]
+		assert.Len(t, result.Types, 1)
+		cat := result.Types[0].Categories[0]
 		assert.Equal(t, []string{"sub1"}, cat.Subcategories)
 	})
 
@@ -59,11 +59,11 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Len(t, result.Sheets, 4)
-		assert.Equal(t, "Fixas", result.Sheets[0].Name)
-		assert.Equal(t, "Variáveis", result.Sheets[1].Name)
-		assert.Equal(t, "Extras", result.Sheets[2].Name)
-		assert.Equal(t, "Adicionais", result.Sheets[3].Name)
+		assert.Len(t, result.Types, 4)
+		assert.Equal(t, "Fixas", result.Types[0].Name)
+		assert.Equal(t, "Variáveis", result.Types[1].Name)
+		assert.Equal(t, "Extras", result.Types[2].Name)
+		assert.Equal(t, "Adicionais", result.Types[3].Name)
 	})
 
 	t.Run("unknown sheet sorts after known ones", func(t *testing.T) {
@@ -74,9 +74,9 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Len(t, result.Sheets, 2)
-		assert.Equal(t, "Fixas", result.Sheets[0].Name)
-		assert.Equal(t, "Outros", result.Sheets[1].Name)
+		assert.Len(t, result.Types, 2)
+		assert.Equal(t, "Fixas", result.Types[0].Name)
+		assert.Equal(t, "Outros", result.Types[1].Name)
 	})
 
 	t.Run("subcategories sorted alphabetically within category", func(t *testing.T) {
@@ -90,7 +90,7 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Equal(t, []string{"Alpha", "Mango", "Zebra"}, result.Sheets[0].Categories[0].Subcategories)
+		assert.Equal(t, []string{"Alpha", "Mango", "Zebra"}, result.Types[0].Categories[0].Subcategories)
 	})
 
 	t.Run("multiple unknown sheets sort alphabetically after known ones", func(t *testing.T) {
@@ -102,10 +102,10 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Len(t, result.Sheets, 3)
-		assert.Equal(t, "Fixas", result.Sheets[0].Name)
-		assert.Equal(t, "Alpha", result.Sheets[1].Name)
-		assert.Equal(t, "Zeta", result.Sheets[2].Name)
+		assert.Len(t, result.Types, 3)
+		assert.Equal(t, "Fixas", result.Types[0].Name)
+		assert.Equal(t, "Alpha", result.Types[1].Name)
+		assert.Equal(t, "Zeta", result.Types[2].Name)
 	})
 
 	t.Run("categories sorted alphabetically within sheet", func(t *testing.T) {
@@ -118,8 +118,8 @@ func TestBuildTaxonomy(t *testing.T) {
 
 		result := BuildTaxonomy(mappings)
 
-		assert.Len(t, result.Sheets[0].Categories, 2)
-		assert.Equal(t, "Alpha", result.Sheets[0].Categories[0].Name)
-		assert.Equal(t, "Zebra", result.Sheets[0].Categories[1].Name)
+		assert.Len(t, result.Types[0].Categories, 2)
+		assert.Equal(t, "Alpha", result.Types[0].Categories[0].Name)
+		assert.Equal(t, "Zebra", result.Types[0].Categories[1].Name)
 	})
 }

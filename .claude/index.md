@@ -57,6 +57,7 @@
 | Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
 | Generate-workbook acceptance fixture (G3, oracle-frozen dumps) | `expense-reporter/test/fixtures/generate-basic/` + `test/verify/workbook_structure.go` |
+| Full type-routing cycle acceptance (batch-auto→review→apply→generate-workbook, incremental) | `expense-reporter/test/type_routing_cycle_test.go` + `test/fixtures/type-routing-cycle/` |
 | Advisor review — G3 acceptance design | `.claude/advisor-G3-acceptance-design.md` |
 | Advisor reviews — apply phase 3, Phase B builder, session 24 | `.claude/advisor-{apply-phase3,phaseB-builder,session24-review}.md` |
 | Doc audit (2026-06-09) | `.claude/doc-audit-2026-06-09.md` |

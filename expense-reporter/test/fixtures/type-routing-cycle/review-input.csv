@@ -1,0 +1,4 @@
+item;date;value;subcategory;category;confidence;auto_inserted;type
+Dentista Dra Ana;12/03;250,00;Dentista;Saúde;0.9500;0;
+Uber Centro;20/03;38,50;Uber/Taxi;Transporte;0.9800;1;Variáveis
+Diarista Letícia;08/03;180,00;Diarista;Habitação;0.9500;1;Fixas

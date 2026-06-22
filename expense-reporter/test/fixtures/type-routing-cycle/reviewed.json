@@ -1,0 +1,27 @@
+{
+  "reviewedAt": "2026-06-20T00:00:00Z",
+  "source": "review-input.csv",
+  "entries": [
+    {
+      "id": "dentista-ambiguous-1",
+      "item": "Dentista Dra Ana", "date": "12/03", "value": 250.0, "confidence": 0.95,
+      "predicted": { "category": "Saúde", "subcategory": "Dentista" },
+      "action": "confirmed",
+      "reviewed": { "type": "Variáveis", "category": "Saúde", "subcategory": "Dentista" }
+    },
+    {
+      "id": "uber-1",
+      "item": "Uber Centro", "date": "20/03", "value": 38.5, "confidence": 0.98,
+      "predicted": { "type": "Variáveis", "category": "Transporte", "subcategory": "Uber/Taxi" },
+      "action": "pending",
+      "reviewed": { "category": "Transporte", "subcategory": "Uber/Taxi" }
+    },
+    {
+      "id": "diarista-1",
+      "item": "Diarista Letícia", "date": "08/03", "value": 180.0, "confidence": 0.95,
+      "predicted": { "type": "Fixas", "category": "Habitação", "subcategory": "Diarista" },
+      "action": "pending",
+      "reviewed": { "category": "Habitação", "subcategory": "Diarista" }
+    }
+  ]
+}

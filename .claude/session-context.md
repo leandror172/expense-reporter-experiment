@@ -47,13 +47,17 @@
 
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
-- **Workbook Generator:** COMPLETE; PR #27 merged. `internal/taxonomy` extracted (T-02) + real `config/taxonomy.json` (112 subs, gitignored) + full-path identity key.
-- **Plan A (T-05) — IMPLEMENTED** (branch `feat/persist-expense-type`, PR #29): expense `Type` persisted end-to-end (feedback structs carry it, set on the apply path, `omitempty`); `ExpenseSheet`→`ExpenseType` rename + JSON migration (`sheets`→`types`, `sheet`→`type` with legacy read-compat in apply); `backfill-type.py` recovery tool.
-- **Plan B (T-04) — IMPLEMENTED** (stacked branch `feat/full-path-entry-routing`, PR #30): two-tier routing — typed entries by full path (`byPath`), type-less via retained bare-name fallback (`byName` + ambiguous-skip, **transitional**); NFC-normalized keys; one-line stderr fallback count.
-- **Verification status:** unit suite green; apply-basic + generate skeleton/with-entries acceptance green *in isolation*; oracle dumps byte-identical; manual Orion check passed. **NOT yet proven on real data** — all routing tests use synthetic literals; the real-data proof is the Bf runbook (T-06).
-- **Data-leak remediated:** a `git add -A` had committed+pushed personal logs to PR #29; rewritten clean, force-pushed, runtime logs now gitignored. Local backup at `~/expense-data-backup-20260619-121709/`. (GitHub may retain dangling objects until GC.)
-- **Next:** execute Bf real-data verification runbook (T-06, `.claude/plans/bf-real-data-verification-runbook.md`); merge PR #29 → #30; then classifier full-path label (5.R4/RUI-4), year-rollover (T-03), TF-IDF (5.R1).
-- **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs
+- **Workbook Generator:** COMPLETE; PR #27 merged. `internal/taxonomy` extracted (T-02) + real `config/taxonomy.json` (gitignored) + full-path identity key.
+- **Plan A (T-05) + Plan B (T-04):** MERGED to master (PRs #29, #30). Expense `Type` persisted end-to-end; two-tier routing — typed entries by full path (`byPath`), type-less via the **transitional** bare-name fallback (`byName` + ambiguous-skip); NFC-normalized keys; stderr fallback count.
+- **T-06 Bf real-data verification — DONE, PASSED** (this session): the real-data proof of the Plan A→B chain.
+- **Classifier emits type (plan 5.R4) — DONE** (PR #32, commit 41afa56): `auto`/`batch-auto` populate `ExpenseEntry.Type` via the shared reverse `(category,subcategory)→type` lookup (`internal/taxonomy/lookup.go`), shrinking the type-less fallback surface.
+- **RUI-4 — DONE** (PR #32): `type` column added to batch-auto classified/review CSVs (now 8 fields); `review.ReadQueue` reads `record[7]` into `Predicted.Type`.
+- **Review serialization fix — DONE** (PR #32, commit 321dd2f): Go `review` structs serialized `sheets`/`sheet` while the template JS had migrated to `types`/`type` — crashed the page (`TAX.types not iterable`) and silently dropped the type pre-fill. Renamed to `types`/`type`; `render_test.go` now guards the cross-language key contract. Validated in-browser end-to-end (Claude in Chrome). `apply`'s `UnmarshalJSON` still reads legacy `sheet` → existing exports load unchanged.
+- **Full-cycle acceptance — DONE** (PR #32, commit c5c064f): `test/type_routing_cycle_test.go` incremental suite (batch-auto→review→apply→generate-workbook); T1 Ollama-gated, T2–T4 deterministic.
+- **PR #32 OPEN** (`feat/type-routing-improvements` → master): 5 commits (lookup primitive 7b2f19b, 5.R4+RUI-4 41afa56, review fix 321dd2f, acceptance-consumer fix 994d75b, full-cycle test c5c064f). Branch pushed; 524 unit tests + review/apply/generate/cycle acceptance green.
+- **Data-leak (session 33):** remediated — runtime logs gitignored, history rewritten/force-pushed. GitHub may still retain dangling objects until GC; local backup at `~/expense-data-backup-20260619-121709/`.
+- **Next:** merge PR #32; then year-rollover (T-03), retire bare-name fallback (T-09), fix 5.R4 id collision (T-10), TF-IDF (5.R1).
+- **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs.
 <!-- /ref:current-status -->
 
 ---
@@ -248,10 +252,10 @@ Or manually:
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Bf real-data verification (T-06 — START HERE)** | `.claude/plans/bf-real-data-verification-runbook.md`; `.claude/tools/backfill-type.py`; real `config/taxonomy.json` + `expenses_log.jsonl` | The only end-to-end proof of the Plan A→B chain. Export `reviewed.json` from the saved `review-2026-05-25.html` (browser localStorage) → run `backfill-type.py` → `generate-workbook` against real taxonomy; watch stderr for `not in taxonomy` on **typed** entries (the string-match failure mode). Pass/fail + diagnose path in the runbook. |
-| **Merge PRs #29 → #30** | PR #29 (`feat/persist-expense-type`), PR #30 (stacked `feat/full-path-entry-routing`) | #29 first, then #30. Both pushed, clean (no data). Verify CI/diff. |
-| Classifier full-path label (5.R4 / RUI-4) | `internal/excel/reader.go` `LoadReferenceSheet`; `cmd/.../classify.go`; `internal/feedback/.memories/KNOWLEDGE.md` (Type field); `.claude/plans/persist-expense-type.md` follow-on | Make the classifier emit a **taxonomy-exact** type for auto/batch-auto entries (option 1, full-path label), shrinking the transitional bare-name fallback toward zero. Backfilled gold corrections from T-06 become few-shot labels. Strings must byte-match taxonomy (NFC already handled; watch whitespace/casing). |
-| Year-rollover workflow (T-03) | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 from taxonomy alone (skeleton); decide fate of `apply`/`add` against generated workbooks. |
+| **Merge PR #32 (START HERE)** | `gh pr view 32`; branch `feat/type-routing-improvements` | 5 commits: reverse-lookup primitive, 5.R4 classifier type + RUI-4 CSV column, review serialization fix (`sheets`→`types`), acceptance-consumer fix, full-cycle acceptance. Unit + acceptance green; validated in-browser. Merge into master, then continue below. |
+| Year-rollover workflow (T-03) | spec §1.1 + `internal/generate/.memories/QUICK.md`; `.claude/plans/workbook-generator-implementation-plan.md` §4 | Generate year N+1 skeleton from taxonomy alone; decide fate of `apply`/`add` against generated workbooks. |
+| Retire bare-name fallback (T-09) | `[ref:taxonomy-identity-key]`; `internal/taxonomy/loader.go` `scanEntries`; the stderr fallback count | Now the classifier emits type (5.R4), the type-less `byName` fallback surface should shrink. Measure remaining type-less lines, then retire the transitional tier as typed coverage approaches 100%. |
+| Fix 5.R4 id collision (T-10) | `.claude/tasks.md` (~line 83: `5.R4` = "Historical workbook extraction") vs `.claude/plans/5r4-classifier-emits-type.md` + current-status (`5.R4` = classifier emits type, DONE) | Two different things share the id `5.R4`. Rename one so the task board and the plans/status agree. |
 | Generate full-suite flake (T-08, low) | `test/.memories/QUICK.md` (Infrastructure timeout gotcha); `test/verify/workbook_structure.go` | `TestGenerateWorkbook_Skeleton` fails only under full-suite timeout, passes isolated. Benign artifact; investigate test parallel-safety only if it recurs in isolation. |
-| 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open |
+| 5.R1 (TF-IDF layer) | `project_r1_evaluation_procedure.md` memory; `data/classification/research_insights.md` | Instrumentation prerequisite still open. |
 <!-- /ref:session-reading-guide -->

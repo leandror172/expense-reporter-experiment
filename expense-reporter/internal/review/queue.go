@@ -47,8 +47,8 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 			continue
 		}
 
-		if len(record) != 7 {
-			return nil, fmt.Errorf("line %d: expected 7 fields, got %d", lineNumber, len(record))
+		if len(record) != 8 {
+			return nil, fmt.Errorf("line %d: expected 8 fields, got %d", lineNumber, len(record))
 		}
 
 		item := strings.TrimSpace(record[0])
@@ -58,6 +58,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 		category := strings.TrimSpace(record[4])
 		confidenceStr := strings.TrimSpace(record[5])
 		autoInsertedStr := strings.TrimSpace(record[6])
+		expenseType := strings.TrimSpace(record[7])
 
 		perInstallment, _, err := utils.ParseCurrencyWithInstallments(valueStr)
 		if err != nil {
@@ -91,6 +92,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 			Predicted: Predicted{
 				Category:    category,
 				Subcategory: subcategory,
+				Type:        expenseType,
 			},
 		})
 	}

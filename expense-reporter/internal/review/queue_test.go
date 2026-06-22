@@ -22,8 +22,8 @@ func TestReadQueue(t *testing.T) {
 		assertions    func(t *testing.T, entries []QueueEntry)
 	}{
 		{
-			name:       "good row",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;1",
+			name:       "good row without type",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;1;",
 			wantCount:  1,
 			assertions: func(t *testing.T, entries []QueueEntry) {
 				e := entries[0]
@@ -35,17 +35,29 @@ func TestReadQueue(t *testing.T) {
 				assert.True(t, e.AutoInserted)
 				assert.Equal(t, "Transporte", e.Predicted.Category)
 				assert.Equal(t, "Taxi", e.Predicted.Subcategory)
+				assert.Empty(t, e.Predicted.Type)
 				assert.NotEmpty(t, e.ID)
 			},
 		},
 		{
+			name:       "good row with type populates Predicted.Type",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nAluguel;05/01;2500,00;Aluguel;Moradia;0.95;0;Fixas",
+			wantCount:  1,
+			assertions: func(t *testing.T, entries []QueueEntry) {
+				e := entries[0]
+				assert.Equal(t, "Fixas", e.Predicted.Type)
+				assert.Equal(t, "Moradia", e.Predicted.Category)
+				assert.Equal(t, "Aluguel", e.Predicted.Subcategory)
+			},
+		},
+		{
 			name:      "blank lines skipped",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted\n\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;1\n\nUber Centro 2;16/05;40,00;Taxi;Transporte;0.90;0\n\nUber Centro 3;17/05;45,00;Taxi;Transporte;0.85;1",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\n\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;1;\n\nUber Centro 2;16/05;40,00;Taxi;Transporte;0.90;0;\n\nUber Centro 3;17/05;45,00;Taxi;Transporte;0.85;1;",
 			wantCount: 3,
 		},
 		{
 			name:       "installment value parsed",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted\nTest Item;15/05;250,00/2;Taxi;Transporte;0.95;1",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;250,00/2;Taxi;Transporte;0.95;1;",
 			wantCount:  1,
 			assertions: func(t *testing.T, entries []QueueEntry) {
 				assert.Equal(t, "250,00/2", entries[0].RawValue)
@@ -54,25 +66,25 @@ func TestReadQueue(t *testing.T) {
 		},
 		{
 			name:          "malformed confidence value",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted\nTest Item;15/05;35,50;Taxi;Transporte;abc;1",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte;abc;1;",
 			wantError:     true,
 			errorContains: "confidence",
 		},
 		{
 			name:          "bad auto_inserted",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted\nTest Item;15/05;35,50;Taxi;Transporte;0.95;X",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte;0.95;X;",
 			wantError:     true,
 			errorContains: "auto_inserted",
 		},
 		{
 			name:          "wrong field count",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted\nTest Item;15/05;35,50;Taxi;Transporte",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte",
 			wantError:     true,
-			errorContains: "expected 7 fields",
+			errorContains: "expected 8 fields",
 		},
 		{
 			name:       "header only returns empty slice",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type",
 			wantCount:  0,
 		},
 		{

@@ -125,7 +125,7 @@ Local-first review surface — supersedes the Lovable cloud plan
   review session. Exercises `insertNewRows` (workbook insertion path), which has zero
   acceptance test coverage — the fixture only covers already-inserted and pending entries.
   Index-aliasing bug and dry-run leak already fixed (see commit after Phase 3).
-- [ ] **RUI-4** Emit the full 3-level path (sheet,category,subcategory) into the
+- [x] **RUI-4** Emit the full 3-level path (sheet,category,subcategory) into the
   classified CSV. When done, `review`'s `ReadQueue` populates `Predicted.Sheet` and the
   UI pre-fill becomes unambiguous (the `Predicted` struct already has the optional field).
 
@@ -150,6 +150,8 @@ Local-first review surface — supersedes the Lovable cloud plan
 - [ ] (T-03) **Year-rollover workflow** — generate year N+1 skeleton from taxonomy alone; decide `apply`/`add` fate against generated workbooks
 - [x] (T-04) **Full-path entry routing** — route logged entries by full sheet/category/subcategory path instead of bare name; changes the entry contract (`expenses_log.jsonl` carries only a bare `subcategory`), the classifier that emits entries, `scanEntries`, and entry-fed fixtures. Advisor-reviewed. Removes the interim ambiguity guard. See `[ref:taxonomy-identity-key]` §6 / `.claude/plans/taxonomy-identity-key.md`.
 - [x] (T-05) **Persist expense type end-to-end (Plan A)** — add `type,omitempty` to feedback.Entry + ExpenseEntry, rename ExpenseSheet→ExpenseType, migrate JSON keys (`sheet`→`type`, `sheets`→`types`) with legacy-read fallback, partial backfill from re-exported reviewed.json. Plan: `.claude/plans/persist-expense-type.md`. Hard prereq for T-04. Advisor-reviewed; not yet implemented.
-- [ ] (T-06) **Bf real-data verification** — execute `.claude/plans/bf-real-data-verification-runbook.md`: export reviewed.json → backfill-type.py → generate-workbook against real config/taxonomy.json; confirm typed entries route (no `not in taxonomy` warnings on typed lines), ambiguous leaves land in the right sheet. The only end-to-end proof of the Plan A→B chain on real data.
+- [x] (T-06) **Bf real-data verification** — execute `.claude/plans/bf-real-data-verification-runbook.md`: export reviewed.json → backfill-type.py → generate-workbook against real config/taxonomy.json; confirm typed entries route (no `not in taxonomy` warnings on typed lines), ambiguous leaves land in the right sheet. The only end-to-end proof of the Plan A→B chain on real data.
 - [ ] (T-08) **Generate full-suite acceptance flake (low priority)** — `TestGenerateWorkbook_Skeleton` fails under full-suite timeout (partial actual-dump → nil panic) but passes in isolation. Confirmed benign timeout artifact, not a Phase-R/Type regression. Investigate `test/verify` parallel-safety / temp-dir isolation only if it recurs when run alone.
+- [ ] (T-09) **Retire bare-name routing fallback** — now that the classifier emits type (plan 5.R4, done), shrink/retire the transitional bare-name `byName` fallback in `internal/taxonomy` `scanEntries` as typed coverage approaches 100%; gate retirement on the stderr type-less fallback count reaching ~0. Advisor-flagged risk: deleting it prematurely drops the auto-inserted majority.
+- [ ] (T-10) **Disambiguate the `5.R4` id collision** — `.claude/tasks.md` `5.R4` = "Historical workbook extraction (pre-2024)", but `.claude/plans/5r4-classifier-emits-type.md` + current-status/reading-guide use `5.R4` for "classifier emits type into the log" (done this session). Rename one id so the boards agree.
 <!-- /ref:deferred -->

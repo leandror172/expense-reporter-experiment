@@ -1,0 +1,3 @@
+{"id":"diarista-1","item":"Diarista Letícia","date":"08/03","value":180,"subcategory":"Diarista","category":"Habitação","type":"Fixas","timestamp":"2026-06-20T00:00:00Z"}
+{"id":"uber-1","item":"Uber Centro","date":"20/03","value":38.5,"subcategory":"Uber/Taxi","category":"Transporte","type":"Variáveis","timestamp":"2026-06-20T00:00:00Z"}
+{"id":"dentista-ambiguous-1","item":"Dentista Dra Ana","date":"12/03","value":250,"subcategory":"Dentista","category":"Saúde","type":"Variáveis","timestamp":"2026-06-20T00:00:00Z"}
