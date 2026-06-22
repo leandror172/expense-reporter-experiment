@@ -1,38 +1,42 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-20 — Session 35: "5.R4 historical workbook extraction → corpus augmentation (694→1788) + per-year expense logs; PR #33"
-**Current Layer:** "Layer 5 — Expense Classifier (5.R4 historical data expansion)"
+**Current Session:** 2026-06-22 — Session 36: WS-0 diff + type backfill + WS-0b income extraction; retire-insertion plan
+**Current Layer:** Layer 5 — retire-insertion architecture (logs = single source of truth)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-20 - Session 35: "5.R4 historical workbook extraction → corpus augmentation (694→1788) + per-year expense logs; PR #33"
+## 2026-06-22 - Session 36: WS-0 diff + type backfill + WS-0b income extraction; retire-insertion plan
 
 ### Context
 
-Resumed after PR #32 (type-routing). User directed this session at extracting data from the old workbooks to feed the database under the new taxonomy — task 5.R4 (historical workbook extraction), done as a one-off, not a Go feature.
+Resumed on clean master with PRs #32/#33 already merged. User steered toward a major architectural pivot: retire in-place workbook insertion, keep only generation (logs become the single source of truth). Session was planning-heavy plus a corpus/data cleanup pass.
 
 ### What Was Done
 
-- **5.R4 historical extraction (one-off Python, `.claude/scratch/extract_old_workbooks.py`):** header-driven extractor (handles both the standard 2023/24/25 layout and the divergent 2022 layout) lifted clean `{item,date,value,type,category,subcategory}` records from the 2022/2023/2024/2025 old workbooks at `~/workspaces/expenses/old/`. Outputs (outside repo, real values): `extracted-*` (faithful) + `normalized-*` (alias-remapped) + `partial-*` (value-only). 2022=139, 2023=868, 2024=340, 2025=397 full (+80 value-only 2025 Fixas).
-- **Investigation findings:** old-workbook labels match the new taxonomy ~98.8%; only 4 drifted tuples → alias map (Gás→Habitação, Produtos→Produtos de casa, Manutenção carro→Extras/.../Carro, Imobiliária→Adicionais/Outros/Diversos). Date rule: band column = authoritative month, source file = authoritative year, cell = day only (kills Excel auto-year ±1yr artifact).
-- **Dedup (`dedup_corpus.py`):** day-strict key (NFC-lower item, value, y, m, d) merged extraction with the 694-entry corpus → **merged-deduped.jsonl = 1808** (1797 typed). Corpus 586/694 covered by extraction; 108 net-new (75 user_corrections).
-- **Training corpus augmented (`build_corpus.py`):** `training_data_complete.json` rebuilt 694→**1788** (dropped 9 no-date + 11 dash-placeholder junk), 2022–2025, 15 cats / 81 subs. Pristine 694 backed up `.bak-20260620-134514`.
-- **Per-year expense logs (`build_logs.py`):** `expenses_log-{2022,2023,2024}.jsonl` (138/853/349) + 2025 merged into base `expenses_log.jsonl` (355+378=733, deduped by GenerateID; backup `.bak-20260620-134855`). All three route through `generate-workbook --year N` (exit 0, real xlsx).
-- **PR #33 opened** (`chore/extraction-gitignore-memory` → master): `.gitignore` widened for per-year logs + personal-data backups (`*.bak-*`); stale per-folder memories (feedback/taxonomy/classifier) corrected.
+- Committed 5.R4 extraction scripts as tooling history; externalized the taxonomy alias map to a gitignored `data/classification/extraction-aliases.json` (loaded via relative path).
+- Authored + committed the **retire-insertion-keep-generation plan** (`.claude/plans/retire-insertion-keep-generation.md`): logs = source of truth, generate = only writer; workstreams WS-0…WS-E. Advisor-reviewed.
+- Generated workbooks for all years (2022–2025) from the logs into `expense-reporter/generated-workbooks/` (gitignored *.xlsx).
+- Backfilled `type` onto 21 type-less log entries (18 auto via taxonomy/typed-twins + 3 user-decided: both ração=Variáveis, Olavo gás→Habitação/Variáveis); fixed taxonomy `Fixas/Pet`→`Pets`. All 4 workbooks now regenerate with **zero skips/fallbacks**.
+- **WS-0 diff** (sonnet subagent, verified against project decisions): Referência omission + col-C month start are BY DESIGN, not gaps; **income is the sole real gap** (data absent + revenue taxonomy too coarse). Premise validated for expenses.
+- **WS-0b income extraction** (sonnet subagent): recovered 179 historical income records (2023:78, 2024:101; 2022 has no Receitas sheet; 2025 empty) → `~/workspaces/expenses/old/extracted/income_log.jsonl` (outside repo). Produced `extract_income.py` + gitignored `taxonomy-revenue-proposal.json` (5-block payslip taxonomy).
+- gitignore hardening: global `*.bak-*` (was leaking taxonomy/log backups), `.~lock.*#`, and the revenue proposal.
 
 ### Decisions Made
 
-- Destination = entries-log JSONL (user choice); year scope 2022–2025; drift handled by alias-table, taxonomy.json left canonical.
-- expenses_log stays year-implicit (`parseDate` requires exactly `DD/MM`) → split into per-year files rather than DD/MM/YYYY, which would break routing.
-- Dropped dash-placeholder items from training corpus only (noise), kept them in the financial logs (real money).
+- Currency formatting needs NO change — generator already writes numeric values with `R$ #,##0.00` cell format (`styles.go:51`); the WS-0 "bare string" finding was a dump-serialization artifact (it's the real workbook that stores currency as strings).
+- Income (WS-0b) extracted via subagent from `~/workspaces/expenses/old/`; taxonomy proposal is NOT auto-merged — left for user review.
+- Commits this session went direct to master (chore pattern) except income tooling, which is on branch `chore/income-extraction-tooling` (committed, NOT pushed, no PR yet).
 
 ### Next
 
-- Merge PR #32 (type-routing) then PR #33 (gitignore + memory).
-- Then: year-rollover (T-03); year adaptation (T-11) to collapse per-year logs; retire bare-name fallback (T-09, now gated on giving income its own `incomePath` route, not the classifier); 5.R4 id collision (T-10); TF-IDF (5.R1).
+- **Answer 3 deferred income questions** (start here): (1) merge `taxonomy-revenue-proposal.json` into `config/taxonomy.json` revenue side; (2) sign convention for deductions (INSS/IRRF stored negative in source); (3) accept that 2022 income is unrecoverable.
+- Then **WS-A / T-11** (multi-year log): `parseDate` accept `DD/MM/YYYY`, per-entry year, merge 4 per-year logs into one, generate filters by year. Prereq for the bigger pivot.
+- Then WS-C (income routing in generator — doesn't exist yet; the 179 income entries are forward-compatible until it lands), then WS-B/WS-D/WS-E.
+- Push `chore/income-extraction-tooling` / open PR when ready.
 
 ### Gotchas
 
-- The feedback/taxonomy memories claimed type emission was "apply-path only / classifier can't emit type" — stale since 5.R4 landed in PR #32. Corrected this session.
-- `*.bak` in .gitignore does NOT match timestamped `.bak-YYYYMMDD…` suffixes — the training-corpus and log backups (real expense data) were unignored until widened to `*.bak-*`.
-- 2022 workbook only holds Nov–Dec (tracking started late 2022); 2022 Fixas sheet is genuinely empty.
+- **Memory audit (read THIS session — repo-root `.memories/`):** `QUICK.md` status block is stale — still says "Session 33", lists PR #32 as the open next step; should be updated to reflect PRs #32/#33 MERGED, 5.R4 extraction + income extraction done, type backfill (21→0 type-less), and the retire-insertion plan. `KNOWLEDGE.md` "Architecture — Pipeline Layers" still lists step 5 *Insert* as core — flag as PENDING-OBSOLETE once the retire-insertion pivot lands (insertion path to be deleted). Both otherwise accurate.
+- **Memory candidates possibly outdated (NOT read this session — verify before trusting):** `internal/taxonomy/.memories/QUICK.md` and `internal/feedback/.memories/QUICK.md` likely still frame the bare-name fallback / type-emission as live gaps — this session showed the fallback only carried 21 legacy entries, now backfilled to 0 typed-coverage. `project_workbook_extraction_5r4` memory should get an income-extraction addendum (Receitas was excluded from 5.R4, now covered by WS-0b). No memory yet captures the "logs = single source of truth" architecture — add a project memory pointing at the plan doc.
+- The `*.bak` gitignore rule does NOT match timestamped `.bak-YYYYMMDD-…`; fixed with global `*.bak-*` this session (recurring trap).
+- One log entry had a malformed date `60/01` (user fixed it manually mid-session); all dates now valid.
