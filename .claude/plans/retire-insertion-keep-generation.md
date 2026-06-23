@@ -77,10 +77,12 @@ Inputs: 4 per-year generated workbooks vs real `Planilha_Normalized_Final.xlsx` 
      **~25-line payslip taxonomy** (Salário + 14 sub-lines, 13°, Férias, Presente, Outros) → the
      **revenue taxonomy must be enriched** before generation can even hold that detail. *(NEW —
      fold into WS-0b/WS-C.)*
-- ✅ **Currency formatting (DECIDED, user, session 36):** generated value cells should hold a **bare
-  number**; the **cell number-format** carries `R$ …` (display only). Today generation writes the
-  `"R$ 200.00"` string into the value — change it to a numeric value + currency cell format. Small
-  generator change (`internal/generate` styles/number-format).
+- ✅ **Currency formatting — NO CHANGE NEEDED (corrected session 37, verified in code).** The
+  earlier "generation writes a `R$ 200.00` string → change to numeric + format" finding was a
+  **dump-serialization artifact** (it is the *real* workbook that stores currency as strings). The
+  generator ALREADY writes a numeric value (`data_sheet.go:108` sets `entry.Value` float) with the
+  `R$ #,##0.00` cell format (`styles.go:53` `fmtCurrency`, applied via `st.Currency`). No generator
+  work here; drop this from WS-C scope.
 - Row-count differences are the intentional derived layout (1 row/subcat) + half-year real dump —
   not data loss.
 - Expenses reproduce faithfully → **premise validated for expenses; income is the one blocker.**
@@ -153,6 +155,23 @@ year is a *filter key*, not a layout dimension.
 3. Throwaway merge script → per-year logs → one `DD/MM/YYYY` log; byte-identical gate.
 4. Acceptance: multi-year-log-filtered-to-year == single-year fixture.
 
+**WS-A — ✅ DONE (session 37, 2026-06-23, branch `chore/income-extraction-tooling`, commits
+`0c011e1` + `95dbabb`).** All 4 tasks landed and verified:
+- `parseDate(dateStr) (day, month, year, err)` accepts `DD/MM` (year 0) + `DD/MM/YYYY` (year ≥ 1000);
+  `LoadTaxonomy`/`loadEntries`/`scanEntries` take `targetYear`; filter = keep iff
+  `entryYear==0 || targetYear==0 || entryYear==targetYear`. `generate.go` passes `opts.Year`;
+  `auto.go` skeleton path passes `0`. (NOTE: filter `continue` sits *after* `routeEntry`, so an
+  out-of-year **type-less** entry can still bump the stderr fallback count before being skipped —
+  cosmetic only, but relevant to WS-D's "fallback count ~0" gate.)
+- Acceptance `TestGenerateWorkbook_MultiYearLogFiltersToYear` (reuses `generate-basic`
+  `expected-dump-data` as oracle; fixture `entries-multiyear.jsonl` = 2026 entries + 2025 noise).
+  Unit `TestParseDate_MultiYear`.
+- Merge script `.claude/scratch/merge_year_logs.py` → gitignored `expenses_log-allyears.jsonl`
+  (2073 records). **Byte-identical gate PASSED** all 4 years (per-year `--year N` == merged `--year N`
+  dump, excl. manifest `source`). The per-year split CAN now retire — **but the canonical
+  `expenses_log.jsonl` was NOT clobbered**; promoting the merged log to canonical + deleting the
+  per-year files is a deferred workflow decision (user's call).
+
 ### WS-B — Convert commands to log-append
 Each command stops calling `internal/workflow`/`internal/excel` and instead appends to
 `expenses_log.jsonl` (+ `classifications.jsonl`) using the same writer `apply` uses.
@@ -168,17 +187,46 @@ Each command stops calling `internal/workflow`/`internal/excel` and instead appe
   (the typed path) so it routes via `byPath` — this is what lets WS-D retire the bare-name fallback.
 
 ### WS-C — Income/revenue route (combine)
-Today `LoadTaxonomy` builds `revenueBlocks` structurally but routes **no entries** into them.
+Today `LoadTaxonomy` builds `revenueBlocks` structurally but routes **no entries** into them
+(`routeEntry` only ever builds `expensePath`). Income *target* scaffolding exists (income blocks in
+`byPath` via `incomePath`, `subcatTarget{kind:"income"}`, `attachEntry` income branch) — WS-C wires
+the producer/router side and lifts the model to 3 levels.
 
-- Define an **income entry** in the log (its own `type` = the revenue/`Receitas` root, or a
-  dedicated income marker) with a full **income path**.
-- Add an income routing step parallel to `routeEntry` that places logged income amounts into the
-  matching `RevenueBlock` by income full-path (`incomePath`).
-- Structure stays taxonomy-driven (revenue blocks already come from taxonomy); only the **amounts**
-  come from logged income entries.
-- Provide an input path for income (e.g. `add --income` or a small `income` subcommand appending an
-  income-typed log entry) — exact CLI surface TBD in execution.
-- **Tests:** acceptance — logged income entries land in the right Receitas block/month.
+#### WS-C decisions LOCKED (session 37)
+- **3-level symmetric income model** (from income decisions §): `Receitas → block (Salário/13°/
+  Férias/Presente/Outros) → subline`. Leaf = subline.
+- **Income input → SEPARATE `--income-entries` flag** (NOT the unified `--entries`). Consume the
+  extractor's `income_log.jsonl` AS-IS (schema `income_marker`/`income_category`/`income_label`/
+  `item_note`/`date`(`DD/MM/YYYY`)/`value`/`year`). Keeps expense vs income schemas clean; unify
+  later if ever desired. `income_category`→Block, `income_label`→subline Label, `item_note`→Entry.Item.
+- **Signed values** (decided): deduction lines stay negative; generator just sums. No sign handling
+  in the router.
+- **Currency formatting → NO-OP** (see WS-0 RESULTS correction; generator already numeric + format).
+- **2022 income** absent → its Receitas stays an empty shell.
+
+#### WS-C task breakdown (NOT STARTED — for next session, subagent-driven)
+1. **Model** (`internal/taxonomy/types.go`): `RevenueBlock` gains a middle level →
+   `{Category:"Receitas", Block:"Salário", Label:"INSS"(leaf), Months}`. `incomePath` → 3 segments
+   (`income\x00receitas\x00salário\x00inss`).
+2. **Loader** (`loader.go`): `IncomeCategories` raw struct `Blocks []string` → block→sublines;
+   `incomeCatsToRevenueBlocks` flattens to leaf `RevenueBlock`s; `buildSubcategoryMap` registers
+   3-segment `incomePath` keys.
+3. **Router** (`scanEntries`/`routeEntry`): a separate income-entry scan (new `--income-entries`
+   file) that reads the income schema, NFC-normalizes, builds `incomePath(category, block, label)`,
+   and `attachEntry`s the signed value to the matching leaf block's month. parseDate already accepts
+   the `DD/MM/YYYY` income dates (WS-A).
+4. **Generator** (`internal/generate/revenue_sheet.go`): 3-level grouping (Category → Block → subline
+   rows) replacing today's 2-level (Category → block-row). Reuses `writeDataBand`.
+5. **Taxonomy data**: merge `.claude/scratch/taxonomy-revenue-proposal.json` into
+   `config/taxonomy.json` `incomeCategories` (gitignored; structure only).
+6. **CLI / plumbing**: `generate-workbook --income-entries <path>`; thread through `Options`.
+7. **Acceptance**: income fixture + a NEWLY FROZEN data-bearing income oracle dump (current income
+   dumps are empty shells) — logged income lands in the right Receitas block/month, signed sum
+   correct. This freeze is the fiddly part; budget for it.
+
+**Size note:** bigger than WS-A — model change ripples loader→router→generator rendering + a new
+frozen oracle. Deferred from session 37 (usage budget). The current `revenue_sheet.go` is 2-level
+(`RevenueBlock{Category, Label, Months}`, grouped by Category); the 3-level lift is the core risk.
 
 ### WS-D — T-09: retire bare-name fallback
 Once WS-B guarantees typed entries and WS-C gives income its own route, the transitional bare-name
