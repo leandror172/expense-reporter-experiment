@@ -1,42 +1,39 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-22 — Session 36: WS-0 diff + type backfill + WS-0b income extraction; retire-insertion plan
-**Current Layer:** Layer 5 — retire-insertion architecture (logs = single source of truth)
+**Current Session:** 2026-06-23 — Session 37: WS-A multi-year log (DONE) + income decisions + WS-C plan
+**Current Layer:** Retire-insertion pivot (logs = single source of truth; generation-only)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-22 - Session 36: WS-0 diff + type backfill + WS-0b income extraction; retire-insertion plan
+## 2026-06-23 - Session 37: WS-A multi-year log (DONE) + income decisions + WS-C plan
 
 ### Context
 
-Resumed on clean master with PRs #32/#33 already merged. User steered toward a major architectural pivot: retire in-place workbook insertion, keep only generation (logs become the single source of truth). Session was planning-heavy plus a corpus/data cleanup pass.
+Continued the retire-insertion pivot from session 36. Goal this session: implement WS-A (multi-year log), settle the deferred income decisions, and plan WS-C — pacing against the session usage limit rather than context.
 
 ### What Was Done
 
-- Committed 5.R4 extraction scripts as tooling history; externalized the taxonomy alias map to a gitignored `data/classification/extraction-aliases.json` (loaded via relative path).
-- Authored + committed the **retire-insertion-keep-generation plan** (`.claude/plans/retire-insertion-keep-generation.md`): logs = source of truth, generate = only writer; workstreams WS-0…WS-E. Advisor-reviewed.
-- Generated workbooks for all years (2022–2025) from the logs into `expense-reporter/generated-workbooks/` (gitignored *.xlsx).
-- Backfilled `type` onto 21 type-less log entries (18 auto via taxonomy/typed-twins + 3 user-decided: both ração=Variáveis, Olavo gás→Habitação/Variáveis); fixed taxonomy `Fixas/Pet`→`Pets`. All 4 workbooks now regenerate with **zero skips/fallbacks**.
-- **WS-0 diff** (sonnet subagent, verified against project decisions): Referência omission + col-C month start are BY DESIGN, not gaps; **income is the sole real gap** (data absent + revenue taxonomy too coarse). Premise validated for expenses.
-- **WS-0b income extraction** (sonnet subagent): recovered 179 historical income records (2023:78, 2024:101; 2022 has no Receitas sheet; 2025 empty) → `~/workspaces/expenses/old/extracted/income_log.jsonl` (outside repo). Produced `extract_income.py` + gitignored `taxonomy-revenue-proposal.json` (5-block payslip taxonomy).
-- gitignore hardening: global `*.bak-*` (was leaking taxonomy/log backups), `.~lock.*#`, and the revenue proposal.
+- **WS-A / T-11 — DONE** (branch `chore/income-extraction-tooling`, commits `0c011e1`, `95dbabb`): `parseDate` now accepts `DD/MM` and `DD/MM/YYYY` → `(day, month, year, err)` with `year==0` sentinel; `LoadTaxonomy`/`scanEntries` take `targetYear` and filter (`keep iff entryYear==0 || targetYear==0 || entryYear==targetYear`); `generate.go` passes `opts.Year`, `auto.go` skeleton passes 0.
+- Acceptance-first: wrote `TestGenerateWorkbook_MultiYearLogFiltersToYear` (RED-first, reuses `generate-basic` `expected-dump-data` as oracle; fixture `entries-multiyear.jsonl` = 2026 entries + 2025 noise) + unit `TestParseDate_MultiYear`. Both green; full unit suite (19 pkgs) + generate acceptance green.
+- Throwaway merge script `.claude/scratch/merge_year_logs.py` → gitignored `expenses_log-allyears.jsonl` (2073 records, `DD/MM/YYYY`). Byte-identical gate PASSED all 4 years (per-year `--year N` dump == merged `--year N` dump, excl. manifest source).
+- Plan doc + repo-root/taxonomy QUICK.md synced to reality (commit `docs(memory)` + `docs(plan)`).
+- Phase 2 (WS-A.1/.2) ran via a Sonnet subagent; I independently re-verified its tree (build/vet/tests) before trusting it.
 
 ### Decisions Made
 
-- Currency formatting needs NO change — generator already writes numeric values with `R$ #,##0.00` cell format (`styles.go:51`); the WS-0 "bare string" finding was a dump-serialization artifact (it's the real workbook that stores currency as strings).
-- Income (WS-0b) extracted via subagent from `~/workspaces/expenses/old/`; taxonomy proposal is NOT auto-merged — left for user review.
-- Commits this session went direct to master (chore pattern) except income tooling, which is on branch `chore/income-extraction-tooling` (committed, NOT pushed, no PR yet).
+- **Income decisions LOCKED:** (1) 3-level symmetric income model (`Receitas → block → subline`); (2) deduction sign kept signed (negative deductions, net = sum); (3) 2022 income unrecoverable (empty shell).
+- **WS-C decisions LOCKED:** income reaches the generator via a SEPARATE `--income-entries` flag consuming the extractor's `income_log.jsonl` as-is (not the unified `--entries`).
+- **Currency formatting is a NO-OP** — corrected the stale WS-0 plan finding: the generator already writes a numeric value (`data_sheet.go:108`) with `R$ #,##0.00` cell format (`styles.go:53`); the "bare string" was a dump artifact of the REAL workbook. Dropped from WS-C scope.
+- WS-C deferred from this session for usage budget (it is bigger than WS-A — model→loader→router→generator + a new frozen income oracle).
 
 ### Next
 
-- **Answer 3 deferred income questions** (start here): (1) merge `taxonomy-revenue-proposal.json` into `config/taxonomy.json` revenue side; (2) sign convention for deductions (INSS/IRRF stored negative in source); (3) accept that 2022 income is unrecoverable.
-- Then **WS-A / T-11** (multi-year log): `parseDate` accept `DD/MM/YYYY`, per-entry year, merge 4 per-year logs into one, generate filters by year. Prereq for the bigger pivot.
-- Then WS-C (income routing in generator — doesn't exist yet; the 179 income entries are forward-compatible until it lands), then WS-B/WS-D/WS-E.
-- Push `chore/income-extraction-tooling` / open PR when ready.
+- **WS-C (income/revenue route) — START HERE.** Subagent-driven. Full task breakdown in `.claude/plans/retire-insertion-keep-generation.md` "WS-C task breakdown": model 3-level, loader, separate income scan/router, `revenue_sheet.go` 3-level render, merge revenue taxonomy proposal, `--income-entries` CLI, new frozen income oracle.
+- Then WS-B (commands → log-append), WS-D (retire bare-name fallback), WS-E (delete dead code).
+- Decide whether to promote merged `expenses_log-allyears.jsonl` to canonical + retire the per-year split (deferred; user's call).
 
 ### Gotchas
 
-- **Memory audit (read THIS session — repo-root `.memories/`):** `QUICK.md` status block is stale — still says "Session 33", lists PR #32 as the open next step; should be updated to reflect PRs #32/#33 MERGED, 5.R4 extraction + income extraction done, type backfill (21→0 type-less), and the retire-insertion plan. `KNOWLEDGE.md` "Architecture — Pipeline Layers" still lists step 5 *Insert* as core — flag as PENDING-OBSOLETE once the retire-insertion pivot lands (insertion path to be deleted). Both otherwise accurate.
-- **Memory candidates possibly outdated (NOT read this session — verify before trusting):** `internal/taxonomy/.memories/QUICK.md` and `internal/feedback/.memories/QUICK.md` likely still frame the bare-name fallback / type-emission as live gaps — this session showed the fallback only carried 21 legacy entries, now backfilled to 0 typed-coverage. `project_workbook_extraction_5r4` memory should get an income-extraction addendum (Receitas was excluded from 5.R4, now covered by WS-0b). No memory yet captures the "logs = single source of truth" architecture — add a project memory pointing at the plan doc.
-- The `*.bak` gitignore rule does NOT match timestamped `.bak-YYYYMMDD-…`; fixed with global `*.bak-*` this session (recurring trap).
-- One log entry had a malformed date `60/01` (user fixed it manually mid-session); all dates now valid.
+- WS-A year-filter `continue` sits AFTER `routeEntry`, so an out-of-year type-less entry still bumps the stderr fallback count before being skipped (cosmetic, but relevant to T-09's "fallback count ~0" gate).
+- The Sonnet subagent recorded 0/0/0 for its local-model calls but those were cold-start TIMEOUTS, not rejections — per conventions it should have `warm_model`+retried rather than escalating to hand-writing. Future subagents doing codegen should warm the model themselves first.
+- `generate_code` `output_file` with a relative path resolves against the LLM repo's REPO_ROOT, not this repo — it wrote the merge script to `/mnt/i/workspaces/llm/...`; use absolute paths or relocate.
