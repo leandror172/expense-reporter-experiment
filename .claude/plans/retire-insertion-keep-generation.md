@@ -85,6 +85,26 @@ Inputs: 4 per-year generated workbooks vs real `Planilha_Normalized_Final.xlsx` 
   not data loss.
 - Expenses reproduce faithfully → **premise validated for expenses; income is the one blocker.**
 
+#### Income decisions RESOLVED (session 37, 2026-06-23)
+The three deferred income questions are now locked:
+1. **Income taxonomy shape → 3-level symmetric.** `Receitas → block (Salário/13°/Férias/
+   Presente/Outros) → sublines`, mirroring expense `type→category→subcategory`. The extracted
+   `income_log.jsonl` already carries `income_category`+`income_label` (3-level). Requires:
+   `loader.go` income model change (`Blocks []string` → block→sublines), `incomePath` gains a
+   level, `RevenueBlock` model, and the `incomeCategories` shape in `config/taxonomy.json` (merge
+   the proposal). This is the symmetry that lets WS-D collapse income/expense routing later.
+2. **Deduction sign → keep signed.** Gross lines positive, deductions (INSS/IRRF/contributions)
+   negative; net = sum. Matches the extractor's output and the source workbook. Generator just sums.
+3. **2022 income → accept as unrecoverable.** 2022 old workbook has no Receitas sheet; generated
+   2022 Receitas stays an empty shell. 2022 *expenses* unaffected.
+
+> **Verification (session 37):** `parseDate` (loader.go:302) still rejects non-`DD/MM` → WS-A
+> genuinely pending. Income *target* scaffolding exists (income blocks in `byPath` via `incomePath`,
+> `subcatTarget{kind:"income"}`, `attachEntry` income branch) BUT `routeEntry` only ever builds
+> `expensePath` → no log line can reach an income block today. WS-C = wire the router + recognize
+> income entries (`income_marker`/`income_category`/`income_label` field names differ from
+> `type/category/subcategory` — scanEntries must learn the income entry variant).
+
 ### WS-0b — Historical income extraction (5.R4-for-Receitas)
 Parallel to 5.R4 but for the **Receitas** sheet across the old workbooks → income log entries.
 Confirmed required by WS-0 (income wholly absent). **Method (user, session 36):**
@@ -107,6 +127,31 @@ per-year split (`expenses_log-{2022,2023,2024}.jsonl`) created in 5.R4.
   oracle dumps.
 - **Tests:** unit on `parseDate` (both formats, bad input); acceptance — a single multi-year log
   produces the same dumps as the per-year run.
+
+#### WS-A execution decisions LOCKED (session 37, 2026-06-23)
+Grounded in code: `Subcat.Months` is `[12][]Entry` (month-indexed, **no year axis**);
+`data_sheet.go:106` stamps every retained entry with package `dataYear`. So "multi-year log"
+means **one merged log → generate FILTERS to `--year`**, not a multi-year workbook. Per-entry
+year is a *filter key*, not a layout dimension.
+- **EQ-A2 → (a):** add a `year int` param to `LoadTaxonomy`/`scanEntries`; filter in the scan
+  (`keep iff entryYear==0 || entryYear==targetYear`). Downstream `dataYear` stamping unchanged.
+- **EQ-A4 → throwaway:** merge script lives in `.claude/scratch/` (5.R4 precedent), runs once over
+  gitignored personal logs; **byte-identical oracle-dump gate** vs pre-merge per-year runs.
+- **Invariant (EQ-A3 dup trap):** the merge MUST rewrite every line to `DD/MM/YYYY` (filename =
+  year authority) so the merged log has **zero** year-0 lines. The `--year` fallback exists only
+  for un-migrated single-year logs (all year-0 → all kept → behaves as today).
+- **`parseDate` (EQ-A1):** accept `DD/MM` and `DD/MM/YYYY`; return `(day, month, year, err)` with
+  `year==0` sentinel. **Shared with income** — `income_log.jsonl` is already `DD/MM/YYYY`, so this
+  is also a hard prereq for WS-C.
+- **Acceptance (EQ-A5):** a multi-year fixture log generated with `--year N` dumps identically to
+  an N-only fixture.
+
+**WS-A task breakdown:**
+1. `parseDate` → both formats + year sentinel; unit tests (DD/MM→0, DD/MM/YYYY→year, malformed).
+2. `LoadTaxonomy`/`scanEntries` → target-year param + filter; update the one non-test caller
+   (`generate.go:47`) to pass `opts.Year`.
+3. Throwaway merge script → per-year logs → one `DD/MM/YYYY` log; byte-identical gate.
+4. Acceptance: multi-year-log-filtered-to-year == single-year fixture.
 
 ### WS-B — Convert commands to log-append
 Each command stops calling `internal/workflow`/`internal/excel` and instead appends to

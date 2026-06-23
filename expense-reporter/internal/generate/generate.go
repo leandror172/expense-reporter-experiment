@@ -44,7 +44,7 @@ func Generate(opts Options) error {
 	dataYear = opts.Year
 	headroomRows = opts.Headroom
 
-	expenseSheets, revenueBlocks, err := taxonomy.LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath)
+	expenseSheets, revenueBlocks, err := taxonomy.LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath, opts.Year)
 	if err != nil {
 		return err
 	}

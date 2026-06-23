@@ -222,7 +222,7 @@ func loadTypeIndex(appCfg *config.Config) taxdb.TypeIndex {
 	if path == "" {
 		return taxdb.TypeIndex{}
 	}
-	expenseTypes, _, err := taxdb.LoadTaxonomy(path, "")
+	expenseTypes, _, err := taxdb.LoadTaxonomy(path, "", 0)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "⚠  taxonomy load: %v\n", err)
 		return taxdb.TypeIndex{}

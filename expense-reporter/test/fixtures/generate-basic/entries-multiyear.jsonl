@@ -1,0 +1,13 @@
+{"id":"my01","item":"Diarista Ana","date":"05/01/2026","value":160.0,"subcategory":"Diarista","category":"Habitação","timestamp":"2026-01-05T10:00:00Z"}
+{"id":"my02","item":"Aluguel","date":"10/01/2026","value":2200.0,"subcategory":"Aluguel","category":"Habitação","timestamp":"2026-01-10T10:00:00Z"}
+{"id":"my03","item":"Aluguel ajuste","date":"25/01/2026","value":150.0,"subcategory":"Aluguel","category":"Habitação","timestamp":"2026-01-25T10:00:00Z"}
+{"id":"my04","item":"Aluguel","date":"10/02/2026","value":2200.0,"subcategory":"Aluguel","category":"Habitação","timestamp":"2026-02-10T10:00:00Z"}
+{"id":"my05","item":"Netflix","date":"15/01/2026","value":55.9,"type":"Fixas","subcategory":"Netflix","category":"Lazer","timestamp":"2026-01-15T10:00:00Z"}
+{"id":"my06","item":"Metrô recarga","date":"03/01/2026","value":50.0,"type":"Variáveis","subcategory":"Metrô","category":"Transporte","timestamp":"2026-01-03T10:00:00Z"}
+{"id":"my07","item":"Metrô recarga","date":"04/02/2026","value":50.0,"subcategory":"Metrô","category":"Transporte","timestamp":"2026-02-04T10:00:00Z"}
+{"id":"my08","item":"Salário","date":"05/01/2026","value":5000.0,"subcategory":"Salário","category":"Receita","timestamp":"2026-01-05T08:00:00Z"}
+{"id":"my09","item":"Salário","date":"05/02/2026","value":5000.0,"subcategory":"Salário","category":"Receita","timestamp":"2026-02-05T08:00:00Z"}
+{"id":"my10","item":"13° primeira parcela","date":"20/01/2026","value":2500.0,"subcategory":"13°","category":"Receita","timestamp":"2026-01-20T08:00:00Z"}
+{"id":"my90","item":"Aluguel ano anterior","date":"12/03/2025","value":1999.0,"subcategory":"Aluguel","category":"Habitação","timestamp":"2025-03-12T10:00:00Z"}
+{"id":"my91","item":"Diarista ano anterior","date":"08/06/2025","value":140.0,"subcategory":"Diarista","category":"Habitação","timestamp":"2025-06-08T10:00:00Z"}
+{"id":"my92","item":"Salário ano anterior","date":"05/11/2025","value":4800.0,"subcategory":"Salário","category":"Receita","timestamp":"2025-11-05T08:00:00Z"}

@@ -21,7 +21,9 @@ func normalizeKey(s string) string {
 }
 
 // LoadTaxonomy loads taxonomy and entries from JSON files.
-func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlock, error) {
+// targetYear filters entries: only entries with a matching year (or no year, i.e. DD/MM format) are kept.
+// Pass 0 to keep all entries regardless of year (legacy single-year log behavior).
+func LoadTaxonomy(taxonomyPath, entriesPath string, targetYear int) ([]ExpenseType, []RevenueBlock, error) {
 	sheets, incomeBlocks, err := loadTaxonomyFile(taxonomyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
@@ -39,7 +41,7 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlo
 		return sheets, incomeBlocks, nil
 	}
 
-	if err := loadEntries(entriesPath, byPath, byName, ambiguous); err != nil {
+	if err := loadEntries(entriesPath, byPath, byName, ambiguous, targetYear); err != nil {
 		return nil, nil, fmt.Errorf("loading entries: %w", err)
 	}
 
@@ -117,14 +119,14 @@ func incomeCatsToRevenueBlocks(raw []struct {
 
 // loadEntries reads entries from a JSONL file and routes them using the two
 // pre-built routing maps and the ambiguity set.
-func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous map[string]bool) error {
+func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous map[string]bool, targetYear int) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("opening entries file: %w", err)
 	}
 	defer file.Close()
 
-	return scanEntries(bufio.NewScanner(file), byPath, byName, ambiguous)
+	return scanEntries(bufio.NewScanner(file), byPath, byName, ambiguous, targetYear)
 }
 
 // scanEntries reads each non-blank JSONL line, parses it, routes it to a target via
@@ -134,7 +136,7 @@ func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous 
 // this resolves ambiguous leaf names to exactly one block.
 // Tier 2 (type-less entry): fall back to the bare-name map (today's behavior), which
 // still skips genuinely-ambiguous names. Legacy/auto/batch-auto lines take this path.
-func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget, ambiguous map[string]bool) error {
+func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget, ambiguous map[string]bool, targetYear int) error {
 	fallbackCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -169,9 +171,12 @@ func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget,
 			fallbackCount++
 		}
 
-		day, month, err := parseDate(entry.Date)
+		day, month, entryYear, err := parseDate(entry.Date)
 		if err != nil {
 			return fmt.Errorf("parsing date for item %q: %w", entry.Item, err)
+		}
+		if entryYear != 0 && targetYear != 0 && entryYear != targetYear {
+			continue
 		}
 
 		subcat.attachEntry(Entry{Item: entry.Item, Day: day, Value: entry.Value}, month-1)
@@ -296,24 +301,33 @@ func incomePath(category, label string) string {
 	return "income\x00" + normalizeKey(category) + "\x00" + normalizeKey(label)
 }
 
-// parseDate converts DD/MM to day and month integers.
-func parseDate(dateStr string) (int, int, error) {
+// parseDate converts DD/MM or DD/MM/YYYY to day, month, and year integers.
+// year is 0 when no year is present in the source string (DD/MM format).
+func parseDate(dateStr string) (day, month, year int, err error) {
 	parts := strings.Split(dateStr, "/")
-	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("malformed date %q", dateStr)
+	if len(parts) != 2 && len(parts) != 3 {
+		return 0, 0, 0, fmt.Errorf("malformed date %q", dateStr)
 	}
 
 	day, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
 	month, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
 
 	if err1 != nil || day < 1 || day > 31 {
-		return 0, 0, fmt.Errorf("invalid day in date %q", dateStr)
+		return 0, 0, 0, fmt.Errorf("invalid day in date %q", dateStr)
 	}
 	if err2 != nil || month < 1 || month > 12 {
-		return 0, 0, fmt.Errorf("invalid month in date %q", dateStr)
+		return 0, 0, 0, fmt.Errorf("invalid month in date %q", dateStr)
 	}
 
-	return day, month, nil
+	if len(parts) == 3 {
+		yr, err3 := strconv.Atoi(strings.TrimSpace(parts[2]))
+		if err3 != nil || yr < 1000 {
+			return 0, 0, 0, fmt.Errorf("invalid year in date %q", dateStr)
+		}
+		return day, month, yr, nil
+	}
+
+	return day, month, 0, nil
 }
 
 // subcatTarget holds a reference to either an expense subcategory or income block.
