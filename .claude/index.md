@@ -399,4 +399,5 @@ Desktop-era planning documents — read for context, do not modify.
 | `lookup-category.py` | `.claude/tools/lookup-category.py` | Look up canonical category for one or more subcategories (`<sub> [...]` or `--list`) |
 | `backfill-type.py` | `.claude/tools/backfill-type.py` | Backfill expense type into log files from reviewed.json exports (Plan A Phase B-fill recovery) |
 | 5.R4 extraction scripts | `.claude/scratch/{extract_old_workbooks,dedup_corpus,build_corpus,build_logs}.py` | One-off (session 35): 2022–2024 workbooks → deduped corpus + per-year logs. Alias map externalized to gitignored `extraction-aliases.json`. |
+| WS-A.3 merge script | `.claude/scratch/merge_year_logs.py` | One-off (session 37): merge per-year `expenses_log-{2022,2023,2024}.jsonl` + base 2025 → one `expenses_log-allyears.jsonl`, rewriting `DD/MM`→`DD/MM/YYYY`. Output gitignored. Verified byte-identical (excl. manifest source) vs per-year `generate-workbook --year N` for all 4 years. |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |
