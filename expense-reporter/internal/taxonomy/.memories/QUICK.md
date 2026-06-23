@@ -5,10 +5,18 @@ taxonomy + JSONL entry routing. Feeds `internal/generate`.
 
 - Types (types.go): `ExpenseType` (renamed from `ExpenseSheet`, Plan A) → `Category`
   → `Subcat`; `RevenueBlock` for income; `Entry{Item,Day,Value}` is the per-month leaf.
-- Loader (loader.go): `LoadTaxonomy(taxonomyPath, entriesPath)`; reads
+- Loader (loader.go): `LoadTaxonomy(taxonomyPath, entriesPath, targetYear int)`; reads
   `config/taxonomy.json` (keys `types`→cats→subcategories; `incomeCategories`→blocks).
   (JSON key migrated `sheets`→`types` in Plan A Phase R.)
 - `entriesPath == ""` = skeleton mode (validation only, routing maps discarded).
+- **Multi-year (WS-A/T-11, session 37):** `parseDate` accepts BOTH `DD/MM` and
+  `DD/MM/YYYY`, returns `(day, month, year, err)` with `year==0` sentinel for the
+  no-year form. `scanEntries` filters by `targetYear`: keep iff
+  `entryYear==0 || targetYear==0 || entryYear==targetYear` (year-0 legacy always kept).
+  One merged multi-year log can now feed `generate --year N` directly; the 5.R4 per-year
+  split is retired-capable (merge script `.claude/scratch/merge_year_logs.py`, gate passed).
+  NOTE: the year filter `continue` is AFTER `routeEntry`, so out-of-year type-less entries
+  still bump the stderr fallback count before being skipped (cosmetic; matters to T-09 gate).
 
 **Identity = full path** (`[ref:taxonomy-identity-key]`,
 `.claude/plans/taxonomy-identity-key.md`): a subcategory is `sheet/category/sub`
@@ -40,5 +48,9 @@ type-less entries, to be retired once the classifier emits a type for every entr
 - Skeleton path builds the maps only to validate, then **discards** them — routing logic
   is exercised only by entry-fed unit tests, not skeleton generation.
 - Index into backing slices (`&sheets[i].Cats[j].Subs[k]`) — range copies lose appends.
-- Income entries have no type (type = expense-sheet name) → always route via bare-name
-  fallback on the block label.
+- Income routing is SCAFFOLDED but UNREACHED: income blocks register in `byPath` via
+  `incomePath`, but `routeEntry` only ever builds `expensePath` → no log line reaches an
+  income block today. **WS-C (planned, not started)** wires a separate income scan from a
+  new `--income-entries` input (extractor `income_log.jsonl` schema) and lifts the model to
+  3-level (`Receitas→block→subline`). See `.claude/plans/retire-insertion-keep-generation.md`
+  "WS-C task breakdown".
