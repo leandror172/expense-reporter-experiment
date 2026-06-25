@@ -1,39 +1,35 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-24 — Session 38: WS-C income route — DONE + validated on real data (incl. WS-0b month fix)
-**Current Layer:** Retire-insertion pivot — WS-C done; WS-B/D/E next
+**Current Session:** 2026-06-25 — Session 39: WS-B slices 1–2 — add + auto → log-append
+**Current Layer:** Retire Insertion (WS-B — commands → log-append)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-24 - Session 38: WS-C income route — DONE + validated on real data (incl. WS-0b month fix)
+## 2026-06-25 - Session 39: WS-B slices 1–2 — add + auto → log-append
 
 ### Context
 
-Continued the retire-insertion pivot from session 37. Plan said WS-C (income/revenue route) was next; all prerequisites (WS-0b `income_log.jsonl`, revenue taxonomy proposal) already existed. Subagent-driven, acceptance-first, local-first codegen.
+Resumed the retire-insertion pivot. WS-A/WS-C were done; this session started WS-B (convert write commands to log-append) via sonnet subagents doing Ollama-backed codegen.
 
 ### What Was Done
 
-- **WS-C income route — COMPLETE (commits `50d09f7`…`0b28ee5`), acceptance-green, validated on real data.** Acceptance-first: RED `TestGenerateWorkbook_IncomeRoute` (new `generate-income` fixture) authored before any production code.
-- 3-level income model: `RevenueBlock{Category,Block,Label,Months}` (one block == one subline leaf), 3-segment `incomePath`. Dual-format loader parses legacy flat `blocks:["Salário"]` (→ Block==Label) AND nested `blocks:[{block,sublines:[…]}]` via custom `rawIncomeBlock.UnmarshalJSON`.
-- Separate income scan (`loadIncomeEntries`/`scanIncomeEntries`) from a new `--income-entries` flag, reading the extractor `income_log.jsonl` schema (`income_category`=block, `income_label`=leaf, `item_note`=Item), routed by a block+label index, values SIGNED. Threaded through `LoadTaxonomy(...incomeEntriesPath...)` + `generate.Options`.
-- 3-level Receitas render (`buildRevenueSheet` mirrors `buildExpenseType`: Block col-A merge, subline col-B + per-leaf total) and per-Block Listas rollup (`writeRevenueBlockGroups` mirrors expense category rollup: "Total <Block>" + grand total = `sumList` of block totals). Merged nested `incomeCategories` into real `config/taxonomy.json` (gitignored).
-- Froze `generate-income` data-bearing oracle; re-froze `generate-basic` data+skeleton oracles (income summary shifted Listas). `generate-basic` deliberately kept FLAT for dual-format coverage.
-- **Real-data proof + WS-0b fix:** generating from real 2024 data exposed 175/179 income rows were dateless — `extract_income.py` `fmt_date` discarded the (always-known) band month when the source day cell was blank. Fixed (blank day → `01/MM/YYYY`) + re-extracted (0 null dates). WS-C hardened to SKIP a dateless income row with a loud stderr count instead of aborting. Real 2024 regen: exit 0, 0 income warnings, 101/101 records placed, Receitas populated.
+- **WS-B slice 1 (`add` → log-append):** new `internal/appender` package — `ExpandAndAppend` does append-time installment expansion (N dated `ExpenseEntry` lines; cross-year carries real next-year date, no `rollover.csv`); models-free, feedback-only. `add` no longer touches `internal/workflow`/`excel`. Added `pkg/utils.ParseDateFlexible`/`FormatDate`. 9 add acceptance tests green (incl. 3 formerly workbook-gated, rewired to assert log output + explicit years). Commit `d6d66c8`.
+- **WS-B slice 2 (`auto` → log-append):** `auto` HIGH-confidence path appends via `appender.ExpandAndAppend` (resolves type via `loadTypeIndex`/`resolveExpenseType`), no workbook write; now accepts installment notation. Confirmed feedback to `classifications.jsonl` preserved. 2 new acceptance tests green. `batch_auto`/`apply` untouched. Commit `597c649`.
+- Diagnosed the slice-1 subagent's "Prompt is too long" death: confirmed via its transcript it was the **context-duplication bug triggered by a 2nd advisor() call on a large (~131K→263K) context** — exactly the CLAUDE.md advisor caveat. Mitigated by capping fix-up/auto subagents' advisor budget.
 
 ### Decisions Made
 
-- Income summary rollup = **per-Block symmetric** (subline pulls under "Total <Block>"), matching the locked 3-level-symmetric decision and the expense-category structure (not flat per-subline).
-- `generate-basic` kept on the **legacy flat** income format on purpose, to retain dual-format/legacy-path test coverage (user: "keep flat, but I may want to change that later").
-- Month-loss fixed at the **WS-0b extractor** (not WS-C) — WS-C correctly can't invent a month; dateless rows skip loudly as a guardrail.
+- **Installments expand at append time** (user-locked, open Q#1): commands write N divided, dated log lines; cross-year just carries next-year's date — `rollover.csv` retired. Generate stays a dumb projection.
+- Subagent advisor budget capped (1–2 calls, before-done call skipped if context large) after the duplication-bug death — first agent's 2nd advisor call killed it mid-fix.
 
 ### Next
 
-- **WS-B** — convert commands to log-append: `add`/`auto`/`batch-auto`/`apply` stop touching the workbook, append to `expenses_log.jsonl` via the apply writer; entry contract carries the full typed path.
-- Then **WS-D** (retire bare-name fallback, gate on type-less count ~0; income now has its own `incomePath` route) and **WS-E** (delete dead insert code: `internal/workflow`, `internal/excel` write side, batch insert path).
-- Deferred: promote merged `expenses_log-allyears.jsonl` to canonical + retire per-year split (user's call).
+- **WS-B slice 3 — `batch-auto`:** drop the workbook-insert branch + `rollover.csv`; keep classified/review CSV → review → apply, expanding installments into appended lines.
+- **WS-B slice 4 — `apply`:** keep the log-writing half; delete the `excel.WriteBatchExpenses`/`AllocateEmptyRows`/`FindSubcategoryRowBatch` write half.
+- **Slice-2 loose ends (T-12):** rewire `test/auto_test.go`'s 2 workbook-gated cases (LOW-confidence path currently uncovered); rename inaccurate `auto.go:162` `✓ Inserted` message.
+- **Stale .memory to refresh next session** (recorded in plan): `internal/feedback/.memories` (add now writes expenses_log too; DD/MM/YYYY), missing `internal/appender/.memories`, repo `.memories/QUICK.md` (WS-B 1–2 done).
 
 ### Gotchas
 
-- A dump-review subagent returned a false NEEDS-FIX on the income oracle due to row-index confusion (claimed off-by-one bugs that did not exist). Direct inspection of the dump JSON overturned it — workbook dumps need careful row accounting; verify subagent dump claims against the raw JSON before acting.
-- `my-go-qcoder` was intermittently returning zero-bytes/hanging while VRAM-loaded (genuine failures, not cold-start). Fallbacks: `my-go-g3-12b` / `my-go-q25c14`, then hand-write after 2nd reject. One step landed clean on qcoder (verdict 2) once warmed.
-- Changing the income/summary render re-freezes BOTH `generate-income` AND `generate-basic`'s data+skeleton oracles (income summary shifts Listas rows/dimensions).
+- A workbook-gated acceptance test that SKIPs (no `EXPENSE_WORKBOOK_PATH`) silently validates nothing — both subagents produced deceptively-green runs this way. Always run the target tests in ISOLATION with `-v` and confirm no silent SKIPs; the full acceptance suite also hits the known ~600s T-08 timeout flake that masks signal.
+- `add`/`auto` resolve **category from the feature dict** but **type from `taxonomy.json`** — divergent categories (`Fixas – Impostos`, `Fixas – Saúde`) silently emit type-less lines (T-13; WS-D prerequisite).
