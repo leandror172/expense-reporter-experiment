@@ -89,51 +89,95 @@ func (b *summaryBuilder) bandRow(row int) {
 	b.f.SetCellStyle(summarySheetName, cell("B", row), cell(lastSummaryCol, row), b.st.IndigoBand)
 }
 
-// revenueSection: rows 6..14 — Receitas pulls + total, then Investimentos shell + total + %.
-// The section label "Receitas" (col A) merges across the whole band (incl. Investimentos).
+// revenueSection: Receitas per-Block groups (pull rows + col-B Block label + "Total <Block>"
+// row), then internal bandRow separator, Receitas grand total, then Investimentos shell +
+// total + %. Col A merges across the whole band (incl. Investimentos).
 func (b *summaryBuilder) revenueSection() {
 	b.row = 6
 	sectionFirst := b.row
 
-	firstPull, lastPull := b.writeRevenuePullRows()
+	blockTotalRows := b.writeRevenueBlockGroups()
 	b.bandRow(b.row) // internal separator
 	b.row++
-	b.writeRevenueTotalRow(firstPull, lastPull)
+	b.writeRevenueGrandTotalRow(blockTotalRows)
 	investRow := b.writeInvestmentsShellRow()
 	b.writeInvestmentsTotalRow(investRow)
 	b.writeInvestmentsPctRow()
 	sectionLast := b.row
 
 	mergeSection(b.f, b.st, b.lbl.RevenueSheet, sectionFirst, sectionLast)
-	b.row += 4 // % row consumed at sectionLast; skip blanks to row 18
+	b.row += 4 // % row consumed at sectionLast; skip blanks before next section
 }
 
-// writeRevenuePullRows emits one pull row per Receitas block and returns the
-// pull band's first and last rows.
-func (b *summaryBuilder) writeRevenuePullRows() (firstPull, lastPull int) {
-	firstPull = b.row
-	for _, blk := range b.reg.revenue.Blocks {
-		b.f.SetCellStyle(summarySheetName, cell("B", b.row), cell("B", b.row), b.st.IndigoBand)
-		b.f.SetCellValue(summarySheetName, cell("C", b.row), blk.Label)
-		tr := blk.TotalRow
-		b.monthFormulas(b.row, b.st.PullCur, func(k int) string {
-			return sheetRef(b.lbl.RevenueSheet, expenseValorCol(k), tr)
+// writeRevenueBlockGroups groups reg.revenue.Blocks by consecutive Block field and for
+// each group emits: one pull row per leaf (col C = Label; D..O = Receitas sheet ref),
+// a merged col-B Block label (IndigoLabel; skip degenerate single-row merge), and a
+// "Total <Block>" group-total row (GroupTotalLbl/GroupTotalCur). Returns the group-total
+// row numbers for use in writeRevenueGrandTotalRow.
+func (b *summaryBuilder) writeRevenueBlockGroups() []int {
+	var blockTotalRows []int
+	blocks := b.reg.revenue.Blocks
+	i := 0
+	for i < len(blocks) {
+		blockName := blocks[i].Block
+		firstPull := b.row
+
+		// Emit pull rows for every leaf in this Block group.
+		for i < len(blocks) && blocks[i].Block == blockName {
+			leaf := blocks[i]
+			b.f.SetCellStyle(summarySheetName, cell("B", b.row), cell("B", b.row), b.st.IndigoBand)
+			b.f.SetCellValue(summarySheetName, cell("C", b.row), leaf.Label)
+			tr := leaf.TotalRow
+			b.monthFormulas(b.row, b.st.PullCur, func(k int) string {
+				return sheetRef(b.lbl.RevenueSheet, expenseValorCol(k), tr)
+			})
+			b.row++
+			i++
+		}
+		lastPull := b.row - 1
+
+		// Merge col B across the pull rows and write the Block label.
+		b.mergeRevenueBand(blockName, firstPull, lastPull)
+
+		// "Total <Block>" row: sums this group's pull rows.
+		b.f.SetCellStyle(summarySheetName, cell("B", b.row), cell("C", b.row), b.st.GroupTotalLbl)
+		b.f.SetCellValue(summarySheetName, cell("B", b.row), fmt.Sprintf(b.lbl.TotalCategoryFmt, blockName))
+		b.monthFormulas(b.row, b.st.GroupTotalCur, func(k int) string {
+			c := summaryMonthCol(k)
+			return sumRange(cell(c, firstPull), cell(c, lastPull))
 		})
+		blockTotalRows = append(blockTotalRows, b.row)
 		b.row++
 	}
-	return firstPull, b.row - 1
+	return blockTotalRows
 }
 
-// writeRevenueTotalRow emits the C0C0C0 total row (C=lbl.Total; D..O = SUM of
-// pulls; B/C labels General, D..O currency) and records revenueTotalRow.
-func (b *summaryBuilder) writeRevenueTotalRow(firstPull, lastPull int) {
+// mergeRevenueBand merges col B across the pull rows of a Block group (skipping the
+// degenerate single-row merge) and writes the Block name with IndigoLabel style.
+func (b *summaryBuilder) mergeRevenueBand(blockName string, firstPull, lastPull int) {
+	if lastPull > firstPull {
+		b.f.MergeCell(summarySheetName, cell("B", firstPull), cell("B", lastPull))
+	}
+	b.f.SetCellValue(summarySheetName, cell("B", firstPull), blockName)
+	b.f.SetCellStyle(summarySheetName, cell("B", firstPull), cell("B", lastPull), b.st.IndigoLabel)
+}
+
+// writeRevenueGrandTotalRow emits the C0C0C0 Receitas grand total (C=lbl.Total; D..O =
+// sumList of per-Block group-total rows — non-contiguous, so NOT sumCellRange) and
+// records revenueTotalRow for use by balanceBlock and Investimentos %.
+func (b *summaryBuilder) writeRevenueGrandTotalRow(blockTotalRows []int) {
 	b.f.SetCellStyle(summarySheetName, cell("B", b.row), cell("C", b.row), b.st.SummaryTotalLbl)
 	b.f.SetCellValue(summarySheetName, cell("C", b.row), b.lbl.Total)
 	b.monthFormulas(b.row, b.st.SummaryTotalCur, func(k int) string {
-		return sumCellRange(summaryMonthCol(k), firstPull, lastPull)
+		c := summaryMonthCol(k)
+		terms := make([]string, len(blockTotalRows))
+		for j, tr := range blockTotalRows {
+			terms[j] = cell(c, tr)
+		}
+		return sumList(terms)
 	})
 	b.revenueTotalRow = b.row
-	b.row += 3 // total, then two blank rows (10, 11)
+	b.row += 3 // total, then two blank rows before Investimentos
 }
 
 // writeInvestmentsShellRow emits the manual-entry Investimentos row (no formulas)

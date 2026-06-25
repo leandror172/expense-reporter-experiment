@@ -1,6 +1,7 @@
 package generate
 
 import (
+	"fmt"
 	"testing"
 
 	"expense-reporter/internal/taxonomy"
@@ -264,6 +265,71 @@ func TestBuildExpenseTypeSizingAndSum(t *testing.T) {
 	layout := reg.expense["Fixas"]
 	require.NotNil(t, layout)
 	assert.Equal(t, 6, layout.Cats[0].Subs[0].TotalRow)
+}
+
+// TestBuildSummaryRevenuePerBlock verifies the per-Block grouping in the Receitas summary
+// section: pull rows, col-B Block label, "Total <Block>" group-total rows, and the grand
+// total that sums only the per-Block totals (not the individual pulls).
+func TestBuildSummaryRevenuePerBlock(t *testing.T) {
+	f, st, lbl := newTestFile(t)
+	reg := newLayoutRegistry()
+	// Two Block groups: "Salário" has two leaves; "Variável" has one.
+	blocks := []taxonomy.RevenueBlock{
+		{Category: "Receitas", Block: "Salário", Label: "Bruto", Months: [12][]taxonomy.Entry{0: {{Item: "x", Day: 1, Value: 1}}}},
+		{Category: "Receitas", Block: "Salário", Label: "INSS", Months: [12][]taxonomy.Entry{0: {{Item: "x", Day: 1, Value: 1}}}},
+		{Category: "Receitas", Block: "Variável", Label: "Comissão", Months: [12][]taxonomy.Entry{0: {{Item: "x", Day: 1, Value: 1}}}},
+	}
+	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
+	require.NoError(t, buildSummarySheet(f, st, lbl, reg))
+
+	// Revenue section starts at row 6.
+	// Row 6: pull — Bruto (col C)
+	brutoLabel, err := f.GetCellValue(summarySheetName, "C6")
+	require.NoError(t, err)
+	assert.Equal(t, "Bruto", brutoLabel, "row 6 col C should be first Salário leaf")
+
+	// Row 7: pull — INSS (col C)
+	inssLabel, err := f.GetCellValue(summarySheetName, "C7")
+	require.NoError(t, err)
+	assert.Equal(t, "INSS", inssLabel, "row 7 col C should be second Salário leaf")
+
+	// Row 6 col B should have the Block label "Salário" (merged over rows 6-7).
+	blockLabel, err := f.GetCellValue(summarySheetName, "B6")
+	require.NoError(t, err)
+	assert.Equal(t, "Salário", blockLabel, "col B should carry the Block group label")
+
+	// Row 8: "Total Salário" group total — sums D6:D7 (contiguous pulls).
+	totalSalLabel, err := f.GetCellValue(summarySheetName, "B8")
+	require.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf(lbl.TotalCategoryFmt, "Salário"), totalSalLabel)
+	totalSalFormula, err := f.GetCellFormula(summarySheetName, "D8")
+	require.NoError(t, err)
+	assert.Equal(t, "SUM(D6:D7)", totalSalFormula, "group-total should sum its pull range")
+
+	// Row 9: pull — Comissão (Variável, single-leaf block).
+	comissaoLabel, err := f.GetCellValue(summarySheetName, "C9")
+	require.NoError(t, err)
+	assert.Equal(t, "Comissão", comissaoLabel)
+
+	// Row 10: "Total Variável" — single-pull group; formula sums D9 (collapsed range).
+	totalVarLabel, err := f.GetCellValue(summarySheetName, "B10")
+	require.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf(lbl.TotalCategoryFmt, "Variável"), totalVarLabel)
+	totalVarFormula, err := f.GetCellFormula(summarySheetName, "D10")
+	require.NoError(t, err)
+	assert.Equal(t, "SUM(D9)", totalVarFormula, "single-leaf group-total collapses to SUM(D9)")
+
+	// Row 11: internal bandRow separator.
+	// Row 12: Receitas grand total — sumList of D8 and D10 (block totals, non-contiguous).
+	grandFormula, err := f.GetCellFormula(summarySheetName, "D12")
+	require.NoError(t, err)
+	assert.Equal(t, "SUM(D8,D10)", grandFormula, "grand total should sum block-total rows only")
+
+	// Confirm the Investimentos % formula references the grand-total row 12 (revenueTotalRow).
+	// Layout: grand total row 12, b.row+=3 → row 15 (Investimentos shell), 16 (total), 17 (pct).
+	pctFormula, err := f.GetCellFormula(summarySheetName, "D17")
+	require.NoError(t, err)
+	assert.Contains(t, pctFormula, "D12", "Investimentos % should reference the grand-total row 12")
 }
 
 // TestBuildSummaryPerGroupPctRows checks the new per-group percent rows are emitted
