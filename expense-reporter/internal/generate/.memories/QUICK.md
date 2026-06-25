@@ -25,6 +25,9 @@ the workbook is a projection of the data, never an insertion target.
   `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
 - **Acceptance contract:** `test/fixtures/generate-basic/expected-dump-*` (oracle-frozen);
   any deliberate output change requires re-freezing + manually reviewing the dump delta.
+  **Cross-fixture coupling:** `summary_sheet.go` uses a single accumulating `b.row` counter —
+  any change to `revenueSection()` row count shifts all expense sections down, so BOTH
+  `generate-basic` AND `generate-income` Listas oracles need re-freezing together.
 - Provenance: port of `.claude/scratch/template-builder/` (SUPERSEDED), converged to the
   user-blessed data-bearing golden master; Phase B fake dataset lives in
   `taxonomy_fixture_test.go`.

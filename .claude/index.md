@@ -40,6 +40,12 @@
 | Workbook generator spec v2 (Layer 3 + hand-review, session 27) | `.claude/plans/workbook-generator-spec.md` |
 | Workbook generator implementation plan + next-session brief | `.claude/plans/workbook-generator-implementation-plan.md` |
 | Taxonomy identity key (full-path decision + ambiguity guard, task #5 deferred) | `.claude/plans/taxonomy-identity-key.md` [ref:taxonomy-identity-key] |
+| Generator build order + row counter + oracle coupling | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-build-order] [ref:generate-row-counter] [ref:generate-oracle-coupling] |
+| Generator column layout (data sheets vs Listas) | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-colmap] |
+| Generator block sizing (calculateBlockRows) | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-block-sizing] |
+| Generator package-level state (dataYear/headroomRows/perGroupPctRows) | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-package-state] |
+| Generator excelize gotchas | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-excelize-gotchas] |
+| Generator income 3-level model + dual-format taxonomy | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-income-symmetry] |
 | Plan A — persist expense *type* + rename/JSON migration + backfill (session 32) | `.claude/plans/persist-expense-type.md` |
 | Plan B — full-path entry routing (T-04, session 32) | `.claude/plans/full-path-entry-routing.md` |
 | Bf real-data verification runbook (execute next session — Bf1/Bf3 + routing proof) | `.claude/plans/bf-real-data-verification-runbook.md` |
@@ -373,7 +379,7 @@ Desktop-era planning documents — read for context, do not modify.
 | `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
 | `expense-reporter/internal/excel/.memories/` | QUICK.md, KNOWLEDGE.md | Reference-sheet columns, boundary detection, and the workbook structural map (sheet families, palette, fill-down vs merge, separators, cross-sheet wiring) |
 | `expense-reporter/cmd/workbook-inspect/.memories/` | QUICK.md | workbook-inspect tool: usage, output schema, classifier + row-fill design |
-| `expense-reporter/internal/generate/.memories/` | QUICK.md | generator entry points, sheet-order rule, re-freeze discipline, excelize gotchas |
+| `expense-reporter/internal/generate/.memories/` | QUICK.md, KNOWLEDGE.md | generator entry points, sheet-order rule, re-freeze discipline, excelize gotchas; KNOWLEDGE: build order, accumulating row counter, cross-fixture oracle coupling, column layout, block sizing, income 3-level model |
 | `.claude/workbook-dump/` | *.json (gitignored) | Raw JSON dumps from workbook-inspect; input for Layer 2 visual annotation and Layer 3 spec |
 
 ---
