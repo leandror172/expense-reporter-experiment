@@ -48,9 +48,17 @@ type-less entries, to be retired once the classifier emits a type for every entr
 - Skeleton path builds the maps only to validate, then **discards** them — routing logic
   is exercised only by entry-fed unit tests, not skeleton generation.
 - Index into backing slices (`&sheets[i].Cats[j].Subs[k]`) — range copies lose appends.
-- Income routing is SCAFFOLDED but UNREACHED: income blocks register in `byPath` via
-  `incomePath`, but `routeEntry` only ever builds `expensePath` → no log line reaches an
-  income block today. **WS-C (planned, not started)** wires a separate income scan from a
-  new `--income-entries` input (extractor `income_log.jsonl` schema) and lifts the model to
-  3-level (`Receitas→block→subline`). See `.claude/plans/retire-insertion-keep-generation.md`
-  "WS-C task breakdown".
+- **Income routing is WIRED (WS-C, session 38, DONE).** Model is now 3-level:
+  `RevenueBlock{Category,Block,Label,Months}` — one block == one subline leaf;
+  `incomePath` is 3-segment (`income\x00category\x00block\x00label`). Loader parses BOTH
+  the legacy flat `blocks:["Salário"]` (→ Block==Label) and the nested
+  `blocks:[{block,sublines:[…]}]` via a custom `rawIncomeBlock.UnmarshalJSON` (dual-format).
+  A SEPARATE income scan (`loadIncomeEntries`/`scanIncomeEntries`) reads the extractor's
+  `income_log.jsonl` schema (`income_category`=block, `income_label`=leaf, `item_note`=Item),
+  routes via a `buildIncomeIndex` block+label index (category implicit), keeps values SIGNED.
+  Wired through `LoadTaxonomy(taxonomyPath, entriesPath, incomeEntriesPath, targetYear)` +
+  `generate-workbook --income-entries`. Expense routing/`byName` fallback unchanged.
+- **Dateless income is skipped with a LOUD stderr count** (not fatal) in `scanIncomeEntries`
+  — a silent skip would leave a near-empty Receitas reading as success. Locked by
+  `TestIncomeMissingDateSkipped`. (Real income from WS-0b extraction is now month-stamped:
+  blank source day → `01/MM/YYYY`, so the skip count is ~0 on real data.)
