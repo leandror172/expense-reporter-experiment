@@ -29,7 +29,7 @@ func TestSubcatMaxEntries(t *testing.T) {
 }
 
 func TestRevenueBlockMaxEntries(t *testing.T) {
-	blk := taxonomy.RevenueBlock{Label: "Salário", Months: [12][]taxonomy.Entry{
+	blk := taxonomy.RevenueBlock{Block: "Salário", Label: "Salário", Months: [12][]taxonomy.Entry{
 		0: {{Item: "a"}},
 		3: {{Item: "b"}, {Item: "c"}},
 	}}
@@ -62,13 +62,13 @@ func TestCalculateSubcatBlockRows(t *testing.T) {
 func TestCalculateRevenueBlockRows(t *testing.T) {
 	require.Equal(t, 0, headroomRows)
 	// 2 entries -> 2 data rows starting at row 6: 6,7 data + 8 total.
-	blk := taxonomy.RevenueBlock{Label: "Salário", Months: entriesInOneMonth(2)}
+	blk := taxonomy.RevenueBlock{Block: "Salário", Label: "Salário", Months: entriesInOneMonth(2)}
 	first, last, total := calculateBlockRows(6, blk.MaxEntries())
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 7, last)
 	assert.Equal(t, 8, total)
 	// zero-entry block still gets one data row.
-	first, last, total = calculateBlockRows(6, taxonomy.RevenueBlock{Label: "none"}.MaxEntries())
+	first, last, total = calculateBlockRows(6, taxonomy.RevenueBlock{Block: "none", Label: "none"}.MaxEntries())
 	assert.Equal(t, 6, first)
 	assert.Equal(t, 6, last)
 	assert.Equal(t, 7, total)
@@ -120,7 +120,7 @@ func TestBuildRevenueSumRange(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
 	blocks := []taxonomy.RevenueBlock{
-		{Category: "Receita", Label: "Salário", Months: [12][]taxonomy.Entry{
+		{Category: "Receitas", Block: "Salário", Label: "Bruto", Months: [12][]taxonomy.Entry{
 			0: {{Item: "Salário", Day: 5, Value: 5000}},
 		}},
 	}
@@ -131,6 +131,16 @@ func TestBuildRevenueSumRange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "SUM(E3:E3)", formula, "total must span the single data row, not invert")
 
+	// col A carries the Block name merged across data+total rows.
+	blockLabel, err := f.GetCellValue("Receitas", "A3")
+	require.NoError(t, err)
+	assert.Equal(t, "Salário", blockLabel, "col A must carry the Block name")
+
+	// col B carries the subline Label.
+	subLabel, err := f.GetCellValue("Receitas", "B3")
+	require.NoError(t, err)
+	assert.Equal(t, "Bruto", subLabel, "col B must carry the subline Label")
+
 	item, err := f.GetCellValue("Receitas", "C3")
 	require.NoError(t, err)
 	assert.Equal(t, "Salário", item)
@@ -140,6 +150,8 @@ func TestBuildRevenueSumRange(t *testing.T) {
 	assert.NotEmpty(t, valor, "amount must be written into the data row")
 
 	require.Len(t, reg.revenue.Blocks, 1)
+	assert.Equal(t, "Salário", reg.revenue.Blocks[0].Block)
+	assert.Equal(t, "Bruto", reg.revenue.Blocks[0].Label)
 	assert.Equal(t, 4, reg.revenue.Blocks[0].TotalRow)
 }
 
@@ -147,7 +159,7 @@ func TestBuildRevenueSumRangeMultiEntry(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
 	blocks := []taxonomy.RevenueBlock{
-		{Category: "Receita", Label: "Comissão", Months: [12][]taxonomy.Entry{
+		{Category: "Receitas", Block: "Variável", Label: "Comissão", Months: [12][]taxonomy.Entry{
 			0: {{Item: "c1", Day: 3, Value: 100}, {Item: "c2", Day: 9, Value: 200}},
 		}},
 	}
@@ -156,6 +168,66 @@ func TestBuildRevenueSumRangeMultiEntry(t *testing.T) {
 	formula, err := f.GetCellFormula("Receitas", "E5")
 	require.NoError(t, err)
 	assert.Equal(t, "SUM(E3:E4)", formula)
+}
+
+// TestBuildRevenueMultiBlock is the 3-level layout guard: two Block groups, each with
+// two subline leaves. Asserts Block name in col A merged across its leaves; subline Label
+// in col B per-leaf; separator gap between blocks; per-leaf registry entries.
+func TestBuildRevenueMultiBlock(t *testing.T) {
+	f, st, lbl := newTestFile(t)
+	reg := newLayoutRegistry()
+	blocks := []taxonomy.RevenueBlock{
+		// Block "Salário" — two leaves (Bruto, INSS), 1 entry each.
+		{Category: "Receitas", Block: "Salário", Label: "Bruto", Months: entriesInOneMonth(1)},
+		{Category: "Receitas", Block: "Salário", Label: "INSS", Months: entriesInOneMonth(1)},
+		// Block "Variável" — one leaf (Comissão), 1 entry.
+		{Category: "Receitas", Block: "Variável", Label: "Comissão", Months: entriesInOneMonth(1)},
+	}
+	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
+
+	// Salário block: Bruto leaf — rows 3(data)+4(total); INSS leaf — rows 5(data)+6(total).
+	// Col A must carry "Salário" at A3 (merged A3:A6).
+	aVal, err := f.GetCellValue("Receitas", "A3")
+	require.NoError(t, err)
+	assert.Equal(t, "Salário", aVal, "col A row 3 = Block name for first block group")
+
+	// Col B per-leaf: B3 = "Bruto", B5 = "INSS".
+	bBruto, err := f.GetCellValue("Receitas", "B3")
+	require.NoError(t, err)
+	assert.Equal(t, "Bruto", bBruto)
+
+	bINSS, err := f.GetCellValue("Receitas", "B5")
+	require.NoError(t, err)
+	assert.Equal(t, "INSS", bINSS)
+
+	// Total rows: Bruto=4, INSS=6. SUM formulas span their own data rows.
+	fBruto, err := f.GetCellFormula("Receitas", "E4")
+	require.NoError(t, err)
+	assert.Equal(t, "SUM(E3:E3)", fBruto)
+
+	fINSS, err := f.GetCellFormula("Receitas", "E6")
+	require.NoError(t, err)
+	assert.Equal(t, "SUM(E5:E5)", fINSS)
+
+	// Separator gap: row 7=blank, row 8=separator, row 9=blank.
+	// Variável block: Comissão leaf starts at row 10.
+	aVar, err := f.GetCellValue("Receitas", "A10")
+	require.NoError(t, err)
+	assert.Equal(t, "Variável", aVar, "Variável block must start at row 10 after separator gap")
+
+	bComissao, err := f.GetCellValue("Receitas", "B10")
+	require.NoError(t, err)
+	assert.Equal(t, "Comissão", bComissao)
+
+	fComissao, err := f.GetCellFormula("Receitas", "E11")
+	require.NoError(t, err)
+	assert.Equal(t, "SUM(E10:E10)", fComissao)
+
+	// Registry: 3 entries, one per leaf subline, in order.
+	require.Len(t, reg.revenue.Blocks, 3)
+	assert.Equal(t, revenueBlockTotal{Category: "Receitas", Block: "Salário", Label: "Bruto", TotalRow: 4}, reg.revenue.Blocks[0])
+	assert.Equal(t, revenueBlockTotal{Category: "Receitas", Block: "Salário", Label: "INSS", TotalRow: 6}, reg.revenue.Blocks[1])
+	assert.Equal(t, revenueBlockTotal{Category: "Receitas", Block: "Variável", Label: "Comissão", TotalRow: 11}, reg.revenue.Blocks[2])
 }
 
 // TestBuildExpenseTypeSizingAndSum checks max-entries sizing + the total SUM spans
@@ -200,7 +272,7 @@ func TestBuildSummaryPerGroupPctRows(t *testing.T) {
 	f, st, lbl := newTestFile(t)
 	reg := newLayoutRegistry()
 	blocks := []taxonomy.RevenueBlock{
-		{Category: "Receita", Label: "Salário", Months: [12][]taxonomy.Entry{0: {{Item: "Salário", Day: 5, Value: 5000}}}},
+		{Category: "Receitas", Block: "Salário", Label: "Bruto", Months: [12][]taxonomy.Entry{0: {{Item: "Salário", Day: 5, Value: 5000}}}},
 	}
 	require.NoError(t, buildRevenueSheet(f, st, lbl, blocks, reg))
 	sh := taxonomy.ExpenseType{Name: "Fixas", Cats: []taxonomy.Category{

@@ -92,10 +92,10 @@ func buildTaxonomy() ([]ExpenseType, []RevenueBlock) {
 		}},
 	}}
 	revenue := []RevenueBlock{
-		{Category: "Receita", Label: "Salário", Months: [12][]Entry{
+		{Category: "Receitas", Block: "Salário", Label: "Salário", Months: [12][]Entry{
 			mo(e("Salário", 5, 5000.00)), mo(e("Salário", 5, 5000.00)),
 		}},
-		{Category: "Receita", Label: "13°", Months: [12][]Entry{
+		{Category: "Receitas", Block: "Salário", Label: "13°", Months: [12][]Entry{
 			mo(e("13° parcela", 20, 2500.00)), mo(e("13° parcela", 20, 2500.00)),
 		}},
 	}

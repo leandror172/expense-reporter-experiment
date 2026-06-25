@@ -29,6 +29,7 @@ type revenueLayout struct {
 
 type revenueBlockTotal struct {
 	Category string
+	Block    string
 	Label    string
 	TotalRow int
 }
