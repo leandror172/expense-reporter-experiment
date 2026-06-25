@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	generateOutput   string
-	generateTaxonomy string
-	generateEntries  string
-	generateYear     int
-	generateHeadroom int
+	generateOutput        string
+	generateTaxonomy      string
+	generateEntries       string
+	generateIncomeEntries string
+	generateYear          int
+	generateHeadroom      int
 )
 
 var generateWorkbookCmd = &cobra.Command{
@@ -33,6 +34,7 @@ func init() {
 	generateWorkbookCmd.Flags().StringVarP(&generateOutput, "output", "o", "", "Output .xlsx path (required)")
 	generateWorkbookCmd.Flags().StringVar(&generateTaxonomy, "taxonomy", "", "Taxonomy JSON file path (required)")
 	generateWorkbookCmd.Flags().StringVar(&generateEntries, "entries", "", "Entries JSONL path (optional)")
+	generateWorkbookCmd.Flags().StringVar(&generateIncomeEntries, "income-entries", "", "Income entries JSONL path (income_log.jsonl schema; optional)")
 	generateWorkbookCmd.Flags().IntVar(&generateYear, "year", time.Now().Year(), "Year applied to entry dates")
 	generateWorkbookCmd.Flags().IntVar(&generateHeadroom, "headroom", 0, "Spare data rows per block beyond busiest month")
 
@@ -46,11 +48,12 @@ func init() {
 
 func runGenerateWorkbook(cmd *cobra.Command, args []string) error {
 	opts := generate.Options{
-		TaxonomyPath: generateTaxonomy,
-		EntriesPath:  generateEntries,
-		OutPath:      generateOutput,
-		Year:         generateYear,
-		Headroom:     generateHeadroom,
+		TaxonomyPath:      generateTaxonomy,
+		EntriesPath:       generateEntries,
+		IncomeEntriesPath: generateIncomeEntries,
+		OutPath:           generateOutput,
+		Year:              generateYear,
+		Headroom:          generateHeadroom,
 	}
 
 	if err := generate.Generate(opts); err != nil {

@@ -26,11 +26,12 @@ var dataYear = 2026
 
 // Options configures one workbook generation run.
 type Options struct {
-	TaxonomyPath string // taxonomy JSON file (spec §1.1) — required
-	EntriesPath  string // expenses_log.jsonl-format entries; empty = skeleton only
-	OutPath      string // output .xlsx path — required
-	Year         int    // year applied to entry dates (DD/MM in the log has no year)
-	Headroom     int    // spare data rows per block beyond max-entries (spec §3.2; default 0)
+	TaxonomyPath      string // taxonomy JSON file (spec §1.1) — required
+	EntriesPath       string // expenses_log.jsonl-format entries; empty = skeleton only
+	IncomeEntriesPath string // income_log.jsonl-format income entries; empty = none (WS-C)
+	OutPath           string // output .xlsx path — required
+	Year              int    // year applied to entry dates (DD/MM in the log has no year)
+	Headroom          int    // spare data rows per block beyond max-entries (spec §3.2; default 0)
 }
 
 // Generate builds the workbook described by opts and writes it to opts.OutPath.
@@ -44,7 +45,7 @@ func Generate(opts Options) error {
 	dataYear = opts.Year
 	headroomRows = opts.Headroom
 
-	expenseSheets, revenueBlocks, err := taxonomy.LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath, "", opts.Year)
+	expenseSheets, revenueBlocks, err := taxonomy.LoadTaxonomy(opts.TaxonomyPath, opts.EntriesPath, opts.IncomeEntriesPath, opts.Year)
 	if err != nil {
 		return err
 	}
