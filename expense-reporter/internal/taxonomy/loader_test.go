@@ -12,7 +12,7 @@ import (
 
 func TestLoadTaxonomy_SkeletonOnly(t *testing.T) {
 	taxonomyPath := "../../test/fixtures/generate-basic/taxonomy.json"
-	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, "", 0)
+	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, "", "", 0)
 	require.NoError(t, err)
 
 	assert.Len(t, sheets, 2)
@@ -58,7 +58,7 @@ func TestLoadTaxonomy_WithEntries(t *testing.T) {
 	taxonomyPath := "../../test/fixtures/generate-basic/taxonomy.json"
 	entriesPath := "../../test/fixtures/generate-basic/entries.jsonl"
 
-	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	// Check Aluguel in Fixas.Habitação
@@ -124,7 +124,7 @@ func TestLoadTaxonomy_UnmappedSubcategory(t *testing.T) {
 	taxonomyPath := "../../test/fixtures/generate-basic/taxonomy.json"
 	entriesPath := "../../test/fixtures/generate-basic/entries-with-unmapped.jsonl"
 
-	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	// Diarista should be loaded
@@ -178,7 +178,7 @@ func TestLoadTaxonomy_SamePathDuplicate(t *testing.T) {
     "incomeCategories": []
 }`)
 
-	_, _, err := LoadTaxonomy(taxonomyPath, "", 0)
+	_, _, err := LoadTaxonomy(taxonomyPath, "", "", 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Diarista")
 }
@@ -199,7 +199,7 @@ func TestLoadTaxonomy_CrossPathDuplicateAllowed(t *testing.T) {
     "incomeCategories": []
 }`)
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, "", 0)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, "", "", 0)
 	require.NoError(t, err)
 	assert.Equal(t, "Diarista", sheets[0].Cats[0].Subs[0].Name)
 	assert.Equal(t, "Diarista", sheets[1].Cats[0].Subs[0].Name)
@@ -229,7 +229,7 @@ func TestLoadTaxonomy_AmbiguousEntrySkipped(t *testing.T) {
 	require.NoError(t, os.WriteFile(entriesPath,
 		[]byte(`{"item":"Ração","date":"05/01","value":120.0,"subcategory":"Orion"}`+"\n"), 0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	for _, sheet := range sheets {
@@ -273,7 +273,7 @@ func TestLoadTaxonomy_AmbiguousEntryRoutedByFullPath(t *testing.T) {
 			`{"item":"Ração Extra","date":"07/03","value":122.0,"type":"Extras","category":"Pets","subcategory":"Orion"}`+"\n"),
 		0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	// Each Orion block holds exactly its own entry, in the entry's month.
@@ -309,7 +309,7 @@ func TestLoadTaxonomy_TypedEntryWrongPathSkipped(t *testing.T) {
 		`{"item":"Ração","date":"05/01","value":120.0,"type":"Fixas","category":"Petz","subcategory":"Orion"}`+"\n"),
 		0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	for _, sheet := range sheets {
@@ -340,7 +340,7 @@ func TestLoadTaxonomy_TypelessUnambiguousEntryRoutes(t *testing.T) {
 	require.NoError(t, os.WriteFile(entriesPath,
 		[]byte(`{"item":"Aluguel Jan","date":"05/01","value":2000.0,"subcategory":"Aluguel"}`+"\n"), 0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	aluguel := sheets[0].Cats[0].Subs[0]
@@ -377,7 +377,7 @@ func TestLoadTaxonomy_NFDEntryRoutesToNFCTaxonomy(t *testing.T) {
 		`","category":"` + nfdCat + `","subcategory":"Feira"}` + "\n"
 	require.NoError(t, os.WriteFile(entriesPath, []byte(line), 0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, 0)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	feira := sheets[0].Cats[0].Subs[0]
