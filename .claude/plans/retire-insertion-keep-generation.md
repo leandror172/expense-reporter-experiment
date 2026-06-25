@@ -196,7 +196,43 @@ Each command stops calling `internal/workflow`/`internal/excel` and instead appe
   9 Add acceptance tests green (incl. 3 formerly workbook-gated, now log-asserting + explicit-year
   to dodge the 2027 time-bomb); unit green; build clean. `pkg/utils.ParseDateFlexible`/`FormatDate`
   added; `correct.go` adapts to the widened `parseExpenseForFeedback` signature.
-- **Remaining slices:** `auto`, `batch-auto`, `apply` (write-half deletion). Same append helper.
+- **Slice 2 — `auto` → log-append: DONE (session 39, committed separately).** `auto` HIGH-confidence
+  path no longer calls `workflow.InsertExpense`/`excel`; resolves type via `loadTypeIndex`/
+  `resolveExpenseType` and appends through `appender.ExpandAndAppend`. Now accepts installment
+  notation (`ParseCurrencyWithInstallments` + `ParseDateFlexible`) → N dated lines. `confirmed`
+  feedback to `classifications.jsonl` preserved. `logExpense` left defined (still used by
+  `batch_auto.go:301`). 2 new acceptance tests green (HIGH append + installments); build + unit clean.
+- **Slice-2 LOOSE ENDS (carry into next session — pre-existing stale tests, NOT slice-2 regressions):**
+  1. `test/auto_test.go` `TestAuto_KnownExpenseIsClassifiedWithConfidence` +
+     `TestAuto_AmbiguousExpenseKeptForManualReview` are still `RequireWorkbook`-gated → they SKIP,
+     so the **LOW-confidence/ambiguous path has no running coverage** and a redundant HIGH-path
+     test sits dark. Rewire to drop the workbook gate (mirror the slice-1 `feedback_test.go` fix:
+     drop `RequireWorkbook` + `CopyWorkbookToWorkDir`, point Given at a taxonomy config) so they run.
+  2. `auto.go:162` still prints `✓ Inserted: …` — inaccurate post-WS-B (it appends to the log, does
+     not insert into a workbook). Rename to "Logged"/"Appended". Note the ambiguous-path test keys
+     on the `"✓ Inserted"` string, so update both together.
+- **Remaining slices:** `batch-auto` (drop insert branch + rollover.csv), `apply` (delete
+  workbook-write half). Same append helper.
+
+#### STALE .memory — flagged for update next session (NOT yet updated; recorded so next session isn't misled)
+- `internal/feedback/.memories/QUICK.md` + `KNOWLEDGE.md` — **stale:** says `expenses_log.jsonl` is
+  written by "auto / batch-auto / apply" and that `add` writes ONLY `classifications.jsonl`. After
+  WS-B slice 1, **`add` now also appends to `expenses_log.jsonl`** (via `internal/appender`, status
+  `manual`). Also the "expenses_log is year-implicit (`DD/MM`)" note is now partial — the appender
+  emits `DD/MM/YYYY` via `pkg/utils.ParseDateFlexible`.
+- `internal/appender/` — **missing:** new package, no `.memories/QUICK.md`. Add one: `ExpandAndAppend`
+  is the single append-time writer (installment expansion → N dated `ExpenseEntry` lines; cross-year
+  carries real next-year date, no `rollover.csv`); models-free, feedback-only; reused by `add` +
+  `auto`, will be reused by `batch-auto`/`apply`.
+- repo `/mnt/i/workspaces/expenses/code/.memories/QUICK.md` — **stale:** Status says "Next: WS-B
+  (commands→log-append) … planned/not started". WS-B slices 1–2 (`add`, `auto`) are now DONE;
+  remaining are `batch-auto`, `apply`, then WS-D/WS-E.
+- `internal/taxonomy/.memories/KNOWLEDGE.md` — **augment (not wrong):** the "two taxonomy sources
+  don't know about each other" note now has a measured consequence — deferred finding #4 above
+  (feature-dict vs taxonomy.json category divergence → silent type-less lines from `add`/`auto`),
+  a WS-D prerequisite.
+- `pkg/utils` — no `.memories`; `ParseDateFlexible`/`FormatDate` added (DD/MM or DD/MM/YYYY). No
+  action needed beyond awareness.
 
 > ⚠ **DEFERRED FINDING (advisor flag #4, surfaced by the `add` cross-year fixture) — fix before
 > WS-D can retire the bare-name fallback.** `add` (and `auto`) resolve **category from the feature

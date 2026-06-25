@@ -2,17 +2,17 @@ package cmd
 
 import (
 	"bufio"
+	"expense-reporter/internal/appender"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
-	"expense-reporter/internal/models"
 	taxdb "expense-reporter/internal/taxonomy"
-	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -48,12 +48,17 @@ func init() {
 func runAuto(cmd *cobra.Command, args []string) error {
 	item := args[0]
 
-	value, err := utils.ParseCurrency(args[1])
+	value, installmentCount, err := utils.ParseCurrencyWithInstallments(args[1])
 	if err != nil {
-		return fmt.Errorf("invalid value %q: expected a number (e.g. 35.50 or 35,50)", args[1])
+		return fmt.Errorf("invalid value %q: expected a number (e.g. 35.50 or 35,50) or with installments (e.g. 35,50/3)", args[1])
 	}
 
 	date := args[2]
+
+	parsedDate, err := utils.ParseDateFlexible(date)
+	if err != nil {
+		return fmt.Errorf("invalid date %q: expected DD/MM or DD/MM/YYYY", date)
+	}
 
 	taxonomy, err := classifier.LoadTaxonomy(autoDataDir)
 	if err != nil {
@@ -128,7 +133,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 				return nil
 			}
 		}
-		return insertExpense(item, date, value, top, appCfg)
+		return insertExpense(item, date, parsedDate, value, installmentCount, top, appCfg)
 	}
 
 	printCandidates(item, value, date, results)
@@ -141,38 +146,22 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func insertExpense(item, date string, value float64, result classifier.Result, appCfg *config.Config) error {
-	workbook, err := GetWorkbookPath()
-	if err != nil {
-		return fmt.Errorf("failed to get workbook path: %w", err)
-	}
+func insertExpense(item, date string, parsedDate time.Time, value float64, installmentCount int, result classifier.Result, appCfg *config.Config) error {
+	typeIdx := loadTypeIndex(appCfg)
+	typ := resolveExpenseType(typeIdx, result.Category, result.Subcategory)
 
-	if _, err := os.Stat(workbook); os.IsNotExist(err) {
-		return fmt.Errorf("workbook not found at: %s", workbook)
-	}
-
-	insertStr := utils.BuildInsertString(item, date, value, result.Subcategory)
-	errs, _ := workflow.InsertBatchExpenses(workbook, []string{insertStr})
-
-	if len(errs) > 0 && errs[0] != nil {
-		bErr := errs[0]
-		switch bErr.Category {
-		case models.ErrorCategoryIO, models.ErrorCategoryCapacity:
-			// Infrastructure or capacity problems — propagate as hard errors
-			return fmt.Errorf("failed to insert expense: %s", bErr.Message)
-		default:
-			// Resolution, ambiguous, parse errors — fall back to review gracefully
-			fmt.Printf("⚠  Not inserted — %s\n", bErr.Message)
-			return nil
+	logPath := appCfg.ExpensesLogFilePath()
+	if logPath == "" {
+		fmt.Fprintf(os.Stderr, "⚠  expense log: no path configured\n")
+	} else {
+		if err := appender.ExpandAndAppend(logPath, item, parsedDate, value, installmentCount, typ, result.Category, result.Subcategory); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠  expense log append failed: %v\n", err)
 		}
 	}
 
 	fmt.Printf("✓ Inserted: %s → %s (%s) — %.0f%% confidence\n",
 		item, result.Subcategory, result.Category, result.Confidence*100)
 	logConfirmedFeedback(appCfg, item, date, value, result, autoModel)
-	typeIdx := loadTypeIndex(appCfg)
-	typ := resolveExpenseType(typeIdx, result.Category, result.Subcategory)
-	logExpense(appCfg, item, date, value, result.Subcategory, result.Category, typ)
 	return nil
 }
 
