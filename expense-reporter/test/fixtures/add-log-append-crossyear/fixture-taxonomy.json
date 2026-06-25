@@ -1,0 +1,11 @@
+{
+  "types": [
+    {
+      "name": "Fixas",
+      "categories": [
+        { "name": "Lazer", "subcategories": ["Netflix", "Amazon"] }
+      ]
+    }
+  ],
+  "incomeCategories": []
+}

@@ -35,7 +35,7 @@ func init() {
 }
 
 func runCorrect(cmd *cobra.Command, args []string) error {
-	item, date, value, actualSubcategory, ok := parseExpenseForFeedback(args[0])
+	item, date, _, value, _, actualSubcategory, ok := parseExpenseForFeedback(args[0])
 	if !ok {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\"")
 	}

@@ -1,0 +1,11 @@
+{
+  "types": [
+    {
+      "name": "Variáveis",
+      "categories": [
+        { "name": "Alimentação / Limpeza", "subcategories": ["Padaria", "Supermercado"] }
+      ]
+    }
+  ],
+  "incomeCategories": []
+}

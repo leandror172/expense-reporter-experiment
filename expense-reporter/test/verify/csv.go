@@ -12,6 +12,18 @@ import (
 	"expense-reporter/test/harness"
 )
 
+// NoRolloverFileCreated asserts that rollover.csv was not created in the work directory.
+// Used to verify that cross-year installments are logged as normal entries, not diverted.
+func NoRolloverFileCreated() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+		rolloverPath := fmt.Sprintf("%s/rollover.csv", ctx.WorkDir)
+		_, err := os.Stat(rolloverPath)
+		assert.True(ctx.T, os.IsNotExist(err),
+			"rollover.csv should NOT exist — cross-year installments must be logged as normal entries")
+	}
+}
+
 // CommandSucceeded asserts the command exited with code 0.
 func CommandSucceeded() func(*harness.Context) {
 	return func(ctx *harness.Context) {

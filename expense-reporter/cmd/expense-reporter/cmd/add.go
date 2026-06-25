@@ -1,14 +1,15 @@
 package cmd
 
 import (
+	"expense-reporter/internal/appender"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
-	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -23,28 +24,30 @@ var addConfidence float64
 var addModel string
 
 var addCmd = &cobra.Command{
-	Use:   "add \"<item>;<DD/MM>;<##,##>;<subcat>\"",
+	Use:   "add \"<item>;<DD/MM[/YYYY]>;<##,##[/N]>;<subcat>\"",
 	Short: "Add a single expense",
-	Long: `Add a single expense to the budget spreadsheet.
+	Long: `Add a single expense to the expense log.
 
-The expense format is: <item_description>;<DD/MM>;<value>;<sub_category>
+The expense format is: <item_description>;<DD/MM or DD/MM/YYYY>;<value>;<sub_category>
+
+Installment notation: append /N to the value to expand into N monthly log entries.
 
 Examples:
-  expense-reporter add "Uber Centro;15/04;35,50;Uber/Taxi"
-  expense-reporter add "Compras Carrefour;03/01;150,00;Supermercado"
-  expense-reporter add "Consulta veterinária;10/03;180,00;Orion - Consultas"
+  expense-reporter add "Uber Centro;15/04/2026;35,50;Uber/Taxi"
+  expense-reporter add "Compras Carrefour;03/01/2026;150,00;Supermercado"
+  expense-reporter add "Curso online;15/11/2026;90,00/3;Amazon"
 
 Notes:
-  - Date year is always 2025
+  - Date accepts DD/MM (defaults to current year) or DD/MM/YYYY
   - Value uses Brazilian format (##,## with comma as decimal)
-  - Subcategory must exist in the reference sheet
-  - Smart matching: "Orion - Consultas" finds "Orion" if exact match not found`,
+  - Installments expand into N dated log entries — cross-year dates use the real next-year date
+  - Subcategory must exist in the taxonomy`,
 	Args: cobra.ExactArgs(1),
 	RunE: runAdd,
 }
 
 func init() {
-	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into workbook")
+	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into log")
 	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	addCmd.Flags().StringVar(&addPredictedSubcategory, "predicted-subcategory", "", "Model's top prediction for subcategory")
 	addCmd.Flags().StringVar(&addPredictedCategory, "predicted-category", "", "Model's predicted category")
@@ -57,45 +60,39 @@ func init() {
 func runAdd(cmd *cobra.Command, args []string) error {
 	expenseString := args[0]
 
-	item, date, value, subcategory, ok := parseExpenseForFeedback(expenseString)
+	item, dateStr, parsedDate, value, installmentCount, subcategory, ok := parseExpenseForFeedback(expenseString)
 	if !ok {
-		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\"")
+		return fmt.Errorf("invalid expense format: expected \"item;DD/MM[/YYYY];value[/N];subcategory\"")
 	}
 
 	category := resolveCategoryFromTaxonomy(subcategory, addDataDir)
 
 	if addDryRun {
-		return runAddDryRun(cmd, item, date, value, subcategory, category)
+		return runAddDryRun(cmd, item, dateStr, value, subcategory, category)
 	}
 
-	workbook, err := GetWorkbookPath()
+	appCfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("failed to get workbook path: %w", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if _, err := os.Stat(workbook); os.IsNotExist(err) {
-		return fmt.Errorf("workbook not found at: %s", workbook)
-	}
+	typ := resolveExpenseType(loadTypeIndex(appCfg), category, subcategory)
 
-	err = workflow.InsertExpense(workbook, expenseString)
-	if err != nil {
-		return fmt.Errorf("failed to insert expense: %w", err)
-	}
-
-	fmt.Println("✓ Expense added successfully!")
-
-	appCfg, cfgErr := config.Load()
-	if cfgErr == nil {
-		if addPredictedSubcategory != "" {
-			logPredictedFeedback(appCfg, item, date, value, subcategory, category,
-				addPredictedSubcategory, addPredictedCategory, addClassificationID,
-				addConfidence, addModel)
-		} else {
-			logManualFeedback(appCfg, item, date, value, subcategory, category)
-			logExpense(appCfg, item, date, value, subcategory, category, "")
+	if logPath := appCfg.ExpensesLogFilePath(); logPath != "" {
+		if err := appender.ExpandAndAppend(logPath, item, parsedDate, value, installmentCount, typ, category, subcategory); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
 		}
 	}
 
+	if addPredictedSubcategory != "" {
+		logPredictedFeedback(appCfg, item, dateStr, value, subcategory, category,
+			addPredictedSubcategory, addPredictedCategory, addClassificationID,
+			addConfidence, addModel)
+	} else {
+		logManualFeedback(appCfg, item, dateStr, value, subcategory, category)
+	}
+
+	fmt.Println("✓ Expense added successfully!")
 	return nil
 }
 
@@ -134,7 +131,7 @@ func runAddDryRun(cmd *cobra.Command, item, date string, value float64, subcateg
 	return nil
 }
 
-// logParsedManualFeedback appends feedback and expense log entries using pre-parsed values.
+// logParsedManualFeedback appends feedback log entry using pre-parsed values.
 // Non-fatal: any failure silently skips logging.
 func logParsedManualFeedback(item, date string, value float64, subcategory, category string) {
 	appCfg, err := config.Load()
@@ -142,27 +139,36 @@ func logParsedManualFeedback(item, date string, value float64, subcategory, cate
 		return
 	}
 	logManualFeedback(appCfg, item, date, value, subcategory, category)
-	logExpense(appCfg, item, date, value, subcategory, category, "")
 }
 
-// parseExpenseForFeedback splits "item;DD/MM;value;subcategory" and parses the value.
-func parseExpenseForFeedback(expenseString string) (item, date string, value float64, subcategory string, ok bool) {
+// parseExpenseForFeedback splits "item;DD/MM[/YYYY];value[/N];subcategory" and parses date + value.
+// Returns the formatted dateStr (DD/MM/YYYY), parsed time.Time, per-installment value, and installment count.
+func parseExpenseForFeedback(expenseString string) (item, dateStr string, parsedDate time.Time, value float64, installmentCount int, subcategory string, ok bool) {
 	parts := strings.SplitN(expenseString, ";", 4)
 	if len(parts) != 4 {
-		return "", "", 0, "", false
+		return
 	}
 	item = strings.TrimSpace(parts[0])
-	date = strings.TrimSpace(parts[1])
+	rawDate := strings.TrimSpace(parts[1])
 	valueStr := strings.TrimSpace(parts[2])
 	subcategory = strings.TrimSpace(parts[3])
-	if item == "" || date == "" || subcategory == "" {
-		return "", "", 0, "", false
+	if item == "" || rawDate == "" || subcategory == "" {
+		return
 	}
-	v, err := utils.ParseCurrency(valueStr)
+	t, err := utils.ParseDateFlexible(rawDate)
 	if err != nil {
-		return "", "", 0, "", false
+		return
 	}
-	return item, date, v, subcategory, true
+	parsedDate = t
+	dateStr = utils.FormatDate(t)
+	v, count, err := utils.ParseCurrencyWithInstallments(valueStr)
+	if err != nil {
+		return
+	}
+	value = v
+	installmentCount = count
+	ok = true
+	return
 }
 
 // resolveCategoryFromTaxonomy looks up subcategory in the taxonomy to find its parent category.
@@ -204,24 +210,24 @@ func logPredictedFeedback(appCfg *config.Config, item, date string, value float6
 		}
 	}
 
-	if path != "" {
-		predicted := classifier.Result{
-			Subcategory: predictedSubcategory,
-			Category:    predictedCategory,
-			Confidence:  confidence,
-		}
-
-		var entry feedback.Entry
-		if chosenSubcategory == predictedSubcategory {
-			entry = feedback.NewConfirmedEntry(item, date, value, predicted, model)
-		} else {
-			entry = feedback.NewCorrectedEntry(item, date, value, predicted, model, chosenSubcategory, chosenCategory)
-		}
-
-		if err := feedback.Append(path, entry); err != nil {
-			fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
-		}
+	if path == "" {
+		return
 	}
 
-	logExpense(appCfg, item, date, value, chosenSubcategory, chosenCategory, "")
+	predicted := classifier.Result{
+		Subcategory: predictedSubcategory,
+		Category:    predictedCategory,
+		Confidence:  confidence,
+	}
+
+	var entry feedback.Entry
+	if chosenSubcategory == predictedSubcategory {
+		entry = feedback.NewConfirmedEntry(item, date, value, predicted, model)
+	} else {
+		entry = feedback.NewCorrectedEntry(item, date, value, predicted, model, chosenSubcategory, chosenCategory)
+	}
+
+	if err := feedback.Append(path, entry); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
+	}
 }

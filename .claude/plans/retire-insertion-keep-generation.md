@@ -186,6 +186,31 @@ Each command stops calling `internal/workflow`/`internal/excel` and instead appe
 - **Entry contract:** every appended entry should carry the full **type/category/subcategory**
   (the typed path) so it routes via `byPath` — this is what lets WS-D retire the bare-name fallback.
 
+#### WS-B progress
+- **Slice 1 — `add` → log-append: DONE (session 39, branch `chore/income-extraction-tooling`,
+  UNCOMMITTED).** New `internal/appender` package (`ExpandAndAppend`: append-time installment
+  expansion, models-free, feedback-only); `add` no longer touches `internal/workflow`/`excel`.
+  Installments expand into N dated `ExpenseEntry` lines; **cross-year installments carry the real
+  next-year date — no `rollover.csv`** (verify `NoRolloverFileCreated`). `add` resolves type via
+  `resolveExpenseType(loadTypeIndex(cfg), …)` + category via `resolveCategoryFromTaxonomy(addDataDir)`.
+  9 Add acceptance tests green (incl. 3 formerly workbook-gated, now log-asserting + explicit-year
+  to dodge the 2027 time-bomb); unit green; build clean. `pkg/utils.ParseDateFlexible`/`FormatDate`
+  added; `correct.go` adapts to the widened `parseExpenseForFeedback` signature.
+- **Remaining slices:** `auto`, `batch-auto`, `apply` (write-half deletion). Same append helper.
+
+> ⚠ **DEFERRED FINDING (advisor flag #4, surfaced by the `add` cross-year fixture) — fix before
+> WS-D can retire the bare-name fallback.** `add` (and `auto`) resolve **category from the feature
+> dict** (`classifier.LoadTaxonomy` `category_mapping`) but **type from `config/taxonomy.json`**
+> (`loadTypeIndex`); `resolveExpenseType` only fires when the feature-dict category **byte-matches**
+> a taxonomy.json category. Measured divergence (session 39): the FD has 2 categories absent from
+> taxonomy.json — `"Fixas – Impostos"` and `"Fixas – Saúde"` (old type-qualified compound names) —
+> so any subcat mapped to those resolves category-but-no-type and **silently emits a type-less
+> line**, feeding the very `byName` fallback WS-D wants to delete. The fix exists: taxonomy.json's
+> `types[].categories[].subcategories[]` tree is already a full subcat→category→type index (104
+> subcats) and could replace the FD's `category_mapping` as the single source of truth for `add`/
+> `auto` resolution. Track as a WS-B/WS-D prerequisite slice. (Same latent risk `auto` already has
+> — not new, but now measured.)
+
 ### WS-C — Income/revenue route (combine)
 Today `LoadTaxonomy` builds `revenueBlocks` structurally but routes **no entries** into them
 (`routeEntry` only ever builds `expensePath`). Income *target* scaffolding exists (income blocks in
