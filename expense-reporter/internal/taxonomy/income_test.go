@@ -153,6 +153,28 @@ func TestIncomeYearFilterSkipsOtherYear(t *testing.T) {
 	assert.Nil(t, sal.Months[0], "entry from wrong year must be filtered")
 }
 
+// TestIncomeMissingDateSkipped locks the WS-C robustness contract: an income entry
+// with an empty/malformed date is SKIPPED (not placed, not fatal), so a dateless
+// upstream extraction degrades gracefully rather than aborting the whole generation.
+// The loud stderr count is the operator's signal; here we assert the routing outcome.
+func TestIncomeMissingDateSkipped(t *testing.T) {
+	const taxonomyJSON = `{"types":[],"incomeCategories":[{"name":"Receitas","blocks":[{"block":"Sal","sublines":["Sal"]}]}]}`
+	// First line has no date (skipped); second is well-formed (placed).
+	const entriesJSONL = `{"date":"","value":1000.0,"income_category":"Sal","income_label":"Sal","item_note":"NoDate"}
+{"date":"01/02/2026","value":2000.0,"income_category":"Sal","income_label":"Sal","item_note":"Feb"}`
+
+	blocks := parseNestedBlocks(t, taxonomyJSON)
+	idx := buildIncomeIndex(buildByPath(t, blocks))
+
+	err := scanIncomeEntries(bufio.NewScanner(strings.NewReader(entriesJSONL)), idx, 2026)
+	require.NoError(t, err, "missing date must skip+warn, not error")
+
+	sal := findLeaf(t, blocks, "Sal", "Sal")
+	assert.Nil(t, sal.Months[0], "dateless entry must NOT land in January")
+	require.Len(t, sal.Months[1], 1, "well-formed Feb entry must still be placed")
+	assert.Equal(t, 2000.0, sal.Months[1][0].Value)
+}
+
 // --- helpers ---
 
 // findLeaf returns the RevenueBlock with matching Block and Label, fails the test if absent.

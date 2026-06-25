@@ -201,6 +201,7 @@ func buildIncomeIndex(byPath map[string]subcatTarget) map[string]subcatTarget {
 // income_category = block name (mid-level); income_label = leaf subline.
 // Values are kept signed — deductions are negative in the source data.
 func scanIncomeEntries(scanner *bufio.Scanner, idx map[string]subcatTarget, targetYear int) error {
+	noDateSkipped := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" {
@@ -228,9 +229,14 @@ func scanIncomeEntries(scanner *bufio.Scanner, idx map[string]subcatTarget, targ
 			continue
 		}
 
+		// A missing/malformed income date is skipped, NOT fatal: the upstream
+		// extractor (WS-0b) can emit dateless rows. Skipping silently would leave a
+		// near-empty Receitas that reads as success, so the count is surfaced loudly
+		// below (mirrors the type-less fallback count in scanEntries).
 		day, month, entryYear, err := parseDate(row.Date)
 		if err != nil {
-			return fmt.Errorf("parsing date for income item %q: %w", row.ItemNote, err)
+			noDateSkipped++
+			continue
 		}
 		if entryYear != 0 && targetYear != 0 && entryYear != targetYear {
 			continue
@@ -238,6 +244,13 @@ func scanIncomeEntries(scanner *bufio.Scanner, idx map[string]subcatTarget, targ
 
 		target.attachEntry(Entry{Item: row.ItemNote, Day: day, Value: row.Value}, month-1)
 	}
+
+	if noDateSkipped > 0 {
+		fmt.Fprintf(os.Stderr,
+			"warning: %d income entr%s skipped — missing or malformed date (not placed in any month)\n",
+			noDateSkipped, plural(noDateSkipped, "y", "ies"))
+	}
+
 	return scanner.Err()
 }
 

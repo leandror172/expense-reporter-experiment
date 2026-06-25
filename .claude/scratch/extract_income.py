@@ -46,19 +46,22 @@ def is_total(v):
 
 
 def fmt_date(raw, band_month, year):
-    """Return DD/MM/YYYY or None. Band column is the authoritative MONTH, source file
-    is the authoritative YEAR; only the DAY is taken from the cell."""
-    if raw is None or s(raw) == "":
-        return None
-    if isinstance(raw, (datetime.datetime, datetime.date)):
-        day = raw.day
-    else:
-        try:
-            day = int(s(raw).replace("-", "/").split("/")[0])
-        except (ValueError, IndexError):
-            return None
-    if not 1 <= day <= 31:
-        return None
+    """Return DD/MM/YYYY, always. The band column is the authoritative MONTH and the
+    source file the authoritative YEAR — both are always known for an emitted record.
+    Only the DAY comes from the cell; when the Data cell is blank or unparseable (the
+    common payslip case — monthly values recorded with no specific day), the day
+    defaults to 01 so the month placement is never lost (WS-0b month-drop fix)."""
+    day = 1
+    if raw is not None and s(raw) != "":
+        if isinstance(raw, (datetime.datetime, datetime.date)):
+            day = raw.day
+        else:
+            try:
+                parsed = int(s(raw).replace("-", "/").split("/")[0])
+                if 1 <= parsed <= 31:
+                    day = parsed
+            except (ValueError, IndexError):
+                day = 1
     return f"{day:02d}/{band_month:02d}/{year}"
 
 
