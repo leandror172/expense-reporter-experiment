@@ -1,0 +1,7 @@
+{"date":"05/01/2026","value":5000.0,"income_marker":"income","income_category":"Salário","income_label":"Salário","item_note":"Salário Jan","source":"payslip","year":2026}
+{"date":"05/01/2026","value":-550.0,"income_marker":"income","income_category":"Salário","income_label":"INSS","item_note":"INSS Jan","source":"payslip","year":2026}
+{"date":"05/01/2026","value":-300.0,"income_marker":"income","income_category":"Salário","income_label":"IRRF","item_note":"IRRF Jan","source":"payslip","year":2026}
+{"date":"05/02/2026","value":5000.0,"income_marker":"income","income_category":"Salário","income_label":"Salário","item_note":"Salário Fev","source":"payslip","year":2026}
+{"date":"05/02/2026","value":-550.0,"income_marker":"income","income_category":"Salário","income_label":"INSS","item_note":"INSS Fev","source":"payslip","year":2026}
+{"date":"15/07/2026","value":8000.0,"income_marker":"income","income_category":"Férias","income_label":"Férias Normais","item_note":"Férias Jul","source":"payslip","year":2026}
+{"date":"15/07/2026","value":-400.0,"income_marker":"income","income_category":"Férias","income_label":"IRRF Férias","item_note":"IRRF Férias Jul","source":"payslip","year":2026}
