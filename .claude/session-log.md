@@ -1,39 +1,39 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-23 — Session 37: WS-A multi-year log (DONE) + income decisions + WS-C plan
-**Current Layer:** Retire-insertion pivot (logs = single source of truth; generation-only)
+**Current Session:** 2026-06-24 — Session 38: WS-C income route — DONE + validated on real data (incl. WS-0b month fix)
+**Current Layer:** Retire-insertion pivot — WS-C done; WS-B/D/E next
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-23 - Session 37: WS-A multi-year log (DONE) + income decisions + WS-C plan
+## 2026-06-24 - Session 38: WS-C income route — DONE + validated on real data (incl. WS-0b month fix)
 
 ### Context
 
-Continued the retire-insertion pivot from session 36. Goal this session: implement WS-A (multi-year log), settle the deferred income decisions, and plan WS-C — pacing against the session usage limit rather than context.
+Continued the retire-insertion pivot from session 37. Plan said WS-C (income/revenue route) was next; all prerequisites (WS-0b `income_log.jsonl`, revenue taxonomy proposal) already existed. Subagent-driven, acceptance-first, local-first codegen.
 
 ### What Was Done
 
-- **WS-A / T-11 — DONE** (branch `chore/income-extraction-tooling`, commits `0c011e1`, `95dbabb`): `parseDate` now accepts `DD/MM` and `DD/MM/YYYY` → `(day, month, year, err)` with `year==0` sentinel; `LoadTaxonomy`/`scanEntries` take `targetYear` and filter (`keep iff entryYear==0 || targetYear==0 || entryYear==targetYear`); `generate.go` passes `opts.Year`, `auto.go` skeleton passes 0.
-- Acceptance-first: wrote `TestGenerateWorkbook_MultiYearLogFiltersToYear` (RED-first, reuses `generate-basic` `expected-dump-data` as oracle; fixture `entries-multiyear.jsonl` = 2026 entries + 2025 noise) + unit `TestParseDate_MultiYear`. Both green; full unit suite (19 pkgs) + generate acceptance green.
-- Throwaway merge script `.claude/scratch/merge_year_logs.py` → gitignored `expenses_log-allyears.jsonl` (2073 records, `DD/MM/YYYY`). Byte-identical gate PASSED all 4 years (per-year `--year N` dump == merged `--year N` dump, excl. manifest source).
-- Plan doc + repo-root/taxonomy QUICK.md synced to reality (commit `docs(memory)` + `docs(plan)`).
-- Phase 2 (WS-A.1/.2) ran via a Sonnet subagent; I independently re-verified its tree (build/vet/tests) before trusting it.
+- **WS-C income route — COMPLETE (commits `50d09f7`…`0b28ee5`), acceptance-green, validated on real data.** Acceptance-first: RED `TestGenerateWorkbook_IncomeRoute` (new `generate-income` fixture) authored before any production code.
+- 3-level income model: `RevenueBlock{Category,Block,Label,Months}` (one block == one subline leaf), 3-segment `incomePath`. Dual-format loader parses legacy flat `blocks:["Salário"]` (→ Block==Label) AND nested `blocks:[{block,sublines:[…]}]` via custom `rawIncomeBlock.UnmarshalJSON`.
+- Separate income scan (`loadIncomeEntries`/`scanIncomeEntries`) from a new `--income-entries` flag, reading the extractor `income_log.jsonl` schema (`income_category`=block, `income_label`=leaf, `item_note`=Item), routed by a block+label index, values SIGNED. Threaded through `LoadTaxonomy(...incomeEntriesPath...)` + `generate.Options`.
+- 3-level Receitas render (`buildRevenueSheet` mirrors `buildExpenseType`: Block col-A merge, subline col-B + per-leaf total) and per-Block Listas rollup (`writeRevenueBlockGroups` mirrors expense category rollup: "Total <Block>" + grand total = `sumList` of block totals). Merged nested `incomeCategories` into real `config/taxonomy.json` (gitignored).
+- Froze `generate-income` data-bearing oracle; re-froze `generate-basic` data+skeleton oracles (income summary shifted Listas). `generate-basic` deliberately kept FLAT for dual-format coverage.
+- **Real-data proof + WS-0b fix:** generating from real 2024 data exposed 175/179 income rows were dateless — `extract_income.py` `fmt_date` discarded the (always-known) band month when the source day cell was blank. Fixed (blank day → `01/MM/YYYY`) + re-extracted (0 null dates). WS-C hardened to SKIP a dateless income row with a loud stderr count instead of aborting. Real 2024 regen: exit 0, 0 income warnings, 101/101 records placed, Receitas populated.
 
 ### Decisions Made
 
-- **Income decisions LOCKED:** (1) 3-level symmetric income model (`Receitas → block → subline`); (2) deduction sign kept signed (negative deductions, net = sum); (3) 2022 income unrecoverable (empty shell).
-- **WS-C decisions LOCKED:** income reaches the generator via a SEPARATE `--income-entries` flag consuming the extractor's `income_log.jsonl` as-is (not the unified `--entries`).
-- **Currency formatting is a NO-OP** — corrected the stale WS-0 plan finding: the generator already writes a numeric value (`data_sheet.go:108`) with `R$ #,##0.00` cell format (`styles.go:53`); the "bare string" was a dump artifact of the REAL workbook. Dropped from WS-C scope.
-- WS-C deferred from this session for usage budget (it is bigger than WS-A — model→loader→router→generator + a new frozen income oracle).
+- Income summary rollup = **per-Block symmetric** (subline pulls under "Total <Block>"), matching the locked 3-level-symmetric decision and the expense-category structure (not flat per-subline).
+- `generate-basic` kept on the **legacy flat** income format on purpose, to retain dual-format/legacy-path test coverage (user: "keep flat, but I may want to change that later").
+- Month-loss fixed at the **WS-0b extractor** (not WS-C) — WS-C correctly can't invent a month; dateless rows skip loudly as a guardrail.
 
 ### Next
 
-- **WS-C (income/revenue route) — START HERE.** Subagent-driven. Full task breakdown in `.claude/plans/retire-insertion-keep-generation.md` "WS-C task breakdown": model 3-level, loader, separate income scan/router, `revenue_sheet.go` 3-level render, merge revenue taxonomy proposal, `--income-entries` CLI, new frozen income oracle.
-- Then WS-B (commands → log-append), WS-D (retire bare-name fallback), WS-E (delete dead code).
-- Decide whether to promote merged `expenses_log-allyears.jsonl` to canonical + retire the per-year split (deferred; user's call).
+- **WS-B** — convert commands to log-append: `add`/`auto`/`batch-auto`/`apply` stop touching the workbook, append to `expenses_log.jsonl` via the apply writer; entry contract carries the full typed path.
+- Then **WS-D** (retire bare-name fallback, gate on type-less count ~0; income now has its own `incomePath` route) and **WS-E** (delete dead insert code: `internal/workflow`, `internal/excel` write side, batch insert path).
+- Deferred: promote merged `expenses_log-allyears.jsonl` to canonical + retire per-year split (user's call).
 
 ### Gotchas
 
-- WS-A year-filter `continue` sits AFTER `routeEntry`, so an out-of-year type-less entry still bumps the stderr fallback count before being skipped (cosmetic, but relevant to T-09's "fallback count ~0" gate).
-- The Sonnet subagent recorded 0/0/0 for its local-model calls but those were cold-start TIMEOUTS, not rejections — per conventions it should have `warm_model`+retried rather than escalating to hand-writing. Future subagents doing codegen should warm the model themselves first.
-- `generate_code` `output_file` with a relative path resolves against the LLM repo's REPO_ROOT, not this repo — it wrote the merge script to `/mnt/i/workspaces/llm/...`; use absolute paths or relocate.
+- A dump-review subagent returned a false NEEDS-FIX on the income oracle due to row-index confusion (claimed off-by-one bugs that did not exist). Direct inspection of the dump JSON overturned it — workbook dumps need careful row accounting; verify subagent dump claims against the raw JSON before acting.
+- `my-go-qcoder` was intermittently returning zero-bytes/hanging while VRAM-loaded (genuine failures, not cold-start). Fallbacks: `my-go-g3-12b` / `my-go-q25c14`, then hand-write after 2nd reject. One step landed clean on qcoder (verdict 2) once warmed.
+- Changing the income/summary render re-freezes BOTH `generate-income` AND `generate-basic`'s data+skeleton oracles (income summary shifts Listas rows/dimensions).
