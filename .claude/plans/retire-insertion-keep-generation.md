@@ -211,8 +211,16 @@ Each command stops calling `internal/workflow`/`internal/excel` and instead appe
   2. `auto.go:162` still prints `✓ Inserted: …` — inaccurate post-WS-B (it appends to the log, does
      not insert into a workbook). Rename to "Logged"/"Appended". Note the ambiguous-path test keys
      on the `"✓ Inserted"` string, so update both together.
+- **Slice T-13 — full-path classifier prediction (resolution-correctness; DESIGNED session 40,
+  plan `.claude/plans/t13-classifier-full-path.md`).** Classifier predicts `(type,category,
+  subcategory)` against taxonomy.json (atomic enum); `internal/taxonomy` gains `PathEnum`/`SplitPath`;
+  `auto` consumes predicted path (delete `resolveExpenseType`/`loadTypeIndex`); `add` walks
+  taxonomy.json + `--type` hybrid (delete `resolveCategoryFromTaxonomy`); few-shot examples gain
+  type from training `source` sheet-name. **Retrofits done slices 1–2; precondition for WS-D.**
+  All 4 decisions locked (plan §5); `IRFF→IRRF` taxonomy fix already applied.
 - **Remaining slices:** `batch-auto` (drop insert branch + rollover.csv), `apply` (delete
-  workbook-write half). Same append helper.
+  workbook-write half). Same append helper. **`batch-auto` must be built on predicted-path (T-13)
+  from the start.**
 
 #### STALE .memory — flagged for update next session (NOT yet updated; recorded so next session isn't misled)
 - `internal/feedback/.memories/QUICK.md` + `KNOWLEDGE.md` — **stale:** says `expenses_log.jsonl` is
@@ -234,18 +242,19 @@ Each command stops calling `internal/workflow`/`internal/excel` and instead appe
 - `pkg/utils` — no `.memories`; `ParseDateFlexible`/`FormatDate` added (DD/MM or DD/MM/YYYY). No
   action needed beyond awareness.
 
-> ⚠ **DEFERRED FINDING (advisor flag #4, surfaced by the `add` cross-year fixture) — fix before
-> WS-D can retire the bare-name fallback.** `add` (and `auto`) resolve **category from the feature
-> dict** (`classifier.LoadTaxonomy` `category_mapping`) but **type from `config/taxonomy.json`**
-> (`loadTypeIndex`); `resolveExpenseType` only fires when the feature-dict category **byte-matches**
-> a taxonomy.json category. Measured divergence (session 39): the FD has 2 categories absent from
-> taxonomy.json — `"Fixas – Impostos"` and `"Fixas – Saúde"` (old type-qualified compound names) —
-> so any subcat mapped to those resolves category-but-no-type and **silently emits a type-less
-> line**, feeding the very `byName` fallback WS-D wants to delete. The fix exists: taxonomy.json's
-> `types[].categories[].subcategories[]` tree is already a full subcat→category→type index (104
-> subcats) and could replace the FD's `category_mapping` as the single source of truth for `add`/
-> `auto` resolution. Track as a WS-B/WS-D prerequisite slice. (Same latent risk `auto` already has
-> — not new, but now measured.)
+> ⚠ **WS-B sub-slice — T-13 (advisor flag #4). DESIGNED & de-risked session 40 → see
+> `.claude/plans/t13-classifier-full-path.md`.** `add`/`auto` resolve **category from the feature
+> dict** but **type from `config/taxonomy.json`**, and the two files disagree on category spelling
+> (`"Fixas – Impostos"`, `"Fixas – Saúde"`, etc.) → silent type-less lines that feed the very
+> `byName` fallback WS-D wants to delete. **The fix is stronger than just swapping the resolution
+> source:** the classifier *predicts the full `(type,category,subcategory)` path* against
+> taxonomy.json (atomic 112-path enum, smoke-tested 100% valid), so `auto`/`batch-auto` cannot emit
+> a type-less or wrong-type line by construction; `add` (no model) walks taxonomy.json with a
+> `--type` hybrid for the 5 ambiguous leaves. This also resolves the 5 multi-type leaves
+> (`Estacionamento`/`Dentista`/pets) that the old `(category,subcategory)` lookup *cannot* (it
+> returns `ErrTypeAmbiguous`). **T-13 is the precondition for WS-D** (drives the live-command
+> type-less count to ~0) and **retrofits the already-done WS-B slices 1–2** (which still use the old
+> resolution). All 4 design decisions resolved — see the plan §5.
 
 ### WS-C — Income/revenue route (combine)
 Today `LoadTaxonomy` builds `revenueBlocks` structurally but routes **no entries** into them
@@ -330,6 +339,12 @@ Rationale: WS-0 validates the premise and produces the real backlog before any c
 fills the income-history gap WS-0 surfaces; A is a safe enabler; C before B so the entry contract
 (incl. income) is final before rewiring commands; D and E only once nothing produces type-less or
 uses the dead packages. **WS-E stays gated on a clean WS-0 diff re-run.**
+
+**Update (session 40):** WS-A done; WS-B slices 1–2 (`add`,`auto`) done but with the OLD
+resolution. **T-13 (WS-B resolution-correctness sub-slice) now sits between the remaining WS-B
+work and WS-D** — it retrofits slices 1–2, must shape `batch-auto`, and is the literal precondition
+for WS-D's "type-less count ~0" gate. Effective remaining order: **T-13 (retrofit add/auto + few-shot)
+→ WS-B slice 3 (batch-auto, on predicted-path) → WS-B slice 4 (apply) → WS-C (income) → WS-D → WS-E.**
 
 ## 5. Risk
 - Largest risk is **silent data divergence**: a regenerated workbook that drops content the
