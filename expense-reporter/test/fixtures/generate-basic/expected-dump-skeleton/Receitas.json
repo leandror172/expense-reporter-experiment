@@ -1,7 +1,7 @@
 {
   "sheet": "Receitas",
   "dimensions": {
-    "rows": 6,
+    "rows": 9,
     "cols": 38
   },
   "columnWidths": {
@@ -50,7 +50,10 @@
     "3": 15,
     "4": 15.75,
     "5": 15,
-    "6": 15.75
+    "6": 15,
+    "7": 15,
+    "8": 15,
+    "9": 15.75
   },
   "mergedCells": [
     {
@@ -110,12 +113,16 @@
       "value": "Salário"
     },
     {
-      "range": "B5:B6",
+      "range": "A3:A4",
+      "value": "Salário"
+    },
+    {
+      "range": "B8:B9",
       "value": "13°"
     },
     {
-      "range": "A3:A6",
-      "value": "Receita"
+      "range": "A8:A9",
+      "value": "13°"
     }
   ],
   "crossSheetRefs": [],
@@ -726,7 +733,7 @@
       "cells": [
         {
           "col": "A",
-          "value": "Receita",
+          "value": "Salário",
           "style": {
             "bold": true,
             "borderTop": false,
@@ -1210,12 +1217,18 @@
       ]
     },
     {
-      "row": 5,
+      "row": 6,
+      "rowType": "separator",
+      "rowFill": "000000",
+      "cells": null
+    },
+    {
+      "row": 8,
       "rowType": "data-row",
       "cells": [
         {
           "col": "A",
-          "value": "",
+          "value": "13°",
           "style": {
             "bold": true,
             "borderTop": false,
@@ -1238,7 +1251,7 @@
       ]
     },
     {
-      "row": 6,
+      "row": 9,
       "rowType": "total-row",
       "cells": [
         {
@@ -1279,7 +1292,7 @@
         {
           "col": "E",
           "value": "",
-          "formula": "SUM(E5:E5)",
+          "formula": "SUM(E8:E8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1316,7 +1329,7 @@
         {
           "col": "H",
           "value": "",
-          "formula": "SUM(H5:H5)",
+          "formula": "SUM(H8:H8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1353,7 +1366,7 @@
         {
           "col": "K",
           "value": "",
-          "formula": "SUM(K5:K5)",
+          "formula": "SUM(K8:K8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1390,7 +1403,7 @@
         {
           "col": "N",
           "value": "",
-          "formula": "SUM(N5:N5)",
+          "formula": "SUM(N8:N8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1427,7 +1440,7 @@
         {
           "col": "Q",
           "value": "",
-          "formula": "SUM(Q5:Q5)",
+          "formula": "SUM(Q8:Q8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1464,7 +1477,7 @@
         {
           "col": "T",
           "value": "",
-          "formula": "SUM(T5:T5)",
+          "formula": "SUM(T8:T8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1501,7 +1514,7 @@
         {
           "col": "W",
           "value": "",
-          "formula": "SUM(W5:W5)",
+          "formula": "SUM(W8:W8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1538,7 +1551,7 @@
         {
           "col": "Z",
           "value": "",
-          "formula": "SUM(Z5:Z5)",
+          "formula": "SUM(Z8:Z8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1575,7 +1588,7 @@
         {
           "col": "AC",
           "value": "",
-          "formula": "SUM(AC5:AC5)",
+          "formula": "SUM(AC8:AC8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1612,7 +1625,7 @@
         {
           "col": "AF",
           "value": "",
-          "formula": "SUM(AF5:AF5)",
+          "formula": "SUM(AF8:AF8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1649,7 +1662,7 @@
         {
           "col": "AI",
           "value": "",
-          "formula": "SUM(AI5:AI5)",
+          "formula": "SUM(AI8:AI8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,
@@ -1686,7 +1699,7 @@
         {
           "col": "AL",
           "value": "",
-          "formula": "SUM(AL5:AL5)",
+          "formula": "SUM(AL8:AL8)",
           "style": {
             "bgColor": "F2F2F2",
             "bold": false,

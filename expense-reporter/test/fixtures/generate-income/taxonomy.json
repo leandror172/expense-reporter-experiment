@@ -1,0 +1,25 @@
+{
+  "types": [
+    {
+      "name": "Fixas",
+      "categories": [
+        { "name": "Habitação", "subcategories": ["Aluguel"] }
+      ]
+    }
+  ],
+  "incomeCategories": [
+    {
+      "name": "Receitas",
+      "blocks": [
+        {
+          "block": "Salário",
+          "sublines": ["Salário", "INSS", "IRRF"]
+        },
+        {
+          "block": "Férias",
+          "sublines": ["Férias Normais", "IRRF Férias"]
+        }
+      ]
+    }
+  ]
+}

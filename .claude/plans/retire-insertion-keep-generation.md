@@ -77,13 +77,35 @@ Inputs: 4 per-year generated workbooks vs real `Planilha_Normalized_Final.xlsx` 
      **~25-line payslip taxonomy** (Salário + 14 sub-lines, 13°, Férias, Presente, Outros) → the
      **revenue taxonomy must be enriched** before generation can even hold that detail. *(NEW —
      fold into WS-0b/WS-C.)*
-- ✅ **Currency formatting (DECIDED, user, session 36):** generated value cells should hold a **bare
-  number**; the **cell number-format** carries `R$ …` (display only). Today generation writes the
-  `"R$ 200.00"` string into the value — change it to a numeric value + currency cell format. Small
-  generator change (`internal/generate` styles/number-format).
+- ✅ **Currency formatting — NO CHANGE NEEDED (corrected session 37, verified in code).** The
+  earlier "generation writes a `R$ 200.00` string → change to numeric + format" finding was a
+  **dump-serialization artifact** (it is the *real* workbook that stores currency as strings). The
+  generator ALREADY writes a numeric value (`data_sheet.go:108` sets `entry.Value` float) with the
+  `R$ #,##0.00` cell format (`styles.go:53` `fmtCurrency`, applied via `st.Currency`). No generator
+  work here; drop this from WS-C scope.
 - Row-count differences are the intentional derived layout (1 row/subcat) + half-year real dump —
   not data loss.
 - Expenses reproduce faithfully → **premise validated for expenses; income is the one blocker.**
+
+#### Income decisions RESOLVED (session 37, 2026-06-23)
+The three deferred income questions are now locked:
+1. **Income taxonomy shape → 3-level symmetric.** `Receitas → block (Salário/13°/Férias/
+   Presente/Outros) → sublines`, mirroring expense `type→category→subcategory`. The extracted
+   `income_log.jsonl` already carries `income_category`+`income_label` (3-level). Requires:
+   `loader.go` income model change (`Blocks []string` → block→sublines), `incomePath` gains a
+   level, `RevenueBlock` model, and the `incomeCategories` shape in `config/taxonomy.json` (merge
+   the proposal). This is the symmetry that lets WS-D collapse income/expense routing later.
+2. **Deduction sign → keep signed.** Gross lines positive, deductions (INSS/IRRF/contributions)
+   negative; net = sum. Matches the extractor's output and the source workbook. Generator just sums.
+3. **2022 income → accept as unrecoverable.** 2022 old workbook has no Receitas sheet; generated
+   2022 Receitas stays an empty shell. 2022 *expenses* unaffected.
+
+> **Verification (session 37):** `parseDate` (loader.go:302) still rejects non-`DD/MM` → WS-A
+> genuinely pending. Income *target* scaffolding exists (income blocks in `byPath` via `incomePath`,
+> `subcatTarget{kind:"income"}`, `attachEntry` income branch) BUT `routeEntry` only ever builds
+> `expensePath` → no log line can reach an income block today. WS-C = wire the router + recognize
+> income entries (`income_marker`/`income_category`/`income_label` field names differ from
+> `type/category/subcategory` — scanEntries must learn the income entry variant).
 
 ### WS-0b — Historical income extraction (5.R4-for-Receitas)
 Parallel to 5.R4 but for the **Receitas** sheet across the old workbooks → income log entries.
@@ -108,6 +130,48 @@ per-year split (`expenses_log-{2022,2023,2024}.jsonl`) created in 5.R4.
 - **Tests:** unit on `parseDate` (both formats, bad input); acceptance — a single multi-year log
   produces the same dumps as the per-year run.
 
+#### WS-A execution decisions LOCKED (session 37, 2026-06-23)
+Grounded in code: `Subcat.Months` is `[12][]Entry` (month-indexed, **no year axis**);
+`data_sheet.go:106` stamps every retained entry with package `dataYear`. So "multi-year log"
+means **one merged log → generate FILTERS to `--year`**, not a multi-year workbook. Per-entry
+year is a *filter key*, not a layout dimension.
+- **EQ-A2 → (a):** add a `year int` param to `LoadTaxonomy`/`scanEntries`; filter in the scan
+  (`keep iff entryYear==0 || entryYear==targetYear`). Downstream `dataYear` stamping unchanged.
+- **EQ-A4 → throwaway:** merge script lives in `.claude/scratch/` (5.R4 precedent), runs once over
+  gitignored personal logs; **byte-identical oracle-dump gate** vs pre-merge per-year runs.
+- **Invariant (EQ-A3 dup trap):** the merge MUST rewrite every line to `DD/MM/YYYY` (filename =
+  year authority) so the merged log has **zero** year-0 lines. The `--year` fallback exists only
+  for un-migrated single-year logs (all year-0 → all kept → behaves as today).
+- **`parseDate` (EQ-A1):** accept `DD/MM` and `DD/MM/YYYY`; return `(day, month, year, err)` with
+  `year==0` sentinel. **Shared with income** — `income_log.jsonl` is already `DD/MM/YYYY`, so this
+  is also a hard prereq for WS-C.
+- **Acceptance (EQ-A5):** a multi-year fixture log generated with `--year N` dumps identically to
+  an N-only fixture.
+
+**WS-A task breakdown:**
+1. `parseDate` → both formats + year sentinel; unit tests (DD/MM→0, DD/MM/YYYY→year, malformed).
+2. `LoadTaxonomy`/`scanEntries` → target-year param + filter; update the one non-test caller
+   (`generate.go:47`) to pass `opts.Year`.
+3. Throwaway merge script → per-year logs → one `DD/MM/YYYY` log; byte-identical gate.
+4. Acceptance: multi-year-log-filtered-to-year == single-year fixture.
+
+**WS-A — ✅ DONE (session 37, 2026-06-23, branch `chore/income-extraction-tooling`, commits
+`0c011e1` + `95dbabb`).** All 4 tasks landed and verified:
+- `parseDate(dateStr) (day, month, year, err)` accepts `DD/MM` (year 0) + `DD/MM/YYYY` (year ≥ 1000);
+  `LoadTaxonomy`/`loadEntries`/`scanEntries` take `targetYear`; filter = keep iff
+  `entryYear==0 || targetYear==0 || entryYear==targetYear`. `generate.go` passes `opts.Year`;
+  `auto.go` skeleton path passes `0`. (NOTE: filter `continue` sits *after* `routeEntry`, so an
+  out-of-year **type-less** entry can still bump the stderr fallback count before being skipped —
+  cosmetic only, but relevant to WS-D's "fallback count ~0" gate.)
+- Acceptance `TestGenerateWorkbook_MultiYearLogFiltersToYear` (reuses `generate-basic`
+  `expected-dump-data` as oracle; fixture `entries-multiyear.jsonl` = 2026 entries + 2025 noise).
+  Unit `TestParseDate_MultiYear`.
+- Merge script `.claude/scratch/merge_year_logs.py` → gitignored `expenses_log-allyears.jsonl`
+  (2073 records). **Byte-identical gate PASSED** all 4 years (per-year `--year N` == merged `--year N`
+  dump, excl. manifest `source`). The per-year split CAN now retire — **but the canonical
+  `expenses_log.jsonl` was NOT clobbered**; promoting the merged log to canonical + deleting the
+  per-year files is a deferred workflow decision (user's call).
+
 ### WS-B — Convert commands to log-append
 Each command stops calling `internal/workflow`/`internal/excel` and instead appends to
 `expenses_log.jsonl` (+ `classifications.jsonl`) using the same writer `apply` uses.
@@ -122,18 +186,117 @@ Each command stops calling `internal/workflow`/`internal/excel` and instead appe
 - **Entry contract:** every appended entry should carry the full **type/category/subcategory**
   (the typed path) so it routes via `byPath` — this is what lets WS-D retire the bare-name fallback.
 
-### WS-C — Income/revenue route (combine)
-Today `LoadTaxonomy` builds `revenueBlocks` structurally but routes **no entries** into them.
+#### WS-B progress
+- **Slice 1 — `add` → log-append: DONE (session 39, branch `chore/income-extraction-tooling`,
+  UNCOMMITTED).** New `internal/appender` package (`ExpandAndAppend`: append-time installment
+  expansion, models-free, feedback-only); `add` no longer touches `internal/workflow`/`excel`.
+  Installments expand into N dated `ExpenseEntry` lines; **cross-year installments carry the real
+  next-year date — no `rollover.csv`** (verify `NoRolloverFileCreated`). `add` resolves type via
+  `resolveExpenseType(loadTypeIndex(cfg), …)` + category via `resolveCategoryFromTaxonomy(addDataDir)`.
+  9 Add acceptance tests green (incl. 3 formerly workbook-gated, now log-asserting + explicit-year
+  to dodge the 2027 time-bomb); unit green; build clean. `pkg/utils.ParseDateFlexible`/`FormatDate`
+  added; `correct.go` adapts to the widened `parseExpenseForFeedback` signature.
+- **Slice 2 — `auto` → log-append: DONE (session 39, committed separately).** `auto` HIGH-confidence
+  path no longer calls `workflow.InsertExpense`/`excel`; resolves type via `loadTypeIndex`/
+  `resolveExpenseType` and appends through `appender.ExpandAndAppend`. Now accepts installment
+  notation (`ParseCurrencyWithInstallments` + `ParseDateFlexible`) → N dated lines. `confirmed`
+  feedback to `classifications.jsonl` preserved. `logExpense` left defined (still used by
+  `batch_auto.go:301`). 2 new acceptance tests green (HIGH append + installments); build + unit clean.
+- **Slice-2 LOOSE ENDS (carry into next session — pre-existing stale tests, NOT slice-2 regressions):**
+  1. `test/auto_test.go` `TestAuto_KnownExpenseIsClassifiedWithConfidence` +
+     `TestAuto_AmbiguousExpenseKeptForManualReview` are still `RequireWorkbook`-gated → they SKIP,
+     so the **LOW-confidence/ambiguous path has no running coverage** and a redundant HIGH-path
+     test sits dark. Rewire to drop the workbook gate (mirror the slice-1 `feedback_test.go` fix:
+     drop `RequireWorkbook` + `CopyWorkbookToWorkDir`, point Given at a taxonomy config) so they run.
+  2. `auto.go:162` still prints `✓ Inserted: …` — inaccurate post-WS-B (it appends to the log, does
+     not insert into a workbook). Rename to "Logged"/"Appended". Note the ambiguous-path test keys
+     on the `"✓ Inserted"` string, so update both together.
+- **Slice T-13 — full-path classifier prediction (resolution-correctness; DESIGNED session 40,
+  plan `.claude/plans/t13-classifier-full-path.md`).** Classifier predicts `(type,category,
+  subcategory)` against taxonomy.json (atomic enum); `internal/taxonomy` gains `PathEnum`/`SplitPath`;
+  `auto` consumes predicted path (delete `resolveExpenseType`/`loadTypeIndex`); `add` walks
+  taxonomy.json + `--type` hybrid (delete `resolveCategoryFromTaxonomy`); few-shot examples gain
+  type from training `source` sheet-name. **Retrofits done slices 1–2; precondition for WS-D.**
+  All 4 decisions locked (plan §5); `IRFF→IRRF` taxonomy fix already applied.
+- **Remaining slices:** `batch-auto` (drop insert branch + rollover.csv), `apply` (delete
+  workbook-write half). Same append helper. **`batch-auto` must be built on predicted-path (T-13)
+  from the start.**
 
-- Define an **income entry** in the log (its own `type` = the revenue/`Receitas` root, or a
-  dedicated income marker) with a full **income path**.
-- Add an income routing step parallel to `routeEntry` that places logged income amounts into the
-  matching `RevenueBlock` by income full-path (`incomePath`).
-- Structure stays taxonomy-driven (revenue blocks already come from taxonomy); only the **amounts**
-  come from logged income entries.
-- Provide an input path for income (e.g. `add --income` or a small `income` subcommand appending an
-  income-typed log entry) — exact CLI surface TBD in execution.
-- **Tests:** acceptance — logged income entries land in the right Receitas block/month.
+#### STALE .memory — flagged for update next session (NOT yet updated; recorded so next session isn't misled)
+- `internal/feedback/.memories/QUICK.md` + `KNOWLEDGE.md` — **stale:** says `expenses_log.jsonl` is
+  written by "auto / batch-auto / apply" and that `add` writes ONLY `classifications.jsonl`. After
+  WS-B slice 1, **`add` now also appends to `expenses_log.jsonl`** (via `internal/appender`, status
+  `manual`). Also the "expenses_log is year-implicit (`DD/MM`)" note is now partial — the appender
+  emits `DD/MM/YYYY` via `pkg/utils.ParseDateFlexible`.
+- `internal/appender/` — **missing:** new package, no `.memories/QUICK.md`. Add one: `ExpandAndAppend`
+  is the single append-time writer (installment expansion → N dated `ExpenseEntry` lines; cross-year
+  carries real next-year date, no `rollover.csv`); models-free, feedback-only; reused by `add` +
+  `auto`, will be reused by `batch-auto`/`apply`.
+- repo `/mnt/i/workspaces/expenses/code/.memories/QUICK.md` — **stale:** Status says "Next: WS-B
+  (commands→log-append) … planned/not started". WS-B slices 1–2 (`add`, `auto`) are now DONE;
+  remaining are `batch-auto`, `apply`, then WS-D/WS-E.
+- `internal/taxonomy/.memories/KNOWLEDGE.md` — **augment (not wrong):** the "two taxonomy sources
+  don't know about each other" note now has a measured consequence — deferred finding #4 above
+  (feature-dict vs taxonomy.json category divergence → silent type-less lines from `add`/`auto`),
+  a WS-D prerequisite.
+- `pkg/utils` — no `.memories`; `ParseDateFlexible`/`FormatDate` added (DD/MM or DD/MM/YYYY). No
+  action needed beyond awareness.
+
+> ⚠ **WS-B sub-slice — T-13 (advisor flag #4). DESIGNED & de-risked session 40 → see
+> `.claude/plans/t13-classifier-full-path.md`.** `add`/`auto` resolve **category from the feature
+> dict** but **type from `config/taxonomy.json`**, and the two files disagree on category spelling
+> (`"Fixas – Impostos"`, `"Fixas – Saúde"`, etc.) → silent type-less lines that feed the very
+> `byName` fallback WS-D wants to delete. **The fix is stronger than just swapping the resolution
+> source:** the classifier *predicts the full `(type,category,subcategory)` path* against
+> taxonomy.json (atomic 112-path enum, smoke-tested 100% valid), so `auto`/`batch-auto` cannot emit
+> a type-less or wrong-type line by construction; `add` (no model) walks taxonomy.json with a
+> `--type` hybrid for the 5 ambiguous leaves. This also resolves the 5 multi-type leaves
+> (`Estacionamento`/`Dentista`/pets) that the old `(category,subcategory)` lookup *cannot* (it
+> returns `ErrTypeAmbiguous`). **T-13 is the precondition for WS-D** (drives the live-command
+> type-less count to ~0) and **retrofits the already-done WS-B slices 1–2** (which still use the old
+> resolution). All 4 design decisions resolved — see the plan §5.
+
+### WS-C — Income/revenue route (combine)
+Today `LoadTaxonomy` builds `revenueBlocks` structurally but routes **no entries** into them
+(`routeEntry` only ever builds `expensePath`). Income *target* scaffolding exists (income blocks in
+`byPath` via `incomePath`, `subcatTarget{kind:"income"}`, `attachEntry` income branch) — WS-C wires
+the producer/router side and lifts the model to 3 levels.
+
+#### WS-C decisions LOCKED (session 37)
+- **3-level symmetric income model** (from income decisions §): `Receitas → block (Salário/13°/
+  Férias/Presente/Outros) → subline`. Leaf = subline.
+- **Income input → SEPARATE `--income-entries` flag** (NOT the unified `--entries`). Consume the
+  extractor's `income_log.jsonl` AS-IS (schema `income_marker`/`income_category`/`income_label`/
+  `item_note`/`date`(`DD/MM/YYYY`)/`value`/`year`). Keeps expense vs income schemas clean; unify
+  later if ever desired. `income_category`→Block, `income_label`→subline Label, `item_note`→Entry.Item.
+- **Signed values** (decided): deduction lines stay negative; generator just sums. No sign handling
+  in the router.
+- **Currency formatting → NO-OP** (see WS-0 RESULTS correction; generator already numeric + format).
+- **2022 income** absent → its Receitas stays an empty shell.
+
+#### WS-C task breakdown (NOT STARTED — for next session, subagent-driven)
+1. **Model** (`internal/taxonomy/types.go`): `RevenueBlock` gains a middle level →
+   `{Category:"Receitas", Block:"Salário", Label:"INSS"(leaf), Months}`. `incomePath` → 3 segments
+   (`income\x00receitas\x00salário\x00inss`).
+2. **Loader** (`loader.go`): `IncomeCategories` raw struct `Blocks []string` → block→sublines;
+   `incomeCatsToRevenueBlocks` flattens to leaf `RevenueBlock`s; `buildSubcategoryMap` registers
+   3-segment `incomePath` keys.
+3. **Router** (`scanEntries`/`routeEntry`): a separate income-entry scan (new `--income-entries`
+   file) that reads the income schema, NFC-normalizes, builds `incomePath(category, block, label)`,
+   and `attachEntry`s the signed value to the matching leaf block's month. parseDate already accepts
+   the `DD/MM/YYYY` income dates (WS-A).
+4. **Generator** (`internal/generate/revenue_sheet.go`): 3-level grouping (Category → Block → subline
+   rows) replacing today's 2-level (Category → block-row). Reuses `writeDataBand`.
+5. **Taxonomy data**: merge `.claude/scratch/taxonomy-revenue-proposal.json` into
+   `config/taxonomy.json` `incomeCategories` (gitignored; structure only).
+6. **CLI / plumbing**: `generate-workbook --income-entries <path>`; thread through `Options`.
+7. **Acceptance**: income fixture + a NEWLY FROZEN data-bearing income oracle dump (current income
+   dumps are empty shells) — logged income lands in the right Receitas block/month, signed sum
+   correct. This freeze is the fiddly part; budget for it.
+
+**Size note:** bigger than WS-A — model change ripples loader→router→generator rendering + a new
+frozen oracle. Deferred from session 37 (usage budget). The current `revenue_sheet.go` is 2-level
+(`RevenueBlock{Category, Label, Months}`, grouped by Category); the 3-level lift is the core risk.
 
 ### WS-D — T-09: retire bare-name fallback
 Once WS-B guarantees typed entries and WS-C gives income its own route, the transitional bare-name
@@ -176,6 +339,12 @@ Rationale: WS-0 validates the premise and produces the real backlog before any c
 fills the income-history gap WS-0 surfaces; A is a safe enabler; C before B so the entry contract
 (incl. income) is final before rewiring commands; D and E only once nothing produces type-less or
 uses the dead packages. **WS-E stays gated on a clean WS-0 diff re-run.**
+
+**Update (session 40):** WS-A done; WS-B slices 1–2 (`add`,`auto`) done but with the OLD
+resolution. **T-13 (WS-B resolution-correctness sub-slice) now sits between the remaining WS-B
+work and WS-D** — it retrofits slices 1–2, must shape `batch-auto`, and is the literal precondition
+for WS-D's "type-less count ~0" gate. Effective remaining order: **T-13 (retrofit add/auto + few-shot)
+→ WS-B slice 3 (batch-auto, on predicted-path) → WS-B slice 4 (apply) → WS-C (income) → WS-D → WS-E.**
 
 ## 5. Risk
 - Largest risk is **silent data divergence**: a regenerated workbook that drops content the

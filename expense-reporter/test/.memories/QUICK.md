@@ -9,6 +9,11 @@ correct, installments, rollover, exclusion, add-with-prediction, apply, review, 
 entries.jsonl + oracle-frozen `expected-dump-*/`, NOT config.json+input.csv; see PATTERNS.md
 "Generate-Workbook Fixture Sub-Format"). Workbook structure assertions live:
 `verify.WorkbookStructureMatches(expectedDumpDir)` on `internal/inspect` dumps.
+`generate-income` fixture + `TestGenerateWorkbook_IncomeRoute` (WS-C, session 38) cover the
+3-level income route: nested `incomeCategories` taxonomy + `income-entries.jsonl` (extractor
+schema) via `--income-entries`, oracle-frozen `expected-dump-data`. Asserts signed sums land
+(Salário Jan 4150 etc.) + per-Block Listas rollup. NOTE: changing the income/summary render
+re-freezes BOTH this AND `generate-basic`'s data+skeleton oracles (income summary shifts Listas).
 `type_routing_cycle_test.go` (`type-routing-cycle` fixture) is an INCREMENTAL full-cycle
 suite (batch-auto→review→apply→generate-workbook): each test = one CLI step, each folds prior
 steps into Given; the last seeds the cumulative typed log and runs only generate-workbook,

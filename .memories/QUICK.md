@@ -15,17 +15,23 @@ Sessions 30–31: `internal/generate` internal refactor (styles vocabulary + Eng
 loader/revenue/summary step-extraction; shared helpers → `util.go`/new `data_sheet.go`; unified
 block-sizing + data-band writers) — behavior-preserving, oracle dumps unchanged, 2 commits on the
 branch (uncommitted-then-committed). See generate `.memories/QUICK.md` for the conventions.
-**Session 33 (2026-06-19) — Plan A (T-05) + Plan B (T-04) implemented** (PRs #29 + #30,
-branches `feat/persist-expense-type` → stacked `feat/full-path-entry-routing`): expense
-**type** persisted end-to-end (feedback structs carry `Type`, set on the apply path);
-`ExpenseSheet`→`ExpenseType` rename + JSON migration (`sheets`→`types`, `sheet`→`type`
-with legacy read-compat); generator **two-tier routing** — full-path for typed entries,
-**transitional** bare-name fallback (+ambiguous-skip) for type-less — with NFC-normalized
-keys; `backfill-type.py` recovery tool. Also remediated a `git add -A` data leak (runtime
-logs now gitignored). PR #27 already merged.
-Next: classifier full-path label (5.R4/RUI-4, closes the type-less producer gap);
-year-rollover workflow; TF-IDF (5.R1). Real-data proof of the A→B chain pending Bf3
-(export reviewed.json → backfill → confirm `expensePath` is a taxonomy key).
+**Sessions 33–35:** Plan A (T-05) + Plan B (T-04) — expense **type** persisted end-to-end;
+`ExpenseSheet`→`ExpenseType` rename + JSON migration; generator **two-tier routing**
+(full-path for typed, transitional bare-name fallback for type-less, NFC keys). 5.R4
+historical extraction (2022–2025 old workbooks → corpus 694→1788 + per-year expense logs).
+**Major pivot decided (session 36):** **retire workbook insertion, keep only generation**
+— JSONL logs become the single source of truth, `generate-workbook` the only writer. Plan:
+`.claude/plans/retire-insertion-keep-generation.md`. WS-0 diff validated the premise
+(expenses reproduce; income is the sole gap); WS-0b extracted historical income.
+**Session 37 (2026-06-23) — WS-A/T-11 DONE** (branch `chore/income-extraction-tooling`):
+`parseDate` accepts `DD/MM`+`DD/MM/YYYY`; `LoadTaxonomy`/`scanEntries` filter by target year;
+acceptance + unit tests green; throwaway merge script (`merge_year_logs.py`) → one multi-year
+log, byte-identical gate passed all years. Income decisions locked (3-level symmetric income,
+separate `--income-entries`, signed values). Currency formatting confirmed a **no-op**
+(generator already numeric + `R$ #,##0.00`; the WS-0 "bare string" was a dump artifact).
+Next: **WS-C** (income route — model→loader→router→generator, planned/not started, bigger
+than WS-A); then WS-B (commands→log-append), WS-D (retire fallback), WS-E (delete dead code).
+Open: promote merged log to canonical + retire per-year split (deferred, user's call).
 
 ## Repo Structure
 ```

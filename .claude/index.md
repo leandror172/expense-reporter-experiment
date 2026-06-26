@@ -40,10 +40,17 @@
 | Workbook generator spec v2 (Layer 3 + hand-review, session 27) | `.claude/plans/workbook-generator-spec.md` |
 | Workbook generator implementation plan + next-session brief | `.claude/plans/workbook-generator-implementation-plan.md` |
 | Taxonomy identity key (full-path decision + ambiguity guard, task #5 deferred) | `.claude/plans/taxonomy-identity-key.md` [ref:taxonomy-identity-key] |
+| Generator build order + row counter + oracle coupling | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-build-order] [ref:generate-row-counter] [ref:generate-oracle-coupling] |
+| Generator column layout (data sheets vs Listas) | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-colmap] |
+| Generator block sizing (calculateBlockRows) | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-block-sizing] |
+| Generator package-level state (dataYear/headroomRows/perGroupPctRows) | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-package-state] |
+| Generator excelize gotchas | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-excelize-gotchas] |
+| Generator income 3-level model + dual-format taxonomy | `expense-reporter/internal/generate/.memories/KNOWLEDGE.md` [ref:generate-income-symmetry] |
 | Plan A — persist expense *type* + rename/JSON migration + backfill (session 32) | `.claude/plans/persist-expense-type.md` |
 | Plan B — full-path entry routing (T-04, session 32) | `.claude/plans/full-path-entry-routing.md` |
 | Bf real-data verification runbook (execute next session — Bf1/Bf3 + routing proof) | `.claude/plans/bf-real-data-verification-runbook.md` |
 | Retire workbook insertion, keep only generation (logs = source of truth; couples T-11/T-09/T-03) | `.claude/plans/retire-insertion-keep-generation.md` |
+| T-13 (revised) — classifier predicts full (type,category,subcategory) path; WS-D prerequisite | `.claude/plans/t13-classifier-full-path.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
@@ -373,7 +380,7 @@ Desktop-era planning documents — read for context, do not modify.
 | `mcp-server/.memories/` | QUICK.md, KNOWLEDGE.md | Thin wrapper decisions, binary resolution, data-dir fix |
 | `expense-reporter/internal/excel/.memories/` | QUICK.md, KNOWLEDGE.md | Reference-sheet columns, boundary detection, and the workbook structural map (sheet families, palette, fill-down vs merge, separators, cross-sheet wiring) |
 | `expense-reporter/cmd/workbook-inspect/.memories/` | QUICK.md | workbook-inspect tool: usage, output schema, classifier + row-fill design |
-| `expense-reporter/internal/generate/.memories/` | QUICK.md | generator entry points, sheet-order rule, re-freeze discipline, excelize gotchas |
+| `expense-reporter/internal/generate/.memories/` | QUICK.md, KNOWLEDGE.md | generator entry points, sheet-order rule, re-freeze discipline, excelize gotchas; KNOWLEDGE: build order, accumulating row counter, cross-fixture oracle coupling, column layout, block sizing, income 3-level model |
 | `.claude/workbook-dump/` | *.json (gitignored) | Raw JSON dumps from workbook-inspect; input for Layer 2 visual annotation and Layer 3 spec |
 
 ---
@@ -399,4 +406,5 @@ Desktop-era planning documents — read for context, do not modify.
 | `lookup-category.py` | `.claude/tools/lookup-category.py` | Look up canonical category for one or more subcategories (`<sub> [...]` or `--list`) |
 | `backfill-type.py` | `.claude/tools/backfill-type.py` | Backfill expense type into log files from reviewed.json exports (Plan A Phase B-fill recovery) |
 | 5.R4 extraction scripts | `.claude/scratch/{extract_old_workbooks,dedup_corpus,build_corpus,build_logs}.py` | One-off (session 35): 2022–2024 workbooks → deduped corpus + per-year logs. Alias map externalized to gitignored `extraction-aliases.json`. |
+| WS-A.3 merge script | `.claude/scratch/merge_year_logs.py` | One-off (session 37): merge per-year `expenses_log-{2022,2023,2024}.jsonl` + base 2025 → one `expenses_log-allyears.jsonl`, rewriting `DD/MM`→`DD/MM/YYYY`. Output gitignored. Verified byte-identical (excl. manifest source) vs per-year `generate-workbook --year N` for all 4 years. |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |

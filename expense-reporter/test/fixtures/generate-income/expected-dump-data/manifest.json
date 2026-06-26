@@ -1,0 +1,23 @@
+{
+  "source": "/tmp/claude-1000/-mnt-i-workspaces-expenses-code/8fde4669-44f5-4a9e-afec-7264a0b530cb/scratchpad/income.xlsx",
+  "sheets": [
+    {
+      "name": "Listas de itens",
+      "file": "Listas de itens.json",
+      "rows": 41,
+      "cols": 15
+    },
+    {
+      "name": "Receitas",
+      "file": "Receitas.json",
+      "rows": 15,
+      "cols": 38
+    },
+    {
+      "name": "Fixas",
+      "file": "Fixas.json",
+      "rows": 4,
+      "cols": 38
+    }
+  ]
+}

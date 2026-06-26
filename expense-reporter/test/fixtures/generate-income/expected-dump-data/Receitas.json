@@ -1,0 +1,3563 @@
+{
+  "sheet": "Receitas",
+  "dimensions": {
+    "rows": 15,
+    "cols": 38
+  },
+  "columnWidths": {
+    "A": 12.29,
+    "AA": 12.57,
+    "AB": 12.57,
+    "AC": 12.57,
+    "AD": 12.57,
+    "AE": 12.57,
+    "AF": 12.57,
+    "AG": 12.57,
+    "AH": 12.57,
+    "AI": 12.57,
+    "AJ": 12.57,
+    "AK": 12.57,
+    "AL": 12.57,
+    "B": 13.86,
+    "C": 12.57,
+    "D": 12.57,
+    "E": 12.57,
+    "F": 12.57,
+    "G": 12.57,
+    "H": 12.57,
+    "I": 12.57,
+    "J": 12.57,
+    "K": 12.57,
+    "L": 12.57,
+    "M": 12.57,
+    "N": 12.57,
+    "O": 12.57,
+    "P": 12.57,
+    "Q": 12.57,
+    "R": 12.57,
+    "S": 12.57,
+    "T": 12.57,
+    "U": 12.57,
+    "V": 12.57,
+    "W": 12.57,
+    "X": 12.57,
+    "Y": 12.57,
+    "Z": 12.57
+  },
+  "rowHeights": {
+    "1": 18,
+    "10": 15,
+    "11": 15,
+    "12": 15,
+    "13": 15.75,
+    "14": 15,
+    "15": 15.75,
+    "2": 15,
+    "3": 15,
+    "4": 15.75,
+    "5": 15,
+    "6": 15.75,
+    "7": 15,
+    "8": 15.75,
+    "9": 15
+  },
+  "mergedCells": [
+    {
+      "range": "A1:B2",
+      "value": "Mês"
+    },
+    {
+      "range": "C1:E1",
+      "value": "Janeiro"
+    },
+    {
+      "range": "F1:H1",
+      "value": "Fevereiro"
+    },
+    {
+      "range": "I1:K1",
+      "value": "Março"
+    },
+    {
+      "range": "L1:N1",
+      "value": "Abril"
+    },
+    {
+      "range": "O1:Q1",
+      "value": "Maio"
+    },
+    {
+      "range": "R1:T1",
+      "value": "Junho"
+    },
+    {
+      "range": "U1:W1",
+      "value": "Julho"
+    },
+    {
+      "range": "X1:Z1",
+      "value": "Agosto"
+    },
+    {
+      "range": "AA1:AC1",
+      "value": "Setembro"
+    },
+    {
+      "range": "AD1:AF1",
+      "value": "Outubro"
+    },
+    {
+      "range": "AG1:AI1",
+      "value": "Novembro"
+    },
+    {
+      "range": "AJ1:AL1",
+      "value": "Dezembro"
+    },
+    {
+      "range": "B3:B4",
+      "value": "Salário"
+    },
+    {
+      "range": "B5:B6",
+      "value": "INSS"
+    },
+    {
+      "range": "B7:B8",
+      "value": "IRRF"
+    },
+    {
+      "range": "A3:A8",
+      "value": "Salário"
+    },
+    {
+      "range": "B12:B13",
+      "value": "Férias Normais"
+    },
+    {
+      "range": "B14:B15",
+      "value": "IRRF Férias"
+    },
+    {
+      "range": "A12:A15",
+      "value": "Férias"
+    }
+  ],
+  "crossSheetRefs": [],
+  "rows": [
+    {
+      "row": 1,
+      "rowType": "header-month",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Mês",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Janeiro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Fevereiro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Março",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Abril",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Maio",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "Junho",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Julho",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "X",
+          "value": "Agosto",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Setembro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Outubro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Novembro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Dezembro",
+          "style": {
+            "bgColor": "C0C0C0",
+            "bold": true,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": true,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "rowType": "header-col",
+      "cells": [
+        {
+          "col": "C",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "D",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "E",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "F",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "G",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "H",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "I",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "J",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "K",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "L",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "M",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "N",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "O",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "P",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "Q",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "R",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "S",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "T",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "U",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "V",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "W",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "X",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "Y",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "Z",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AB",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AC",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AE",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AF",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AH",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AI",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Item",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AK",
+          "value": "Data",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        },
+        {
+          "col": "AL",
+          "value": "Valor",
+          "style": {
+            "bgColor": "D8D8D8",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": true,
+            "borderRight": true
+          }
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Salário",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Salário",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Salário Jan",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "05/01",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "5000",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Salário Fev",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "05/02",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "5000",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "rowType": "total-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E3:E3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H3:H3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K3:K3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N3:N3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "P",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Q",
+          "value": "",
+          "formula": "SUM(Q3:Q3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "S",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "T",
+          "value": "",
+          "formula": "SUM(T3:T3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "",
+          "formula": "SUM(W3:W3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "X",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Y",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Z",
+          "value": "",
+          "formula": "SUM(Z3:Z3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AB",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AC",
+          "value": "",
+          "formula": "SUM(AC3:AC3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AE",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AF",
+          "value": "",
+          "formula": "SUM(AF3:AF3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AH",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AI",
+          "value": "",
+          "formula": "SUM(AI3:AI3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AK",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AL",
+          "value": "",
+          "formula": "SUM(AL3:AL3)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 5,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "INSS",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "INSS Jan",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "05/01",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "-550",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "INSS Fev",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "05/02",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "-550",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 6,
+      "rowType": "total-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E5:E5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H5:H5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K5:K5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N5:N5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "P",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Q",
+          "value": "",
+          "formula": "SUM(Q5:Q5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "S",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "T",
+          "value": "",
+          "formula": "SUM(T5:T5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "",
+          "formula": "SUM(W5:W5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "X",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Y",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Z",
+          "value": "",
+          "formula": "SUM(Z5:Z5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AB",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AC",
+          "value": "",
+          "formula": "SUM(AC5:AC5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AE",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AF",
+          "value": "",
+          "formula": "SUM(AF5:AF5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AH",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AI",
+          "value": "",
+          "formula": "SUM(AI5:AI5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AK",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AL",
+          "value": "",
+          "formula": "SUM(AL5:AL5)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 7,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "IRRF",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "IRRF Jan",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "05/01",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "-300",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 8,
+      "rowType": "total-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E7:E7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H7:H7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K7:K7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N7:N7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "P",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Q",
+          "value": "",
+          "formula": "SUM(Q7:Q7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "S",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "T",
+          "value": "",
+          "formula": "SUM(T7:T7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "",
+          "formula": "SUM(W7:W7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "X",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Y",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Z",
+          "value": "",
+          "formula": "SUM(Z7:Z7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AB",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AC",
+          "value": "",
+          "formula": "SUM(AC7:AC7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AE",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AF",
+          "value": "",
+          "formula": "SUM(AF7:AF7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AH",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AI",
+          "value": "",
+          "formula": "SUM(AI7:AI7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AK",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AL",
+          "value": "",
+          "formula": "SUM(AL7:AL7)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 10,
+      "rowType": "separator",
+      "rowFill": "000000",
+      "cells": null
+    },
+    {
+      "row": 12,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "Férias",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "Férias Normais",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Férias Jul",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "15/07",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "8000",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 13,
+      "rowType": "total-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E12:E12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H12:H12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K12:K12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N12:N12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "P",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Q",
+          "value": "",
+          "formula": "SUM(Q12:Q12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "S",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "T",
+          "value": "",
+          "formula": "SUM(T12:T12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "",
+          "formula": "SUM(W12:W12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "X",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Y",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Z",
+          "value": "",
+          "formula": "SUM(Z12:Z12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AB",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AC",
+          "value": "",
+          "formula": "SUM(AC12:AC12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AE",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AF",
+          "value": "",
+          "formula": "SUM(AF12:AF12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AH",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AI",
+          "value": "",
+          "formula": "SUM(AI12:AI12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AK",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AL",
+          "value": "",
+          "formula": "SUM(AL12:AL12)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 14,
+      "rowType": "data-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "B",
+          "value": "IRRF Férias",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "IRRF Férias Jul",
+          "style": {
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "15/07",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "-400",
+          "style": {
+            "bold": false,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    },
+    {
+      "row": 15,
+      "rowType": "total-row",
+      "cells": [
+        {
+          "col": "A",
+          "value": "",
+          "style": {
+            "bold": true,
+            "borderTop": false,
+            "borderBottom": false,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "C",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "D",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "E",
+          "value": "",
+          "formula": "SUM(E14:E14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "F",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "G",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "H",
+          "value": "",
+          "formula": "SUM(H14:H14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "I",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "J",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "K",
+          "value": "",
+          "formula": "SUM(K14:K14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "L",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "M",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "N",
+          "value": "",
+          "formula": "SUM(N14:N14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "O",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "P",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Q",
+          "value": "",
+          "formula": "SUM(Q14:Q14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "R",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "S",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "T",
+          "value": "",
+          "formula": "SUM(T14:T14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "U",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "V",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "W",
+          "value": "",
+          "formula": "SUM(W14:W14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "X",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Y",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "Z",
+          "value": "",
+          "formula": "SUM(Z14:Z14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AA",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AB",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AC",
+          "value": "",
+          "formula": "SUM(AC14:AC14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AD",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AE",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AF",
+          "value": "",
+          "formula": "SUM(AF14:AF14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AG",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AH",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AI",
+          "value": "",
+          "formula": "SUM(AI14:AI14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AJ",
+          "value": "Total",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AK",
+          "value": "–",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        },
+        {
+          "col": "AL",
+          "value": "",
+          "formula": "SUM(AL14:AL14)",
+          "style": {
+            "bgColor": "F2F2F2",
+            "bold": false,
+            "borderTop": true,
+            "borderBottom": true,
+            "borderLeft": false,
+            "borderRight": false
+          }
+        }
+      ]
+    }
+  ]
+}

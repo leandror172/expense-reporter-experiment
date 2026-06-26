@@ -1,16 +1,16 @@
 {
-  "source": "/tmp/regen-skel.xlsx",
+  "source": "/tmp/claude-1000/-mnt-i-workspaces-expenses-code/8fde4669-44f5-4a9e-afec-7264a0b530cb/scratchpad/basic-skel.xlsx",
   "sheets": [
     {
       "name": "Listas de itens",
       "file": "Listas de itens.json",
-      "rows": 52,
+      "rows": 54,
       "cols": 15
     },
     {
       "name": "Receitas",
       "file": "Receitas.json",
-      "rows": 6,
+      "rows": 9,
       "cols": 38
     },
     {

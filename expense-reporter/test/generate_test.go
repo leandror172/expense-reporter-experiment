@@ -57,6 +57,20 @@ func TestGenerateWorkbook_UnmappedSubcategorySkipped(t *testing.T) {
 	})
 }
 
+func TestGenerateWorkbook_MultiYearLogFiltersToYear(t *testing.T) {
+	fixDir := filepath.Join(fixturesDir(), "generate-basic")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "generate-workbook command filters multi-year log to target year",
+		Given: multiYearExpensesRecorded(fixDir),
+		When:  actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries-multiyear.jsonl"), "--year", "2026"),
+		Then: slices.Concat(
+			commandSucceeded(),
+			dataBearingStructureGenerated(fixDir),
+		),
+	})
+}
+
 // --- Given helpers (Event Modeling style — past-tense events that happened) ---
 
 func taxonomyAuthored(fixDir string) func(*harness.Context) {
@@ -74,6 +88,13 @@ func expensesRecordedUnderTaxonomy(fixDir string) func(*harness.Context) {
 }
 
 func expensesRecordedWithUnmappedSubcategory(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		ctx.FixtureDir = fixDir
+	}
+}
+
+func multiYearExpensesRecorded(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir

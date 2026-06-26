@@ -41,6 +41,8 @@ data/classification/*.csv
 data/classification/*.bak-*
 !data/classification/algorithm_parameters.json
 
+# Revenue/income taxonomy proposal (payslip-structure fragments — personal)
+.claude/scratch/taxonomy-revenue-proposal.json
 # Real taxonomy (derived from personal Referência sheet — reveals personal categories)
 expense-reporter/config/taxonomy.json
 

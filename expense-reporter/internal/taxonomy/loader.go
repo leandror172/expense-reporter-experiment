@@ -21,7 +21,10 @@ func normalizeKey(s string) string {
 }
 
 // LoadTaxonomy loads taxonomy and entries from JSON files.
-func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlock, error) {
+// targetYear filters entries: only entries with a matching year (or no year, i.e. DD/MM format) are kept.
+// Pass 0 to keep all entries regardless of year (legacy single-year log behavior).
+// Pass "" for entriesPath or incomeEntriesPath to skip loading that file.
+func LoadTaxonomy(taxonomyPath, entriesPath, incomeEntriesPath string, targetYear int) ([]ExpenseType, []RevenueBlock, error) {
 	sheets, incomeBlocks, err := loadTaxonomyFile(taxonomyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
@@ -35,12 +38,16 @@ func LoadTaxonomy(taxonomyPath, entriesPath string) ([]ExpenseType, []RevenueBlo
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
 
-	if entriesPath == "" {
-		return sheets, incomeBlocks, nil
+	if entriesPath != "" {
+		if err := loadEntries(entriesPath, byPath, byName, ambiguous, targetYear); err != nil {
+			return nil, nil, fmt.Errorf("loading entries: %w", err)
+		}
 	}
 
-	if err := loadEntries(entriesPath, byPath, byName, ambiguous); err != nil {
-		return nil, nil, fmt.Errorf("loading entries: %w", err)
+	if incomeEntriesPath != "" {
+		if err := loadIncomeEntries(incomeEntriesPath, byPath, targetYear); err != nil {
+			return nil, nil, fmt.Errorf("loading income entries: %w", err)
+		}
 	}
 
 	return sheets, incomeBlocks, nil
@@ -55,6 +62,35 @@ type rawType struct {
 	} `json:"categories"`
 }
 
+// rawIncomeBlock represents one element of a taxonomy incomeCategories[].blocks array.
+// It accepts two JSON shapes:
+//
+//   - flat string: "Salário" → {Block:"Salário", Sublines:["Salário"]} (legacy format)
+//   - nested object: {"block":"Salário","sublines":["INSS","IRRF"]} (WS-C format)
+type rawIncomeBlock struct {
+	Block    string   `json:"block"`
+	Sublines []string `json:"sublines"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for rawIncomeBlock, handling both the
+// flat string format (legacy) and the nested object format (WS-C).
+func (r *rawIncomeBlock) UnmarshalJSON(data []byte) error {
+	// Detect format by first non-whitespace byte.
+	trimmed := strings.TrimSpace(string(data))
+	if len(trimmed) > 0 && trimmed[0] == '"' {
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		r.Block = s
+		r.Sublines = []string{s}
+		return nil
+	}
+	// Object format — use a local alias to avoid recursion.
+	type rawIncomeBlockAlias rawIncomeBlock
+	return json.Unmarshal(data, (*rawIncomeBlockAlias)(r))
+}
+
 // loadTaxonomyFile parses the taxonomy JSON file.
 func loadTaxonomyFile(path string) ([]ExpenseType, []RevenueBlock, error) {
 	data, err := os.ReadFile(path)
@@ -65,8 +101,8 @@ func loadTaxonomyFile(path string) ([]ExpenseType, []RevenueBlock, error) {
 	var raw struct {
 		Sheets           []rawType `json:"types"`
 		IncomeCategories []struct {
-			Name   string   `json:"name"`
-			Blocks []string `json:"blocks"`
+			Name   string           `json:"name"`
+			Blocks []rawIncomeBlock `json:"blocks"`
 		} `json:"incomeCategories"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -99,17 +135,21 @@ func rawTypesToExpenseTypes(raw []rawType) []ExpenseType {
 }
 
 // incomeCatsToRevenueBlocks flattens income categories into a []RevenueBlock slice.
+// Each (category, block, subline) triple becomes one RevenueBlock leaf.
 func incomeCatsToRevenueBlocks(raw []struct {
-	Name   string   `json:"name"`
-	Blocks []string `json:"blocks"`
+	Name   string           `json:"name"`
+	Blocks []rawIncomeBlock `json:"blocks"`
 }) []RevenueBlock {
-	incomeBlocks := make([]RevenueBlock, 0)
+	var incomeBlocks []RevenueBlock
 	for _, ic := range raw {
-		for _, blockName := range ic.Blocks {
-			incomeBlocks = append(incomeBlocks, RevenueBlock{
-				Category: ic.Name,
-				Label:    blockName,
-			})
+		for _, blk := range ic.Blocks {
+			for _, subline := range blk.Sublines {
+				incomeBlocks = append(incomeBlocks, RevenueBlock{
+					Category: ic.Name,
+					Block:    blk.Block,
+					Label:    subline,
+				})
+			}
 		}
 	}
 	return incomeBlocks
@@ -117,14 +157,101 @@ func incomeCatsToRevenueBlocks(raw []struct {
 
 // loadEntries reads entries from a JSONL file and routes them using the two
 // pre-built routing maps and the ambiguity set.
-func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous map[string]bool) error {
+func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous map[string]bool, targetYear int) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("opening entries file: %w", err)
 	}
 	defer file.Close()
 
-	return scanEntries(bufio.NewScanner(file), byPath, byName, ambiguous)
+	return scanEntries(bufio.NewScanner(file), byPath, byName, ambiguous, targetYear)
+}
+
+// loadIncomeEntries reads income entries from a JSONL file (income_log.jsonl schema)
+// and routes each line into the matching RevenueBlock leaf via a secondary index
+// built from byPath (avoids rebuilding the full taxonomy map).
+func loadIncomeEntries(path string, byPath map[string]subcatTarget, targetYear int) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("opening income entries file: %w", err)
+	}
+	defer file.Close()
+
+	idx := buildIncomeIndex(byPath)
+	return scanIncomeEntries(bufio.NewScanner(file), idx, targetYear)
+}
+
+// buildIncomeIndex builds a block+label → subcatTarget index from byPath.
+// Key: normalizeKey(block) + "\x00" + normalizeKey(label).
+// This lets scanIncomeEntries route without knowing the taxonomy category name.
+func buildIncomeIndex(byPath map[string]subcatTarget) map[string]subcatTarget {
+	idx := make(map[string]subcatTarget)
+	for _, target := range byPath {
+		if target.kind != "income" {
+			continue
+		}
+		blk := target.income
+		key := normalizeKey(blk.Block) + "\x00" + normalizeKey(blk.Label)
+		idx[key] = target
+	}
+	return idx
+}
+
+// scanIncomeEntries routes each income JSONL line into the correct RevenueBlock month.
+// income_category = block name (mid-level); income_label = leaf subline.
+// Values are kept signed — deductions are negative in the source data.
+func scanIncomeEntries(scanner *bufio.Scanner, idx map[string]subcatTarget, targetYear int) error {
+	noDateSkipped := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		var row struct {
+			Date           string  `json:"date"`
+			Value          float64 `json:"value"`
+			IncomeCategory string  `json:"income_category"` // = block
+			IncomeLabel    string  `json:"income_label"`    // = leaf
+			ItemNote       string  `json:"item_note"`
+		}
+		if err := json.Unmarshal([]byte(line), &row); err != nil {
+			return fmt.Errorf("parsing income entry line: %w", err)
+		}
+
+		block := normalizeKey(row.IncomeCategory)
+		label := normalizeKey(row.IncomeLabel)
+		key := block + "\x00" + label
+
+		target, ok := idx[key]
+		if !ok {
+			warnUnroutable(row.ItemNote, row.IncomeLabel, false)
+			continue
+		}
+
+		// A missing/malformed income date is skipped, NOT fatal: the upstream
+		// extractor (WS-0b) can emit dateless rows. Skipping silently would leave a
+		// near-empty Receitas that reads as success, so the count is surfaced loudly
+		// below (mirrors the type-less fallback count in scanEntries).
+		day, month, entryYear, err := parseDate(row.Date)
+		if err != nil {
+			noDateSkipped++
+			continue
+		}
+		if entryYear != 0 && targetYear != 0 && entryYear != targetYear {
+			continue
+		}
+
+		target.attachEntry(Entry{Item: row.ItemNote, Day: day, Value: row.Value}, month-1)
+	}
+
+	if noDateSkipped > 0 {
+		fmt.Fprintf(os.Stderr,
+			"warning: %d income entr%s skipped — missing or malformed date (not placed in any month)\n",
+			noDateSkipped, plural(noDateSkipped, "y", "ies"))
+	}
+
+	return scanner.Err()
 }
 
 // scanEntries reads each non-blank JSONL line, parses it, routes it to a target via
@@ -134,7 +261,7 @@ func loadEntries(path string, byPath, byName map[string]subcatTarget, ambiguous 
 // this resolves ambiguous leaf names to exactly one block.
 // Tier 2 (type-less entry): fall back to the bare-name map (today's behavior), which
 // still skips genuinely-ambiguous names. Legacy/auto/batch-auto lines take this path.
-func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget, ambiguous map[string]bool) error {
+func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget, ambiguous map[string]bool, targetYear int) error {
 	fallbackCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -169,9 +296,12 @@ func scanEntries(scanner *bufio.Scanner, byPath, byName map[string]subcatTarget,
 			fallbackCount++
 		}
 
-		day, month, err := parseDate(entry.Date)
+		day, month, entryYear, err := parseDate(entry.Date)
 		if err != nil {
 			return fmt.Errorf("parsing date for item %q: %w", entry.Item, err)
+		}
+		if entryYear != 0 && targetYear != 0 && entryYear != targetYear {
+			continue
 		}
 
 		subcat.attachEntry(Entry{Item: entry.Item, Day: day, Value: entry.Value}, month-1)
@@ -254,9 +384,9 @@ func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (byP
 
 	for i := range incomeBlocks {
 		block := &incomeBlocks[i]
-		path := incomePath(block.Category, block.Label)
+		path := incomePath(block.Category, block.Block, block.Label)
 		if _, dup := byPath[path]; dup {
-			return nil, nil, nil, fmt.Errorf("income block %q appears more than once in %s", block.Label, block.Category)
+			return nil, nil, nil, fmt.Errorf("income leaf %q/%q appears more than once in %s", block.Block, block.Label, block.Category)
 		}
 		target := subcatTarget{kind: "income", income: block}
 		byPath[path] = target
@@ -292,28 +422,40 @@ func expensePath(sheet, category, sub string) string {
 	return "expense\x00" + normalizeKey(sheet) + "\x00" + normalizeKey(category) + "\x00" + normalizeKey(sub)
 }
 
-func incomePath(category, label string) string {
-	return "income\x00" + normalizeKey(category) + "\x00" + normalizeKey(label)
+// incomePath builds the full 3-segment routing key for an income leaf.
+// Segments: kind prefix, taxonomy category, block, subline label.
+// The null-byte separator prevents collisions with names containing '/'.
+func incomePath(category, block, label string) string {
+	return "income\x00" + normalizeKey(category) + "\x00" + normalizeKey(block) + "\x00" + normalizeKey(label)
 }
 
-// parseDate converts DD/MM to day and month integers.
-func parseDate(dateStr string) (int, int, error) {
+// parseDate converts DD/MM or DD/MM/YYYY to day, month, and year integers.
+// year is 0 when no year is present in the source string (DD/MM format).
+func parseDate(dateStr string) (day, month, year int, err error) {
 	parts := strings.Split(dateStr, "/")
-	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("malformed date %q", dateStr)
+	if len(parts) != 2 && len(parts) != 3 {
+		return 0, 0, 0, fmt.Errorf("malformed date %q", dateStr)
 	}
 
 	day, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
 	month, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
 
 	if err1 != nil || day < 1 || day > 31 {
-		return 0, 0, fmt.Errorf("invalid day in date %q", dateStr)
+		return 0, 0, 0, fmt.Errorf("invalid day in date %q", dateStr)
 	}
 	if err2 != nil || month < 1 || month > 12 {
-		return 0, 0, fmt.Errorf("invalid month in date %q", dateStr)
+		return 0, 0, 0, fmt.Errorf("invalid month in date %q", dateStr)
 	}
 
-	return day, month, nil
+	if len(parts) == 3 {
+		yr, err3 := strconv.Atoi(strings.TrimSpace(parts[2]))
+		if err3 != nil || yr < 1000 {
+			return 0, 0, 0, fmt.Errorf("invalid year in date %q", dateStr)
+		}
+		return day, month, yr, nil
+	}
+
+	return day, month, 0, nil
 }
 
 // subcatTarget holds a reference to either an expense subcategory or income block.

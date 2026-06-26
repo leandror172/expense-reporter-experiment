@@ -12,7 +12,7 @@ import (
 
 func TestLoadTaxonomy_SkeletonOnly(t *testing.T) {
 	taxonomyPath := "../../test/fixtures/generate-basic/taxonomy.json"
-	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, "")
+	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, "", "", 0)
 	require.NoError(t, err)
 
 	assert.Len(t, sheets, 2)
@@ -58,7 +58,7 @@ func TestLoadTaxonomy_WithEntries(t *testing.T) {
 	taxonomyPath := "../../test/fixtures/generate-basic/taxonomy.json"
 	entriesPath := "../../test/fixtures/generate-basic/entries.jsonl"
 
-	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	// Check Aluguel in Fixas.Habitação
@@ -124,7 +124,7 @@ func TestLoadTaxonomy_UnmappedSubcategory(t *testing.T) {
 	taxonomyPath := "../../test/fixtures/generate-basic/taxonomy.json"
 	entriesPath := "../../test/fixtures/generate-basic/entries-with-unmapped.jsonl"
 
-	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, incomeBlocks, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	// Diarista should be loaded
@@ -178,7 +178,7 @@ func TestLoadTaxonomy_SamePathDuplicate(t *testing.T) {
     "incomeCategories": []
 }`)
 
-	_, _, err := LoadTaxonomy(taxonomyPath, "")
+	_, _, err := LoadTaxonomy(taxonomyPath, "", "", 0)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Diarista")
 }
@@ -199,7 +199,7 @@ func TestLoadTaxonomy_CrossPathDuplicateAllowed(t *testing.T) {
     "incomeCategories": []
 }`)
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, "")
+	sheets, _, err := LoadTaxonomy(taxonomyPath, "", "", 0)
 	require.NoError(t, err)
 	assert.Equal(t, "Diarista", sheets[0].Cats[0].Subs[0].Name)
 	assert.Equal(t, "Diarista", sheets[1].Cats[0].Subs[0].Name)
@@ -229,7 +229,7 @@ func TestLoadTaxonomy_AmbiguousEntrySkipped(t *testing.T) {
 	require.NoError(t, os.WriteFile(entriesPath,
 		[]byte(`{"item":"Ração","date":"05/01","value":120.0,"subcategory":"Orion"}`+"\n"), 0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	for _, sheet := range sheets {
@@ -273,7 +273,7 @@ func TestLoadTaxonomy_AmbiguousEntryRoutedByFullPath(t *testing.T) {
 			`{"item":"Ração Extra","date":"07/03","value":122.0,"type":"Extras","category":"Pets","subcategory":"Orion"}`+"\n"),
 		0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	// Each Orion block holds exactly its own entry, in the entry's month.
@@ -309,7 +309,7 @@ func TestLoadTaxonomy_TypedEntryWrongPathSkipped(t *testing.T) {
 		`{"item":"Ração","date":"05/01","value":120.0,"type":"Fixas","category":"Petz","subcategory":"Orion"}`+"\n"),
 		0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	for _, sheet := range sheets {
@@ -340,7 +340,7 @@ func TestLoadTaxonomy_TypelessUnambiguousEntryRoutes(t *testing.T) {
 	require.NoError(t, os.WriteFile(entriesPath,
 		[]byte(`{"item":"Aluguel Jan","date":"05/01","value":2000.0,"subcategory":"Aluguel"}`+"\n"), 0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	aluguel := sheets[0].Cats[0].Subs[0]
@@ -377,7 +377,7 @@ func TestLoadTaxonomy_NFDEntryRoutesToNFCTaxonomy(t *testing.T) {
 		`","category":"` + nfdCat + `","subcategory":"Feira"}` + "\n"
 	require.NoError(t, os.WriteFile(entriesPath, []byte(line), 0644))
 
-	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath)
+	sheets, _, err := LoadTaxonomy(taxonomyPath, entriesPath, "", 0)
 	require.NoError(t, err)
 
 	feira := sheets[0].Cats[0].Subs[0]
@@ -399,7 +399,7 @@ func TestParseDate_Malformed(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		day, month, err := parseDate(tc.input)
+		day, month, _, err := parseDate(tc.input)
 		if tc.dayErr || tc.monthErr {
 			assert.Error(t, err)
 		} else {
@@ -408,4 +408,37 @@ func TestParseDate_Malformed(t *testing.T) {
 			assert.Equal(t, 1, month)
 		}
 	}
+}
+
+func TestParseDate_MultiYear(t *testing.T) {
+	t.Run("DD/MM returns year 0", func(t *testing.T) {
+		day, month, year, err := parseDate("05/01")
+		require.NoError(t, err)
+		assert.Equal(t, 5, day)
+		assert.Equal(t, 1, month)
+		assert.Equal(t, 0, year)
+	})
+
+	t.Run("DD/MM/YYYY returns year", func(t *testing.T) {
+		day, month, year, err := parseDate("05/01/2026")
+		require.NoError(t, err)
+		assert.Equal(t, 5, day)
+		assert.Equal(t, 1, month)
+		assert.Equal(t, 2026, year)
+	})
+
+	t.Run("DD/MM/YY (year < 1000) returns error", func(t *testing.T) {
+		_, _, _, err := parseDate("05/01/99")
+		assert.Error(t, err)
+	})
+
+	t.Run("DD/MM/YYYY invalid month returns error", func(t *testing.T) {
+		_, _, _, err := parseDate("05/13/2026")
+		assert.Error(t, err)
+	})
+
+	t.Run("DD/MM/YYYY invalid day returns error", func(t *testing.T) {
+		_, _, _, err := parseDate("32/01/2026")
+		assert.Error(t, err)
+	})
 }

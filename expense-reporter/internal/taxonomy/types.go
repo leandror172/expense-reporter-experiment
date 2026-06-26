@@ -43,10 +43,22 @@ type ExpenseType struct {
 	Cats []Category
 }
 
-// RevenueBlock is one income block (Salário, 13°...).
+// RevenueBlock is one income leaf — the intersection of a taxonomy category, a
+// mid-level block grouping, and a subline label. One RevenueBlock == one data row
+// on the Receitas sheet (mirrors how one Subcat == one expense data row).
+//
+// Shape (3-level, WS-C):
+//
+//	Category  "Receitas"       — top-level income category name from taxonomy
+//	Block     "Salário"        — mid-level block grouping
+//	Label     "INSS"           — leaf subline (the actual data row)
+//
+// The flat format (legacy taxonomy: blocks:["Salário"]) produces Block==Label for each
+// string entry; the nested format (blocks:[{block,sublines:[...]}]) populates all three.
 type RevenueBlock struct {
-	Category string // income category, e.g. "Receita"
-	Label    string // block label
+	Category string // e.g. "Receitas"
+	Block    string // e.g. "Salário" — mid-level grouping (Step 3: used for sheet band headers)
+	Label    string // e.g. "INSS"   — leaf subline label
 	Months   [12][]Entry
 }
 

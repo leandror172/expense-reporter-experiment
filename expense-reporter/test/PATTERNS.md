@@ -23,7 +23,24 @@ Then: slices.Concat(
 
 Each helper returns `[]func(*harness.Context)` scoped to one concern. This allows mixing and matching at the test level without monolithic helpers.
 
-**Naming rule (Then):** helpers describe the concern they assert, not the overall test scenario.
+**Naming rule (Then):** helpers describe the concern they assert, not the overall test
+scenario. Go one step further than "names the artifact": the name should functionally
+describe the **specific expected result**, so a reader can infer the behavior from the name
+alone without opening the helper or the fixture.
+
+- Prefer the *outcome* over the *mechanism*: `installmentExpandedToNDatedLogLines(fixDir)`,
+  not `expenseLogMatchesExpected(fixDir)`; `crossYearInstallmentNotDivertedToRollover()`,
+  not a raw `verify.NoRolloverFileCreated()` (which also violates the "no raw `verify.*` in
+  `Then`" rule).
+- When several scenarios share one verifier, wrap it in per-scenario named helpers that
+  delegate to the shared verifier (e.g. `typedExpenseRecordedAsSingleLogLine` →
+  `expenseLogMatchesExpected`). The wrapper's value **is** its name — the differing fixture
+  encodes the differing result, and the name documents what that result means.
+- Keep genuinely *invariant* concerns generic (`commandSucceeded()`,
+  `classificationsMatchExpected()`); only the scenario-varying concern needs the
+  outcome-describing name.
+
+See `add_log_append_test.go` for the worked example.
 
 ## Given Naming Pattern
 

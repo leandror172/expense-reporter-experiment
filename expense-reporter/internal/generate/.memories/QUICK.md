@@ -25,6 +25,9 @@ the workbook is a projection of the data, never an insertion target.
   `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
 - **Acceptance contract:** `test/fixtures/generate-basic/expected-dump-*` (oracle-frozen);
   any deliberate output change requires re-freezing + manually reviewing the dump delta.
+  **Cross-fixture coupling:** `summary_sheet.go` uses a single accumulating `b.row` counter —
+  any change to `revenueSection()` row count shifts all expense sections down, so BOTH
+  `generate-basic` AND `generate-income` Listas oracles need re-freezing together.
 - Provenance: port of `.claude/scratch/template-builder/` (SUPERSEDED), converged to the
   user-blessed data-bearing golden master; Phase B fake dataset lives in
   `taxonomy_fixture_test.go`.
@@ -45,6 +48,15 @@ the workbook is a projection of the data, never an insertion target.
   `writeDataBand(..., rowHeight, lastCol)` serve expense + revenue; the ONLY behavioral
   difference is row height (12.75 expense / 15 revenue). `Subcat` and `RevenueBlock` both expose
   `Months [12][]Entry` + `MaxEntries()`.
+- **Income is 3-level and symmetric with expenses (WS-C, session 38).** `revenue_sheet.go`
+  `buildRevenueSheet` mirrors `buildExpenseType`: group leaves by `Block` (col A merged across
+  the group, like a Category), each subline leaf = col-B label + data band + per-leaf total row;
+  separators between Block groups. `summary_sheet.go` `writeRevenueBlockGroups` mirrors the
+  expense category rollup: subline pulls → merged col-B Block label → "Total <Block>" row;
+  Receitas grand total = `sumList` of the per-Block totals (non-contiguous), recorded in
+  `revenueTotalRow`. `revenueBlockTotal` gained a `Block` field. Oracle: `generate-income`
+  fixture (data-bearing income freeze); `generate-basic` deliberately kept FLAT (Block==Label)
+  for dual-format coverage.
 - **Method-extraction convention:** sheet-builder bodies read as named delegated steps ≤~15 lines
   (exemplars: summary_sheet.go `revenueSection`/`balanceBlock`); inline step comments promote to
   doc comments.
