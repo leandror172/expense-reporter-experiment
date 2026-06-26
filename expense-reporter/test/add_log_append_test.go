@@ -26,7 +26,7 @@ func TestAdd_LogAppendsTypedEntry(t *testing.T) {
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
-			expenseLogMatchesExpected(fixDir),
+			typedExpenseRecordedAsSingleLogLine(fixDir),
 		),
 	})
 }
@@ -46,7 +46,7 @@ func TestAdd_InstallmentsExpandToNEntriesInLog(t *testing.T) {
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
-			expenseLogMatchesExpected(fixDir),
+			installmentExpandedToNDatedLogLines(fixDir),
 		),
 	})
 }
@@ -65,9 +65,9 @@ func TestAdd_CrossYearInstallmentLogsNextYearDate(t *testing.T) {
 		When:  actions.RunAdd("Assinatura Netflix;15/11/2026;90,00/3;Netflix"),
 		Then: slices.Concat(
 			commandSucceeded(),
-			[]func(*harness.Context){verify.NoRolloverFileCreated()},
+			crossYearInstallmentNotDivertedToRollover(),
 			classificationsMatchExpected(fixDir),
-			expenseLogMatchesExpected(fixDir),
+			crossYearInstallmentLoggedWithNextYearDate(fixDir),
 		),
 	})
 }
@@ -99,4 +99,31 @@ func crossYearInstallmentAdded(fixDir string) func(*harness.Context) {
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}
+}
+
+// --- Then helpers (name the specific expected result of each scenario) ---
+
+// typedExpenseRecordedAsSingleLogLine asserts the manual add produced exactly the
+// one typed DD/MM/YYYY expense-log line captured in the fixture's expected log.
+func typedExpenseRecordedAsSingleLogLine(fixDir string) []func(*harness.Context) {
+	return expenseLogMatchesExpected(fixDir)
+}
+
+// installmentExpandedToNDatedLogLines asserts the installment notation fanned out
+// into the N separate dated log lines captured in the fixture's expected log.
+func installmentExpandedToNDatedLogLines(fixDir string) []func(*harness.Context) {
+	return expenseLogMatchesExpected(fixDir)
+}
+
+// crossYearInstallmentLoggedWithNextYearDate asserts the year-crossing installment
+// logged every entry as a dated line — including the next-year dates in the fixture's
+// expected log — instead of diverting to a rollover file.
+func crossYearInstallmentLoggedWithNextYearDate(fixDir string) []func(*harness.Context) {
+	return expenseLogMatchesExpected(fixDir)
+}
+
+// crossYearInstallmentNotDivertedToRollover asserts the retired rollover.csv path
+// stayed retired: no rollover file was produced for the year-crossing installment.
+func crossYearInstallmentNotDivertedToRollover() []func(*harness.Context) {
+	return []func(*harness.Context){verify.NoRolloverFileCreated()}
 }
