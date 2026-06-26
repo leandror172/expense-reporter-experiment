@@ -96,6 +96,28 @@ func TestPathEnum_ConvenienceMatchesMapEnum(t *testing.T) {
 	assert.ElementsMatch(t, m.Enum(), enum)
 }
 
+func TestPathFor_RoundTripsResolveLeafResult(t *testing.T) {
+	sheets := fixtureTypes()
+	m, err := BuildPathMap(sheets)
+	require.NoError(t, err)
+
+	// The intended pipeline: ResolveLeaf gives (type,cat); PathFor turns that triple
+	// back into the canonical enum member — both through the map, no string surgery.
+	typ, cat, err := ResolveLeaf(sheets, "Uber/Taxi", "")
+	require.NoError(t, err)
+	path, ok := m.PathFor(typ, cat, "Uber/Taxi")
+	assert.True(t, ok)
+	assert.Equal(t, "Variáveis/Transporte/Uber/Taxi", path)
+}
+
+func TestPathFor_UnknownTripleReturnsNotOK(t *testing.T) {
+	m, err := BuildPathMap(fixtureTypes())
+	require.NoError(t, err)
+
+	_, ok := m.PathFor("Fixas", "Transporte", "Uber/Taxi") // wrong type for this leaf
+	assert.False(t, ok)
+}
+
 func TestResolveLeaf_UniqueLeafResolvesFromBareName(t *testing.T) {
 	sheets := fixtureTypes()
 
@@ -144,4 +166,28 @@ func TestResolveLeaf_AbsentLeafErrors(t *testing.T) {
 
 	_, _, err := ResolveLeaf(sheets, "Nonexistent", "")
 	assert.ErrorIs(t, err, ErrLeafNotFound)
+}
+
+func TestCategoryForLeaf_ConsistentAcrossTypes(t *testing.T) {
+	sheets := fixtureTypes()
+
+	// Dentista repeats across Variáveis and Extras but is always under Saúde.
+	cat, ok := CategoryForLeaf(sheets, "Dentista")
+	assert.True(t, ok)
+	assert.Equal(t, "Saúde", cat)
+
+	cat, ok = CategoryForLeaf(sheets, "Spotify")
+	assert.True(t, ok)
+	assert.Equal(t, "Assinaturas", cat)
+
+	_, ok = CategoryForLeaf(sheets, "Nonexistent")
+	assert.False(t, ok)
+}
+
+func TestTypesForLeaf_ListsEveryOwningType(t *testing.T) {
+	sheets := fixtureTypes()
+
+	assert.Equal(t, []string{"Variáveis", "Extras"}, TypesForLeaf(sheets, "Dentista"))
+	assert.Equal(t, []string{"Fixas"}, TypesForLeaf(sheets, "Spotify"))
+	assert.Empty(t, TypesForLeaf(sheets, "Nonexistent"))
 }

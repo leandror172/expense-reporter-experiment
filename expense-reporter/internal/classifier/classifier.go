@@ -4,81 +4,57 @@ import (
 	"bytes"
 	"encoding/json"
 	"expense-reporter/internal/logger"
+	taxonomy "expense-reporter/internal/taxonomy"
 	"fmt"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 )
 
-// Result is a single classification candidate.
+// Result is a single classification candidate. Since T-13 the model predicts a
+// full taxonomy path, so a Result carries the expense Type alongside category and
+// subcategory — every field comes from one validated path, never from independent
+// lookups that could disagree.
 type Result struct {
-	Subcategory string
+	Type        string
 	Category    string
+	Subcategory string
 	Confidence  float64
 }
 
 // Config controls classifier behaviour.
 type Config struct {
 	OllamaURL    string // default: http://localhost:11434
-	Model        string // default: my-classifier-q3
+	Model        string // default: my-classifier-qcoder
 	DataDir      string // path to data/classification/
 	FeedbackPath string // path to classifications.jsonl (optional; skipped when empty)
 	TopN         int    // number of candidates to return (default: 3)
 }
 
-// Taxonomy maps subcategory name → parent category name.
-type Taxonomy map[string]string
-
-// LoadTaxonomy reads category_mapping from feature_dictionary_enhanced.json.
-func LoadTaxonomy(dataDir string) (Taxonomy, error) {
-	path := dataDir + "/feature_dictionary_enhanced.json"
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading feature dictionary: %w", err)
-	}
-	var dict struct {
-		CategoryMapping map[string]string `json:"category_mapping"`
-	}
-	if err := json.Unmarshal(data, &dict); err != nil {
-		return nil, fmt.Errorf("parsing feature dictionary: %w", err)
-	}
-	return Taxonomy(dict.CategoryMapping), nil
-}
-
-// Classify sends item/value/date to Ollama and returns top-N subcategory candidates.
-// date must be in DD/MM format.
+// Classify sends item/value/date to Ollama and returns top-N full-path candidates.
+// date must be in DD/MM format. sheets is the expense taxonomy tree
+// (config/taxonomy.json), rendered into the prompt and used to constrain the model
+// to valid Type/Category/Subcategory paths via a structured-output enum.
 // When cfg.DataDir is set, few-shot examples are loaded and injected into the prompt.
-func Classify(item string, value float64, date string, taxonomy Taxonomy, cfg Config) ([]Result, error) {
+func Classify(item string, value float64, date string, sheets []taxonomy.ExpenseType, cfg Config) ([]Result, error) {
 	if cfg.OllamaURL == "" {
 		cfg.OllamaURL = "http://localhost:11434"
 	}
 	if cfg.Model == "" {
-		cfg.Model = "my-classifier-q3"
+		cfg.Model = "my-classifier-qcoder"
 	}
 	if cfg.TopN <= 0 {
 		cfg.TopN = 3
 	}
 
-	// Load and select few-shot examples when a data directory is configured.
-	var examples []Example
-	if cfg.DataDir != "" {
-		keywords, err := LoadKeywordIndex(cfg.DataDir)
-		if err != nil {
-			logger.Debug("few-shot: keyword index unavailable", "err", err)
-		} else {
-			training, _ := LoadTrainingExamples(cfg.DataDir)
-			var feedback []Example
-			if cfg.FeedbackPath != "" {
-				feedback, _ = LoadFeedbackExamples(cfg.FeedbackPath)
-			}
-			pool := MergeExamplePools(training, feedback)
-			examples = SelectExamples(item, pool, keywords, 5)
-			logger.Debug("few-shot", "count", len(examples), "item", item)
-		}
+	pm, err := taxonomy.BuildPathMap(sheets)
+	if err != nil {
+		return nil, fmt.Errorf("building taxonomy path map: %w", err)
 	}
 
-	body, err := buildRequest(item, value, date, taxonomy, examples, cfg)
+	examples := resolveExamplePaths(selectExamples(item, cfg), sheets, pm)
+
+	body, err := buildRequest(item, value, date, sheets, pm.Enum(), examples, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +69,60 @@ func Classify(item string, value float64, date string, taxonomy Taxonomy, cfg Co
 		return nil, fmt.Errorf("Ollama returned status %d", resp.StatusCode)
 	}
 
-	return parseResponse(resp.Body, cfg.TopN)
+	return parseResponse(resp.Body, pm, cfg.TopN)
+}
+
+// selectExamples loads and selects the few-shot example pool for item. Returns nil
+// when no data directory is configured or the keyword index is unavailable.
+func selectExamples(item string, cfg Config) []Example {
+	if cfg.DataDir == "" {
+		return nil
+	}
+	keywords, err := LoadKeywordIndex(cfg.DataDir)
+	if err != nil {
+		logger.Debug("few-shot: keyword index unavailable", "err", err)
+		return nil
+	}
+	training, _ := LoadTrainingExamples(cfg.DataDir)
+	var feedback []Example
+	if cfg.FeedbackPath != "" {
+		feedback, _ = LoadFeedbackExamples(cfg.FeedbackPath)
+	}
+	pool := MergeExamplePools(training, feedback)
+	examples := SelectExamples(item, pool, keywords, 5)
+	logger.Debug("few-shot", "count", len(examples), "item", item)
+	return examples
+}
+
+// fewShotExample is a training example whose subcategory has been resolved to a
+// canonical full path, ready to render as a synthetic assistant message.
+type fewShotExample struct {
+	Item  string
+	Value float64
+	Date  string
+	Path  string
+}
+
+// resolveExamplePaths attaches a canonical taxonomy path to each example and drops
+// any that cannot be resolved (ambiguous leaf without a usable type hint, or a
+// subcategory absent from the taxonomy). Resolving through ResolveLeaf + PathFor
+// guarantees every rendered example uses a path that is actually in the enum — an
+// example built from the training file's own category string could disagree with
+// the taxonomy spelling and teach the model an off-enum answer.
+func resolveExamplePaths(examples []Example, sheets []taxonomy.ExpenseType, pm taxonomy.PathMap) []fewShotExample {
+	var out []fewShotExample
+	for _, ex := range examples {
+		typ, cat, err := taxonomy.ResolveLeaf(sheets, ex.Subcategory, ex.TypeHint)
+		if err != nil {
+			continue
+		}
+		path, ok := pm.PathFor(typ, cat, ex.Subcategory)
+		if !ok {
+			continue
+		}
+		out = append(out, fewShotExample{Item: ex.Item, Value: ex.Value, Date: ex.Date, Path: path})
+	}
+	return out
 }
 
 // --- internal types ---
@@ -116,48 +145,53 @@ type ollamaResponse struct {
 	} `json:"message"`
 }
 
+// classifyResponse is the structured payload the model returns: each candidate is
+// one full taxonomy path plus a confidence.
 type classifyResponse struct {
 	Results []struct {
-		Subcategory string  `json:"subcategory"`
-		Category    string  `json:"category"`
-		Confidence  float64 `json:"confidence"`
+		Path       string  `json:"path"`
+		Confidence float64 `json:"confidence"`
 	} `json:"results"`
 }
 
-// responseSchema is the JSON schema passed to Ollama's format param.
-var responseSchema = json.RawMessage(`{
-	"type": "object",
-	"properties": {
-		"results": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"properties": {
-					"subcategory": {"type": "string"},
-					"category":    {"type": "string"},
-					"confidence":  {"type": "number"}
-				},
-				"required": ["subcategory", "category", "confidence"]
-			}
-		}
-	},
-	"required": ["results"]
-}`)
+// buildResponseSchema constructs the Ollama format schema constraining each
+// candidate's "path" to one of the enum members. Built by marshalling Go values so
+// the enum slice is embedded safely (no string concatenation).
+func buildResponseSchema(enum []string) json.RawMessage {
+	pathSchema := map[string]any{"type": "string", "enum": enum}
+	item := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":       pathSchema,
+			"confidence": map[string]any{"type": "number"},
+		},
+		"required": []string{"path", "confidence"},
+	}
+	schema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"results": map[string]any{"type": "array", "items": item},
+		},
+		"required": []string{"results"},
+	}
+	data, _ := json.Marshal(schema) // map[string]any with string/[]string values cannot fail
+	return data
+}
 
-func buildRequest(item string, value float64, date string, taxonomy Taxonomy, examples []Example, cfg Config) ([]byte, error) {
+func buildRequest(item string, value float64, date string, sheets []taxonomy.ExpenseType, enum []string, examples []fewShotExample, cfg Config) ([]byte, error) {
 	messages := []ollamaMessage{
-		{Role: "system", Content: buildSystemPrompt(taxonomy, cfg.TopN)},
+		{Role: "system", Content: buildSystemPrompt(sheets, cfg.TopN)},
 	}
 	messages = append(messages, formatExampleMessages(examples)...)
 	messages = append(messages, ollamaMessage{
 		Role:    "user",
-		Content: fmt.Sprintf("item: %s\nvalue: %.2f\ndate: %s", item, value, date),
+		Content: formatQuery(item, value, date),
 	})
 
 	req := ollamaRequest{
 		Model:    cfg.Model,
 		Stream:   false,
-		Format:   responseSchema,
+		Format:   buildResponseSchema(enum),
 		Messages: messages,
 	}
 	data, err := json.Marshal(req)
@@ -167,28 +201,30 @@ func buildRequest(item string, value float64, date string, taxonomy Taxonomy, ex
 	return data, nil
 }
 
-// formatExampleMessages converts examples into user/assistant message pairs for few-shot injection.
-func formatExampleMessages(examples []Example) []ollamaMessage {
+// formatQuery renders the item/value/date block shared by the query and examples.
+func formatQuery(item string, value float64, date string) string {
+	return fmt.Sprintf("item: %s\nvalue: %.2f\ndate: %s", item, value, date)
+}
+
+// formatExampleMessages converts resolved examples into user/assistant message pairs
+// for few-shot injection. The synthetic assistant response matches the path-based
+// response schema with high confidence.
+func formatExampleMessages(examples []fewShotExample) []ollamaMessage {
 	if len(examples) == 0 {
 		return nil
 	}
 	msgs := make([]ollamaMessage, 0, len(examples)*2)
 	for _, ex := range examples {
-		userContent := fmt.Sprintf("item: %s\nvalue: %.2f\ndate: %s", ex.Item, ex.Value, ex.Date)
-		// Synthetic assistant response matching the response schema with high confidence.
-		assistantContent := fmt.Sprintf(
-			`{"results":[{"subcategory":%q,"category":%q,"confidence":0.95}]}`,
-			ex.Subcategory, ex.Category,
-		)
+		assistant := fmt.Sprintf(`{"results":[{"path":%q,"confidence":0.95}]}`, ex.Path)
 		msgs = append(msgs,
-			ollamaMessage{Role: "user", Content: userContent},
-			ollamaMessage{Role: "assistant", Content: assistantContent},
+			ollamaMessage{Role: "user", Content: formatQuery(ex.Item, ex.Value, ex.Date)},
+			ollamaMessage{Role: "assistant", Content: assistant},
 		)
 	}
 	return msgs
 }
 
-func parseResponse(body interface{ Read([]byte) (int, error) }, topN int) ([]Result, error) {
+func parseResponse(body interface{ Read([]byte) (int, error) }, pm taxonomy.PathMap, topN int) ([]Result, error) {
 	var ollamaResp ollamaResponse
 	if err := json.NewDecoder(body).Decode(&ollamaResp); err != nil {
 		return nil, fmt.Errorf("decoding Ollama response: %w", err)
@@ -199,45 +235,73 @@ func parseResponse(body interface{ Read([]byte) (int, error) }, topN int) ([]Res
 		return nil, fmt.Errorf("parsing classification JSON: %w", err)
 	}
 
-	sort.Slice(classified.Results, func(i, j int) bool {
-		return classified.Results[i].Confidence > classified.Results[j].Confidence
+	results := splitResults(classified, pm)
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Confidence > results[j].Confidence
 	})
 
-	results := make([]Result, 0, topN)
-	for i, r := range classified.Results {
-		if i >= topN {
-			break
-		}
-		results = append(results, Result{
-			Subcategory: r.Subcategory,
-			Category:    r.Category,
-			Confidence:  r.Confidence,
-		})
+	if len(results) > topN {
+		results = results[:topN]
 	}
 	return results, nil
 }
 
-func buildSystemPrompt(taxonomy Taxonomy, topN int) string {
-	type entry struct{ sub, cat string }
-	entries := make([]entry, 0, len(taxonomy))
-	for sub, cat := range taxonomy {
-		entries = append(entries, entry{sub, cat})
-	}
-	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].cat != entries[j].cat {
-			return entries[i].cat < entries[j].cat
+// splitResults turns each predicted path into a typed Result via the path map.
+// A candidate whose path is not in the taxonomy (a model violation of the enum) is
+// logged and dropped rather than producing a half-populated Result.
+func splitResults(classified classifyResponse, pm taxonomy.PathMap) []Result {
+	results := make([]Result, 0, len(classified.Results))
+	for _, r := range classified.Results {
+		typ, cat, sub, ok := pm.Split(r.Path)
+		if !ok {
+			logger.Debug("classify: dropping off-enum path", "path", r.Path)
+			continue
 		}
-		return entries[i].sub < entries[j].sub
-	})
+		results = append(results, Result{
+			Type:        typ,
+			Category:    cat,
+			Subcategory: sub,
+			Confidence:  r.Confidence,
+		})
+	}
+	return results
+}
 
+// buildSystemPrompt renders the taxonomy as a type→category→subcategories tree and
+// instructs the model to return full paths chosen from it.
+func buildSystemPrompt(sheets []taxonomy.ExpenseType, topN int) string {
 	var sb strings.Builder
 	sb.WriteString("You are an expense classifier for Brazilian personal finance.\n")
-	sb.WriteString("Classify the given expense into one of the known subcategories below.\n")
+	sb.WriteString("Classify the given expense into exactly one full path from the taxonomy below.\n")
 	sb.WriteString(fmt.Sprintf("Return exactly %d candidates ranked by confidence (highest first).\n", topN))
+	sb.WriteString("Each candidate's \"path\" must be a string copied verbatim from the taxonomy, in the form Type/Category/Subcategory.\n")
 	sb.WriteString("Confidence is a float between 0.0 and 1.0.\n\n")
-	sb.WriteString("Known subcategories (subcategory → category):\n")
-	for _, e := range entries {
-		sb.WriteString(fmt.Sprintf("  %s → %s\n", e.sub, e.cat))
-	}
+	sb.WriteString("Taxonomy (choose one full path):\n")
+	writeTaxonomyTree(&sb, sheets)
 	return sb.String()
+}
+
+// writeTaxonomyTree writes each type as a header line followed by its categories and
+// their comma-joined subcategories.
+func writeTaxonomyTree(sb *strings.Builder, sheets []taxonomy.ExpenseType) {
+	for _, sheet := range sheets {
+		sb.WriteString(sheet.Name)
+		sb.WriteString(":\n")
+		for _, cat := range sheet.Cats {
+			sb.WriteString("  ")
+			sb.WriteString(cat.Name)
+			sb.WriteString(": ")
+			sb.WriteString(strings.Join(subcatNames(cat.Subs), ", "))
+			sb.WriteString("\n")
+		}
+	}
+}
+
+// subcatNames extracts the display names of a category's subcategories.
+func subcatNames(subs []taxonomy.Subcat) []string {
+	names := make([]string, len(subs))
+	for i, s := range subs {
+		names[i] = s.Name
+	}
+	return names
 }

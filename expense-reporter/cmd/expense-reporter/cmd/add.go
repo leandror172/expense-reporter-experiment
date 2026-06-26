@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"bufio"
+	"errors"
 	"expense-reporter/internal/appender"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	taxonomy "expense-reporter/internal/taxonomy"
 	"expense-reporter/pkg/utils"
 	"fmt"
 	"os"
@@ -16,6 +19,7 @@ import (
 
 var addDryRun bool
 var addDataDir string
+var addType string
 
 var addPredictedSubcategory string
 var addPredictedCategory string
@@ -49,6 +53,7 @@ Notes:
 func init() {
 	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into log")
 	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	addCmd.Flags().StringVar(&addType, "type", "", "Expense type (Fixas/Variáveis/Extras/Adicionais) — required only for subcategories that exist under more than one type")
 	addCmd.Flags().StringVar(&addPredictedSubcategory, "predicted-subcategory", "", "Model's top prediction for subcategory")
 	addCmd.Flags().StringVar(&addPredictedCategory, "predicted-category", "", "Model's predicted category")
 	addCmd.Flags().StringVar(&addClassificationID, "classification-id", "", "ID from the prior classify call (for cross-reference)")
@@ -65,18 +70,27 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM[/YYYY];value[/N];subcategory\"")
 	}
 
-	category := resolveCategoryFromTaxonomy(subcategory, addDataDir)
-
-	if addDryRun {
-		return runAddDryRun(cmd, item, dateStr, value, subcategory, category)
-	}
-
 	appCfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	typ := resolveExpenseType(loadTypeIndex(appCfg), category, subcategory)
+	sheets, err := loadTaxonomyTree(appCfg)
+	if err != nil {
+		return err
+	}
+
+	// T-13: resolve the full (type, category) path from taxonomy.json — the single
+	// source of truth — instead of deriving category from the feature dictionary and
+	// type from a separate lookup that could disagree.
+	typ, category, err := resolveFullPath(sheets, subcategory, addType)
+	if err != nil {
+		return err
+	}
+
+	if addDryRun {
+		return runAddDryRun(cmd, item, dateStr, value, subcategory, category)
+	}
 
 	if logPath := appCfg.ExpensesLogFilePath(); logPath != "" {
 		if err := appender.ExpandAndAppend(logPath, item, parsedDate, value, installmentCount, typ, category, subcategory); err != nil {
@@ -171,14 +185,62 @@ func parseExpenseForFeedback(expenseString string) (item, dateStr string, parsed
 	return
 }
 
-// resolveCategoryFromTaxonomy looks up subcategory in the taxonomy to find its parent category.
-// Returns empty string if the taxonomy cannot be loaded or the subcategory is not found.
-func resolveCategoryFromTaxonomy(subcategory, dataDir string) string {
-	taxonomy, err := classifier.LoadTaxonomy(dataDir)
-	if err != nil {
-		return ""
+// resolveFullPath resolves a bare subcategory to its (type, category) via the
+// taxonomy. Unambiguous leaves (99/104) resolve from the name alone. The handful of
+// leaves that repeat across types are resolved, in order, by: the --type flag; an
+// interactive prompt when stdin is a terminal; otherwise a hard error — never a
+// silent guess, so an unattended run that omits --type fails loudly rather than
+// routing to the wrong sheet.
+func resolveFullPath(sheets []taxonomy.ExpenseType, subcategory, typeFlag string) (typ, category string, err error) {
+	typ, category, err = taxonomy.ResolveLeaf(sheets, subcategory, typeFlag)
+	if err == nil {
+		return typ, category, nil
 	}
-	return taxonomy[subcategory]
+	if errors.Is(err, taxonomy.ErrLeafNotFound) {
+		return "", "", fmt.Errorf("subcategory %q is not in the taxonomy", subcategory)
+	}
+
+	// ErrLeafAmbiguous: the leaf name exists under more than one type.
+	candidates := taxonomy.TypesForLeaf(sheets, subcategory)
+	if typeFlag != "" {
+		return "", "", fmt.Errorf("subcategory %q is not under type %q (valid types: %s)",
+			subcategory, typeFlag, strings.Join(candidates, ", "))
+	}
+	if !stdinIsInteractive() {
+		return "", "", fmt.Errorf("subcategory %q exists under multiple types (%s); pass --type to disambiguate",
+			subcategory, strings.Join(candidates, ", "))
+	}
+	chosen, err := promptForType(subcategory, candidates)
+	if err != nil {
+		return "", "", err
+	}
+	return taxonomy.ResolveLeaf(sheets, subcategory, chosen)
+}
+
+// stdinIsInteractive reports whether stdin is a terminal (character device), used to
+// decide whether an ambiguous leaf may be resolved by prompting the user.
+func stdinIsInteractive() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+// promptForType asks the user to pick one of the candidate types for an ambiguous
+// subcategory and returns the chosen type name.
+func promptForType(subcategory string, candidates []string) (string, error) {
+	fmt.Printf("Subcategory %q exists under multiple types: %s\n", subcategory, strings.Join(candidates, ", "))
+	fmt.Print("Enter the type: ")
+	scanner := bufio.NewScanner(os.Stdin)
+	if !scanner.Scan() {
+		return "", fmt.Errorf("no type provided for ambiguous subcategory %q", subcategory)
+	}
+	answer := strings.TrimSpace(scanner.Text())
+	if answer == "" {
+		return "", fmt.Errorf("no type provided for ambiguous subcategory %q", subcategory)
+	}
+	return answer, nil
 }
 
 // logManualFeedback appends a manual entry to classifications.jsonl.

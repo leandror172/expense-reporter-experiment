@@ -4,6 +4,7 @@ import (
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	taxonomy "expense-reporter/internal/taxonomy"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -59,7 +60,14 @@ func runCorrect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no prior classification found for %q on %s — use 'add' to log a manual entry instead", item, date)
 	}
 
-	actualCategory := resolveCategoryFromTaxonomy(actualSubcategory, correctDataDir)
+	// Category is resolved from taxonomy.json (the single source of truth). This is
+	// best-effort: a corrected entry is feedback-only and never feeds generate-workbook,
+	// so an unknown subcategory degrades to an empty category rather than blocking.
+	sheets, err := loadTaxonomyTree(appCfg)
+	if err != nil {
+		return err
+	}
+	actualCategory, _ := taxonomy.CategoryForLeaf(sheets, actualSubcategory)
 
 	predicted := classifier.Result{
 		Subcategory: prior.PredictedSubcategory,

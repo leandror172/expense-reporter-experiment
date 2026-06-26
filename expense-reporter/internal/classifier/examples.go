@@ -26,6 +26,12 @@ type Example struct {
 	Subcategory string
 	Category    string
 	Source      ExampleSource
+	// TypeHint is the expense type this example belongs to, derived from the
+	// training source sheet-name. It is used ONLY to disambiguate the handful of
+	// leaf names that repeat across types when resolving an example's full path
+	// (T-13 §4.4). Empty when unknown (e.g. feedback examples have no source sheet);
+	// unambiguous leaves resolve without it.
+	TypeHint string
 }
 
 // KeywordEntry is the index entry for one keyword token.

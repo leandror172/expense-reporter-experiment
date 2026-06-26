@@ -59,6 +59,17 @@ func (pm PathMap) Split(path string) (typ, cat, sub string, ok bool) {
 	return parts[0], parts[1], parts[2], true
 }
 
+// PathFor returns the canonical display string for a (type, category, subcategory)
+// triple, or ok=false if that exact leaf is not in the taxonomy. The result is
+// validated against the reverse map, so callers never fabricate an off-enum path.
+func (pm PathMap) PathFor(typ, cat, sub string) (path string, ok bool) {
+	display := buildDisplayString(typ, cat, sub)
+	if _, exists := pm.reverseMap[display]; !exists {
+		return "", false
+	}
+	return display, true
+}
+
 // PathEnum builds a PathMap and returns its Enum list.
 func PathEnum(sheets []ExpenseType) ([]string, error) {
 	pm, err := BuildPathMap(sheets)
@@ -94,6 +105,41 @@ func ResolveLeaf(sheets []ExpenseType, sub, typeHint string) (typ, cat string, e
 		// type, so the leaf remains ambiguous (never "not found").
 		return "", "", ErrLeafAmbiguous
 	}
+}
+
+// TypesForLeaf returns the distinct expense type names a subcategory appears under,
+// in taxonomy order. It powers disambiguation prompts and error messages for the
+// model-less `add` path, where a bare leaf name may belong to several types.
+func TypesForLeaf(sheets []ExpenseType, sub string) []string {
+	seen := make(map[string]bool)
+	var types []string
+	for _, match := range collectLeafMatches(sheets, sub) {
+		if !seen[match[0]] {
+			seen[match[0]] = true
+			types = append(types, match[0])
+		}
+	}
+	return types
+}
+
+// CategoryForLeaf returns the category owning a subcategory when that category is the
+// same for every type the leaf appears under — true for all real leaves, including
+// the few that repeat across types but share one category (e.g. Dentista is always
+// under Saúde, Estacionamento always under Transporte). Returns ok=false when the
+// leaf is absent or, defensively, appears under differing categories. Useful where
+// only the category is needed and the type is irrelevant (e.g. the feedback log).
+func CategoryForLeaf(sheets []ExpenseType, sub string) (category string, ok bool) {
+	matches := collectLeafMatches(sheets, sub)
+	if len(matches) == 0 {
+		return "", false
+	}
+	cat := matches[0][1]
+	for _, m := range matches[1:] {
+		if m[1] != cat {
+			return "", false
+		}
+	}
+	return cat, true
 }
 
 // buildDisplayString joins the three taxonomy names into one enum display string.
