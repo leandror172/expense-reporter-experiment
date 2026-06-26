@@ -73,6 +73,27 @@ encapsulated. `then*` helpers live in the same `*_test.go` file as their tests;
 `commandSucceeded()` (feedback_test.go, same package) is the shared base — use it
 via `slices.Concat` rather than calling `verify.CommandSucceeded()` directly.
 
+**Refinement — name Then helpers by expected RESULT, not artifact (2026-06, PR #35):**
+A `Then` helper name should let a reader infer the scenario's behavior without opening the
+helper or the fixture. Prefer the *outcome* over the *mechanism*:
+`installmentExpandedToNDatedLogLines(fixDir)` over `expenseLogMatchesExpected(fixDir)`;
+`crossYearInstallmentNotDivertedToRollover()` over an inline `verify.NoRolloverFileCreated()`.
+- **Split on variance:** keep genuinely *invariant* concerns generic (`commandSucceeded()`,
+  `classificationsMatchExpected()`); only the *scenario-varying* concern needs the
+  outcome-describing name. This reconciles "one concern per helper" with "name the result".
+- **Per-scenario wrappers:** when several scenarios share one verifier, wrap it in named
+  helpers that just `return expenseLogMatchesExpected(fixDir)`. The body is one line — the
+  wrapper's value IS its name; the differing fixture encodes the differing result.
+- **Worked example:** `add_log_append_test.go` (typedExpenseRecordedAsSingleLogLine,
+  installmentExpandedToNDatedLogLines, crossYearInstallmentLoggedWithNextYearDate,
+  crossYearInstallmentNotDivertedToRollover). Rule also documented in `PATTERNS.md`.
+- **PENDING SWEEP (not yet done):** only `add_log_append_test.go` was renamed (the file PR #35
+  flagged). Other files still call the mechanism-named `expenseLogMatchesExpected(` /
+  `classificationsMatchExpected(` and may carry the same smell — candidates: `apply_test.go`,
+  `correct_test.go`, `fewshot_test.go`, `generate_income_test.go`, `generate_test.go`,
+  `json_output_test.go`, `typed_log_test.go`, `type_routing_cycle_test.go`. Not yet read or
+  judged; rename only the scenario-varying call sites, leave the generic invariants alone.
+
 ## JSONL Verification Design (2026-03)
 File-specific verifiers (not generic string-keyed):
 - `verify.ClassificationsMatch(expectedPath)` — checks `classifications.jsonl`
