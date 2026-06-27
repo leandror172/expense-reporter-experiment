@@ -10,6 +10,7 @@ import (
 	taxonomy "expense-reporter/internal/taxonomy"
 	"expense-reporter/pkg/utils"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -83,7 +84,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	// T-13: resolve the full (type, category) path from taxonomy.json — the single
 	// source of truth — instead of deriving category from the feature dictionary and
 	// type from a separate lookup that could disagree.
-	typ, category, err := resolveFullPath(sheets, subcategory, addType)
+	typ, category, err := resolveFullPath(sheets, subcategory, addType, stdinIsInteractive(), os.Stdin)
 	if err != nil {
 		return err
 	}
@@ -191,7 +192,10 @@ func parseExpenseForFeedback(expenseString string) (item, dateStr string, parsed
 // interactive prompt when stdin is a terminal; otherwise a hard error — never a
 // silent guess, so an unattended run that omits --type fails loudly rather than
 // routing to the wrong sheet.
-func resolveFullPath(sheets []taxonomy.ExpenseType, subcategory, typeFlag string) (typ, category string, err error) {
+// resolveFullPath is split from its I/O (interactive + in) so the resolution logic
+// is deterministically testable. interactive reports whether prompting is allowed;
+// in supplies the prompt's answer when it is.
+func resolveFullPath(sheets []taxonomy.ExpenseType, subcategory, typeFlag string, interactive bool, in io.Reader) (typ, category string, err error) {
 	typ, category, err = taxonomy.ResolveLeaf(sheets, subcategory, typeFlag)
 	if err == nil {
 		return typ, category, nil
@@ -206,11 +210,11 @@ func resolveFullPath(sheets []taxonomy.ExpenseType, subcategory, typeFlag string
 		return "", "", fmt.Errorf("subcategory %q is not under type %q (valid types: %s)",
 			subcategory, typeFlag, strings.Join(candidates, ", "))
 	}
-	if !stdinIsInteractive() {
+	if !interactive {
 		return "", "", fmt.Errorf("subcategory %q exists under multiple types (%s); pass --type to disambiguate",
 			subcategory, strings.Join(candidates, ", "))
 	}
-	chosen, err := promptForType(subcategory, candidates)
+	chosen, err := promptForType(subcategory, candidates, in)
 	if err != nil {
 		return "", "", err
 	}
@@ -228,11 +232,11 @@ func stdinIsInteractive() bool {
 }
 
 // promptForType asks the user to pick one of the candidate types for an ambiguous
-// subcategory and returns the chosen type name.
-func promptForType(subcategory string, candidates []string) (string, error) {
+// subcategory and returns the chosen type name, reading the answer from in.
+func promptForType(subcategory string, candidates []string, in io.Reader) (string, error) {
 	fmt.Printf("Subcategory %q exists under multiple types: %s\n", subcategory, strings.Join(candidates, ", "))
 	fmt.Print("Enter the type: ")
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(in)
 	if !scanner.Scan() {
 		return "", fmt.Errorf("no type provided for ambiguous subcategory %q", subcategory)
 	}
