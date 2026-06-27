@@ -3,6 +3,16 @@
 *Working memory for the classifier package. Injected into agents. Keep under 30 lines.*
 
 ## Status
+**T-13 (session 41): predicts the FULL path `(type,category,subcategory)`.** `Classify`
+takes `[]taxonomy.ExpenseType` (this package now depends on `internal/taxonomy`); the
+system prompt renders the 3-level tree; structured output is an atomic `path` enum
+(`taxonomy.PathEnum`, 112 values) per candidate, split back via `PathMap.Split`; off-enum
+paths are dropped. `Result` carries `Type`. `Taxonomy`/`LoadTaxonomy` (the flat feature-dict
+`category_mapping`) are **deleted** — the feature dict is now keyword-only. Few-shot examples
+resolve their canonical path via `ResolveLeaf`+`PathFor` (drop if unresolvable);
+`Example.TypeHint` comes from the training `source` sheet-name. Default model is now
+`my-classifier-qcoder` (the tier validated for the enum). See `.claude/t13-implementation-report.md`.
+
 Keyword-based few-shot injection (layer 1 of 3) complete.
 TF-IDF retrieval (layer 2) planned as 5.R1 — would replace keyword specificity
 with corpus-level term frequency for better example selection.

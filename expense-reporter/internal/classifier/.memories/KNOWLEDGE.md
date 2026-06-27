@@ -40,15 +40,23 @@ entry should replace the original training example, not coexist with it.
 **Implication:** As the feedback pool grows, training data gradually gets superseded
 by real-world confirmed/corrected classifications.
 
-## Taxonomy Loading (2026-03)
-`LoadTaxonomy` reads `category_mapping` from `feature_dictionary_enhanced.json`.
-Returns `map[subcategory]category`. Used by both the classifier (system prompt) and
-the `add` command (resolve category from subcategory for logging).
-**Rationale:** The feature dictionary is the single source of truth for the category
-hierarchy. Maintaining it separately from the Excel reference sheet allows offline
-classification (without opening the workbook).
-**Implication:** The taxonomy must stay in sync with the Excel reference sheet.
-Discrepancies cause resolution failures in the `add` pipeline.
+## Taxonomy Loading — SUPERSEDED by T-13 (session 41)
+~~`LoadTaxonomy` reads `category_mapping` from `feature_dictionary_enhanced.json`.~~
+`classifier.LoadTaxonomy` and the `Taxonomy` type are **deleted**. The classifier now
+loads the 3-level tree from `config/taxonomy.json` via `internal/taxonomy.LoadTaxonomy`
+(passed in as `[]taxonomy.ExpenseType`) and predicts the full path against it. The feature
+dictionary is now **keyword-only** (few-shot selection); it is no longer a category/type
+authority. Category and type both come from the predicted path — they can never disagree.
+`add` resolves its path via `taxonomy.ResolveLeaf` (+ `--type` for ambiguous leaves).
+
+## Prompt Architecture — UPDATED by T-13
+The system prompt now renders the `type → category → subcategory` tree (not a flat
+`sub→cat` list), and the `format` schema constrains each candidate to a `path` enum string
+(`Type/Category/Subcategory`) drawn from `taxonomy.PathEnum`. Few-shot assistant messages
+emit `{"results":[{"path":...,"confidence":0.95}]}`. `parseResponse` splits each path back
+to `(type,cat,sub)` via `PathMap.Split` and drops any off-enum path. The enum was
+smoke-tested at 100% valid on `my-classifier-qcoder` (~6 s/call); honoring is model-dependent,
+so commands default to qcoder.
 
 ## Empirical Findings (2026-03)
 - **Multi-word context beats keyword specificity:** "VA compras" classifies correctly

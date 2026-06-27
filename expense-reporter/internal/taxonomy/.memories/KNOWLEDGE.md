@@ -33,13 +33,16 @@ expenses_log year-implicit (year comes from generate `--year`). Multi-year data 
 into per-year logs as a workaround. Future: accept `DD/MM/YYYY` + per-entry year so one
 multi-year log routes directly.
 
-**Two taxonomy sources exist and don't know about each other** (cross-cutting, also
-noted in classifier memory):
-- `config/taxonomy.json` — sheet→cat→sub tree, this package, generator side.
-- `data/classification/feature_dictionary_enhanced.json` `category_mapping` — flat
-  sub→cat, classifier side. **No sheet dimension.**
-The classifier never reads the sheet-aware tree; that's the architectural debt behind
-"the classifier can't emit type yet."
+**The two-taxonomy-sources debt is RESOLVED (T-13, session 41).** Previously:
+- `config/taxonomy.json` — sheet→cat→sub tree, generator side.
+- `feature_dictionary_enhanced.json` `category_mapping` — flat sub→cat, classifier side.
+The classifier never saw the sheet dimension, so it couldn't emit type. **T-13 makes the
+classifier depend on THIS package** and predict the full path against `config/taxonomy.json`
+(via `PathEnum`/`Split`). `classifier.LoadTaxonomy` (the flat feature-dict map) is deleted;
+the feature dict is now keyword-only (few-shot selection), no longer a category authority.
+The full-path helpers live in `path.go`. NOTE: `BuildTypeIndex`/`LookupType` (the old
+`(cat,sub)→type` reverse index) is now unused by production code — T-13 replaced it with
+prediction-time choice — but is kept + tested; a future WS-E cleanup may remove it.
 
 **Real file is gitignored** (`config/taxonomy.json` reveals personal categories); the
 committed test input is `test/fixtures/generate-basic/taxonomy.json`. Fidelity of a
