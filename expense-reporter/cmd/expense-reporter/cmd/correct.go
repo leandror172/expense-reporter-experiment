@@ -31,7 +31,7 @@ Note: This command does NOT modify the workbook — it only writes to the feedba
 }
 
 func init() {
-	correctCmd.Flags().StringVar(&correctDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	correctCmd.Flags().StringVar(&correctDataDir, "data-dir", "data/classification", "(deprecated, no longer used: category resolves via config/taxonomy.json since T-13)")
 	rootCmd.AddCommand(correctCmd)
 }
 
@@ -60,14 +60,15 @@ func runCorrect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no prior classification found for %q on %s — use 'add' to log a manual entry instead", item, date)
 	}
 
-	// Category is resolved from taxonomy.json (the single source of truth). This is
-	// best-effort: a corrected entry is feedback-only and never feeds generate-workbook,
-	// so an unknown subcategory degrades to an empty category rather than blocking.
-	sheets, err := loadTaxonomyTree(appCfg)
-	if err != nil {
-		return err
+	// Category is resolved from taxonomy.json (the single source of truth), but the
+	// whole resolution is best-effort: a corrected entry is feedback-only and never
+	// feeds generate-workbook, so neither an unloadable taxonomy nor an unknown
+	// subcategory should block logging the correction — both degrade to an empty
+	// category (matching the prior feature-dict behavior).
+	actualCategory := ""
+	if sheets, terr := loadTaxonomyTree(appCfg); terr == nil {
+		actualCategory, _ = taxonomy.CategoryForLeaf(sheets, actualSubcategory)
 	}
-	actualCategory, _ := taxonomy.CategoryForLeaf(sheets, actualSubcategory)
 
 	predicted := classifier.Result{
 		Subcategory: prior.PredictedSubcategory,

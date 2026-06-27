@@ -9,6 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTypeHintFromSource(t *testing.T) {
+	// The training "source" field is "Filename.xlsx:SheetName"; the sheet-name is the
+	// expense type for ~96% of examples (T-13 §4.4). The hint is best-effort — only the
+	// suffix after the last colon matters, and a missing colon yields no hint.
+	cases := map[string]string{
+		"2024.xlsx:Variáveis":    "Variáveis",
+		"Gastos 2023.xlsx:Fixas": "Fixas",
+		"a:b:Extras":             "Extras", // last colon wins
+		"  x.xlsx:Adicionais ":   "Adicionais",
+		"no-colon-here":          "",
+		"":                       "",
+	}
+	for source, want := range cases {
+		assert.Equal(t, want, typeHintFromSource(source), "source=%q", source)
+	}
+}
+
 func TestLoadTrainingExamples(t *testing.T) {
 	const validJSON = `{
 		"metadata": {},
@@ -214,7 +231,7 @@ func TestMergeExamplePools(t *testing.T) {
 			wantLen:  2,
 		},
 		{
-			name:    "only feedback",
+			name:     "only feedback",
 			feedback: feedback2,
 			wantLen:  2,
 		},

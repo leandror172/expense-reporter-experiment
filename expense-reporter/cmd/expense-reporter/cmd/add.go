@@ -53,7 +53,7 @@ Notes:
 
 func init() {
 	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into log")
-	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "(deprecated, no longer used: add resolves via config/taxonomy.json since T-13)")
 	addCmd.Flags().StringVar(&addType, "type", "", "Expense type (Fixas/Variáveis/Extras/Adicionais) — required only for subcategories that exist under more than one type")
 	addCmd.Flags().StringVar(&addPredictedSubcategory, "predicted-subcategory", "", "Model's top prediction for subcategory")
 	addCmd.Flags().StringVar(&addPredictedCategory, "predicted-category", "", "Model's predicted category")
