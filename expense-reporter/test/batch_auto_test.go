@@ -115,6 +115,7 @@ func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
 	}
 }
 
@@ -126,6 +127,7 @@ func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
 	}
 }
 
@@ -137,6 +139,7 @@ func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Cont
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
 		outDir := filepath.Join(ctx.WorkDir, "out")
 		if err := os.MkdirAll(outDir, 0o755); err != nil {
 			ctx.T.Fatalf("mkdir out: %v", err)
@@ -279,6 +282,7 @@ func batchExpensesSubmittedToCorruptWorkbook(fixDir string) func(*harness.Contex
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
 		corruptPath := filepath.Join(ctx.WorkDir, "corrupt-workbook.xlsx")
 		if err := os.WriteFile(corruptPath, []byte("not a real xlsx"), 0o644); err != nil {
 			ctx.T.Fatalf("writing corrupt workbook: %v", err)

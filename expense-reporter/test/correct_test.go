@@ -60,7 +60,9 @@ func expenseAutoConfirmed(fixDir string) func(*harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
-		withFeedbackConfig(ctx)
+		// T-13: correct resolves the corrected entry's category from the taxonomy
+		// (CategoryForLeaf), so a taxonomy must be configured for the success path.
+		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 		if err := harness.SeedFileFromFixture(ctx, fixDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
 			ctx.T.Fatalf("SeedFileFromFixture: %v", err)
 		}
@@ -72,7 +74,7 @@ func expenseConfirmedThenCorrected(fixDir string) func(*harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
-		withFeedbackConfig(ctx)
+		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 		if err := harness.SeedFileFromFixture(ctx, fixDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
 			ctx.T.Fatalf("SeedFileFromFixture: %v", err)
 		}

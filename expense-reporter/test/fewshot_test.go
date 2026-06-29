@@ -18,6 +18,7 @@ import (
 // is available, the classify command injects few-shot examples and logs it under --verbose.
 func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 	harness.RequireOllama(t, "")
+	requireDataDir(t)
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify with training data logs few-shot injection under --verbose",
@@ -32,6 +33,7 @@ func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 // and the few-shot debug line still appears (with count=0).
 func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
 	harness.RequireOllama(t, "")
+	requireDataDir(t)
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify without training data degrades gracefully — no error, few-shot count 0",
@@ -61,11 +63,24 @@ func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
 
 // --- Given helpers ---
 
-// classifierWithDataDir sets up the real data directory (training data + keyword index).
+// requireDataDir skips a test when the real data/classification directory is absent
+// (it is gitignored — contains personal data). Few-shot injection tests that read the
+// real training data / feature dictionary cannot run meaningfully without it; skipping
+// (rather than failing or weakly passing) keeps the result honest. Mirrors RequireOllama.
+func requireDataDir(t *testing.T) {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(dataDir, "feature_dictionary_enhanced.json")); err != nil {
+		t.Skipf("data/classification not present (%v) — skipping few-shot data-dependent test", err)
+	}
+}
+
+// classifierWithDataDir sets up the real data directory (training data + keyword index)
+// plus a taxonomy config (T-13: classify requires a configured taxonomy).
 func classifierWithDataDir() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
+		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
 
@@ -85,6 +100,7 @@ func classifierWithKeywordsOnly() func(*harness.Context) {
 		}
 		// Intentionally omit training_data_complete.json.
 		ctx.DataDir = tmpDir
+		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
 	}
 }
 
