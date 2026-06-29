@@ -3,6 +3,7 @@
 package acceptance_test
 
 import (
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -75,19 +76,40 @@ func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
 	})
 }
 
-// binaryOnly sets up context with just the binary path — no Ollama, no workbook, no data dir.
+// TestAddDryRunJSON_SurfacesResolvedType verifies that add --dry-run --json now
+// emits the expense type it already resolves from the taxonomy full path (T-13),
+// not just the category. Uber/Taxi is an unambiguous leaf under Variáveis/Transporte,
+// so the resolved type is deterministic — no Ollama involved.
+func TestAddDryRunJSON_SurfacesResolvedType(t *testing.T) {
+	harness.Run(t, harness.Scenario{
+		Name:  "add --dry-run --json surfaces the type resolved from taxonomy",
+		Given: classifierForJSON(),
+		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Then: slices.Concat(
+			thenJSONSucceeded(),
+			thenJSONTypeIs("Variáveis"),
+		),
+	})
+}
+
+// binaryOnly sets up context with the binary path and a taxonomy config — no
+// Ollama, no workbook, no data dir. Since T-13, add resolves its full path from
+// config/taxonomy.json even on the dry-run path, so a taxonomy must be configured.
 func binaryOnly() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
 
 // classifierForJSON sets up the context for JSON output tests.
-// No workbook needed since --json mode is read-only.
+// No workbook needed since --json mode is read-only. T-13: classify/auto/add all
+// resolve against config/taxonomy.json, so the taxonomy is configured here too.
 func classifierForJSON() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
+		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
 
@@ -140,6 +162,13 @@ func thenJSONActionIs(action string) []func(*harness.Context) {
 func thenJSONCategoryIs(category string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.OutputJSONHasCategory(category),
+	}
+}
+
+// thenJSONTypeIs checks that the surfaced expense type has the expected value.
+func thenJSONTypeIs(typ string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasType(typ),
 	}
 }
 

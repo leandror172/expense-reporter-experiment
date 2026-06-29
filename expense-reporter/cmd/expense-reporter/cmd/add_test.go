@@ -153,7 +153,7 @@ func TestRunAddDryRun_JSON(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Stdout = w
-	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Uber/Taxi", "Transporte")
+	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Variáveis", "Uber/Taxi", "Transporte")
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -171,6 +171,7 @@ func TestRunAddDryRun_JSON(t *testing.T) {
 	assert.Equal(t, "Uber Centro", parsed.Item)
 	assert.Equal(t, 35.50, parsed.Value)
 	assert.Equal(t, "15/04", parsed.Date)
+	assert.Equal(t, "Variáveis", parsed.Type)
 	assert.Equal(t, "Uber/Taxi", parsed.Subcategory)
 	assert.Equal(t, "Transporte", parsed.Category)
 	assert.Equal(t, "would_insert", parsed.Action)
@@ -184,7 +185,7 @@ func TestRunAddDryRun_Text(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Stdout = w
-	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Uber/Taxi", "Transporte")
+	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Variáveis", "Uber/Taxi", "Transporte")
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -200,6 +201,7 @@ func TestRunAddDryRun_Text(t *testing.T) {
 	assert.Contains(t, output, "Item:        Uber Centro")
 	assert.Contains(t, output, "Date:        15/04")
 	assert.Contains(t, output, "Value:       35.50")
+	assert.Contains(t, output, "Type:        Variáveis")
 	assert.Contains(t, output, "Subcategory: Uber/Taxi")
 	assert.Contains(t, output, "Category:    Transporte")
 }
@@ -212,7 +214,7 @@ func TestRunAddDryRun_Text_EmptyCategory(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Stdout = w
-	runErr := runAddDryRun(cmd, "Coffee", "03/01", 12.90, "Cafeteria", "")
+	runErr := runAddDryRun(cmd, "Coffee", "03/01", 12.90, "", "Cafeteria", "")
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -225,6 +227,7 @@ func TestRunAddDryRun_Text_EmptyCategory(t *testing.T) {
 
 	output := buf.String()
 	assert.Contains(t, output, "Dry run — would insert:")
+	assert.NotContains(t, output, "Type:")
 	assert.NotContains(t, output, "Category:")
 }
 

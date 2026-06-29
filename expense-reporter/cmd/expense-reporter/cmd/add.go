@@ -90,7 +90,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if addDryRun {
-		return runAddDryRun(cmd, item, dateStr, value, subcategory, category)
+		return runAddDryRun(cmd, item, dateStr, value, typ, subcategory, category)
 	}
 
 	if logPath := appCfg.ExpensesLogFilePath(); logPath != "" {
@@ -112,16 +112,19 @@ func runAdd(cmd *cobra.Command, args []string) error {
 }
 
 // AddOutput represents the structured output of an add --dry-run command.
+// Type is the expense type resolved from the taxonomy full path (T-13); omitted
+// when empty so the field is additive for callers that don't consume it.
 type AddOutput struct {
 	Item        string  `json:"item"`
 	Value       float64 `json:"value"`
 	Date        string  `json:"date"`
+	Type        string  `json:"type,omitempty"`
 	Subcategory string  `json:"subcategory"`
 	Category    string  `json:"category"`
 	Action      string  `json:"action"`
 }
 
-func runAddDryRun(cmd *cobra.Command, item, date string, value float64, subcategory, category string) error {
+func runAddDryRun(cmd *cobra.Command, item, date string, value float64, typ, subcategory, category string) error {
 	jsonMode, _ := cmd.Flags().GetBool("json")
 
 	if jsonMode {
@@ -129,6 +132,7 @@ func runAddDryRun(cmd *cobra.Command, item, date string, value float64, subcateg
 			Item:        item,
 			Value:       value,
 			Date:        date,
+			Type:        typ,
 			Subcategory: subcategory,
 			Category:    category,
 			Action:      "would_insert",
@@ -139,6 +143,9 @@ func runAddDryRun(cmd *cobra.Command, item, date string, value float64, subcateg
 	fmt.Printf("  Item:        %s\n", item)
 	fmt.Printf("  Date:        %s\n", date)
 	fmt.Printf("  Value:       %.2f\n", value)
+	if typ != "" {
+		fmt.Printf("  Type:        %s\n", typ)
+	}
 	fmt.Printf("  Subcategory: %s\n", subcategory)
 	if category != "" {
 		fmt.Printf("  Category:    %s\n", category)

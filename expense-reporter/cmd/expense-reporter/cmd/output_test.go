@@ -38,6 +38,22 @@ func TestToCandidates(t *testing.T) {
 	assert.Equal(t, 0.87, candidates[1].Confidence)
 }
 
+func TestToCandidates_SurfacesPredictedType(t *testing.T) {
+	results := []classifier.Result{
+		{Type: "Variáveis", Subcategory: "Uber/Taxi", Category: "Transporte", Confidence: 0.95},
+	}
+
+	candidates := toCandidates(results)
+
+	require.Len(t, candidates, 1)
+	assert.Equal(t, "Variáveis", candidates[0].Type)
+
+	// The type must survive serialization for the MCP/classify→add handoff (T-13).
+	jsonData, err := json.Marshal(ClassifyOutput{Candidates: candidates})
+	require.NoError(t, err)
+	assert.Contains(t, string(jsonData), `"type":"Variáveis"`)
+}
+
 func TestClassifyOutputJSON(t *testing.T) {
 	output := ClassifyOutput{
 		Item:  "Uber Centro",

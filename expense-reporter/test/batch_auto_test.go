@@ -243,6 +243,10 @@ func batchExpensesSubmittedToMissingWorkbook(fixDir string) func(*harness.Contex
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
+		// T-13 made taxonomy config mandatory; batch-auto loads it before the
+		// workbook check, so configure it even though this test fails fast at the
+		// (missing) workbook before any classification runs.
+		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 		ctx.WorkbookPath = filepath.Join(ctx.WorkDir, "nonexistent-workbook.xlsx")
 	}
 }
