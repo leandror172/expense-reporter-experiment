@@ -39,7 +39,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(autoCmd)
-	autoCmd.Flags().StringVar(&autoModel, "model", "my-classifier-qcoder", "Ollama model to use")
+	autoCmd.Flags().StringVar(&autoModel, "model", "my-classifier-q3", "Ollama model to use")
 	autoCmd.Flags().StringVar(&autoDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	autoCmd.Flags().BoolVar(&autoConfirm, "confirm", false, "Always ask for confirmation before inserting")
 }

@@ -25,7 +25,7 @@ type Result struct {
 // Config controls classifier behaviour.
 type Config struct {
 	OllamaURL    string // default: http://localhost:11434
-	Model        string // default: my-classifier-qcoder
+	Model        string // default: my-classifier-q3 (fits VRAM; enum validity is grammar-enforced, not model-dependent)
 	DataDir      string // path to data/classification/
 	FeedbackPath string // path to classifications.jsonl (optional; skipped when empty)
 	TopN         int    // number of candidates to return (default: 3)
@@ -41,7 +41,13 @@ func Classify(item string, value float64, date string, sheets []taxonomy.Expense
 		cfg.OllamaURL = "http://localhost:11434"
 	}
 	if cfg.Model == "" {
-		cfg.Model = "my-classifier-qcoder"
+		// q3 (qwen3:8b, ~5.2 GB) fits VRAM and is the proven baseline. Output
+		// validity (every candidate is a valid 112-path enum member) is enforced by
+		// Ollama's grammar-constrained decoding, so it does NOT depend on a larger
+		// model — qcoder (qwen3-coder:30b, 20.7 GB) only added CPU-offload latency and
+		// load-time 500s on a 12 GB GPU without buying validity. Accuracy across
+		// q3/q35/qcoder is benchmarked in T-14.
+		cfg.Model = "my-classifier-q3"
 	}
 	if cfg.TopN <= 0 {
 		cfg.TopN = 3

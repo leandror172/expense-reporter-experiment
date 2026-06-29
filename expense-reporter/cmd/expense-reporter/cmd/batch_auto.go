@@ -52,7 +52,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(batchAutoCmd)
-	batchAutoCmd.Flags().StringVar(&batchAutoModel, "model", "my-classifier-qcoder", "Ollama model to use")
+	batchAutoCmd.Flags().StringVar(&batchAutoModel, "model", "my-classifier-q3", "Ollama model to use")
 	batchAutoCmd.Flags().StringVar(&batchAutoDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	batchAutoCmd.Flags().StringVar(&batchAutoOllamaURL, "ollama-url", "http://localhost:11434", "Ollama API base URL")
 	batchAutoCmd.Flags().Float64Var(&batchAutoThreshold, "threshold", 0.85, "Minimum confidence for auto-insert")
