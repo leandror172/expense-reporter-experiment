@@ -25,6 +25,16 @@ typed, retained bare-name `byName` + ambiguous-skip for type-less — a **transi
 fallback), NFC-normalized keys. `backfill-type.py` recovers type into existing logs.
 Next: classifier full-path label (5.R4/RUI-4 — closes the type-less producer gap); year
 rollover; TF-IDF (5.R1). Real-data proof of A→B chain pending Bf3 (export+backfill check).
+**Session 42 (2026-06-29) — T-13 PR #36 code-review follow-ups (3 commits on `feat/t13-classifier-full-path`):**
+(1) **classifier default reverted qcoder→`my-classifier-q3`** for all commands — enum validity is
+GRAMMAR-enforced (Ollama `format`→GBNF), not model-dependent, so qcoder (20.7 GB, doesn't fit 12 GB GPU)
+bought nothing; q3 fits + validated end-to-end. q3 accurate but slow (~12 s/call). (2) **T-15 Slice 1**:
+predicted `type` now surfaced in `CandidateOutput`/`AddOutput` JSON (`type,omitempty`) — was dropped at the
+MCP boundary. (3) **Acceptance regressions repaired** (T-17 + T-18, 13 tests): running `-tags=acceptance`
+exposed that T-13 made `taxonomy_path` mandatory but many `Given`s never set it (build-tag hid it from
+`go test ./...`); plus a pre-existing `correct` seed-id bug (T-11 date normalization). Full suite needs
+`-timeout 30m` (q3 slow). Open: T-14 (model accuracy+speed benchmark), T-16 doc cleanup, T-19 (no
+"none-of-these" escape hatch). See `.claude/session42-postmortem.md`.
 
 ## Structure
 ```

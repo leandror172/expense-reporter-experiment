@@ -46,7 +46,22 @@ results/             # Gitignored — accuracy drift reports across runs
 - **Composable Then** — helpers return `[]func(*Context)`, combined with `slices.Concat`
 - **Fixture threshold 0.0** — mechanics tests (installments, rollover) use threshold 0.0
   to decouple from classifier non-determinism
-- **Infrastructure timeout gotcha (session 18):** Full 600s acceptance suite times out mid-flight. Basic test ~286s + MixedConfidence ~299s = 585s remaining. New tests should be fast (<5s) or run separately. Run individual test classes, not full suite, during development.
+- **Taxonomy config is MANDATORY since T-13 (session 41+):** `classify`/`auto`/`batch-auto`/`add`/`correct`
+  now hard-require a configured `taxonomy_path` (loaded before classification). Every `Given` that
+  invokes them must call `withFeedbackAndTaxonomyConfig(ctx, fixDir)` (reads `fixDir/fixture-taxonomy.json`,
+  copies it to WorkDir, writes binary config) OR `SetupBinaryConfig` with `taxonomy_path`. Missing it →
+  `Error: taxonomy path not configured`. The fixture taxonomy must cover the input CSV's expected leaves
+  (accuracy tests compare subcategory only). Session 42 added `fixture-taxonomy.json` to batch-auto-basic,
+  batch-auto-exclusions, correct-*, etc.
+- **`requireDataDir(t)`** (fewshot_test.go) — skip-guard mirroring `RequireOllama` for tests that read
+  the gitignored `data/classification` (feature dict / training data). NOTE: that dir DOES exist at the
+  **repo root** (`expense-reporter/../data/classification`), not under `expense-reporter/`.
+- **Build-tag hides regressions (session 42 lesson):** because `//go:build acceptance` excludes these from
+  `go test ./...`, a whole class of breakage (e.g. T-13 making taxonomy mandatory) can ship green. After any
+  change to a mandatory field / config contract, run `-tags=acceptance` explicitly. [[feedback_rename_json_tag_acceptance]]
+- **Infrastructure timeout (refreshed session 42):** q3 is slow (~12s/classify → a 10-row batch ≈ 2 min),
+  so the full suite blows the **600s default** `go test` timeout. Run with `-timeout 30m` (single shot) or
+  in sub-groups during dev. The classify-heavy batch tests dominate wall-clock.
 
 ## Deeper Memory → KNOWLEDGE.md
 - **Harness design** — domain-agnostic engine vs domain-specific actions/verify
