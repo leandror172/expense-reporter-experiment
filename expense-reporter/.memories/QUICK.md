@@ -35,6 +35,16 @@ exposed that T-13 made `taxonomy_path` mandatory but many `Given`s never set it 
 `go test ./...`); plus a pre-existing `correct` seed-id bug (T-11 date normalization). Full suite needs
 `-timeout 30m` (q3 slow). Open: T-14 (model accuracy+speed benchmark), T-16 doc cleanup, T-19 (no
 "none-of-these" escape hatch). See `.claude/session42-postmortem.md`.
+**Session 43 (2026-06-30) — WS-B slice 3: `batch-auto` → log-append (branch `feat/ws-b-slice3-batch-auto-log-append`, 4 commits).**
+`batch-auto` no longer writes the workbook — auto-rows append to `expenses_log.jsonl` (only durable writer is now
+`generate-workbook`). New `appendClassified`/`appendOneRow` route through `appender.ExpandAndAppend` (installments
+expand at append time; cross-year installments carry their real next-year date — **`rollover.csv` retired**).
+**Failure honesty:** an append error downgrades the row (AutoInserted=false) → honest summary + non-zero exit + row
+lands in review.csv (CSVs written AFTER append). **Pre-flight** `preflightLogPath` fails fast on an unwritable log
+before classifying. `--dry-run` = classify + CSVs, no append. `workflow.InsertBatchExpensesFromClassified`
+**deprecated** (`// Deprecated:`), kept for WS-E delete; plain `batch` keeps `InsertBatchExpenses` live. `logExpense`
+deleted; `auto` insert→append vocabulary renamed (`✓ Appended`). Plan: `.claude/plans/ws-b-slice3-batch-auto-log-append.md`.
+Remaining pivot: slice 4 (`apply` write-half delete) → WS-D (retire bare-name fallback) → WS-E (delete dead insert code).
 
 ## Structure
 ```
@@ -66,9 +76,11 @@ config/config.json     # Runtime config (workbook path, exclusion list, log path
 - **Table-driven tests with testify** — `assert`/`require`, not stdlib-only
 - **Brazilian format everywhere** — DD/MM/YYYY, comma decimal, BRL
 - **Error wrapping** — `fmt.Errorf("context: %w", err)`, never bare returns
-- **Installment notation** — "99,90/3" means 3 monthly payments, expanded at insert time
+- **Installment notation** — "99,90/3" means 3 monthly payments. `add`/`auto`/`batch-auto` expand at **append
+  time** via `appender.ExpandAndAppend` (cross-year → real next-year date, no rollover); plain `batch`'s workbook
+  path still expands at insert time
 
 ## Deeper Memory → KNOWLEDGE.md
 - **Batch pipeline** — single-open optimization, installment expansion, rollover handling
-- **Command design** — classify (read-only) → auto (single insert) → batch-auto (CSV batch)
+- **Command design** — classify (read-only) → auto (single → log append) → batch-auto (CSV batch → log append)
 - **JSON output mode** — structured output for MCP integration

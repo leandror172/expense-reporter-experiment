@@ -7,12 +7,16 @@ Five user-facing commands, each building on the previous:
 - `add "item;DD/MM;value;subcategory"` — manual insert with known subcategory
 - `batch "file.csv"` — bulk manual inserts from CSV
 - `classify "item" value DD/MM` — LLM classification only, no insert (read-only)
-- `auto "item" value DD/MM` — classify + auto-insert if confidence ≥ 0.85
-- `batch-auto "file.csv"` — classify CSV batch + auto-insert high-confidence rows
+- `auto "item" value DD/MM` — classify + **append to expenses_log.jsonl** if confidence ≥ 0.85 (was: workbook insert)
+- `batch-auto "file.csv"` — classify CSV batch + **append** high-confidence rows to the log (was: workbook insert)
 **Rationale:** Incremental trust — `classify` lets users verify the model before `auto`
-inserts anything. `batch-auto` is the production workflow.
+appends anything. `batch-auto` is the production workflow.
 **Implication:** `auto` and `batch-auto` share the same classifier + decision logic.
 The only difference is input source (args vs CSV) and output format.
+**Log-append pivot (WS-B, 2026-06–30):** since the session-36 pivot, `add`/`auto`/`batch-auto` no
+longer touch the workbook — they append typed entries to `expenses_log.jsonl`, and `generate-workbook`
+is the single writer (see the dedicated section below). Plain `batch` (manual, non-classifier) still
+inserts into the workbook.
 
 ## Batch Pipeline Optimization (2026-03)
 `workflow.InsertBatchExpenses` opens the workbook once, inserts all rows, saves once.
@@ -23,6 +27,27 @@ row maps back to which original input for error reporting.
 a batch eliminates the bottleneck.
 **Implication:** Single-expense `InsertExpense` delegates to `InsertBatchExpenses` with
 a one-element slice — both paths share identical pipeline logic.
+**Post-pivot (2026-06–30):** `InsertBatchExpensesFromClassified` (the classified-batch variant) is
+**deprecated** (`// Deprecated:`) — `batch-auto` no longer calls it; retained + unit-tested for the
+WS-E hard-delete. `InsertBatchExpenses` stays live under the plain `batch` command, so the rollover/
+excel machinery is NOT dead and must not be deleted with the classified variant.
+
+## Log-Append Path (WS-B, 2026-06–30)
+`internal/appender.ExpandAndAppend(logPath, item, date time.Time, perInstallment, count, type, category, sub)`
+is the single append-time writer shared by `add`/`auto`/`batch-auto`. It expands installments into N dated
+`ExpenseEntry` lines (`addMonths`; cross-year installments carry their **real next-year date** — there is no
+`rollover.csv` anymore) and writes via `feedback.AppendExpense` (plain `O_APPEND`, **no dedup on the hash ID**).
+`batch-auto`'s `appendClassified` (cmd) iterates auto-rows, delegates each to `appendOneRow`, and on success
+records the confirmed entry to `classifications.jsonl` via `logConfirmedFeedbackForRow`.
+**Failure honesty (the load-bearing rule):** because the log is now the only durable persistence, an append
+failure for a row **downgrades it in place** (`AutoInserted=false` + `Error` set) — keeping the summary count
+honest, sending the row to `review.csv`, and making the command exit non-zero (the returned error is wrapped
+by `runBatchAuto`, preserving the already-written CSVs). CSVs are therefore written **after** the append.
+**Pre-flight:** `preflightLogPath`/`verifyAppendable` opens the log in `O_APPEND` mode before classifying, so an
+unwritable log fails fast (saves ~12 s/row on the model). `--dry-run` skips both pre-flight and append (classify
++ CSVs only). **Date reformat gotcha:** the appender formats dates `DD/MM/YYYY`; bare `DD/MM` inputs get
+`time.Now().Year()` via `ParseDateFlexible` — so fixtures/tests must use explicit-year inputs to stay stable.
+**Idempotency gap:** no dedup means a re-run after a partial failure double-appends (flagged for a follow-up).
 
 ## JSON Output Mode (2026-03, updated 2026-04)
 `--json` flag on root command; checked by `classify`, `auto`, and `add` subcommands.
