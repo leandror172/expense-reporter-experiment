@@ -38,6 +38,11 @@ func InsertBatchExpenses(workbookPath string, expenseStrings []string) ([]*model
 // InsertBatchExpensesFromClassified inserts pre-classified expenses using the same batch
 // pipeline as InsertBatchExpenses. RawValue is preserved as-is so installment notation
 // (e.g. "99,90/3") is not lost during the string conversion.
+//
+// Deprecated: superseded by appender.ExpandAndAppend in the WS-B log-append pivot —
+// batch-auto now appends to expenses_log.jsonl instead of inserting into the workbook.
+// Retained only for its unit tests; scheduled for removal in WS-E. The non-classified
+// InsertBatchExpenses remains live under the plain `batch` command.
 func InsertBatchExpensesFromClassified(workbookPath string, rows []models.ClassifiedExpense) ([]*models.BatchError, []RolloverExpense) {
 
 	// Parse all expenses first (fail fast before file operations)
