@@ -238,6 +238,17 @@ func RunApply(reviewedPath string) func(*harness.Context) {
 	}
 }
 
+// RunApplyDryRun returns a When closure that runs the apply command with --dry-run.
+func RunApplyDryRun(reviewedPath string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"apply", reviewedPath, "--year", "2026", "--dry-run"}
+		if ctx.WorkbookPath != "" {
+			args = append(args, "--workbook", ctx.WorkbookPath)
+		}
+		runCommand(ctx, args...)
+	}
+}
+
 // RunGenerateWorkbook returns a When closure that runs the generate-workbook command.
 // The output workbook lands in ctx.WorkDir and is registered as the
 // "generated-workbook" artifact for structure verification.

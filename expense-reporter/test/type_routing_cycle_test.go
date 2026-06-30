@@ -94,9 +94,9 @@ func TestTypeRoutingCycle_2_ReviewRendersTypes(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 // Step 5 — apply backfills the human-chosen type into the expense log.
-// Deterministic: the browser export (step 4) is the reviewed.json fixture; apply's
-// new-row insert needs a workbook, so the Given builds a hermetic skeleton with
-// generate-workbook (no committed binary fixture).
+// Deterministic: the browser export (step 4) is the reviewed.json fixture. WS-B
+// slice 4 retired apply's workbook-insert path entirely — apply now only appends
+// to expenses_log.jsonl, so the Given needs no workbook setup.
 // ---------------------------------------------------------------------------
 
 func TestTypeRoutingCycle_3_ApplyBackfillsType(t *testing.T) {
@@ -109,7 +109,7 @@ func TestTypeRoutingCycle_3_ApplyBackfillsType(t *testing.T) {
 		When:  actions.RunApply(reviewedPath),
 		Then: slices.Concat(
 			commandSucceeded(),
-			expenseLogMatchesExpected(fixDir),
+			confirmedReviewRowRecordedAsTypedLogLine(fixDir),
 		),
 	})
 }
@@ -172,9 +172,6 @@ func expenseTypedDuringBrowserReview(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		withFeedbackConfig(ctx) // classifications.jsonl + expenses_log.jsonl in WorkDir
-		// apply's new-row insert needs a workbook; build a hermetic skeleton from the
-		// same taxonomy that generate-workbook uses, so the Saúde/Dentista slot exists.
-		buildSkeletonWorkbook(ctx, filepath.Join(fixDir, "taxonomy.json"))
 	}
 }
 
@@ -185,17 +182,6 @@ func cycleCompletedThroughApply(fixDir string) func(*harness.Context) {
 		// else is needed — this models the cumulative state after apply.
 		ctx.FixtureDir = fixDir
 	}
-}
-
-// buildSkeletonWorkbook runs generate-workbook (no entries) to produce an empty workbook
-// and points ctx.WorkbookPath at it. Fails the test if generation does not succeed.
-func buildSkeletonWorkbook(ctx *harness.Context, taxonomyPath string) {
-	ctx.T.Helper()
-	actions.RunGenerateWorkbook(taxonomyPath, "")(ctx)
-	if ctx.ExitCode != 0 {
-		ctx.T.Fatalf("buildSkeletonWorkbook: generate-workbook failed (exit %d): %s", ctx.ExitCode, ctx.Stderr)
-	}
-	ctx.WorkbookPath = ctx.Artifacts["generated-workbook"]
 }
 
 // createAmbiguousReferenceWorkbook builds a reference-sheet-only workbook where
@@ -232,6 +218,14 @@ func createAmbiguousReferenceWorkbook(t testing.TB, dir string) string {
 }
 
 // --- Then helpers (composable, one concern each) ---
+
+// confirmedReviewRowRecordedAsTypedLogLine names the outcome of step 5: the
+// human-confirmed, ambiguous-leaf entry lands in expenses_log.jsonl carrying the
+// type the reviewer chose (PR #35 naming sweep — wraps the mechanism-named
+// expenseLogMatchesExpected with a result-describing name).
+func confirmedReviewRowRecordedAsTypedLogLine(fixDir string) []func(*harness.Context) {
+	return expenseLogMatchesExpected(fixDir)
+}
 
 func classifiedCsvCarriesTypeColumn() []func(*harness.Context) {
 	return []func(*harness.Context){
