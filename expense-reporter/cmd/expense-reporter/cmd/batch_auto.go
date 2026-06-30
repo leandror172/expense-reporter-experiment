@@ -87,7 +87,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	tx, appCfg, err := loadBatchAutoDeps(batchAutoDataDir)
+	sheets, appCfg, err := loadBatchAutoDeps()
 	if err != nil {
 		return err
 	}
@@ -110,8 +110,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	typeIdx := loadTypeIndex(appCfg)
-	results := classifyLines(lines, tx, appCfg, cfg, batchAutoThreshold, typeIdx)
+	results := classifyLines(lines, sheets, appCfg, cfg, batchAutoThreshold)
 
 	var rollovers []workflow.RolloverExpense
 	var insertErr error
@@ -165,19 +164,19 @@ func loadInputLines(csvPath string) ([]string, error) {
 	return lines, nil
 }
 
-func loadBatchAutoDeps(dataDir string) (classifier.Taxonomy, *config.Config, error) {
-	taxonomy, err := classifier.LoadTaxonomy(dataDir)
-	if err != nil {
-		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
-	}
+func loadBatchAutoDeps() ([]taxonomy.ExpenseType, *config.Config, error) {
 	appCfg, err := config.Load()
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading config: %w", err)
 	}
-	return taxonomy, appCfg, nil
+	sheets, err := loadTaxonomyTree(appCfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sheets, appCfg, nil
 }
 
-func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.Config, cfg classifier.Config, threshold float64, typeIdx taxonomy.TypeIndex) []classifiedRow {
+func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config.Config, cfg classifier.Config, threshold float64) []classifiedRow {
 	total := len(lines)
 	results := make([]classifiedRow, 0, total)
 
@@ -189,7 +188,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 			continue
 		}
 
-		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, taxonomy, cfg)
+		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, sheets, cfg)
 		if err != nil || len(classResults) == 0 {
 			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, row.Item, err)
 			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Error: err})
@@ -212,7 +211,7 @@ func classifyLines(lines []string, taxonomy classifier.Taxonomy, appCfg *config.
 			Category:     top.Category,
 			Confidence:   top.Confidence,
 			AutoInserted: autoInsert,
-			Type:         resolveExpenseType(typeIdx, top.Category, top.Subcategory),
+			Type:         top.Type, // T-13: type comes from the predicted full path
 		})
 	}
 	return results

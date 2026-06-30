@@ -8,15 +8,83 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	taxonomy "expense-reporter/internal/taxonomy"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// addTestSheets is a small taxonomy with a unique leaf (Spotify) and a leaf that
+// repeats across types (Dentista ∈ Variáveis, Extras — both under Saúde), used to
+// drive resolveFullPath's disambiguation branches.
+func addTestSheets() []taxonomy.ExpenseType {
+	return []taxonomy.ExpenseType{
+		{Name: "Fixas", Cats: []taxonomy.Category{
+			{Name: "Assinaturas", Subs: []taxonomy.Subcat{{Name: "Spotify"}}},
+		}},
+		{Name: "Variáveis", Cats: []taxonomy.Category{
+			{Name: "Saúde", Subs: []taxonomy.Subcat{{Name: "Dentista"}}},
+		}},
+		{Name: "Extras", Cats: []taxonomy.Category{
+			{Name: "Saúde", Subs: []taxonomy.Subcat{{Name: "Dentista"}}},
+		}},
+	}
+}
+
+// TestResolveFullPath covers the T-13 add-path resolution hybrid. The Go test
+// process is not a TTY, so the ambiguous-without-flag case exercises the
+// non-interactive hard-error branch (never a silent guess).
+func TestResolveFullPath(t *testing.T) {
+	sheets := addTestSheets()
+
+	noInput := strings.NewReader("")
+
+	t.Run("unambiguous leaf resolves and ignores --type", func(t *testing.T) {
+		typ, cat, err := resolveFullPath(sheets, "Spotify", "Variáveis", false, noInput)
+		require.NoError(t, err)
+		assert.Equal(t, "Fixas", typ)
+		assert.Equal(t, "Assinaturas", cat)
+	})
+
+	t.Run("ambiguous leaf resolves with correct --type", func(t *testing.T) {
+		typ, cat, err := resolveFullPath(sheets, "Dentista", "Extras", false, noInput)
+		require.NoError(t, err)
+		assert.Equal(t, "Extras", typ)
+		assert.Equal(t, "Saúde", cat)
+	})
+
+	t.Run("ambiguous leaf with wrong --type errors and lists valid types", func(t *testing.T) {
+		_, _, err := resolveFullPath(sheets, "Dentista", "Fixas", false, noInput)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Variáveis")
+		assert.Contains(t, err.Error(), "Extras")
+	})
+
+	t.Run("ambiguous leaf without --type hard-errors when non-interactive", func(t *testing.T) {
+		_, _, err := resolveFullPath(sheets, "Dentista", "", false, noInput)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--type")
+	})
+
+	t.Run("ambiguous leaf resolved by interactive prompt", func(t *testing.T) {
+		typ, cat, err := resolveFullPath(sheets, "Dentista", "", true, strings.NewReader("Extras\n"))
+		require.NoError(t, err)
+		assert.Equal(t, "Extras", typ)
+		assert.Equal(t, "Saúde", cat)
+	})
+
+	t.Run("absent leaf errors", func(t *testing.T) {
+		_, _, err := resolveFullPath(sheets, "Inexistente", "", false, noInput)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not in the taxonomy")
+	})
+}
 
 // newCmdWithJSONFlag creates a cobra.Command with a --json flag for testing.
 func newCmdWithJSONFlag(jsonEnabled bool) *cobra.Command {
@@ -85,7 +153,7 @@ func TestRunAddDryRun_JSON(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Stdout = w
-	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Uber/Taxi", "Transporte")
+	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Variáveis", "Uber/Taxi", "Transporte")
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -103,6 +171,7 @@ func TestRunAddDryRun_JSON(t *testing.T) {
 	assert.Equal(t, "Uber Centro", parsed.Item)
 	assert.Equal(t, 35.50, parsed.Value)
 	assert.Equal(t, "15/04", parsed.Date)
+	assert.Equal(t, "Variáveis", parsed.Type)
 	assert.Equal(t, "Uber/Taxi", parsed.Subcategory)
 	assert.Equal(t, "Transporte", parsed.Category)
 	assert.Equal(t, "would_insert", parsed.Action)
@@ -116,7 +185,7 @@ func TestRunAddDryRun_Text(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Stdout = w
-	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Uber/Taxi", "Transporte")
+	runErr := runAddDryRun(cmd, "Uber Centro", "15/04", 35.50, "Variáveis", "Uber/Taxi", "Transporte")
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -132,6 +201,7 @@ func TestRunAddDryRun_Text(t *testing.T) {
 	assert.Contains(t, output, "Item:        Uber Centro")
 	assert.Contains(t, output, "Date:        15/04")
 	assert.Contains(t, output, "Value:       35.50")
+	assert.Contains(t, output, "Type:        Variáveis")
 	assert.Contains(t, output, "Subcategory: Uber/Taxi")
 	assert.Contains(t, output, "Category:    Transporte")
 }
@@ -144,7 +214,7 @@ func TestRunAddDryRun_Text_EmptyCategory(t *testing.T) {
 	require.NoError(t, err)
 
 	os.Stdout = w
-	runErr := runAddDryRun(cmd, "Coffee", "03/01", 12.90, "Cafeteria", "")
+	runErr := runAddDryRun(cmd, "Coffee", "03/01", 12.90, "", "Cafeteria", "")
 	w.Close()
 	os.Stdout = oldStdout
 
@@ -157,22 +227,23 @@ func TestRunAddDryRun_Text_EmptyCategory(t *testing.T) {
 
 	output := buf.String()
 	assert.Contains(t, output, "Dry run — would insert:")
+	assert.NotContains(t, output, "Type:")
 	assert.NotContains(t, output, "Category:")
 }
 
 func TestLogPredictedFeedback(t *testing.T) {
 	tests := []struct {
-		name                 string
-		chosenSubcategory    string
-		chosenCategory       string
-		predictedSubcategory string
-		predictedCategory    string
-		classificationID     string
-		confidence           float64
-		model                string
+		name                  string
+		chosenSubcategory     string
+		chosenCategory        string
+		predictedSubcategory  string
+		predictedCategory     string
+		classificationID      string
+		confidence            float64
+		model                 string
 		noClassificationsPath bool
-		expectStatus         feedback.Status
-		expectStderrContains string
+		expectStatus          feedback.Status
+		expectStderrContains  string
 	}{
 		{
 			name:                 "chosen matches predicted — confirmed entry written",

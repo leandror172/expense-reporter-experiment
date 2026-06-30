@@ -147,6 +147,16 @@ func expensesAwaitingClassification(fixDir string) func(*harness.Context) {
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
+		// T-13: batch-auto requires a configured taxonomy. CopyFixtureToWorkDir already
+		// placed the fixture's taxonomy.json in WorkDir (the same one generate-workbook
+		// uses downstream); point the binary config at it.
+		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+			"classifications_path": filepath.Join(ctx.WorkDir, "classifications.jsonl"),
+			"expenses_log_path":    filepath.Join(ctx.WorkDir, "expenses_log.jsonl"),
+			"taxonomy_path":        filepath.Join(ctx.WorkDir, "taxonomy.json"),
+		}); err != nil {
+			ctx.T.Fatalf("SetupBinaryConfig: %v", err)
+		}
 	}
 }
 

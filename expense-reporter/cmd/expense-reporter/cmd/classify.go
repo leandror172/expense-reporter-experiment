@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"expense-reporter/internal/classifier"
+	"expense-reporter/internal/config"
+	taxonomy "expense-reporter/internal/taxonomy"
 	"expense-reporter/pkg/utils"
 	"fmt"
 	"strings"
@@ -45,9 +47,13 @@ func runClassify(cmd *cobra.Command, args []string) error {
 
 	date := args[2]
 
-	taxonomy, err := classifier.LoadTaxonomy(classifyDataDir)
+	appCfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("loading taxonomy: %w", err)
+		return fmt.Errorf("loading config: %w", err)
+	}
+	sheets, err := loadTaxonomyTree(appCfg)
+	if err != nil {
+		return err
 	}
 
 	cfg := classifier.Config{
@@ -57,7 +63,7 @@ func runClassify(cmd *cobra.Command, args []string) error {
 		TopN:      classifyTopN,
 	}
 
-	results, err := classifier.Classify(item, value, date, taxonomy, cfg)
+	results, err := classifier.Classify(item, value, date, sheets, cfg)
 	if err != nil {
 		return fmt.Errorf("classification failed: %w", err)
 	}
@@ -77,6 +83,22 @@ func runClassify(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  %d. %-30s %-20s %s %.0f%%\n", i+1, r.Subcategory, r.Category, bar, r.Confidence*100)
 	}
 	return nil
+}
+
+// loadTaxonomyTree loads the expense taxonomy tree (config/taxonomy.json) used by
+// the classifier to constrain predictions to valid full paths (T-13). It is the
+// single taxonomy source for classification — the feature dictionary is no longer
+// consulted for category/type resolution.
+func loadTaxonomyTree(appCfg *config.Config) ([]taxonomy.ExpenseType, error) {
+	path := appCfg.TaxonomyFilePath()
+	if path == "" {
+		return nil, fmt.Errorf("taxonomy path not configured")
+	}
+	types, _, err := taxonomy.LoadTaxonomy(path, "", "", 0)
+	if err != nil {
+		return nil, fmt.Errorf("loading taxonomy: %w", err)
+	}
+	return types, nil
 }
 
 func confidenceBar(confidence float64) string {

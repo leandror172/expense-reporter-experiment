@@ -28,6 +28,7 @@ func LoadTrainingExamples(dataDir string) ([]Example, error) {
 			Value       float64 `json:"value"`
 			Subcategory string  `json:"subcategory"`
 			Category    string  `json:"category"`
+			Source      string  `json:"source"`
 		} `json:"expenses"`
 	}
 
@@ -44,9 +45,24 @@ func LoadTrainingExamples(dataDir string) ([]Example, error) {
 			Subcategory: e.Subcategory,
 			Category:    e.Category,
 			Source:      SourceTraining,
+			TypeHint:    typeHintFromSource(e.Source),
 		}
 	}
 	return examples, nil
+}
+
+// typeHintFromSource extracts the expense type from a training example's source
+// field, which has the shape "Filename.xlsx:SheetName" where the sheet-name is the
+// originating expense type for ~96% of examples. Returns the segment after the last
+// colon, trimmed; "" when no colon is present. The value is only a HINT — ResolveLeaf
+// normalizes and validates it against the taxonomy, so a stale/wrong suffix simply
+// fails to disambiguate rather than mislabeling.
+func typeHintFromSource(source string) string {
+	idx := strings.LastIndex(source, ":")
+	if idx < 0 {
+		return ""
+	}
+	return strings.TrimSpace(source[idx+1:])
 }
 
 // LoadFeedbackExamples reads confirmed/corrected examples from a classifications.jsonl file.

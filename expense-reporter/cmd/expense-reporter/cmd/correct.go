@@ -4,6 +4,7 @@ import (
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	taxonomy "expense-reporter/internal/taxonomy"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ Note: This command does NOT modify the workbook — it only writes to the feedba
 }
 
 func init() {
-	correctCmd.Flags().StringVar(&correctDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	correctCmd.Flags().StringVar(&correctDataDir, "data-dir", "data/classification", "(deprecated, no longer used: category resolves via config/taxonomy.json since T-13)")
 	rootCmd.AddCommand(correctCmd)
 }
 
@@ -59,7 +60,15 @@ func runCorrect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no prior classification found for %q on %s — use 'add' to log a manual entry instead", item, date)
 	}
 
-	actualCategory := resolveCategoryFromTaxonomy(actualSubcategory, correctDataDir)
+	// Category is resolved from taxonomy.json (the single source of truth), but the
+	// whole resolution is best-effort: a corrected entry is feedback-only and never
+	// feeds generate-workbook, so neither an unloadable taxonomy nor an unknown
+	// subcategory should block logging the correction — both degrade to an empty
+	// category (matching the prior feature-dict behavior).
+	actualCategory := ""
+	if sheets, terr := loadTaxonomyTree(appCfg); terr == nil {
+		actualCategory, _ = taxonomy.CategoryForLeaf(sheets, actualSubcategory)
+	}
 
 	predicted := classifier.Result{
 		Subcategory: prior.PredictedSubcategory,

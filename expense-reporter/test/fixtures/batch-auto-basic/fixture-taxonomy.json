@@ -1,0 +1,20 @@
+{
+  "types": [
+    {
+      "name": "Variáveis",
+      "categories": [
+        { "name": "Transporte", "subcategories": ["Uber/Taxi", "Combustível"] },
+        { "name": "Alimentação", "subcategories": ["Supermercado", "Restaurante"] },
+        { "name": "Lazer", "subcategories": ["Streaming"] },
+        { "name": "Saúde", "subcategories": ["Farmácia", "Academia"] }
+      ]
+    },
+    {
+      "name": "Fixas",
+      "categories": [
+        { "name": "Habitação", "subcategories": ["Energia Elétrica", "Diarista", "Aluguel"] }
+      ]
+    }
+  ],
+  "incomeCategories": []
+}

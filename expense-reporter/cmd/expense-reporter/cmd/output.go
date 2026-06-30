@@ -16,7 +16,10 @@ type ClassifyOutput struct {
 }
 
 // CandidateOutput represents a single classification candidate.
+// Type is the expense type from the model's predicted full path (T-13). It is
+// omitted when empty so older type-less callers serialize unchanged.
 type CandidateOutput struct {
+	Type        string  `json:"type,omitempty"`
 	Subcategory string  `json:"subcategory"`
 	Category    string  `json:"category"`
 	Confidence  float64 `json:"confidence"`
@@ -49,6 +52,7 @@ func toCandidates(results []classifier.Result) []CandidateOutput {
 	candidates := make([]CandidateOutput, len(results))
 	for i, result := range results {
 		candidates[i] = CandidateOutput{
+			Type:        result.Type,
 			Subcategory: result.Subcategory,
 			Category:    result.Category,
 			Confidence:  result.Confidence,

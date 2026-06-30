@@ -1,40 +1,38 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-26 — Session 40: T-13 redesign — full-path classifier prediction + migration-plan integration
-**Current Layer:** Retire Insertion (WS-B — commands → log-append)
+**Current Session:** 2026-06-29 — Session 42: PR #36 (T-13) review — model revert to q3, type-in-JSON, acceptance repair
+**Current Layer:** Retire insertion → generation (WS-B); T-13/PR #36 review follow-ups
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-26 - Session 40: T-13 redesign — full-path classifier prediction + migration-plan integration
+## 2026-06-29 - Session 42: PR #36 (T-13) review — model revert to q3, type-in-JSON, acceptance repair
 
 ### Context
 
-Resumed from session 39 (WS-B slices 1–2 done). User asked to explore the T-13 category/type divergence flagged as a WS-B/WS-D prerequisite, which turned into a full redesign + migration-plan integration. No code this session — design, empirical feasibility, and doc work.
+Started as `/code-review` of the open PR #36 (T-13 full-path classifier). Two findings cascaded into a model-choice correction and a full acceptance-suite repair — the review's precondition check exposed that PR #36 had left 13 acceptance tests red, hidden behind the `//go:build acceptance` tag.
 
 ### What Was Done
 
-- Diagnosed the T-13 divergence against live code: `add`/`auto` resolve category from the feature dict (`classifier.LoadTaxonomy` `category_mapping`) but type from `taxonomy.json` (`LookupType`), and the two disagree on category spelling → silent type-less lines.
-- Reframed T-13 from "single-source the resolution" to "**classifier predicts the full `(type,category,subcategory)` path**" — strictly stronger; also resolves the 5 multi-type leaves the `(category,subcategory)` lookup cannot.
-- Verified feasibility empirically (scratchpad scripts over taxonomy.json + feature dict + training data): subcategory coverage 100% after the `IRFF→IRRF` fix; the 4 category-drift pairs are the root cause and vanish under the design; 5 leaves (`Estacionamento`/`Dentista`/pets) are unresolvable post-hoc; few-shot type derivable from training `source` sheet-name (~96%).
-- Smoke-tested the atomic 112-path enum on `my-classifier-qcoder`: 100% valid paths, ~6s/call flat, correct context split (`Estacionamento shopping` R$18 → `Variáveis/Transporte/Estacionamento`). Settled decision #3 = Option A (enum), dropped Option B.
-- Fixed `IRFF→IRRF` at `config/taxonomy.json:72` (gitignored → local-only).
-- Authored `.claude/plans/t13-classifier-full-path.md` (all 4 decisions resolved); integrated T-13 into the migration plan as the WS-B resolution-correctness sub-slice + updated suggested order; updated `tasks.md` T-13 entry and `index.md` pointer. Commit `docs(T-13)`.
+- Reviewed PR #36; found two issues: predicted `type` dropped at the JSON boundary (classify/auto/add `--json`), and the `classify` default model diverged from `auto`/`batch-auto`.
+- **T-15 Slice 1**: surfaced the already-resolved `type` in `CandidateOutput` + `AddOutput` (`type,omitempty`) with two deterministic tests; Slice 2 (`--predicted-type` flag) deferred.
+- **Reverted the classifier default `qcoder`→`my-classifier-q3`** across all four call sites after proving enum validity is GRAMMAR-enforced (Ollama `format`→GBNF), not model-dependent; q3 validated end-to-end on the real 112-path taxonomy (Uber→Uber/Taxi 100%).
+- **Repaired 13 build-tag-hidden acceptance regressions**: T-17 (11 — T-13 made `taxonomy_path` mandatory but many `Given`s never set it) + T-18 (2 — pre-existing `correct` seed-id bug from T-11 date normalization). All verified green via GROUPED runs.
+- Updated per-package memories (classifier KNOWLEDGE, test QUICK, expense-reporter QUICK) + index, and wrote `.claude/session42-postmortem.md`.
 
 ### Decisions Made
 
-- T-13 #1 spelling → `IRRF` (taxonomy is authority); coverage now 100%.
-- T-13 #2 → classifier depends on `internal/taxonomy` (no cycle verified; single parser) over widening `classifier.Taxonomy`.
-- T-13 #3 → atomic 112-path enum (smoke-tested) over validate-and-retry.
-- T-13 #4 → `add` manual ambiguous-leaf UX = `--type` flag + interactive prompt fallback + non-interactive hard error (4C first-match+warn rejected — silent misroute worse than type-less).
-- T-13 is a WS-B sub-slice, not a standalone workstream; it retrofits done slices 1–2 and is the precondition for WS-D's type-less-count-~0 gate.
+- **Default classifier model = `my-classifier-q3`** (fits the 12 GB GPU). qcoder (qwen3-coder:30b, 20.7 GB) was reverted — enum validity is grammar-enforced so a 30B model bought zero validity, only CPU-offload latency + load-time 500s. Accuracy+speed across q3/q35/qcoder → T-14.
+- **Verify acceptance in GROUPS, not full-suite-in-one-shot** — q3 is slow (~12 s/classify); the full suite exceeds the 600 s default `go test` timeout. Grouped runs give incremental, durable confirmation (recorded in test QUICK.md).
+- **T-16 resolved by unifying on q3** — the opposite of the original "move classify to qcoder" proposal, once the premise collapsed.
 
 ### Next
 
-- Implement T-13: add `internal/taxonomy` `PathEnum()`/`SplitPath()`; classifier renders the 3-level tree + `path` enum schema + `Type` on `Result`; few-shot examples gain type from training `source`; retrofit `auto` (delete `resolveExpenseType`/`loadTypeIndex`) and `add` (taxonomy walk + `--type` hybrid, delete `resolveCategoryFromTaxonomy`).
-- Then WS-B slice 3 `batch-auto` (built on predicted-path) + slice 4 `apply` (delete workbook-write half); then WS-D, WS-E.
+- **WS-B slice 3 (`batch-auto` → log-append)** remains the primary next work — unchanged by this session.
+- **T-14**: benchmark accuracy AND speed across q3/q35/qcoder on real labeled data; pick smallest-that-fits-and-is-accurate.
+- **T-16 doc cleanup**: CLAUDE.md still calls qcoder the "primary" tier "required for 5.7+" — correct it. **T-19**: add a "none-of-these" escape (sentinel path) so the enum can decline novel inputs.
 
 ### Gotchas
 
-- `config/taxonomy.json` is gitignored — the `IRFF→IRRF` fix is **local-only**, not in any commit. It must persist on this machine or be re-applied; verify before relying on 100% coverage.
-- Enum approach validated on `my-classifier-qcoder` only — re-test on `my-classifier-q3`/`q35` if the primary is unavailable (scratchpad/enum_smoketest.py takes a model arg).
-- T-13 #4's `add` non-interactive path must hard-error on ambiguous leaves without `--type` — relevant to the user's unattended-run preference; document the flag.
+- The `//go:build acceptance` tag hides regressions from `go test ./...` — after any change to a mandatory field/config contract, run `-tags=acceptance` explicitly.
+- `data/classification` exists at the **repo root** (`expense-reporter/../data/classification`), NOT under `expense-reporter/` — an early `ls` from the wrong relative path made me wrongly think it was absent.
+- Don't assert blockers from assumptions — twice I claimed a false blocker (Ollama tests "qcoder-gated"; data dir "absent"), both disproved by running the tests / reading the fixture config.

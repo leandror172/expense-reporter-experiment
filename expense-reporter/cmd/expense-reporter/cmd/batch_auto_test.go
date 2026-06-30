@@ -4,8 +4,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"expense-reporter/internal/taxonomy"
 )
 
 func TestParse3FieldLine(t *testing.T) {
@@ -116,60 +114,10 @@ func TestWriteReviewCSV_OnlyLowConfidence(t *testing.T) {
 	}
 }
 
-// sampleExpenseTypes builds a small expense-type tree mirroring the taxonomy.sampleTypes
-// fixture used in taxonomy/lookup_test.go — Fixas/Moradia/Aluguel, Variáveis/Mercado/Feira,
-// and an ambiguous pair Variáveis+Extras/Saúde/Dentista.
-func sampleExpenseTypes() []taxonomy.ExpenseType {
-	return []taxonomy.ExpenseType{
-		{
-			Name: "Fixas",
-			Cats: []taxonomy.Category{
-				{Name: "Moradia", Subs: []taxonomy.Subcat{{Name: "Aluguel"}, {Name: "Condomínio"}}},
-			},
-		},
-		{
-			Name: "Variáveis",
-			Cats: []taxonomy.Category{
-				{Name: "Mercado", Subs: []taxonomy.Subcat{{Name: "Feira"}}},
-				{Name: "Saúde", Subs: []taxonomy.Subcat{{Name: "Dentista"}}},
-			},
-		},
-		{
-			Name: "Extras",
-			Cats: []taxonomy.Category{
-				{Name: "Saúde", Subs: []taxonomy.Subcat{{Name: "Dentista"}}},
-			},
-		},
-	}
-}
-
-// TestResolveType verifies the pure helper that maps (category, subcategory) → type
-// string via a taxonomy.TypeIndex, covering the three outcomes: unique resolution,
-// absent pair, and ambiguous pair. The last two must both return "".
-func TestResolveType(t *testing.T) {
-	idx := taxonomy.BuildTypeIndex(sampleExpenseTypes())
-
-	tests := []struct {
-		name        string
-		category    string
-		subcategory string
-		wantType    string
-	}{
-		{"unique pair resolves to type", "Moradia", "Aluguel", "Fixas"},
-		{"unique pair resolves to variáveis type", "Mercado", "Feira", "Variáveis"},
-		{"absent pair returns empty", "Lazer", "Cinema", ""},
-		{"ambiguous pair returns empty", "Saúde", "Dentista", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := resolveExpenseType(idx, tt.category, tt.subcategory)
-			if got != tt.wantType {
-				t.Errorf("resolveExpenseType(%q, %q) = %q, want %q", tt.category, tt.subcategory, got, tt.wantType)
-			}
-		})
-	}
-}
+// Note: TestResolveType (and its sampleExpenseTypes fixture) was removed in T-13.
+// The command-layer resolveExpenseType wrapper is gone — classifiedRow.Type is now
+// populated from the classifier's predicted full path, not a (category,subcategory)
+// TypeIndex lookup. The CSV tests below still verify the type column is emitted.
 
 // TestWriteClassifiedCSV_TypeColumn verifies that writeClassifiedCSV includes the type
 // column in the header and that a row with a non-empty Type field has it in column 8.

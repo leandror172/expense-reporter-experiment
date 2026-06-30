@@ -117,7 +117,7 @@ func mixedExpensesReadyForDryRun(fixDir string) func(*harness.Context) {
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
-		withFeedbackConfig(ctx)
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
 	}
 }
 

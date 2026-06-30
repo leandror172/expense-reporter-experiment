@@ -1,0 +1,18 @@
+{
+  "types": [
+    {
+      "name": "Variáveis",
+      "categories": [
+        { "name": "Transporte", "subcategories": ["Metrô", "Ônibus", "Uber/Taxi", "Combustível", "Pedágio"] },
+        { "name": "Alimentação", "subcategories": ["Supermercado", "Restaurante", "Delivery"] }
+      ]
+    },
+    {
+      "name": "Fixas",
+      "categories": [
+        { "name": "Moradia", "subcategories": ["Aluguel", "Condomínio"] }
+      ]
+    }
+  ],
+  "incomeCategories": []
+}

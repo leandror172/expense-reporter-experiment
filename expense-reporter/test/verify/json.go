@@ -53,6 +53,11 @@ func OutputJSONHasCategory(category string) func(*harness.Context) {
 	return OutputJSONHasValue("category", category)
 }
 
+// OutputJSONHasType asserts that the JSON output has the given top-level type value.
+func OutputJSONHasType(typ string) func(*harness.Context) {
+	return OutputJSONHasValue("type", typ)
+}
+
 // OutputJSONHasAction asserts that the JSON output has the given action value.
 func OutputJSONHasAction(action string) func(*harness.Context) {
 	return OutputJSONHasValue("action", action)

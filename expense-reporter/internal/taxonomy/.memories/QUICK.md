@@ -18,6 +18,17 @@ taxonomy + JSONL entry routing. Feeds `internal/generate`.
   NOTE: the year filter `continue` is AFTER `routeEntry`, so out-of-year type-less entries
   still bump the stderr fallback count before being skipped (cosmetic; matters to T-09 gate).
 
+**Full-path helpers (path.go, T-13 session 41):** `BuildPathMap(sheets)`→`PathMap`
+with `Enum()` (the 112 `Type/Category/Subcategory` enum strings for the classifier's
+structured output), `Split(path)`→`(typ,cat,sub,ok)` **reverse-map lookup — NEVER parse
+on `/`** (5 subs + 2 cats contain `/`, e.g. `Uber/Taxi`, `Alimentação / Limpeza`), and
+`PathFor(typ,cat,sub)` (forward, map-validated). `PathEnum(sheets)` is the convenience.
+`ResolveLeaf(sheets,sub,typeHint)`→`(typ,cat,err)` resolves a bare leaf: unique→from name,
+ambiguous→needs hint else `ErrLeafAmbiguous`, absent→`ErrLeafNotFound`. `TypesForLeaf` /
+`CategoryForLeaf` back `add`/`correct` messages. **The classifier now depends on this
+package** (Option 2B) — no import cycle (taxonomy is a leaf; classifier→taxonomy only).
+Tested via a committed synthetic fixture (real taxonomy gitignored).
+
 **Identity = full path** (`[ref:taxonomy-identity-key]`,
 `.claude/plans/taxonomy-identity-key.md`): a subcategory is `sheet/category/sub`
 (income: `group/label`). Only an exact repeated full path errors. Bare leaf names
