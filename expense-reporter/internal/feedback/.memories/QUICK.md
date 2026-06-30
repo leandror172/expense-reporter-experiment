@@ -6,7 +6,7 @@ two separate structs.
 | File on disk | Struct | Written by |
 |---|---|---|
 | `classifications.jsonl` | `Entry` (feedback.go:27) | add / auto / batch-auto / apply / correct |
-| `expenses_log.jsonl` | `ExpenseEntry` (expense_log.go:11) | auto / batch-auto / apply (slim insert log) |
+| `expenses_log.jsonl` | `ExpenseEntry` (expense_log.go:11) | auto / batch-auto / apply — all via `appender.ExpandAndAppend` (WS-B; apply slice 4, session 44) |
 
 - Both share `GenerateID(item,date,value)` (sha256 prefix, 12 hex) — the **join key**
   across all three files (incl. `reviewed.json`).
