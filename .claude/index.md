@@ -51,6 +51,7 @@
 | Bf real-data verification runbook (execute next session — Bf1/Bf3 + routing proof) | `.claude/plans/bf-real-data-verification-runbook.md` |
 | Retire workbook insertion, keep only generation (logs = source of truth; couples T-11/T-09/T-03) | `.claude/plans/retire-insertion-keep-generation.md` |
 | WS-B slice 3 — `batch-auto` → log-append (decisions locked, session 43; not yet implemented) | `.claude/plans/ws-b-slice3-batch-auto-log-append.md` |
+| WS-B slice 4 — `apply` → log-append (decisions locked, session 44; not yet implemented) | `.claude/plans/ws-b-slice4-apply-log-append.md` |
 | T-13 (revised) — classifier predicts full (type,category,subcategory) path; WS-D prerequisite | `.claude/plans/t13-classifier-full-path.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
