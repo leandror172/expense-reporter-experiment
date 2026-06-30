@@ -176,20 +176,6 @@ func logConfirmedFeedback(appCfg *config.Config, item, date string, value float6
 	}
 }
 
-// logExpense appends a slim expense entry to expenses_log.jsonl with the resolved type.
-// Non-fatal: logs a warning to stderr if the write fails.
-func logExpense(appCfg *config.Config, item, date string, value float64, subcategory, category, typ string) {
-	path := appCfg.ExpensesLogFilePath()
-	if path == "" {
-		return
-	}
-	entry := feedback.NewExpenseEntry(item, date, value, subcategory, category)
-	entry.Type = typ
-	if err := feedback.AppendExpense(path, entry); err != nil {
-		fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
-	}
-}
-
 func printCandidates(item string, value float64, date string, results []classifier.Result) {
 	fmt.Printf("Classifying: %s  R$ %.2f  %s\n\n", item, value, date)
 	for i, r := range results {
