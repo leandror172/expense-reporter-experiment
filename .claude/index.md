@@ -403,6 +403,7 @@ Desktop-era planning documents — read for context, do not modify.
 
 | Tool | Path | Purpose |
 |------|------|---------|
+| `sonnet-max-subagent.js` | `.claude/workflows/sonnet-max-subagent.js` | Workflow harness: run ONE Sonnet 5 subagent at max/xhigh effort (the effort knob the Agent tool lacks). `Workflow({name:'sonnet-max-subagent', args:'<prompt>'})` or `args:{prompt,effort}` |
 | `resume.sh` | `.claude/tools/resume.sh` | Session-start context summary |
 | `ref-lookup.sh` | `.claude/tools/ref-lookup.sh` | Resolve [ref:KEY] tags |
 | `rotate-session-log.sh` | `.claude/tools/rotate-session-log.sh` | Archive old session log entries |
