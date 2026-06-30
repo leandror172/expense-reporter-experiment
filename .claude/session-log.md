@@ -1,38 +1,44 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-29 — Session 42: PR #36 (T-13) review — model revert to q3, type-in-JSON, acceptance repair
-**Current Layer:** Retire insertion → generation (WS-B); T-13/PR #36 review follow-ups
+**Current Session:** 2026-06-30 — Session 43: WS-B slice 3 — batch-auto → log-append (+ T-16/T-19 breadcrumbs)
+**Current Layer:** "WS-B: retire workbook insertion (commands → log-append)"
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-29 - Session 42: PR #36 (T-13) review — model revert to q3, type-in-JSON, acceptance repair
+## 2026-06-30 - Session 43: WS-B slice 3 — batch-auto → log-append (+ T-16/T-19 breadcrumbs)
 
 ### Context
 
-Started as `/code-review` of the open PR #36 (T-13 full-path classifier). Two findings cascaded into a model-choice correction and a full acceptance-suite repair — the review's precondition check exposed that PR #36 had left 13 acceptance tests red, hidden behind the `//go:build acceptance` tag.
+Continued from the merged PR #36 (T-13). Opened by discussing next steps, then the T-19 escape-hatch documentation gap and T-16 doc cleanup, then implemented WS-B slice 3 (`batch-auto` → log-append), the standing "next".
 
 ### What Was Done
 
-- Reviewed PR #36; found two issues: predicted `type` dropped at the JSON boundary (classify/auto/add `--json`), and the `classify` default model diverged from `auto`/`batch-auto`.
-- **T-15 Slice 1**: surfaced the already-resolved `type` in `CandidateOutput` + `AddOutput` (`type,omitempty`) with two deterministic tests; Slice 2 (`--predicted-type` flag) deferred.
-- **Reverted the classifier default `qcoder`→`my-classifier-q3`** across all four call sites after proving enum validity is GRAMMAR-enforced (Ollama `format`→GBNF), not model-dependent; q3 validated end-to-end on the real 112-path taxonomy (Uber→Uber/Taxi 100%).
-- **Repaired 13 build-tag-hidden acceptance regressions**: T-17 (11 — T-13 made `taxonomy_path` mandatory but many `Given`s never set it) + T-18 (2 — pre-existing `correct` seed-id bug from T-11 date normalization). All verified green via GROUPED runs.
-- Updated per-package memories (classifier KNOWLEDGE, test QUICK, expense-reporter QUICK) + index, and wrote `.claude/session42-postmortem.md`.
+- **T-16 + T-19 breadcrumbs (session start):** corrected CLAUDE.md's classification tier list (q3 is primary; qcoder NOT recommended — enum validity is GRAMMAR-enforced, model-independent; dropped the debunked "qcoder required for 5.7+" claim). Added `TODO(T-19)` at the off-enum drop (`classifier.go`) + the auto-insert threshold (`decision.go`), and a T-09↔T-19 cross-link so the escape-hatch gap surfaces when WS-D leans on the model path. Committed `462d222`-era.
+- **WS-B slice 3 (`batch-auto` → log-append)** — advisor-reviewed plan + 4 code/test commits + 1 memory commit on branch `feat/ws-b-slice3-batch-auto-log-append`:
+- `batch-auto` appends auto-rows to `expenses_log.jsonl` via `appender.ExpandAndAppend` (no workbook write). `rollover.csv` retired (cross-year installments carry their real next-year date).
+- **Failure honesty:** an append error downgrades the row (`AutoInserted=false` + `Error`) → honest summary count, row → `review.csv`, non-zero exit; CSVs written AFTER the append. `preflightLogPath` fails fast on an unwritable log before classifying.
+- **Acceptance rewired to the log:** assert via `verify.ExpenseLogMatches`; installments fixture asserts the N expanded dated lines; rollover fixture INVERTED (`NoRolloverFileCreated` + next-year dates); the two workbook-failure tests repurposed (pre-flight fail-fast deterministic test + the failure-downgrade moved to a unit test).
+- **Cleanup:** deleted dead `logExpense`; renamed `auto`'s insert→append vocabulary (`✓ Appended`, separate commit for a clean boundary).
+- **Deprecated** `workflow.InsertBatchExpensesFromClassified` (`// Deprecated:`); kept + unit-tested for WS-E.
+- Updated 4 QUICK/KNOWLEDGE memories (expense-reporter + test).
+- Verified green: 554 unit tests; full `-tags=acceptance` batch-auto + type-routing group **15/15** (864 s on q3) — all 5 dry-run survivors, the 3 rewrites, the inverted rollover test, the deterministic pre-flight & downgrade tests, and `TypeRoutingCycle_1..4`.
+- Wrote the work report (`.claude/ws-b-slice3-implementation-report.md`) and **opened PR #37** (`feat/ws-b-slice3-batch-auto-log-append` → master).
 
 ### Decisions Made
 
-- **Default classifier model = `my-classifier-q3`** (fits the 12 GB GPU). qcoder (qwen3-coder:30b, 20.7 GB) was reverted — enum validity is grammar-enforced so a 30B model bought zero validity, only CPU-offload latency + load-time 500s. Accuracy+speed across q3/q35/qcoder → T-14.
-- **Verify acceptance in GROUPS, not full-suite-in-one-shot** — q3 is slow (~12 s/classify); the full suite exceeds the 600 s default `go test` timeout. Grouped runs give incremental, durable confirmation (recorded in test QUICK.md).
-- **T-16 resolved by unifying on q3** — the opposite of the original "move classify to qcoder" proposal, once the premise collapsed.
+- **`--dry-run` = classify + write CSVs, no log append** — there is no workbook to skip anymore; dry-run also skips the pre-flight.
+- **Failure-downgrade verified by a UNIT test, not acceptance** — the pre-flight makes an acceptance-level append failure unreachable (a log that passes pre-flight won't fail at append), so a unit test pointing the log at a missing parent dir is both deterministic and a stronger guard.
+- **Deprecate-not-delete scope is NARROW** — only the classified-batch variant orphans; plain `batch` keeps `InsertBatchExpenses` + the rollover/excel machinery LIVE, so WS-E must not delete them with the classified variant.
+- **Explicit-year fixture inputs + clean-dividing installment values** — the append path reformats dates to `DD/MM/YYYY` (`ParseDateFlexible` fills bare `DD/MM` with `time.Now().Year()`, a year time-bomb).
 
 ### Next
 
-- **WS-B slice 3 (`batch-auto` → log-append)** remains the primary next work — unchanged by this session.
-- **T-14**: benchmark accuracy AND speed across q3/q35/qcoder on real labeled data; pick smallest-that-fits-and-is-accurate.
-- **T-16 doc cleanup**: CLAUDE.md still calls qcoder the "primary" tier "required for 5.7+" — correct it. **T-19**: add a "none-of-these" escape (sentinel path) so the enum can decline novel inputs.
+- **Review + merge PR #37** (`feat/ws-b-slice3-batch-auto-log-append` → master, 7 commits, suite 15/15 green).
+- **WS-B slice 4 (`apply` → log-append):** keep the log-writing half, delete the workbook-write half — mirror slice 3's failure-honesty + pre-flight pattern.
+- Then WS-D (retire bare-name fallback, T-09) → WS-E (delete dead insert code). PR #36 follow-ups still open: T-14 (model accuracy+speed benchmark), T-19 (enum escape hatch).
 
 ### Gotchas
 
-- The `//go:build acceptance` tag hides regressions from `go test ./...` — after any change to a mandatory field/config contract, run `-tags=acceptance` explicitly.
-- `data/classification` exists at the **repo root** (`expense-reporter/../data/classification`), NOT under `expense-reporter/` — an early `ls` from the wrong relative path made me wrongly think it was absent.
-- Don't assert blockers from assumptions — twice I claimed a false blocker (Ollama tests "qcoder-gated"; data dir "absent"), both disproved by running the tests / reading the fixture config.
+- q3 is slow (~12 s/classify): the full `-tags=acceptance` batch-auto + type-routing group took **864 s** (15/15 green). Run target tests in groups with `-timeout 30m`, not the 600 s default.
+- **`FeedbackLoggedForInsertedRows` was NOT a clean survivor** — non-dry-run, no taxonomy config, pre-T-13 expected log — and `RequireWorkbook` was SKIPPING it (test workbook absent), which hid the breakage through the entire session-42 sweep. Migrated + renamed `…ForAppendedRows`. Lesson: a "green" batch-auto test may be a SKIP or a `--dry-run` that never exercises the append path — check the fixture's `extra_args` + `RequireWorkbook` before trusting coverage.
+- `feedback.AppendExpense` has **no dedup** on the hash ID → a re-run after a partial failure double-appends (new task T-20).

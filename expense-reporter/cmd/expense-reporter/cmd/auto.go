@@ -128,24 +128,24 @@ func runAuto(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Insert? [y/N] ")
 			if !confirmInsert(os.Stdin) {
 				printCandidates(item, value, date, results)
-				fmt.Println("\n⚠  Not inserted — cancelled by user.")
+				fmt.Println("\n⚠  Not appended — cancelled by user.")
 				return nil
 			}
 		}
-		return insertExpense(item, date, parsedDate, value, installmentCount, top, appCfg)
+		return appendExpense(item, date, parsedDate, value, installmentCount, top, appCfg)
 	}
 
 	printCandidates(item, value, date, results)
 	if top.Confidence >= highConfidenceThreshold {
-		fmt.Printf("\n⚠  Not inserted — \"%s\" is excluded from auto-insert.\n", top.Subcategory)
+		fmt.Printf("\n⚠  Not appended — \"%s\" is excluded from auto-insert.\n", top.Subcategory)
 	} else {
-		fmt.Printf("\n⚠  Not inserted — top confidence %.0f%% is below threshold %.0f%%.\n",
+		fmt.Printf("\n⚠  Not appended — top confidence %.0f%% is below threshold %.0f%%.\n",
 			top.Confidence*100, highConfidenceThreshold*100)
 	}
 	return nil
 }
 
-func insertExpense(item, date string, parsedDate time.Time, value float64, installmentCount int, result classifier.Result, appCfg *config.Config) error {
+func appendExpense(item, date string, parsedDate time.Time, value float64, installmentCount int, result classifier.Result, appCfg *config.Config) error {
 	// T-13: the type comes straight from the predicted full path — no post-hoc
 	// (category, subcategory) lookup that could fail or disagree.
 	logPath := appCfg.ExpensesLogFilePath()
@@ -157,7 +157,7 @@ func insertExpense(item, date string, parsedDate time.Time, value float64, insta
 		}
 	}
 
-	fmt.Printf("✓ Inserted: %s → %s (%s) — %.0f%% confidence\n",
+	fmt.Printf("✓ Appended: %s → %s (%s) — %.0f%% confidence\n",
 		item, result.Subcategory, result.Category, result.Confidence*100)
 	logConfirmedFeedback(appCfg, item, date, value, result, autoModel)
 	return nil
@@ -173,20 +173,6 @@ func logConfirmedFeedback(appCfg *config.Config, item, date string, value float6
 	entry := feedback.NewConfirmedEntry(item, date, value, result, model)
 	if err := feedback.Append(path, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠  feedback log: %v\n", err)
-	}
-}
-
-// logExpense appends a slim expense entry to expenses_log.jsonl with the resolved type.
-// Non-fatal: logs a warning to stderr if the write fails.
-func logExpense(appCfg *config.Config, item, date string, value float64, subcategory, category, typ string) {
-	path := appCfg.ExpensesLogFilePath()
-	if path == "" {
-		return
-	}
-	entry := feedback.NewExpenseEntry(item, date, value, subcategory, category)
-	entry.Type = typ
-	if err := feedback.AppendExpense(path, entry); err != nil {
-		fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
 	}
 }
 

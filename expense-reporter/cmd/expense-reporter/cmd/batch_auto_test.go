@@ -4,7 +4,42 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"expense-reporter/internal/config"
+
+	"github.com/stretchr/testify/require"
 )
+
+// TestAppendClassified_DowngradesRowOnAppendFailure guards the failure-honesty contract of
+// the log-append pivot: when the expense log (the only durable persistence) cannot be
+// written, the affected row must be downgraded in place — AutoInserted=false + Error set —
+// so the summary count stays honest, the row lands in review.csv, and the command exits
+// non-zero. The pre-flight normally makes a real append failure unreachable from the CLI,
+// so this is verified here at unit level by pointing the log at a path whose parent dir
+// does not exist (feedback.AppendExpense opens with O_CREATE but does not MkdirAll).
+func TestAppendClassified_DowngradesRowOnAppendFailure(t *testing.T) {
+	results := []classifiedRow{
+		{
+			Item:         "Uber Centro",
+			Date:         "15/04/2026",
+			RawValue:     "35,50",
+			Subcategory:  "Uber/Taxi",
+			Category:     "Transporte",
+			Type:         "Variáveis",
+			Confidence:   0.95,
+			AutoInserted: true,
+		},
+	}
+	// Parent directory does not exist → the append fails; classifications_path is empty so
+	// the (secondary) confirmed-feedback write is skipped.
+	cfg := &config.Config{ExpensesLogPath: "/expense-reporter-nonexistent-dir/expenses_log.jsonl"}
+
+	err := appendClassified(results, cfg, "my-classifier-q3")
+
+	require.Error(t, err, "appendClassified should return an error when a row fails to append")
+	require.False(t, results[0].AutoInserted, "the failed row must be downgraded to AutoInserted=false")
+	require.Error(t, results[0].Error, "the failed row must record its append error")
+}
 
 func TestParse3FieldLine(t *testing.T) {
 	tests := []struct {

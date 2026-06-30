@@ -255,6 +255,14 @@ func parseResponse(body interface{ Read([]byte) (int, error) }, pm taxonomy.Path
 // splitResults turns each predicted path into a typed Result via the path map.
 // A candidate whose path is not in the taxonomy (a model violation of the enum) is
 // logged and dropped rather than producing a half-populated Result.
+//
+// TODO(T-19): this off-enum drop is now near-dead code. The structured-output schema
+// constrains the model to the 112-path enum via a GBNF grammar, so the model can no
+// longer emit "none of these" — every expense is forced into some leaf, even novel /
+// out-of-domain ones (sometimes at high confidence). The pre-T-13 algorithm had an
+// explicit escape (Diversos, conf 0.30, require_manual_review); the enum design removed
+// it. Decide on a sentinel path the model *can* choose. See tasks.md T-19. Couples to
+// IsAutoInsertable's threshold (decision.go) and config auto_insert_excluded.
 func splitResults(classified classifyResponse, pm taxonomy.PathMap) []Result {
 	results := make([]Result, 0, len(classified.Results))
 	for _, r := range classified.Results {

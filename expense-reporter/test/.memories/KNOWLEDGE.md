@@ -104,6 +104,12 @@ tests, `subcategory`/`category` are also omitted from expected files.
 differ every run. Expected files contain only the deterministic contract.
 **Implication:** When adding new fields to JSONL output, update the verifier's skip
 list if the field is non-deterministic.
+**WS-B slice 3 (2026-06–30):** the log-append path (`add`/`auto`/`batch-auto` via `appender.ExpandAndAppend`)
+writes the **`date` field as `DD/MM/YYYY`** (was bare `DD/MM` under the old `logExpense`). Bare-`DD/MM` inputs
+get `time.Now().Year()` (`ParseDateFlexible`) — a year time-bomb — so `expected-expenses_log.jsonl` fixtures use
+**explicit-year inputs** and pin the deterministic subset `{item, date, value, type}` (subcategory/category left
+out where classifier-dependent). Installment rows assert the expanded `item (i/N)` + incremented dates; cross-year
+rows pin the real next-year date (e.g. `01/01/2027`) and pair with `NoRolloverFileCreated`.
 
 ## Generate-Workbook Acceptance Design (2026-06, session 29)
 The `generate-basic` fixture is a NEW sub-format: `taxonomy.json` + `entries.jsonl`

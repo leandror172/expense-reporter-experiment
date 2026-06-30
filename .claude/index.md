@@ -50,6 +50,7 @@
 | Plan B — full-path entry routing (T-04, session 32) | `.claude/plans/full-path-entry-routing.md` |
 | Bf real-data verification runbook (execute next session — Bf1/Bf3 + routing proof) | `.claude/plans/bf-real-data-verification-runbook.md` |
 | Retire workbook insertion, keep only generation (logs = source of truth; couples T-11/T-09/T-03) | `.claude/plans/retire-insertion-keep-generation.md` |
+| WS-B slice 3 — `batch-auto` → log-append (decisions locked, session 43; not yet implemented) | `.claude/plans/ws-b-slice3-batch-auto-log-append.md` |
 | T-13 (revised) — classifier predicts full (type,category,subcategory) path; WS-D prerequisite | `.claude/plans/t13-classifier-full-path.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
@@ -70,6 +71,7 @@
 | Advisor reviews — apply phase 3, Phase B builder, session 24 | `.claude/advisor-{apply-phase3,phaseB-builder,session24-review}.md` |
 | Doc audit (2026-06-09) | `.claude/doc-audit-2026-06-09.md` |
 | Session 42 postmortem — PR #36 review, model revert (qcoder→q3), acceptance repair (T-17/T-18) | `.claude/session42-postmortem.md` |
+| WS-B slice 3 work report — `batch-auto` → log-append (session 43) | `.claude/ws-b-slice3-implementation-report.md` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
 

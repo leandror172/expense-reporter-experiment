@@ -134,10 +134,10 @@ architectural reasoning across 3+ files simultaneously.
 4. `my-go-q35-27b` (qwen3.5:27b) — benchmark candidate vs 14B baseline
 5. `my-go-q35` (qwen3.5:9b) — VRAM-only, fastest, for simple tasks
 
-**Local model tier list for classification** (for `classify`/`auto` commands — same cascade rule: try next on 0 (rejected)):
-1. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — primary; required for 5.7+ (few-shot injection)
-2. `my-classifier-q35` (qwen3.5:9b) — VRAM-only, fast, for standard classification
-3. `my-classifier-q3` (qwen3:8b) — proven baseline
+**Local model tier list for classification** (for `classify`/`auto`/`batch-auto` commands — same cascade rule: try next on 0 (rejected)):
+1. `my-classifier-q3` (qwen3:8b) — **primary / current default for all commands** (set session 42). Validated end-to-end on the real 112-path taxonomy. Accurate but slow (~12 s/classify, likely qwen3 "thinking" tokens) — speed benchmark is T-14.
+2. `my-classifier-q35` (qwen3.5:9b) — VRAM-only, fits the 12 GB GPU, likely faster; T-14 benchmark candidate.
+3. `my-classifier-qcoder` (qwen3-coder:30b, 32K ctx) — **NOT recommended as default.** 20.7 GB → does NOT fit the 12 GB GPU (CPU offload + transient load 500s) for zero accuracy benefit. Note: T-13's full-path enum is **grammar-enforced** (Ollama compiles the schema `enum` → GBNF, constraining the sampler), so enum *validity* is model-independent — it is NOT a reason to prefer a larger model. Accuracy across tiers is still open (T-14).
 
 **Use `mcp__ollama-bridge__generate_code` or `mcp__ollama-bridge__ask_ollama` for:**
 - Go structs, interfaces, functions, test stubs, new functions

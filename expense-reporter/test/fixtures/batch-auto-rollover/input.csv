@@ -1,5 +1,7 @@
-# input.csv — installment expense starting October, 2 installments roll to next year
-# Format: item;DD/MM;value  (value/N = N installments)
-# Oct/Nov/Dec 2025 → current year (3 installments); Jan/Feb 2026 → next year (2 rollover)
-# Uber Centro is used as it reliably classifies as Uber/Taxi (a known subcategory)
-Uber Centro;01/10;500,00/5
+# input.csv — installment expense starting October, last 2 installments fall in the next year
+# Format: item;DD/MM/YYYY;value  (value/N = N installments)
+# Oct/Nov/Dec 2026 → same year; Jan/Feb 2027 → next year
+# Post log-append pivot: ALL installments (incl. next-year ones) are normal log lines —
+# there is no rollover.csv; cross-year installments simply carry their real next-year date.
+# 500,00/5 → 100,00 per installment (divides cleanly in float64)
+Uber Centro;01/10/2026;500,00/5

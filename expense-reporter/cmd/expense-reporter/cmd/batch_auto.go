@@ -7,14 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"expense-reporter/internal/appender"
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
-	"expense-reporter/internal/excel"
-	"expense-reporter/internal/feedback"
-	"expense-reporter/internal/models"
 	"expense-reporter/internal/taxonomy"
-	"expense-reporter/internal/workflow"
 	"expense-reporter/pkg/utils"
 
 	"github.com/spf13/cobra"
@@ -100,27 +97,27 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		TopN:         batchAutoTopN,
 	}
 
+	// Log-append pivot: the expense log is now the only durable persistence, so
+	// fail fast if it is unwritable before spending ~12 s/row on the model.
 	if !batchAutoDryRun {
-		workbook, err := GetWorkbookPath()
-		if err != nil {
-			return fmt.Errorf("%w\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", err)
-		}
-		if _, err := os.Stat(workbook); os.IsNotExist(err) {
-			return fmt.Errorf("workbook not found: %s\n  Hint: use --workbook <path>, set EXPENSE_WORKBOOK_PATH, or use --dry-run", workbook)
+		if err := preflightLogPath(appCfg); err != nil {
+			return err
 		}
 	}
 
 	results := classifyLines(lines, sheets, appCfg, cfg, batchAutoThreshold)
 
-	var rollovers []workflow.RolloverExpense
-	var insertErr error
+	var appendErr error
 	if !batchAutoDryRun {
-		rollovers, insertErr = insertClassified(results, appCfg, batchAutoModel)
+		appendErr = appendClassified(results, appCfg, batchAutoModel)
 	}
 
 	classifiedPath := filepath.Join(outputDir, "classified.csv")
 	reviewPath := filepath.Join(outputDir, "review.csv")
 
+	// CSVs are written AFTER appendClassified so they reflect any rows it
+	// downgraded on append failure (a failed row lands in review.csv, not as a
+	// false "appended").
 	if err := writeClassifiedCSV(classifiedPath, results); err != nil {
 		return fmt.Errorf("writing classified.csv: %w", err)
 	}
@@ -128,17 +125,9 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("writing review.csv: %w", err)
 	}
 
-	rolloverPath := ""
-	if len(rollovers) > 0 {
-		rolloverPath = filepath.Join(outputDir, "rollover.csv")
-		if err := writeRolloverCSV(rolloverPath, rollovers); err != nil {
-			return fmt.Errorf("writing rollover.csv: %w", err)
-		}
-	}
-
-	printBatchSummary(results, rollovers, batchAutoDryRun, classifiedPath, reviewPath, rolloverPath)
-	if insertErr != nil {
-		return fmt.Errorf("workbook insertion failed (classification CSVs preserved at %s): %w", outputDir, insertErr)
+	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath)
+	if appendErr != nil {
+		return fmt.Errorf("log append failed (classification CSVs preserved at %s): %w", outputDir, appendErr)
 	}
 	return nil
 }
@@ -217,91 +206,96 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 	return results
 }
 
-func insertClassified(results []classifiedRow, appCfg *config.Config, model string) ([]workflow.RolloverExpense, error) {
-	workbook, err := GetWorkbookPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get workbook path: %w", err)
+// preflightLogPath fails fast when the expense log is unwritable, before the
+// batch spends ~12 s/row on the model. Because the log is now the only durable
+// persistence, an unwritable path must abort the run rather than silently lose
+// every auto-classified row.
+func preflightLogPath(appCfg *config.Config) error {
+	logPath := appCfg.ExpensesLogFilePath()
+	if logPath == "" {
+		return fmt.Errorf("expense log path not configured\n  Hint: set expenses_log_path in config, or use --dry-run")
 	}
-	if _, err := os.Stat(workbook); os.IsNotExist(err) {
-		return nil, fmt.Errorf("workbook not found: %s", workbook)
+	if err := verifyAppendable(logPath); err != nil {
+		return fmt.Errorf("expense log not writable: %w\n  Hint: ensure %s is writable, or use --dry-run", err, logPath)
 	}
-	if err := excel.ValidateWorkbook(workbook); err != nil {
-		return nil, fmt.Errorf("workbook cannot be opened: %w", err)
-	}
-
-	if _, err := batch.NewBackupManager().CreateBackup(workbook); err != nil {
-		return nil, fmt.Errorf("creating backup: %w", err)
-	}
-
-	// Build ClassifiedExpense slice for auto-insertable rows; track source indices
-	var srcIdx []int
-	var toInsert []models.ClassifiedExpense
-	for i, r := range results {
-		if r.AutoInserted && r.Error == nil {
-			srcIdx = append(srcIdx, i)
-			toInsert = append(toInsert, models.ClassifiedExpense{
-				Item:        r.Item,
-				Date:        r.Date,
-				RawValue:    r.RawValue,
-				Subcategory: r.Subcategory,
-				Category:    r.Category,
-				Confidence:  r.Confidence,
-			})
-		}
-	}
-	if len(toInsert) == 0 {
-		return nil, nil
-	}
-
-	batchErrors, rollovers := workflow.InsertBatchExpensesFromClassified(workbook, toInsert)
-
-	for i, bErr := range batchErrors {
-		if bErr != nil {
-			results[srcIdx[i]].AutoInserted = false
-			results[srcIdx[i]].Error = fmt.Errorf("%s", bErr.Message)
-			fmt.Fprintf(os.Stderr, "  INSERT ERROR %q: %s\n", results[srcIdx[i]].Item, bErr.Message)
-		}
-	}
-	logBatchFeedback(appCfg, results, srcIdx, batchErrors, model)
-	return rollovers, nil
+	return nil
 }
 
-// logBatchFeedback appends confirmed feedback entries for all successfully inserted rows.
-// Non-fatal: logs a warning to stderr if any individual write fails.
-func logBatchFeedback(appCfg *config.Config, results []classifiedRow, srcIdx []int, batchErrors []*models.BatchError, model string) {
-	path := appCfg.ClassificationsFilePath()
-	if path == "" {
+// verifyAppendable confirms the log can actually be opened for append — the same
+// mode feedback.AppendExpense uses — so a read-only existing file is caught, not
+// just a missing directory.
+func verifyAppendable(path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
+// appendClassified appends every auto-classified row to the expense log. Because
+// the log is the only durable persistence, a per-row failure (value/date parse
+// or append error) downgrades that row in place — AutoInserted=false + Error set —
+// so the summary count stays honest, the row falls into review.csv, and the
+// command exits non-zero (the returned error is wrapped by the caller).
+func appendClassified(results []classifiedRow, appCfg *config.Config, model string) error {
+	logPath := appCfg.ExpensesLogFilePath()
+	var failCount int
+	for idx := range results {
+		r := results[idx]
+		if !r.AutoInserted || r.Error != nil {
+			continue
+		}
+		if err := appendOneRow(logPath, r); err != nil {
+			results[idx].AutoInserted = false
+			results[idx].Error = err
+			fmt.Fprintf(os.Stderr, "  APPEND ERROR %q: %v\n", r.Item, err)
+			failCount++
+			continue
+		}
+		logConfirmedFeedbackForRow(appCfg, r, model)
+	}
+	if failCount > 0 {
+		return fmt.Errorf("%d row(s) failed to append to the expense log", failCount)
+	}
+	return nil
+}
+
+// appendOneRow expands installments and appends a single classified row to the
+// expense log. Returns an error if the value/date cannot be parsed or the append
+// fails — any of which means the row was not persisted.
+func appendOneRow(logPath string, r classifiedRow) error {
+	perInstallment, installmentCount, err := utils.ParseCurrencyWithInstallments(r.RawValue)
+	if err != nil {
+		return fmt.Errorf("parsing value %q: %w", r.RawValue, err)
+	}
+	parsedDate, err := utils.ParseDateFlexible(r.Date)
+	if err != nil {
+		return fmt.Errorf("parsing date %q: %w", r.Date, err)
+	}
+	return appender.ExpandAndAppend(logPath, r.Item, parsedDate, perInstallment, installmentCount, r.Type, r.Category, r.Subcategory)
+}
+
+// logConfirmedFeedbackForRow records the confirmed classification to
+// classifications.jsonl for a successfully appended row. Secondary to the expense
+// log: a failure here is non-fatal (logConfirmedFeedback warns internally).
+func logConfirmedFeedbackForRow(appCfg *config.Config, r classifiedRow, model string) {
+	perInstallment, _, err := utils.ParseCurrencyWithInstallments(r.RawValue)
+	if err != nil {
 		return
 	}
-	// Iterate source indices — log rows where AutoInserted is still true (no insert error)
-	for i, idx := range srcIdx {
-		if batchErrors[i] != nil {
-			continue
-		}
-		r := results[idx]
-		if !r.AutoInserted {
-			continue
-		}
-		// Parse per-installment value for ID generation
-		perInstallment, _, err := utils.ParseCurrencyWithInstallments(r.RawValue)
-		if err != nil {
-			continue
-		}
-		predicted := classifier.Result{
-			Subcategory: r.Subcategory,
-			Category:    r.Category,
-			Confidence:  r.Confidence,
-		}
-		entry := feedback.NewConfirmedEntry(r.Item, r.Date, perInstallment, predicted, model)
-		if err := feedback.Append(path, entry); err != nil {
-			fmt.Fprintf(os.Stderr, "⚠  feedback log %q: %v\n", r.Item, err)
-		}
-		// r.Type was resolved once in classifyLines; reuse it (no second taxonomy load).
-		logExpense(appCfg, r.Item, r.Date, perInstallment, r.Subcategory, r.Category, r.Type)
+	predicted := classifier.Result{
+		Type:        r.Type,
+		Category:    r.Category,
+		Subcategory: r.Subcategory,
+		Confidence:  r.Confidence,
 	}
+	logConfirmedFeedback(appCfg, r.Item, r.Date, perInstallment, predicted, model)
 }
 
-func printBatchSummary(results []classifiedRow, rollovers []workflow.RolloverExpense, dryRun bool, classifiedPath, reviewPath, rolloverPath string) {
+func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath string) {
 	autoCount, reviewCount, errorCount := 0, 0, 0
 	for _, r := range results {
 		switch {
@@ -313,17 +307,15 @@ func printBatchSummary(results []classifiedRow, rollovers []workflow.RolloverExp
 			reviewCount++
 		}
 	}
-	dryTag := ""
+	// Dry-run appends nothing, so the count is what *would* be appended.
+	dryTag, appendLine := "", "  Auto-appended : %d\n"
 	if dryRun {
-		dryTag = " (dry-run)"
+		dryTag, appendLine = " (dry-run)", "  Would append  : %d\n"
 	}
 	fmt.Printf("\n--- Summary%s ---\n", dryTag)
-	fmt.Printf("  Auto-inserted : %d\n", autoCount)
+	fmt.Printf(appendLine, autoCount)
 	fmt.Printf("  For review    : %d\n", reviewCount)
 	fmt.Printf("  Errors        : %d\n", errorCount)
-	if len(rollovers) > 0 {
-		fmt.Printf("  Rollovers     : %d (next-year installments → %s)\n", len(rollovers), rolloverPath)
-	}
 	fmt.Printf("  classified.csv: %s\n", classifiedPath)
 	fmt.Printf("  review.csv    : %s\n", reviewPath)
 }
@@ -419,28 +411,3 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 	return w.Error()
 }
 
-// writeRolloverCSV writes next-year installment expenses that could not be inserted
-// into the current workbook. Format: item;date;value;subcategory
-func writeRolloverCSV(path string, rollovers []workflow.RolloverExpense) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	w := csv.NewWriter(f)
-	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory"}); err != nil {
-		return err
-	}
-	for _, r := range rollovers {
-		w.Write([]string{ //nolint:errcheck
-			r.Expense.FormattedItem(),
-			r.Expense.Date.Format("02/01"),
-			utils.FormatBRValue(r.Expense.Value),
-			r.Expense.Subcategory,
-		})
-	}
-	w.Flush()
-	return w.Error()
-}

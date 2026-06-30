@@ -114,7 +114,6 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 		runCommand(ctx, args...)
 		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
 		ctx.Artifacts["review.csv"] = filepath.Join(ctx.WorkDir, "review.csv")
-		ctx.Artifacts["rollover.csv"] = filepath.Join(ctx.WorkDir, "rollover.csv")
 	}
 }
 
@@ -145,7 +144,6 @@ func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) 
 		runCommand(ctx, args...)
 		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
 		ctx.Artifacts["review.csv"] = filepath.Join(ctx.WorkDir, "review.csv")
-		ctx.Artifacts["rollover.csv"] = filepath.Join(ctx.WorkDir, "rollover.csv")
 	}
 }
 
