@@ -175,7 +175,7 @@ func thenJSONTypeIs(typ string) []func(*harness.Context) {
 // thenJSONModeDidNotInsert asserts --json mode never writes to the workbook.
 func thenJSONModeDidNotInsert() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.OutputNotContains("✓ Inserted", "JSON mode must not insert into workbook"),
+		verify.OutputNotContains("✓ Appended", "JSON mode must not append to the expense log"),
 	}
 }
 

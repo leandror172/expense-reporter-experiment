@@ -23,7 +23,7 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 		Given: knownExpenseReadyForAutoInsert(fixDir),
 		When:  actions.RunAuto("Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
-			autoInsertSucceeded(),
+			autoAppendSucceeded(),
 			classificationsMatchExpected(fixDir),
 			expenseLogMatchesExpected(fixDir),
 		),
@@ -147,10 +147,10 @@ func commandSucceeded() []func(*harness.Context) {
 	}
 }
 
-func autoInsertSucceeded() []func(*harness.Context) {
+func autoAppendSucceeded() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
-		verify.OutputContains("✓ Inserted"),
+		verify.OutputContains("✓ Appended"),
 	}
 }
 
