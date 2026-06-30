@@ -6,6 +6,11 @@ in the unconditional found+corrected `feedback.Append` (BLOCKING, now gated + `T
 #2 the write-order flip *moves* the idempotency hole (pre-flight BOTH log paths; §3 overclaim corrected to
 best-effort); #3 `DD/MM`→`DD/MM/YYYY` is a real on-disk change (intended, generator accepts it); #4 nil-deref
 guard on `Reviewed==nil` → route to `failed`.
+**Pre-B advisor review:** `scratchpad/advisor-ws-b-slice4-coreB-2026-06-30.md` — the both-path pre-flight must be
+**non-destructive** on the expense log (`MkdirAll` + open-only-if-exists, NO `O_CREATE`); an `O_CREATE` probe
+creates an empty `expenses_log.jsonl` and flips found-only `TestApply_IdempotencyAndFeedback`
+(`ExpenseLogNotCreated`) red. Also: the `"no expense-log change"` summary string is a task-4 green-gate → land
+it in B (task 3), not task-5 polish; dry-run skips the pre-flight first.
 **Parent pivot:** `.claude/plans/retire-insertion-keep-generation.md` (retire workbook insertion,
 keep only generation; JSONL logs become the single source of truth, `generate-workbook` the only writer)
 **Predecessors:** Slice 1 (`add`) DONE · Slice 2 (`auto`) DONE · Slice 3 (`batch-auto`) DONE (PR #37 merged) · T-13 DONE
@@ -184,24 +189,45 @@ a guarantee** (see the §2 advisor note — a feedback-write failure makes the i
   its `expensesLogPath` blindness (corrected feedback only, no expense-log append, §3); the only behavioural
   change is the dry-run gate.
 
-### Pre-flight (mirror slice 3, non-dry-run only — BOTH log paths, advisor #2)
-- Before `processEntries`: resolve **both** `cfg.ExpensesLogFilePath()` **and** `cfg.ClassificationsFilePath()`,
-  fail fast (with a `Hint:`) if either is unconfigured or not appendable. Reuse the slice-3 helper shape
-  (`verifyAppendable` opens `O_APPEND|O_CREATE|O_WRONLY`).
+### Pre-flight (non-dry-run only — BOTH log paths, NON-DESTRUCTIVE — advisor #2 + coreB-advisor)
+- **Dry-run skips the pre-flight, as the very first thing in `runApply`** — so the only behaviour
+  `TestApply_DryRunWritesNothing` exercises is the found+corrected `feedback.Append` gate, not a probe.
+- Before `processEntries`, resolve **both** `cfg.ExpensesLogFilePath()` **and** `cfg.ClassificationsFilePath()`
+  and fail fast (with a `Hint:`) if either is **not appendable**.
+- **⚠ DO NOT reuse slice-3's `verifyAppendable` for the expense log — it `O_CREATE`s, and that breaks a
+  green test (coreB-advisor).** `TestApply_IdempotencyAndFeedback` is found-only (zero new rows → the
+  expense log is never written) and asserts `verify.ExpenseLogNotCreated()`. An `O_CREATE` probe would
+  create an empty `WorkDir/expenses_log.jsonl` before any row is processed → file exists → test flips red at
+  integration, with a misleading "file exists" failure that points away from the pre-flight. apply is the
+  **first caller that pre-flights a log it then never writes** (batch-auto always appends, so it never hit
+  this).
+  - **Expense-log probe = non-destructive:** `MkdirAll(dir)` **only**, plus — *only if the file already
+    exists* — open `O_APPEND|O_WRONLY` (**no `O_CREATE`**) to catch a read-only existing file. Never
+    create-on-probe.
+  - This still satisfies **both** unwritable tests: their blocker is a *parent that is a regular file*, so
+    `MkdirAll(dir)` errors `"not a directory"` before any open — they don't depend on `O_CREATE`. Confirm the
+    wrapped error carries `"Hint:"` on **both** paths.
+  - **Classifications probe** can keep `O_CREATE` harmlessly: in `IdempotencyAndFeedback` that file is
+    seeded/exists and append-open never truncates, so `ClassificationsMatch` still holds.
+  - **"Unconfigured" handling:** only hard-require the **expense-log** path when there are **new rows to
+    append** (an all-found reviewed.json legitimately needs no expense log). The type-routing-cycle comment
+    says `withFeedbackConfig` sets both paths, so the empty-file variant is the live risk — but design so
+    neither an unconfigured nor an empty-file path bites `commandSucceeded()`/`ExpenseLogNotCreated()`.
   - **Why both (unlike batch-auto's log-only pre-flight):** apply depends on `classifications.jsonl` as its
     cross-file dedup index (§3). Pre-flighting it makes the common "classifications dir unwritable" case —
-    the §2 duplicate-on-re-run trigger — unreachable before any write. The residual after this is only a
-    *mid-run* feedback failure (disk full between rows), which is rare; name it, don't chase it (T-20 closes
-    it properly).
-  - *Motivation differs from batch-auto:* `apply` has no ~12 s/row model cost, so the value is
-    **partial-write safety + dedup-index integrity**, not saved model time.
-  - **Consider extracting** `verifyAppendable`/`preflightLogPath` from `batch_auto.go` to a shared spot
-    (e.g. a small `cmd` helper or `internal/appender`) rather than duplicating — decide at implementation
-    time; a copy is acceptable if extraction balloons scope.
+    the §2 duplicate-on-re-run trigger — unreachable before any write. Residual: a *mid-run* feedback failure
+    (disk full between rows), rare; name it, don't chase it (T-20 closes it).
+  - **Extraction:** the non-destructive expense-log probe now *differs* from `batch_auto.go`'s `verifyAppendable`,
+    so don't blindly share that function. A small apply-local `preflightLogPaths` is cleaner than retrofitting
+    the slice-3 helper with a create/no-create flag — decide at implementation time.
 
-### `printSummary`
+### `printSummary` — the corrected-section string is CONTRACT, land it in B (coreB-advisor)
 - Drop the `uninsertable` and "workbook not updated" lines. Rename `Inserted:` → `Appended:`. Add a
-  `Failed:` line (downgraded rows). Keep the corrected-entries section (now phrased without "workbook").
+  `Failed:` line (downgraded rows).
+- **The corrected-entries section MUST contain the substring `"no expense-log change"`** — A's
+  `TestApply_IdempotencyAndFeedback` asserts it (A's chosen full line: `"⚠  %d already-applied rows were
+  corrected — feedback logged, no expense-log change:\n"`). This is a green-gate for task 4, **not** task-5
+  polish: emit it in B (task 3). Other wording can drift; that substring cannot.
 
 ---
 
