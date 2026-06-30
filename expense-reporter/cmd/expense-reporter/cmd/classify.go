@@ -94,11 +94,11 @@ func loadTaxonomyTree(appCfg *config.Config) ([]taxonomy.ExpenseType, error) {
 	if path == "" {
 		return nil, fmt.Errorf("taxonomy path not configured")
 	}
-	sheets, _, err := taxonomy.LoadTaxonomy(path, "", "", 0)
+	types, _, err := taxonomy.LoadTaxonomy(path, "", "", 0)
 	if err != nil {
 		return nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
-	return sheets, nil
+	return types, nil
 }
 
 func confidenceBar(confidence float64) string {

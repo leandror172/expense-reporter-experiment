@@ -25,7 +25,7 @@ func normalizeKey(s string) string {
 // Pass 0 to keep all entries regardless of year (legacy single-year log behavior).
 // Pass "" for entriesPath or incomeEntriesPath to skip loading that file.
 func LoadTaxonomy(taxonomyPath, entriesPath, incomeEntriesPath string, targetYear int) ([]ExpenseType, []RevenueBlock, error) {
-	sheets, incomeBlocks, err := loadTaxonomyFile(taxonomyPath)
+	types, incomeBlocks, err := loadTaxonomyFile(taxonomyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
@@ -33,7 +33,7 @@ func LoadTaxonomy(taxonomyPath, entriesPath, incomeEntriesPath string, targetYea
 	// Duplicate-subcategory validation applies to the taxonomy itself,
 	// even when no entries are loaded. Both routing maps + the ambiguity set are
 	// reused below when entries are present.
-	byPath, byName, ambiguous, err := buildSubcategoryMap(sheets, incomeBlocks)
+	byPath, byName, ambiguous, err := buildSubcategoryMap(types, incomeBlocks)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
@@ -50,10 +50,10 @@ func LoadTaxonomy(taxonomyPath, entriesPath, incomeEntriesPath string, targetYea
 		}
 	}
 
-	return sheets, incomeBlocks, nil
+	return types, incomeBlocks, nil
 }
 
-// rawType mirrors one element of the taxonomy file's "sheets" array.
+// rawType mirrors one element of the taxonomy file's "types" array.
 type rawType struct {
 	Name       string `json:"name"`
 	Categories []struct {
@@ -99,7 +99,7 @@ func loadTaxonomyFile(path string) ([]ExpenseType, []RevenueBlock, error) {
 	}
 
 	var raw struct {
-		Sheets           []rawType `json:"types"`
+		Types            []rawType `json:"types"`
 		IncomeCategories []struct {
 			Name   string           `json:"name"`
 			Blocks []rawIncomeBlock `json:"blocks"`
@@ -109,17 +109,17 @@ func loadTaxonomyFile(path string) ([]ExpenseType, []RevenueBlock, error) {
 		return nil, nil, fmt.Errorf("parsing taxonomy JSON: %w", err)
 	}
 
-	sheets := rawTypesToExpenseTypes(raw.Sheets)
+	types := rawTypesToExpenseTypes(raw.Types)
 	incomeBlocks := incomeCatsToRevenueBlocks(raw.IncomeCategories)
 
-	return sheets, incomeBlocks, nil
+	return types, incomeBlocks, nil
 }
 
-// rawTypesToExpenseTypes builds the ExpenseType tree from the raw taxonomy sheets.
+// rawTypesToExpenseTypes builds the ExpenseType tree from the raw taxonomy types.
 func rawTypesToExpenseTypes(raw []rawType) []ExpenseType {
-	sheets := make([]ExpenseType, len(raw))
+	types := make([]ExpenseType, len(raw))
 	for i, rs := range raw {
-		sheets[i] = ExpenseType{Name: rs.Name}
+		types[i] = ExpenseType{Name: rs.Name}
 		cats := make([]Category, len(rs.Categories))
 		for j, rc := range rs.Categories {
 			cats[j] = Category{Name: rc.Name}
@@ -129,9 +129,9 @@ func rawTypesToExpenseTypes(raw []rawType) []ExpenseType {
 			}
 			cats[j].Subs = subs
 		}
-		sheets[i].Cats = cats
+		types[i].Cats = cats
 	}
-	return sheets
+	return types
 }
 
 // incomeCatsToRevenueBlocks flattens income categories into a []RevenueBlock slice.
@@ -361,19 +361,19 @@ func warnUnroutable(item, subcategory string, isAmbiguous bool) {
 //
 // A subcategory's identity is its full path; only an exact repeat of a full path is a
 // validation error (detected via byPath presence).
-func buildSubcategoryMap(sheets []ExpenseType, incomeBlocks []RevenueBlock) (byPath, byName map[string]subcatTarget, ambiguous map[string]bool, err error) {
+func buildSubcategoryMap(types []ExpenseType, incomeBlocks []RevenueBlock) (byPath, byName map[string]subcatTarget, ambiguous map[string]bool, err error) {
 	byPath = make(map[string]subcatTarget)
 	byName = make(map[string]subcatTarget)
 	ambiguous = make(map[string]bool)
 
 	// Index into the backing slices — pointers to range copies would lose appends.
-	for i := range sheets {
-		for j := range sheets[i].Cats {
-			for k := range sheets[i].Cats[j].Subs {
-				sub := &sheets[i].Cats[j].Subs[k]
-				path := expensePath(sheets[i].Name, sheets[i].Cats[j].Name, sub.Name)
+	for i := range types {
+		for j := range types[i].Cats {
+			for k := range types[i].Cats[j].Subs {
+				sub := &types[i].Cats[j].Subs[k]
+				path := expensePath(types[i].Name, types[i].Cats[j].Name, sub.Name)
 				if _, dup := byPath[path]; dup {
-					return nil, nil, nil, fmt.Errorf("subcategory %q appears more than once in %s/%s", sub.Name, sheets[i].Name, sheets[i].Cats[j].Name)
+					return nil, nil, nil, fmt.Errorf("subcategory %q appears more than once in %s/%s", sub.Name, types[i].Name, types[i].Cats[j].Name)
 				}
 				target := subcatTarget{kind: "expense", expense: sub}
 				byPath[path] = target
@@ -418,8 +418,8 @@ func registerTarget(result map[string]subcatTarget, ambiguous map[string]bool, n
 // that cannot occur in human-typed names (which DO contain '/', e.g. "Uber/Taxi").
 // The kind prefix keeps a 3-segment expense path from ever equalling a 2-segment
 // income path.
-func expensePath(sheet, category, sub string) string {
-	return "expense\x00" + normalizeKey(sheet) + "\x00" + normalizeKey(category) + "\x00" + normalizeKey(sub)
+func expensePath(types, category, sub string) string {
+	return "expense\x00" + normalizeKey(types) + "\x00" + normalizeKey(category) + "\x00" + normalizeKey(sub)
 }
 
 // incomePath builds the full 3-segment routing key for an income leaf.
