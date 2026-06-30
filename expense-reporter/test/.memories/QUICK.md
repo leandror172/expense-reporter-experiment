@@ -29,6 +29,14 @@ failure-downgrade is a **unit** test (`cmd.TestAppendClassified_DowngradesRowOnA
 the pre-flight makes an acceptance-level append failure unreachable; acceptance covers the pre-flight via
 `TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification` (deterministic, no RequireOllama: parent-is-a-file
 log path → MkdirAll fails before classifying).
+**WS-B slice 4 (session 44) — apply acceptance retargeted to the LOG.** `TestApply_IdempotencyAndFeedback`
+asserts the corrected summary substring `"no expense-log change"` (workbook vocab gone) + `ExpenseLogNotCreated`
+(found-only → no append). NEW deterministic apply tests: `TestApply_DryRunWritesNothing` (dry-run must leave both
+logs byte-unchanged — pins the found+corrected feedback leak), `TestApply_UnwritableLogPath_FailsFast` +
+`TestApply_UnwritableClassificationsPath_FailsFast` (both-path pre-flight, parent-is-a-file blocker → `Hint:`).
+`type_routing_cycle_test.go` step 3 dropped `buildSkeletonWorkbook` (apply needs no workbook now). Downgrade +
+nil-guard are UNIT tests (`cmd.TestAppendNewRows_*`), not acceptance (pre-flight makes append failure unreachable).
+PR #35 naming sweep applied to `apply_test.go`/`type_routing_cycle_test.go`.
 
 ## Structure
 ```

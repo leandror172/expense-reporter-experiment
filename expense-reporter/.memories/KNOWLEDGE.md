@@ -13,10 +13,10 @@ Five user-facing commands, each building on the previous:
 appends anything. `batch-auto` is the production workflow.
 **Implication:** `auto` and `batch-auto` share the same classifier + decision logic.
 The only difference is input source (args vs CSV) and output format.
-**Log-append pivot (WS-B, 2026-06–30):** since the session-36 pivot, `add`/`auto`/`batch-auto` no
+**Log-append pivot (WS-B, 2026-06–30):** since the session-36 pivot, `add`/`auto`/`batch-auto`/`apply` no
 longer touch the workbook — they append typed entries to `expenses_log.jsonl`, and `generate-workbook`
 is the single writer (see the dedicated section below). Plain `batch` (manual, non-classifier) still
-inserts into the workbook.
+inserts into the workbook. WS-B is **complete** (slices 1–4); next is WS-D (retire bare-name fallback, T-09).
 
 ## Batch Pipeline Optimization (2026-03)
 `workflow.InsertBatchExpenses` opens the workbook once, inserts all rows, saves once.
@@ -34,7 +34,12 @@ excel machinery is NOT dead and must not be deleted with the classified variant.
 
 ## Log-Append Path (WS-B, 2026-06–30)
 `internal/appender.ExpandAndAppend(logPath, item, date time.Time, perInstallment, count, type, category, sub)`
-is the single append-time writer shared by `add`/`auto`/`batch-auto`. It expands installments into N dated
+is the single append-time writer shared by `add`/`auto`/`batch-auto`/**`apply`** (slice 4, session 44).
+`apply` calls it with **count=1** (the reviewed value is a single number; the installment count is lost
+upstream at `review.ReadQueue` — T-21) and flips the write order **log-first, feedback-second** with a
+**non-destructive** both-path pre-flight: the classifications log (its dedup index) is probed before
+`processEntries`, the expense log only when there are new rows and WITHOUT `O_CREATE` (an `O_CREATE` probe
+would leave an empty log and break the found-only `ExpenseLogNotCreated` acceptance test). It expands installments into N dated
 `ExpenseEntry` lines (`addMonths`; cross-year installments carry their **real next-year date** — there is no
 `rollover.csv` anymore) and writes via `feedback.AppendExpense` (plain `O_APPEND`, **no dedup on the hash ID**).
 `batch-auto`'s `appendClassified` (cmd) iterates auto-rows, delegates each to `appendOneRow`, and on success

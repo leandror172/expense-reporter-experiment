@@ -44,7 +44,15 @@ lands in review.csv (CSVs written AFTER append). **Pre-flight** `preflightLogPat
 before classifying. `--dry-run` = classify + CSVs, no append. `workflow.InsertBatchExpensesFromClassified`
 **deprecated** (`// Deprecated:`), kept for WS-E delete; plain `batch` keeps `InsertBatchExpenses` live. `logExpense`
 deleted; `auto` insert→append vocabulary renamed (`✓ Appended`). Plan: `.claude/plans/ws-b-slice3-batch-auto-log-append.md`.
-Remaining pivot: slice 4 (`apply` write-half delete) → WS-D (retire bare-name fallback) → WS-E (delete dead insert code).
+**WS-B slice 4 (session 44) — `apply` → log-append DONE (branch `feat/ws-b-slice4-apply-log-append`).** `apply`
+no longer writes the workbook — new confirmed/corrected rows append to `expenses_log.jsonl` via
+`appender.ExpandAndAppend` (count=1; T-21 = reviewed-installment under-recording deferred). Write-order flipped
+(log-first/feedback-second/downgrade-on-log-failure); `dryRun` gates the found+corrected feedback write (leak
+fix); **non-destructive both-path pre-flight** (classifications before `processEntries`; expense-log only when
+newRows>0, NO `O_CREATE`). Deleted `insertNewRows`+excel-allocation pipeline, `--workbook`/`--backup`, the
+`uninsertable` concept, dead `IsInsertable`/`IsAlreadyHandled`. Shared excel helpers stay live under plain
+`batch`. Plan: `.claude/plans/ws-b-slice4-apply-log-append.md`. **WS-B complete** → next WS-D (retire bare-name
+fallback, T-09) → WS-E (delete dead insert code).
 
 ## Structure
 ```
