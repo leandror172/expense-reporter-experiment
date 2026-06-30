@@ -79,31 +79,29 @@ func TestBatchAuto_OutputDirFlag(t *testing.T) {
 	})
 }
 
-func TestBatchAuto_SameYearInstallmentsExpanded(t *testing.T) {
+func TestBatchAuto_SameYearInstallmentsExpandedInLog(t *testing.T) {
 	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
 
 	fixtureDir := filepath.Join(fixturesDir(), "batch-auto-installments")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "installment expense auto-inserted as single classified entry",
-		Given: midYearInstallmentExpensesReadyForBatch(fixtureDir),
+		Name:  "same-year installments expand into one dated log line each",
+		Given: batchReadyForLogAppend(fixtureDir),
 		When:  actions.RunBatchAutoWithInput(fixtureDir, "midyear-input.csv"),
-		Then:  installmentExpenseAutoInserted(),
+		Then:  installmentsExpandedInLog(fixtureDir),
 	})
 }
 
-func TestBatchAuto_RolloverInstallmentsWrittenToFile(t *testing.T) {
+func TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver(t *testing.T) {
 	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
 
 	fixtureDir := filepath.Join(fixturesDir(), "batch-auto-rollover")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "installments crossing year boundary produce rollover.csv for next-year entries",
-		Given: lateYearInstallmentExpensesReadyForBatch(fixtureDir),
+		Name:  "cross-year installments are logged with their real next-year date — no rollover.csv",
+		Given: batchReadyForLogAppend(fixtureDir),
 		When:  actions.RunBatchAutoWithFixture(fixtureDir),
-		Then:  nextYearInstallmentsWrittenToRolloverFile(),
+		Then:  crossYearInstallmentsLoggedNotRolledOver(fixtureDir),
 	})
 }
 
@@ -148,7 +146,10 @@ func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Cont
 	}
 }
 
-func midYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Context) {
+// batchReadyForLogAppend sets up a batch-auto run for the log-append world: fixture +
+// taxonomy config, no workbook. Used by the installment and cross-year scenarios, which
+// now assert against expenses_log.jsonl rather than workbook rows.
+func batchReadyForLogAppend(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
@@ -156,23 +157,7 @@ func midYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Co
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
-	}
-}
-
-func lateYearInstallmentExpensesReadyForBatch(fixtureDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		ctx.FixtureDir = fixtureDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
+		withFeedbackAndTaxonomyConfig(ctx, fixtureDir)
 	}
 }
 
@@ -198,23 +183,27 @@ func allInputExpensesClassified(rows int) []func(*harness.Context) {
 	}
 }
 
-// installmentExpenseAutoInserted verifies the installment expense was successfully
-// classified and auto-inserted. The per-installment workbook rows (3 for a /3 expense)
-// are written during insertion but not surfaced in output — workbook verification
-// requires verify/workbook.go which is not yet implemented.
-func installmentExpenseAutoInserted() []func(*harness.Context) {
+// installmentsExpandedInLog verifies a /N installment auto-row expands into N dated lines
+// in expenses_log.jsonl (the harness can read the log directly; it could not read workbook
+// cells — the old test could only assert a summary string). expected-expenses_log.jsonl
+// pins the per-installment item suffix, incremented dates, and split value.
+func installmentsExpandedInLog(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
 		verify.OutputFileExists("classified.csv"),
-		verify.OutputContains("Auto-inserted : 1", "installment expense should be auto-inserted"),
+		verify.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
 
-func nextYearInstallmentsWrittenToRolloverFile() []func(*harness.Context) {
+// crossYearInstallmentsLoggedNotRolledOver verifies the rollover-retirement: installments
+// crossing the year boundary are logged as normal lines carrying their real next-year date,
+// and NO rollover.csv is produced. expected-expenses_log.jsonl pins all N lines, including
+// the next-year ones (e.g. 01/01/2027).
+func crossYearInstallmentsLoggedNotRolledOver(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
-		verify.OutputFileExists("rollover.csv"),
-		verify.OutputFileHasRows("rollover.csv", 3), // header + 2 rollover installments
+		verify.NoRolloverFileCreated(),
+		verify.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
 
@@ -225,20 +214,29 @@ func classificationMatchesExpectedWithMinAccuracy(expectedPath, resultsDir strin
 	}
 }
 
-func TestBatchAuto_MissingWorkbook_FailsFastBeforeClassification(t *testing.T) {
-	harness.RequireOllama(t, "")
-
+// TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification verifies the log-append
+// pivot's pre-flight. Because expenses_log.jsonl is now the only durable persistence, an
+// unwritable log must abort the run BEFORE the (slow ~12 s/row) classification rather than
+// classify everything and then fail to persist. Deterministic — fails before any Ollama
+// call, so there is no RequireOllama gate. Replaces the old missing-workbook fast-fail test
+// (there is no workbook pre-flight anymore) and absorbs the "fail fast" value of the
+// deleted corrupt-workbook InsertFailure test.
+func TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-corrupt-workbook")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "missing workbook causes fast-fail before classification runs",
-		Given: batchExpensesSubmittedToMissingWorkbook(fixDir),
+		Name:  "unwritable expense log fails fast before classification",
+		Given: batchSubmittedWithUnwritableLogPath(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  commandFailedWithWorkbookHint(),
+		Then:  commandFailedWithHint(),
 	})
 }
 
-func batchExpensesSubmittedToMissingWorkbook(fixDir string) func(*harness.Context) {
+// batchSubmittedWithUnwritableLogPath points expenses_log_path at a file whose PARENT is
+// itself a regular file, so the pre-flight's MkdirAll fails and the run aborts. Taxonomy is
+// configured (it loads before the pre-flight) but its contents are irrelevant — no row is
+// ever classified. Self-contained config (SetupBinaryConfig replaces the whole file).
+func batchSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
@@ -246,57 +244,31 @@ func batchExpensesSubmittedToMissingWorkbook(fixDir string) func(*harness.Contex
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
-		// T-13 made taxonomy config mandatory; batch-auto loads it before the
-		// workbook check, so configure it even though this test fails fast at the
-		// (missing) workbook before any classification runs.
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-		ctx.WorkbookPath = filepath.Join(ctx.WorkDir, "nonexistent-workbook.xlsx")
+		taxonomyDest := filepath.Join(ctx.WorkDir, "taxonomy.json")
+		taxData, err := os.ReadFile(filepath.Join(fixDir, "fixture-taxonomy.json"))
+		if err != nil {
+			ctx.T.Fatalf("reading fixture taxonomy: %v", err)
+		}
+		if err := os.WriteFile(taxonomyDest, taxData, 0o644); err != nil {
+			ctx.T.Fatalf("writing taxonomy: %v", err)
+		}
+		blocker := filepath.Join(ctx.WorkDir, "blocker")
+		if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
+			ctx.T.Fatalf("writing blocker file: %v", err)
+		}
+		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+			"classifications_path": filepath.Join(ctx.WorkDir, "classifications.jsonl"),
+			"expenses_log_path":    filepath.Join(blocker, "expenses_log.jsonl"),
+			"taxonomy_path":        taxonomyDest,
+		}); err != nil {
+			ctx.T.Fatalf("SetupBinaryConfig: %v", err)
+		}
 	}
 }
 
-func commandFailedWithWorkbookHint() []func(*harness.Context) {
+func commandFailedWithHint() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandFailed(),
 		verify.OutputContains("Hint:"),
-	}
-}
-
-func TestBatchAuto_InsertFailure_PreservesCSVs(t *testing.T) {
-	harness.RequireOllama(t, "")
-
-	fixDir := filepath.Join(fixturesDir(), "batch-auto-corrupt-workbook")
-
-	harness.Run(t, harness.Scenario{
-		Name:  "classification CSVs preserved when workbook insertion fails",
-		Given: batchExpensesSubmittedToCorruptWorkbook(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  classificationCSVsPreservedDespiteInsertFailure(),
-	})
-}
-
-func batchExpensesSubmittedToCorruptWorkbook(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
-		corruptPath := filepath.Join(ctx.WorkDir, "corrupt-workbook.xlsx")
-		if err := os.WriteFile(corruptPath, []byte("not a real xlsx"), 0o644); err != nil {
-			ctx.T.Fatalf("writing corrupt workbook: %v", err)
-		}
-		ctx.WorkbookPath = corruptPath
-	}
-}
-
-func classificationCSVsPreservedDespiteInsertFailure() []func(*harness.Context) {
-	return []func(*harness.Context){
-		verify.CommandFailed(),
-		verify.OutputFileExists("classified.csv"),
-		verify.OutputFileExists("review.csv"),
-		verify.OutputFileHasAtLeastRows("classified.csv", 1),
-		verify.OutputContains("classification CSVs preserved"),
 	}
 }

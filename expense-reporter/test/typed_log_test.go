@@ -14,13 +14,12 @@ import (
 
 func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-typed")
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto with taxonomy logs entries with correct type field",
-		Given: typedBatchReadyForInsert(fixDir),
+		Given: typedBatchReadyForLogAppend(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -30,16 +29,16 @@ func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 	})
 }
 
-func typedBatchReadyForInsert(fixDir string) func(*harness.Context) {
+// typedBatchReadyForLogAppend sets up the canonical non-dry-run append anchor: fixture +
+// taxonomy config, no workbook (the log-append path needs no workbook). This is the
+// load-bearing coverage of the append path that the dry-run survivors do not provide.
+func typedBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}

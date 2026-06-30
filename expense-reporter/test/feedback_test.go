@@ -30,15 +30,14 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 	})
 }
 
-func TestBatchAuto_FeedbackLoggedForInsertedRows(t *testing.T) {
+func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
 	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-feedback")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto logs confirmed feedback for all auto-inserted rows",
-		Given: knownExpenseBatchReadyForInsert(fixDir),
+		Name:  "batch-auto logs confirmed feedback for all auto-appended rows",
+		Given: knownExpenseBatchReadyForLogAppend(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -94,7 +93,7 @@ func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 	}
 }
 
-func knownExpenseBatchReadyForInsert(fixDir string) func(*harness.Context) {
+func knownExpenseBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
@@ -102,10 +101,7 @@ func knownExpenseBatchReadyForInsert(fixDir string) func(*harness.Context) {
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
-		withFeedbackConfig(ctx)
+		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}
 }
 
