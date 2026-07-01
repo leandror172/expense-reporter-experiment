@@ -1,44 +1,40 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-30 — Session 43: WS-B slice 3 — batch-auto → log-append (+ T-16/T-19 breadcrumbs)
-**Current Layer:** "WS-B: retire workbook insertion (commands → log-append)"
+**Current Session:** 2026-06-30 — Session 44: WS-B slice 4 — apply → log-append
+**Current Layer:** Log-append pivot (WS-B COMPLETE, slices 1–4) → next WS-D
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-30 - Session 43: WS-B slice 3 — batch-auto → log-append (+ T-16/T-19 breadcrumbs)
+## 2026-06-30 - Session 44: WS-B slice 4 — apply → log-append
 
 ### Context
 
-Continued from the merged PR #36 (T-13). Opened by discussing next steps, then the T-19 escape-hatch documentation gap and T-16 doc cleanup, then implemented WS-B slice 3 (`batch-auto` → log-append), the standing "next".
+Started by reviewing PR #37 (WS-B slice 3, since merged); then planned and shipped WS-B slice 4 (`apply` → log-append) end-to-end via an acceptance-first Sonnet subagent for the tests and a local-model core, mostly unattended with commits between tasks.
 
 ### What Was Done
 
-- **T-16 + T-19 breadcrumbs (session start):** corrected CLAUDE.md's classification tier list (q3 is primary; qcoder NOT recommended — enum validity is GRAMMAR-enforced, model-independent; dropped the debunked "qcoder required for 5.7+" claim). Added `TODO(T-19)` at the off-enum drop (`classifier.go`) + the auto-insert threshold (`decision.go`), and a T-09↔T-19 cross-link so the escape-hatch gap surfaces when WS-D leans on the model path. Committed `462d222`-era.
-- **WS-B slice 3 (`batch-auto` → log-append)** — advisor-reviewed plan + 4 code/test commits + 1 memory commit on branch `feat/ws-b-slice3-batch-auto-log-append`:
-- `batch-auto` appends auto-rows to `expenses_log.jsonl` via `appender.ExpandAndAppend` (no workbook write). `rollover.csv` retired (cross-year installments carry their real next-year date).
-- **Failure honesty:** an append error downgrades the row (`AutoInserted=false` + `Error`) → honest summary count, row → `review.csv`, non-zero exit; CSVs written AFTER the append. `preflightLogPath` fails fast on an unwritable log before classifying.
-- **Acceptance rewired to the log:** assert via `verify.ExpenseLogMatches`; installments fixture asserts the N expanded dated lines; rollover fixture INVERTED (`NoRolloverFileCreated` + next-year dates); the two workbook-failure tests repurposed (pre-flight fail-fast deterministic test + the failure-downgrade moved to a unit test).
-- **Cleanup:** deleted dead `logExpense`; renamed `auto`'s insert→append vocabulary (`✓ Appended`, separate commit for a clean boundary).
-- **Deprecated** `workflow.InsertBatchExpensesFromClassified` (`// Deprecated:`); kept + unit-tested for WS-E.
-- Updated 4 QUICK/KNOWLEDGE memories (expense-reporter + test).
-- Verified green: 554 unit tests; full `-tags=acceptance` batch-auto + type-routing group **15/15** (864 s on q3) — all 5 dry-run survivors, the 3 rewrites, the inverted rollover test, the deterministic pre-flight & downgrade tests, and `TypeRoutingCycle_1..4`.
-- Wrote the work report (`.claude/ws-b-slice3-implementation-report.md`) and **opened PR #37** (`feat/ws-b-slice3-batch-auto-log-append` → master).
+- Wrote + advisor-reviewed the slice-4 plan (`.claude/plans/ws-b-slice4-apply-log-append.md`) across TWO advisor passes: initial design, then a pre-implementation coreB pass that caught the non-destructive-pre-flight trap.
+- Created `.claude/workflows/sonnet-max-subagent.js` — a single-agent Workflow harness exposing the per-agent `effort` knob the `Agent` tool lacks (max/xhigh Sonnet subagent).
+- Subagent A (Sonnet, acceptance-first) wrote 5 slice-4 acceptance tests RED-first (test/ tree only); independently tree-verified (git status + rerun, confirmed RED for real behavioural reasons).
+- Core B (Ollama `my-go-qcoder`, verdict 2): `appendNewRows` (log-first/feedback-second/downgrade-on-append-failure + nil-guard), `dryRun` gate on the found+corrected feedback write, non-destructive both-path pre-flight; deleted `insertNewRows`+excel-allocation pipeline, `--workbook`/`--backup`, `uninsertable`, dead `IsInsertable`/`IsAlreadyHandled`; 2 unit tests.
+- Full `-tags=acceptance` suite green (`ok 1020s`, 0 fail) + full unit suite green. Opened **PR #38**.
+- Updated memory (apply/feedback/test QUICK, expense-reporter QUICK+KNOWLEDGE) + README.
 
 ### Decisions Made
 
-- **`--dry-run` = classify + write CSVs, no log append** — there is no workbook to skip anymore; dry-run also skips the pre-flight.
-- **Failure-downgrade verified by a UNIT test, not acceptance** — the pre-flight makes an acceptance-level append failure unreachable (a log that passes pre-flight won't fail at append), so a unit test pointing the log at a missing parent dir is both deterministic and a stronger guard.
-- **Deprecate-not-delete scope is NARROW** — only the classified-batch variant orphans; plain `batch` keeps `InsertBatchExpenses` + the rollover/excel machinery LIVE, so WS-E must not delete them with the classified variant.
-- **Explicit-year fixture inputs + clean-dividing installment values** — the append path reformats dates to `DD/MM/YYYY` (`ParseDateFlexible` fills bare `DD/MM` with `time.Now().Year()`, a year time-bomb).
+- **Non-destructive expense-log pre-flight** — `MkdirAll(dir)` + open only if the file already exists (NO `O_CREATE`). An `O_CREATE` probe would leave an empty `expenses_log.jsonl` and flip the found-only `TestApply_IdempotencyAndFeedback` (`ExpenseLogNotCreated`) red. apply is the first caller that pre-flights a log it may never write (batch-auto always appends).
+- **Pre-flight timing falls out of the data dependency** — classifications probed BEFORE `processEntries` (its dedup index, read there); expense-log probed AFTER, only when `newRows>0`.
+- **count=1 installments (T-21)** — the installment count is discarded upstream at `review.ReadQueue` and absent from `reviewed.json`, so apply cannot expand; count=1 is the faithful port. Logged the under-recording as T-21.
+- **apply's cross-file idempotency is best-effort** — a feedback-write failure after a successful log append can dup on re-run (T-20); pre-flighting both paths makes the common case unreachable.
+- **`Agent` tool has no effort knob** → a single-agent Workflow (`sonnet-max-subagent`) is the only way to run a max/xhigh-effort subagent.
 
 ### Next
 
-- **Review + merge PR #37** (`feat/ws-b-slice3-batch-auto-log-append` → master, 7 commits, suite 15/15 green).
-- **WS-B slice 4 (`apply` → log-append):** keep the log-writing half, delete the workbook-write half — mirror slice 3's failure-honesty + pre-flight pattern.
-- Then WS-D (retire bare-name fallback, T-09) → WS-E (delete dead insert code). PR #36 follow-ups still open: T-14 (model accuracy+speed benchmark), T-19 (enum escape hatch).
+- Review + merge **PR #38** (slice-4 branch, `feat/ws-b-slice4-apply-log-append`).
+- Then **WS-D** (retire bare-name routing fallback, T-09) — resolve the **T-19** escape-hatch gap first (coupled). Then **WS-E** (delete dead insert code, narrow scope).
+- Still open: **T-14** (model accuracy+speed benchmark), **T-20** (expense-log dedup), **T-21** (reviewed-installment under-recording).
 
 ### Gotchas
 
-- q3 is slow (~12 s/classify): the full `-tags=acceptance` batch-auto + type-routing group took **864 s** (15/15 green). Run target tests in groups with `-timeout 30m`, not the 600 s default.
-- **`FeedbackLoggedForInsertedRows` was NOT a clean survivor** — non-dry-run, no taxonomy config, pre-T-13 expected log — and `RequireWorkbook` was SKIPPING it (test workbook absent), which hid the breakage through the entire session-42 sweep. Migrated + renamed `…ForAppendedRows`. Lesson: a "green" batch-auto test may be a SKIP or a `--dry-run` that never exercises the append path — check the fixture's `extra_args` + `RequireWorkbook` before trusting coverage.
-- `feedback.AppendExpense` has **no dedup** on the hash ID → a re-run after a partial failure double-appends (new task T-20).
+- The `O_CREATE` pre-flight trap above would have flipped a green test red at integration with a misleading "file exists" failure pointing away from the cause — caught by the coreB advisor pass, fixed before implementing.
+- `Agent` tool exposes `model` but not `effort`; only `Workflow.agent({effort})` sets it. The new `sonnet-max-subagent` harness wraps that.

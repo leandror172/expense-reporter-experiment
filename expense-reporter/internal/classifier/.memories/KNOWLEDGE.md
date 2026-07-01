@@ -91,3 +91,20 @@ constrains the sampler, so **any** model is forced to emit valid enum members �
   normal (model loading to GPU). Retry policy: first timeout = retry, not rejection
 - **Specificity=1.0 keywords** (e.g., "uber", "spotify") are near-perfect retrievers.
   The few-shot examples they select almost always lead to correct classification
+
+## T-13 Mechanics + Model Default (sessions 41–42, consolidated from QUICK.md 2026-07-01)
+Few-shot examples resolve their canonical path via `ResolveLeaf`+`PathFor` (dropped if
+unresolvable); `Example.TypeHint` comes from the training `source` sheet-name. The system
+prompt renders the 3-level tree. See `.claude/t13-implementation-report.md`.
+Default model unified to `my-classifier-q3` for ALL commands (session 42): the earlier
+qcoder default was reverted because the session-40 "qcoder honors the enum 100%" smoke test
+measured a property of the GBNF grammar, not the model — qcoder (qwen3-coder:30b, 20.7 GB)
+only added CPU-offload latency + load-time 500s on the 12 GB GPU. q3 validated end-to-end
+on the real 112-path taxonomy (Uber→Uber/Taxi 100%) but is slow (~12 s/call); T-14
+benchmarks accuracy+speed across q3/q35/qcoder.
+
+## Training Corpus Expansion (2026-06-20, 5.R4)
+Historical workbook extraction 2022–2025 deduped + merged into
+`training_data_complete.json`: 694→1788 examples, 15 cats / 81 subs, multi-year. Bigger
+few-shot/keyword pool; classifier now emits expense `type`.
+See [[project_workbook_extraction_5r4]].

@@ -1,67 +1,23 @@
 # internal/generate — quick notes
 
 ## Purpose
-Workbook generator (spec v2: `.claude/plans/workbook-generator-spec.md` — the design
-authority). Builds a complete expense workbook (Listas de itens + Receitas + one sheet per
-expense group) from a taxonomy JSON + optional entries JSONL. Regenerate-don't-insert:
-the workbook is a projection of the data, never an insertion target.
+Workbook generator (spec v2: `.claude/plans/workbook-generator-spec.md` — design
+authority). Builds a complete workbook (Listas + Receitas + one sheet per expense type)
+from taxonomy JSON + optional entries JSONL. **Regenerate-don't-insert:** the workbook
+is a projection of the data, never an insertion target.
 
-## Entry points
-- `Generate(Options{TaxonomyPath, EntriesPath, OutPath, Year, Headroom})` — CLI:
-  `generate-workbook -o out.xlsx --taxonomy t.json [--entries log.jsonl --year N --headroom N]`
-- `LoadTaxonomy(taxonomyPath, entriesPath)` — **moved to `internal/taxonomy`** (loader.go):
-  DD/MM dates (year from Options), unknown subcategory → warn+skip exit 0, taxonomy authority on
-  category mismatch. Identity = full path (sheet/category/sub); only an exact full-path repeat
-  errors; a bare name shared by >1 path is *ambiguous* → warn+skip (`[ref:taxonomy-identity-key]`).
+## Entry point
+`Generate(Options{TaxonomyPath, EntriesPath, OutPath, Year, Headroom})` — CLI
+`generate-workbook`. Loading/routing lives in `internal/taxonomy` (see its memories).
 
 ## Key facts
-- **Identifiers English, strings pt-BR** — all user-visible text in `Labels` (labels.go);
-  `Labels.RevenueSheet` ("Receitas") appears inside cross-sheet formulas → schema identifier,
-  renaming it breaks existing references.
-- **Sheet order = taxonomy order** via `layoutRegistry.sheetOrder` — never hardcode the
-  4-sheet list (a hardcoded order once emitted invalid D0/E0 refs for smaller taxonomies).
-- **Block sizing** = max-entries-per-month + headroom (default 0); single-row SUMs valid.
-- **excelize gotchas:** SetCellFormula takes NO leading `=`; stale-formula fix =
+- **Identifiers English, strings pt-BR** — user-visible text in `Labels` (labels.go);
+  `Labels.RevenueSheet` appears inside cross-sheet formulas → renaming breaks refs.
+- **Sheet order = taxonomy order** via `layoutRegistry.sheetOrder` — never hardcode.
+- **excelize:** SetCellFormula takes NO leading `=`; stale-formula fix =
   `UpdateLinkedValue()` + `SetCalcProps(FullCalcOnLoad)`.
-- **Acceptance contract:** `test/fixtures/generate-basic/expected-dump-*` (oracle-frozen);
-  any deliberate output change requires re-freezing + manually reviewing the dump delta.
-  **Cross-fixture coupling:** `summary_sheet.go` uses a single accumulating `b.row` counter —
-  any change to `revenueSection()` row count shifts all expense sections down, so BOTH
-  `generate-basic` AND `generate-income` Listas oracles need re-freezing together.
-- Provenance: port of `.claude/scratch/template-builder/` (SUPERSEDED), converged to the
-  user-blessed data-bearing golden master; Phase B fake dataset lives in
-  `taxonomy_fixture_test.go`.
-
-## Code organization (refactored sessions 30–31, behavior-preserving)
-- **styles.go = vocabulary + registration.** Named constructors say WHAT a cell is
-  (`dataCell`/`centeredLabel`/`grayBanner`/`columnHeader`/`totalRowCell`/`navyBand`/`fillOnly`)
-  over named palette + numfmt constants; `styleRegistrar.family(fill,font)` mints the
-  General/currency/percent trio. Never inline a raw `&excelize.Style{...}` in a sheet builder —
-  extend the vocabulary. `styleSet` fields are English (MonthCorner; TotalText/TotalTextLeft/
-  TotalValue/TotalValueRight — "Text" = non-currency total-row cells, not "Date").
-- **File homes = domain, not first caller.** `util.go` = pure string/formula/ref helpers, no
-  excelize (`cell`, `sheetRef`, `needsQuote`, `sumList/Range`, `lower`, `atoi`). `data_sheet.go`
-  = the data-sheet vocabulary shared by the expense sheets AND Receitas (`writeMonthHeader`,
-  `writeTotalRow(Opt)`, `writeSeparator`, `mergeCategoryLabel`, `freezeC3`, plus the unified
-  `calculateBlockRows` and `writeDataBand`).
-- **One sizing/band path for both sheet kinds:** `calculateBlockRows(row, maxEntries)` and
-  `writeDataBand(..., rowHeight, lastCol)` serve expense + revenue; the ONLY behavioral
-  difference is row height (12.75 expense / 15 revenue). `Subcat` and `RevenueBlock` both expose
-  `Months [12][]Entry` + `MaxEntries()`.
-- **Income is 3-level and symmetric with expenses (WS-C, session 38).** `revenue_sheet.go`
-  `buildRevenueSheet` mirrors `buildExpenseType`: group leaves by `Block` (col A merged across
-  the group, like a Category), each subline leaf = col-B label + data band + per-leaf total row;
-  separators between Block groups. `summary_sheet.go` `writeRevenueBlockGroups` mirrors the
-  expense category rollup: subline pulls → merged col-B Block label → "Total <Block>" row;
-  Receitas grand total = `sumList` of the per-Block totals (non-contiguous), recorded in
-  `revenueTotalRow`. `revenueBlockTotal` gained a `Block` field. Oracle: `generate-income`
-  fixture (data-bearing income freeze); `generate-basic` deliberately kept FLAT (Block==Label)
-  for dual-format coverage.
-- **Method-extraction convention:** sheet-builder bodies read as named delegated steps ≤~15 lines
-  (exemplars: summary_sheet.go `revenueSection`/`balanceBlock`); inline step comments promote to
-  doc comments.
-- **Package stays flat** (Go idiom; styleSet/layoutRegistry/Labels too coupled to subpackage).
-  The one penciled split is **DONE** (2026-06-16, commits 07f395a + 21c6d4e): domain types +
-  loader extracted to `internal/taxonomy`; render config (`dataYear`/`headroomRows`/
-  `perGroupPctRows`) relocated into `generate` first (cycle-free). Builders now reference
-  `taxonomy.Entry`/`taxonomy.ExpenseSheet` etc. via full qualification.
+- **Oracle-frozen acceptance:** output changes re-freeze BOTH generate-basic AND
+  generate-income dumps (shared accumulating `b.row` counter couples them).
+- **Never inline `&excelize.Style{...}`** — extend the styles.go vocabulary.
+  Conventions → KNOWLEDGE.md "Code Organization Conventions".
+- Income is 3-level, symmetric with expenses (WS-C) — KNOWLEDGE.md "Income".
