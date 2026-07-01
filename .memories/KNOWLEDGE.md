@@ -83,3 +83,31 @@ LLM repo; this repo only references model names.
 - Fallback category "Diversos" at high confidence is a real risk — blocked via exclusion list
 - `Transporte` appearing as subcategory at 90% in Uber test case — taxonomy oddity, not urgent
 - Cold-start Ollama timeouts are normal — first-call timeout = retry, not a rejection
+
+## Milestone Log (consolidated from QUICK.md, 2026-07-01)
+- **Sessions 26–29 (PR #27) — workbook generator.** Mapping L1–L3 → spec v2 → Phase A/B
+  convergence (user-blessed data-bearing golden master) → Phase G: `internal/inspect`
+  (dump core), `internal/generate` + `generate-workbook` command; acceptance-first with
+  oracle-frozen dumps (deterministic, no Ollama). Review follow-ups: English identifiers,
+  SOLID extraction, hardcoded sheet-order bug fixed (registry `sheetOrder`). Scratch
+  builder SUPERSEDED. Sessions 30–31: behavior-preserving internal refactor (styles
+  vocabulary, shared helpers, unified block sizing) — see generate/.memories.
+- **Sessions 33–35 — Plan A (T-05) + Plan B (T-04).** Expense type persisted end-to-end;
+  `ExpenseSheet`→`ExpenseType` rename + JSON migration; generator two-tier routing
+  (full-path for typed, transitional bare-name fallback, NFC keys). 5.R4 historical
+  extraction: 2022–2025 old workbooks → corpus 694→1788 + per-year expense logs.
+- **Session 36 — pivot decided:** retire workbook insertion, keep only generation. WS-0
+  diff validated the premise (expenses reproduce; income was the sole gap); WS-0b
+  extracted historical income.
+- **Session 37 — WS-A/T-11 done** (branch `chore/income-extraction-tooling`): `parseDate`
+  accepts `DD/MM`+`DD/MM/YYYY`; year filtering in `scanEntries`; throwaway
+  `merge_year_logs.py` → one multi-year log, byte-identical gate passed all years. Income
+  decisions locked (3-level symmetric income, separate `--income-entries`, signed values).
+  Currency formatting confirmed a no-op (generator already numeric + `R$ #,##0.00`).
+  Open: promote merged log to canonical + retire per-year split (user's call).
+- **Session 38 — WS-C income route done** (model→loader→router→generator).
+- **Sessions 41–42 — T-13:** classifier predicts full path via grammar-enforced 112-enum;
+  default model `my-classifier-q3`; acceptance repairs (see session42-postmortem).
+- **Sessions 43–44 — WS-B done:** batch-auto (slice 3) and apply (slice 4) →
+  log-append via `appender.ExpandAndAppend`; rollover.csv retired; pre-flights + failure
+  honesty. Next: WS-D (retire fallback, T-09), WS-E (delete dead insert code).

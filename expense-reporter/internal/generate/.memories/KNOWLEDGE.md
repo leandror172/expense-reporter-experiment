@@ -225,3 +225,36 @@ grand total is `sumList` of the per-Block totals (non-contiguous cells) recorded
 
 **Ref:** `[ref:generate-income-symmetry]`; see also `[ref:taxonomy-identity-key]`
 <!-- /ref:generate-income-symmetry -->
+
+## Code Organization Conventions (sessions 30–31, consolidated from QUICK.md 2026-07-01)
+Behavior-preserving refactor; oracle dumps unchanged.
+- **styles.go = vocabulary + registration.** Named constructors say WHAT a cell is
+  (`dataCell`/`centeredLabel`/`grayBanner`/`columnHeader`/`totalRowCell`/`navyBand`/
+  `fillOnly`) over named palette + numfmt constants; `styleRegistrar.family(fill,font)`
+  mints the General/currency/percent trio. Never inline a raw `&excelize.Style{...}` in a
+  sheet builder — extend the vocabulary. `styleSet` fields are English (MonthCorner;
+  TotalText/TotalTextLeft/TotalValue/TotalValueRight — "Text" = non-currency total-row
+  cells, not "Date").
+- **File homes = domain, not first caller.** `util.go` = pure string/formula/ref helpers,
+  no excelize (`cell`, `sheetRef`, `needsQuote`, `sumList/Range`, `lower`, `atoi`).
+  `data_sheet.go` = the data-sheet vocabulary shared by expense sheets AND Receitas
+  (`writeMonthHeader`, `writeTotalRow(Opt)`, `writeSeparator`, `mergeCategoryLabel`,
+  `freezeC3`, unified `calculateBlockRows` + `writeDataBand`).
+- **One sizing/band path for both sheet kinds:** the ONLY behavioral difference is row
+  height (12.75 expense / 15 revenue). `Subcat` and `RevenueBlock` both expose
+  `Months [12][]Entry` + `MaxEntries()`.
+- **Method-extraction convention:** sheet-builder bodies read as named delegated steps
+  ≤~15 lines (exemplars: summary_sheet.go `revenueSection`/`balanceBlock`); inline step
+  comments promote to doc comments.
+- **Package stays flat** (Go idiom; styleSet/layoutRegistry/Labels too coupled to
+  subpackage). The one penciled split is DONE (2026-06-16, commits 07f395a + 21c6d4e):
+  domain types + loader → `internal/taxonomy`; render config (`dataYear`/`headroomRows`/
+  `perGroupPctRows`) relocated into `generate` first (cycle-free).
+- **Income symmetry (WS-C, session 38):** `buildRevenueSheet` mirrors `buildExpenseType`
+  (Block groups ≙ Categories, col-A merge, per-leaf total rows, separators);
+  `writeRevenueBlockGroups` mirrors the expense category rollup; Receitas grand total =
+  `sumList` of per-Block totals (non-contiguous) recorded in `revenueTotalRow`;
+  `revenueBlockTotal` gained a `Block` field. `generate-basic` deliberately kept FLAT
+  (Block==Label) for dual-format coverage.
+- **Block sizing** = max-entries-per-month + headroom (default 0); single-row SUMs valid.
+- Phase B fake dataset lives in `taxonomy_fixture_test.go`.

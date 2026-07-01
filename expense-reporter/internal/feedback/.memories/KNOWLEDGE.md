@@ -30,3 +30,11 @@ classifier. See [[project_workbook_extraction_5r4]] for the per-year/year-implic
 constraint and the pending "year adaptation".
 
 **Time:** timestamps are RFC3339 UTC.
+
+**Year handling (updated 2026-07-01).** expenses_log was historically year-implicit
+(`DD/MM`), which forced the 5.R4 multi-year history into per-year files
+`expenses_log-{year}.jsonl` fed to generate via `--year`. WS-A/T-11 (session 37) landed
+"year adaptation": `taxonomy.parseDate` now accepts `DD/MM/YYYY` too and `scanEntries`
+filters by target year, so one merged multi-year log suffices; the append path (WS-B)
+writes explicit `DD/MM/YYYY`. The per-year split is retire-capable — promoting the merged
+log to canonical is still the user's call.
