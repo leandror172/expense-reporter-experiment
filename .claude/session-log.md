@@ -1,42 +1,40 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-02 — Session 45: T-19 sentinel decline path — classifier can answer "none of these"
-**Current Layer:** Log-Append Pivot (WS-B complete; WS-D next, gated on T-14)
+**Current Session:** 2026-07-02 — Session 46: T-14 benchmark — q3 accuracy/calibration measured, --think flag, q35 disqualified
+**Current Layer:** Classifier quality — T-14 done; next T-22/T-23 (calibration) before WS-D/WS-E
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-02 - Session 45: T-19 sentinel decline path — classifier can answer "none of these"
+## 2026-07-02 - Session 46: T-14 benchmark — q3 accuracy/calibration measured, --think flag, q35 disqualified
 
 ### Context
 
-Started from PR #38 review + T-19 discussion; user merged PR #38 early in the session, then the session became T-19 end-to-end: probe → design → TDD implementation → live re-probe → PR #40.
+Started from the session-45 handoff: PR #40 (T-19 sentinel) open, T-14 benchmark next. User is reviewing/merging PR #40 themselves; this session executed T-14 on branch `feat/t14-think-flag` (stacked on the T-19 branch).
 
 ### What Was Done
 
-- Merged PR #38 (WS-B slice 4, apply → log-append) — WS-B is now complete.
-- Live-probed the T-19 risk: 8 out-of-domain items through `classify` on the real 112-path taxonomy. 2/8 wrong picks at exactly 0.85 (would auto-insert); `Diversos` exists in the enum but the model never picked it top-1 — it dumped into the vaguest-*named* leaf instead.
-- Implemented the sentinel decline path (TDD, codegen via my-go-qcoder): `SentinelPath = "NENHUMA DAS OPÇÕES"` appended to the enum + prompt line; `splitResults` maps it to the `Diversos` leaf at FIXED 0.30 confidence; dropped when no Diversos leaf. 4 unit tests in `sentinel_test.go`; full suite green.
-- Live re-probe: both pre-fix 0.85 offenders now route to sentinel → Diversos@0.30 → caught by `auto_insert_excluded`.
-- `config/config.json` gained the `taxonomy_path` key classify has hard-required since T-13 (was missing; probe failed without it).
-- Opened PR #40 (`feat/t19-sentinel-decline` → master, 2 commits).
-- tasks.md updated in-session at user request: T-19 closed with residual-risk note; T-22 (taxonomy descriptions) added.
-- User renamed the taxonomy leaf "alguma coisa sindicato" → "extra sindicato" (it was acting as the model's improvised dumping ground).
+- Built the T-14 benchmark harness (`.claude/scratch/t14-benchmark/`): stratified sample builder (300 items over 80/112 leaves from the 1713 taxonomy-exact corpus entries, leakage-flagged), resumable runner driving the real `classify --json` path, scorer (accuracy/leakage split/calibration/OOD), plus a 20-item synthetic out-of-domain probe set.
+- Ran q3 full benchmark: 63.0% full-path (leaky 71.7% / clean 49.1%), type 77.0%, mean 14.4 s/item. **Calibration broken: 91% of wrong answers at confidence ≥0.85** — the auto-insert gate filters almost nothing. OOD: T-19 sentinel fires only 2/20.
+- feat(classifier): `--think` flag (`Config.NoThink` → `"think":false`, omitted by default) on classify/auto/batch-auto; TDD unit test; commit `e449bdb`.
+- Ran q3 `--think=false` full benchmark: 59.7% at **1.5 s/item (10×)**, grammar intact, zero failures — but OOD sentinel drops to 0/20 with absurd confident picks.
+- q35 disqualified: thinking-on runs 70–240 s/item (unbounded thinking); `think:false` **silently drops the `format` grammar** on Ollama 0.17.5 (verified at API level); `/no_think` soft switch ignored by qwen3.5. Created `my-classifier-q35-nothink` persona on the false /no_think premise — inert, to delete (T-25).
+- qcoder subset skipped as moot (doesn't fit VRAM; nothing suggests a 30B fixes calibration).
+- docs(t14): report `.claude/t14-benchmark-report.md`, harness committed (data JSONLs gitignored — real expense descriptions), classifier QUICK/KNOWLEDGE updated, index.md entries; commit `c009dfe`.
 
 ### Decisions Made
 
-- Sentinel is enum+prompt surface only; the pipeline never sees it — `splitResults` converts it to a normal Diversos result, so no consumer schema changes (review/apply/feedback untouched).
-- Model-reported confidence on a decline is discarded (fixed 0.30): it scores the forced pick, not pre-constraint uncertainty.
-- Residual confident-wrong risk (plausible-looking wrong leaves still return 0.95, e.g. drone→Lazer/Diamba) is a model-accuracy problem, routed to T-14 — do NOT start WS-D before benchmarking.
-- T-22 (type-level taxonomy `description` field for the classifier prompt) logged as an idea coupled to T-14; open design question is the authoring home (export flow vs sidecar) since taxonomy.json regeneration would wipe it.
+- **WS-D gate NOT passed** — blocker is calibration, not accuracy: the 0.85 threshold passes ~91% of errors. Do not retire the bare-name fallback until T-23 resolves the gate.
+- `--think` default stays **true** (accuracy +3.3 pp and the only nonzero sentinel behavior); the 10× fast lane is opt-in per command. Default revisit = T-24, after T-22.
+- T-14 closed with q35/qcoder columns resolved by disqualification rather than measurement; leakage reported both ways rather than held out (production skews recurring).
 
 ### Next
 
-- Review + merge PR #40 (T-19 sentinel).
-- T-14 benchmark, now carrying three riders: model accuracy+speed (q3/q35/qcoder), sentinel-decline rate on out-of-domain items, and the T-22 descriptions A/B.
-- Then WS-D (retire bare-name fallback, T-09) — T-19 structural gap is closed, but gate on T-14 results.
+- T-22 descriptions A/B — harness ready; ~8 min/condition at no-think speed (same 300-item sample; measure full-path, clean-subset, OOD decline rate).
+- T-23 calibration/gate rethink before WS-D.
+- Open PR for `feat/t14-think-flag` (stacked on `feat/t19-sentinel-decline` / PR #40, which the user is merging).
 
 ### Gotchas
 
-- qcoder full-file rewrites time out even warm — the 30B is CPU-offloaded on the 12 GB GPU and ~300 lines of output exceeds the window. Ask for snippet-sized output and splice; also q3 probe runs evict qcoder (real cold-starts between interleaved model use).
-- q3's self-reported confidence has large run-to-run variance on the same items — another argument that auto-insert safety belongs to T-14 calibration, not prompt surgery.
-- User feedback saved to memory: grade `generate_code` output (verdict) before/as it lands in the tree, not after the `output_file` write.
+- qwen3.5 + `think:false` silently drops the `format` grammar (Ollama 0.17.5) — structured output returns free-form JSON with out-of-enum labels; grammar-enforcement claims are qwen3-only for no-think.
+- A client-side timeout does NOT stop Ollama's server-side generation; abandoned grammar+thinking requests queue-starve every later call (GPU pegged) until `systemctl restart ollama`.
+- ollama-bridge `generate_code output_file`/`patch_file` relative paths resolve against the LLM repo (`/mnt/i/workspaces/llm`), not this repo — pass absolute paths.
