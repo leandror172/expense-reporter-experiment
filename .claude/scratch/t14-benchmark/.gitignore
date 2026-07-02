@@ -1,0 +1,5 @@
+# Real expense descriptions — never commit (sample is built from the gitignored corpus)
+*.jsonl
+*.bak
+# The OOD probe set is synthetic and safe
+!ood.jsonl
