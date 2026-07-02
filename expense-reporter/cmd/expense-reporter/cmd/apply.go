@@ -3,46 +3,42 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"expense-reporter/internal/appender"
 	"expense-reporter/internal/apply"
-	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	internalconfig "expense-reporter/internal/config"
-	"expense-reporter/internal/excel"
 	"expense-reporter/internal/feedback"
-	"expense-reporter/internal/models"
 	"expense-reporter/pkg/utils"
 )
 
 var (
-	applyWorkbook string
-	applyYear     int
-	applyDryRun   bool
-	applyBackup   bool
+	applyYear   int
+	applyDryRun bool
 )
 
 var applyCmd = &cobra.Command{
 	Use:   "apply <reviewed.json>",
-	Short: "Apply reviewed entries to workbook and feedback logs",
-	Long: `Ingests the UI's reviewed.json, inserts new rows into the Excel workbook,
-and writes feedback entries to classifications.jsonl.
+	Short: "Apply reviewed entries to the expense log and feedback logs",
+	Long: `Ingests the UI's reviewed.json and appends new confirmed/corrected entries
+to expenses_log.jsonl, recording feedback in classifications.jsonl. The workbook
+is produced separately by generate-workbook.
 
 Pending and skipped entries are ignored. Confirmed and corrected entries already
-present in classifications.jsonl receive feedback-only updates (no workbook write).`,
+present in classifications.jsonl receive feedback-only updates (no new append).`,
 	Args: cobra.ExactArgs(1),
 	RunE: runApply,
 }
 
 func init() {
 	rootCmd.AddCommand(applyCmd)
-	applyCmd.Flags().StringVar(&applyWorkbook, "workbook", "", "Workbook path (overrides config)")
 	applyCmd.Flags().IntVar(&applyYear, "year", time.Now().Year(), "Year for parsing DD/MM dates")
-	applyCmd.Flags().BoolVar(&applyDryRun, "dry-run", false, "Print what would be inserted without writing")
-	applyCmd.Flags().BoolVar(&applyBackup, "backup", false, "Create a timestamped backup of the workbook before writing")
+	applyCmd.Flags().BoolVar(&applyDryRun, "dry-run", false, "Print what would be appended without writing")
 }
 
 func runApply(cmd *cobra.Command, args []string) error {
@@ -62,44 +58,64 @@ func runApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("reading reviewed file: %w", err)
 	}
 
-	workbookPath := applyWorkbook
-	if workbookPath == "" {
-		workbookPath = cfg.WorkbookFilePath()
+	// Pre-flight the classifications log BEFORE processing: processEntries reads it
+	// (the dedup index) and the corrected branch writes to it. Skipped under
+	// --dry-run, which writes nothing.
+	if !applyDryRun {
+		if err := ensureLogWritable(classifPath, true); err != nil {
+			return fmt.Errorf("classifications log not writable: %w\n  Hint: ensure %s is writable, or use --dry-run", err, classifPath)
+		}
 	}
 
-	newRows, corrections, pendingEntries, skippedEntries, err := processEntries(rf.Entries, classifPath)
+	newRows, corrections, pendingEntries, skippedEntries, err := processEntries(rf.Entries, classifPath, applyDryRun)
 	if err != nil {
 		return fmt.Errorf("processing entries: %w", err)
 	}
 
-	var insertedConfirmed, insertedCorrected int
-	var uninsertable []apply.ReviewedEntry
-	if len(newRows) > 0 {
-		if workbookPath == "" {
-			return fmt.Errorf("workbook path not configured (set EXPENSE_WORKBOOK or use --workbook)")
+	// Pre-flight the expense log only when there are new rows to append, and
+	// non-destructively (never create it on probe) — a found-only run appends
+	// nothing and must not leave an empty log behind.
+	if !applyDryRun && len(newRows) > 0 {
+		if expensesLogPath == "" {
+			return fmt.Errorf("expense log path not configured\n  Hint: set expenses_log_path in config, or use --dry-run")
 		}
-		if err := excel.ValidateWorkbook(workbookPath); err != nil {
-			return fmt.Errorf("validating workbook: %w", err)
-		}
-		if applyBackup {
-			backupMgr := batch.NewBackupManager()
-			backupPath, err := backupMgr.CreateBackup(workbookPath)
-			if err != nil {
-				return fmt.Errorf("backup failed: %w", err)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "✓ Backup created: %s\n", filepath.Base(backupPath))
-		}
-		insertedConfirmed, insertedCorrected, uninsertable, err = insertNewRows(newRows, workbookPath, classifPath, expensesLogPath, applyYear, applyDryRun)
-		if err != nil {
-			return fmt.Errorf("inserting new rows: %w", err)
+		if err := ensureLogWritable(expensesLogPath, false); err != nil {
+			return fmt.Errorf("expense log not writable: %w\n  Hint: ensure %s is writable, or use --dry-run", err, expensesLogPath)
 		}
 	}
 
-	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pendingEntries, skippedEntries, insertedConfirmed, insertedCorrected, corrections, uninsertable)
+	appendedConfirmed, appendedCorrected, failed, appendErr := appendNewRows(newRows, classifPath, expensesLogPath, applyYear, applyDryRun)
+
+	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pendingEntries, skippedEntries, appendedConfirmed, appendedCorrected, corrections, failed, applyDryRun)
+	if appendErr != nil {
+		return appendErr
+	}
 	return nil
 }
 
-func processEntries(entries []apply.ReviewedEntry, classifPath string) (newRows, corrections, pendingEntries, skippedEntries []apply.ReviewedEntry, err error) {
+// ensureLogWritable verifies a log file can be appended to. With allowCreate it may
+// create the file (append mode never truncates), used for the classifications log.
+// Without it the probe is NON-DESTRUCTIVE: it ensures the parent dir is writable but
+// opens the file only if it already exists — so pre-flighting a log that may never
+// be written does not leave an empty file behind.
+func ensureLogWritable(path string, allowCreate bool) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	flags := os.O_APPEND | os.O_WRONLY
+	if allowCreate {
+		flags |= os.O_CREATE
+	} else if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil // dir is writable; don't create the file on probe
+	}
+	f, err := os.OpenFile(path, flags, 0o644)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
+func processEntries(entries []apply.ReviewedEntry, classifPath string, dryRun bool) (newRows, corrections, pendingEntries, skippedEntries []apply.ReviewedEntry, err error) {
 	for _, entry := range entries {
 		switch entry.Action {
 		case apply.ActionPending:
@@ -107,7 +123,7 @@ func processEntries(entries []apply.ReviewedEntry, classifPath string) (newRows,
 		case apply.ActionSkipped:
 			skippedEntries = append(skippedEntries, entry)
 		case apply.ActionConfirmed, apply.ActionCorrected:
-			if hErr := handleActiveEntry(entry, classifPath, &newRows, &corrections); hErr != nil {
+			if hErr := handleActiveEntry(entry, classifPath, dryRun, &newRows, &corrections); hErr != nil {
 				return nil, nil, nil, nil, hErr
 			}
 		}
@@ -115,7 +131,7 @@ func processEntries(entries []apply.ReviewedEntry, classifPath string) (newRows,
 	return newRows, corrections, pendingEntries, skippedEntries, nil
 }
 
-func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, newRows, corrections *[]apply.ReviewedEntry) error {
+func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, dryRun bool, newRows, corrections *[]apply.ReviewedEntry) error {
 	prior, found, err := feedback.FindLatestEntry(classifPath, entry.ID)
 	if err != nil {
 		return fmt.Errorf("finding prior entry for %q: %w", entry.ID, err)
@@ -126,168 +142,77 @@ func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, newRows, c
 		return nil
 	}
 
-	// Already in workbook — write corrected feedback only if action is corrected.
+	// Already applied — record corrected feedback only when the action is a
+	// correction. The write is gated on !dryRun (preview only); the row is still
+	// counted in corrections so the summary reflects what would change.
 	if entry.Action == apply.ActionCorrected && entry.Reviewed != nil {
-		predicted := classifier.Result{
-			Subcategory: prior.PredictedSubcategory,
-			Category:    prior.PredictedCategory,
-			Confidence:  prior.Confidence,
-		}
-		corrEntry := feedback.NewCorrectedEntry(
-			entry.Item, entry.Date, entry.Value,
-			predicted, prior.Model,
-			entry.Reviewed.Subcategory, entry.Reviewed.Category,
-		)
-		corrEntry.Type = entry.Reviewed.Type
-		if err := feedback.Append(classifPath, corrEntry); err != nil {
-			return fmt.Errorf("appending corrected entry: %w", err)
+		if !dryRun {
+			predicted := classifier.Result{
+				Subcategory: prior.PredictedSubcategory,
+				Category:    prior.PredictedCategory,
+				Confidence:  prior.Confidence,
+			}
+			corrEntry := feedback.NewCorrectedEntry(
+				entry.Item, entry.Date, entry.Value,
+				predicted, prior.Model,
+				entry.Reviewed.Subcategory, entry.Reviewed.Category,
+			)
+			corrEntry.Type = entry.Reviewed.Type
+			if err := feedback.Append(classifPath, corrEntry); err != nil {
+				return fmt.Errorf("appending corrected entry: %w", err)
+			}
 		}
 		*corrections = append(*corrections, entry)
 	}
-	// confirmed+found: no-op (already logged and in workbook)
+	// confirmed+found: no-op (already applied)
 	return nil
 }
 
-func insertNewRows(newRows []apply.ReviewedEntry, workbookPath, classifPath, expensesLogPath string, year int, dryRun bool) (insertedConfirmed, insertedCorrected int, uninsertable []apply.ReviewedEntry, err error) {
-	subcatRows, err := excel.FindSubcategoryRowBatch(workbookPath, buildSubcatRequests(newRows))
-	if err != nil {
-		return 0, 0, nil, fmt.Errorf("finding subcategory rows: %w", err)
-	}
+func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath string, year int, dryRun bool) (appendedConfirmed, appendedCorrected int, failed []apply.ReviewedEntry, err error) {
+	for _, entry := range newRows {
+		if entry.Reviewed == nil {
+			failed = append(failed, entry)
+			continue
+		}
 
-	emptyReqs, parsedDates, notFound, err := buildEmptyRowRequests(newRows, subcatRows, year)
-	if err != nil {
-		return 0, 0, nil, err
-	}
+		parsedDate, err := utils.ParseDateWithYear(entry.Date, year)
+		if err != nil {
+			failed = append(failed, entry)
+			continue
+		}
 
-	targetRows, err := excel.AllocateEmptyRows(workbookPath, emptyReqs)
-	if err != nil {
-		return 0, 0, nil, fmt.Errorf("allocating empty rows: %w", err)
-	}
-
-	batch, writtenIndices, noSlot := buildExpenseBatch(newRows, parsedDates, subcatRows, emptyReqs, targetRows)
-	uninsertable = append(notFound, noSlot...)
-
-	if dryRun {
-		confirmed, corrected := 0, 0
-		for _, i := range writtenIndices {
-			if newRows[i].Action == apply.ActionConfirmed {
-				confirmed++
+		if dryRun {
+			if entry.Action == apply.ActionConfirmed {
+				appendedConfirmed++
 			} else {
-				corrected++
+				appendedCorrected++
 			}
-		}
-		return confirmed, corrected, uninsertable, nil
-	}
-	if len(batch) > 0 {
-		if err := excel.WriteBatchExpenses(workbookPath, batch); err != nil {
-			return 0, 0, uninsertable, fmt.Errorf("writing batch expenses: %w", err)
-		}
-		confirmed, corrected, err := writeFeedbackForNewRows(newRows, writtenIndices, classifPath, expensesLogPath)
-		return confirmed, corrected, uninsertable, err
-	}
-	return 0, 0, uninsertable, nil
-}
-
-func buildSubcatRequests(newRows []apply.ReviewedEntry) []excel.SubcategoryLookupRequest {
-	reqs := make([]excel.SubcategoryLookupRequest, len(newRows))
-	for i, entry := range newRows {
-		reqs[i] = excel.SubcategoryLookupRequest{
-			SheetName:   entry.Reviewed.Type,
-			Subcategory: entry.Reviewed.Subcategory,
-		}
-	}
-	return reqs
-}
-
-func buildEmptyRowRequests(newRows []apply.ReviewedEntry, subcatRows map[string]map[string]int, year int) ([]excel.EmptyRowRequest, []time.Time, []apply.ReviewedEntry, error) {
-	dates := make([]time.Time, len(newRows))
-	var reqs []excel.EmptyRowRequest
-	var notFound []apply.ReviewedEntry
-	for i, entry := range newRows {
-		t, err := utils.ParseDateWithYear(entry.Date, year)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("parsing date for %q: %w", entry.Item, err)
-		}
-		dates[i] = t
-
-		subcatRow, ok := subcatRows[entry.Reviewed.Type][entry.Reviewed.Subcategory]
-		if !ok {
-			notFound = append(notFound, entry)
 			continue
 		}
-		itemCol, _, _, err := excel.GetMonthColumns(t.Month())
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("getting month columns for %q: %w", entry.Item, err)
-		}
-		reqs = append(reqs, excel.EmptyRowRequest{
-			SheetName:       entry.Reviewed.Type,
-			ColumnLetter:    itemCol,
-			StartRow:        subcatRow + 1,
-			SubcategoryName: entry.Reviewed.Subcategory,
-			ExpenseIndex:    i,
-		})
-	}
-	return reqs, dates, notFound, nil
-}
 
-// buildExpenseBatch iterates by emptyReqs position (matching AllocateEmptyRows key space)
-// and uses req.ExpenseIndex to retrieve the original newRows entry and its parsed date.
-// This is necessary because buildEmptyRowRequests may skip rows (subcategory not in
-// workbook), making emptyReqs shorter than newRows and shifting AllocateEmptyRows keys.
-func buildExpenseBatch(newRows []apply.ReviewedEntry, dates []time.Time, subcatRows map[string]map[string]int, emptyReqs []excel.EmptyRowRequest, targetRows map[int]int) ([]excel.ExpenseWithLocation, []int, []apply.ReviewedEntry) {
-	var batch []excel.ExpenseWithLocation
-	var indices []int
-	var noSlot []apply.ReviewedEntry
-	for pos, req := range emptyReqs {
-		targetRow, ok := targetRows[pos] // pos = position in emptyReqs (AllocateEmptyRows key)
-		if !ok {
-			noSlot = append(noSlot, newRows[req.ExpenseIndex])
+		err = appender.ExpandAndAppend(expensesLogPath, entry.Item, parsedDate, entry.Value, 1, entry.Reviewed.Type, entry.Reviewed.Category, entry.Reviewed.Subcategory)
+		if err != nil {
+			failed = append(failed, entry)
 			continue
 		}
-		i := req.ExpenseIndex // original index into newRows
-		entry := newRows[i]
-		subcatRow := subcatRows[entry.Reviewed.Type][entry.Reviewed.Subcategory]
-		itemCol, _, _, _ := excel.GetMonthColumns(dates[i].Month())
-		exp := &models.Expense{
-			Item:        entry.Item,
-			Date:        dates[i],
-			Value:       entry.Value,
-			Subcategory: entry.Reviewed.Subcategory,
-		}
-		loc := &models.SheetLocation{
-			SheetName:   entry.Reviewed.Type,
-			Category:    entry.Reviewed.Category,
-			SubcatRow:   subcatRow,
-			TargetRow:   targetRow,
-			MonthColumn: itemCol,
-		}
-		batch = append(batch, excel.ExpenseWithLocation{Expense: exp, Location: loc})
-		indices = append(indices, i)
-	}
-	return batch, indices, noSlot
-}
 
-func writeFeedbackForNewRows(newRows []apply.ReviewedEntry, indices []int, classifPath, expensesLogPath string) (insertedConfirmed, insertedCorrected int, err error) {
-	for _, i := range indices {
-		entry := newRows[i]
-		fbEntry, isConfirmed := buildFeedbackEntry(entry)
-		if isConfirmed {
-			insertedConfirmed++
+		if entry.Action == apply.ActionConfirmed {
+			appendedConfirmed++
 		} else {
-			insertedCorrected++
+			appendedCorrected++
 		}
+
+		fbEntry, _ := buildFeedbackEntry(entry)
 		if err := feedback.Append(classifPath, fbEntry); err != nil {
-			return insertedConfirmed, insertedCorrected, fmt.Errorf("appending feedback: %w", err)
-		}
-		if expensesLogPath != "" {
-			expEntry := feedback.NewExpenseEntry(entry.Item, entry.Date, entry.Value, entry.Reviewed.Subcategory, entry.Reviewed.Category)
-			expEntry.Type = entry.Reviewed.Type
-			if err := feedback.AppendExpense(expensesLogPath, expEntry); err != nil {
-				return insertedConfirmed, insertedCorrected, fmt.Errorf("appending expense log: %w", err)
-			}
+			fmt.Fprintf(os.Stderr, "  FEEDBACK ERROR %q: %v\n", entry.Item, err)
 		}
 	}
-	return insertedConfirmed, insertedCorrected, nil
+
+	if len(failed) > 0 {
+		err = fmt.Errorf("%d row(s) failed to append to the expense log", len(failed))
+	}
+
+	return appendedConfirmed, appendedCorrected, failed, err
 }
 
 func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {
@@ -312,11 +237,15 @@ func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {
 	return fbEntry, false
 }
 
-func printSummary(w io.Writer, source string, total int, pendingEntries, skippedEntries []apply.ReviewedEntry, insertedConfirmed, insertedCorrected int, corrections, uninsertable []apply.ReviewedEntry) {
-	inserted := insertedConfirmed + insertedCorrected
-	fmt.Fprintf(w, "Applied %s (%d entries)\n\n", source, total)
-	fmt.Fprintf(w, "Inserted:     %d rows (%d confirmed, %d corrected)\n", inserted, insertedConfirmed, insertedCorrected)
-	fmt.Fprintf(w, "Uninsertable: %d rows\n", len(uninsertable))
+func printSummary(w io.Writer, source string, total int, pendingEntries, skippedEntries []apply.ReviewedEntry, appendedConfirmed, appendedCorrected int, corrections, failed []apply.ReviewedEntry, dryRun bool) {
+	appended := appendedConfirmed + appendedCorrected
+	tag, appendedLabel := "", "Appended:    "
+	if dryRun {
+		tag, appendedLabel = " (dry-run)", "Would append:"
+	}
+	fmt.Fprintf(w, "Applied %s (%d entries)%s\n\n", source, total, tag)
+	fmt.Fprintf(w, "%s %d rows (%d confirmed, %d corrected)\n", appendedLabel, appended, appendedConfirmed, appendedCorrected)
+	fmt.Fprintf(w, "Failed:       %d rows\n", len(failed))
 	fmt.Fprintf(w, "Skipped:      %d rows\n", len(skippedEntries))
 	fmt.Fprintf(w, "Pending:      %d rows\n", len(pendingEntries))
 
@@ -335,18 +264,21 @@ func printSummary(w io.Writer, source string, total int, pendingEntries, skipped
 		}
 	}
 
-	if len(uninsertable) > 0 {
-		fmt.Fprintf(w, "\n⚠  %d rows could not be inserted (subcategory not found or no empty slot):\n", len(uninsertable))
-		for _, u := range uninsertable {
-			fmt.Fprintf(w, "   %s (%s, R$%.2f) — %s / %s [%s]\n",
-				u.Item, u.Date, u.Value, u.Reviewed.Category, u.Reviewed.Subcategory, u.Reviewed.Type)
+	if len(failed) > 0 {
+		fmt.Fprintf(w, "\n⚠  %d rows could not be appended to the expense log:\n", len(failed))
+		for _, u := range failed {
+			cat, sub, typ := "?", "?", "?"
+			if u.Reviewed != nil {
+				cat, sub, typ = u.Reviewed.Category, u.Reviewed.Subcategory, u.Reviewed.Type
+			}
+			fmt.Fprintf(w, "   %s (%s, R$%.2f) — %s / %s [%s]\n", u.Item, u.Date, u.Value, cat, sub, typ)
 		}
 	}
 
 	if len(corrections) == 0 {
 		return
 	}
-	fmt.Fprintf(w, "\n⚠  %d already-inserted rows were corrected — workbook not updated:\n", len(corrections))
+	fmt.Fprintf(w, "\n⚠  %d already-applied rows were corrected — feedback logged, no expense-log change:\n", len(corrections))
 	for _, c := range corrections {
 		fmt.Fprintf(w, "   %s (%s, R$%.2f) %s → %s  [logged]\n",
 			c.Item, c.Date, c.Value, c.Predicted.Subcategory, c.Reviewed.Subcategory)

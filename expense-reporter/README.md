@@ -116,7 +116,12 @@ Takes the `classified.csv` output from `batch-auto` and bakes it into a self-con
 embedded JSON — open it directly in a browser, no server needed.
 
 **Workflow position:** `batch-auto` → `classified.csv` → **`review`** → `review.html`
-→ (browser review) → `reviewed.json` → future `apply` command
+→ (browser review) → `reviewed.json` → `apply` (appends to `expenses_log.jsonl`)
+→ `generate-workbook`
+
+> Since the WS-B log-append pivot, `apply` (and `auto`/`batch-auto`) no longer write the
+> workbook directly — they append typed entries to `expenses_log.jsonl`, and
+> `generate-workbook` is the sole workbook writer.
 
 In the browser:
 

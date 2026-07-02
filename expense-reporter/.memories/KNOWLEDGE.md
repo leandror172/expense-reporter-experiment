@@ -13,10 +13,10 @@ Five user-facing commands, each building on the previous:
 appends anything. `batch-auto` is the production workflow.
 **Implication:** `auto` and `batch-auto` share the same classifier + decision logic.
 The only difference is input source (args vs CSV) and output format.
-**Log-append pivot (WS-B, 2026-06–30):** since the session-36 pivot, `add`/`auto`/`batch-auto` no
+**Log-append pivot (WS-B, 2026-06–30):** since the session-36 pivot, `add`/`auto`/`batch-auto`/`apply` no
 longer touch the workbook — they append typed entries to `expenses_log.jsonl`, and `generate-workbook`
 is the single writer (see the dedicated section below). Plain `batch` (manual, non-classifier) still
-inserts into the workbook.
+inserts into the workbook. WS-B is **complete** (slices 1–4); next is WS-D (retire bare-name fallback, T-09).
 
 ## Batch Pipeline Optimization (2026-03)
 `workflow.InsertBatchExpenses` opens the workbook once, inserts all rows, saves once.
@@ -34,7 +34,12 @@ excel machinery is NOT dead and must not be deleted with the classified variant.
 
 ## Log-Append Path (WS-B, 2026-06–30)
 `internal/appender.ExpandAndAppend(logPath, item, date time.Time, perInstallment, count, type, category, sub)`
-is the single append-time writer shared by `add`/`auto`/`batch-auto`. It expands installments into N dated
+is the single append-time writer shared by `add`/`auto`/`batch-auto`/**`apply`** (slice 4, session 44).
+`apply` calls it with **count=1** (the reviewed value is a single number; the installment count is lost
+upstream at `review.ReadQueue` — T-21) and flips the write order **log-first, feedback-second** with a
+**non-destructive** both-path pre-flight: the classifications log (its dedup index) is probed before
+`processEntries`, the expense log only when there are new rows and WITHOUT `O_CREATE` (an `O_CREATE` probe
+would leave an empty log and break the found-only `ExpenseLogNotCreated` acceptance test). It expands installments into N dated
 `ExpenseEntry` lines (`addMonths`; cross-year installments carry their **real next-year date** — there is no
 `rollover.csv` anymore) and writes via `feedback.AppendExpense` (plain `O_APPEND`, **no dedup on the hash ID**).
 `batch-auto`'s `appendClassified` (cmd) iterates auto-rows, delegates each to `appendOneRow`, and on success
@@ -220,3 +225,55 @@ entry contract (entries carry only a bare `subcategory` today), the classifier, 
 and entry-fed fixtures. Until then the ambiguity guard keeps entry-fed generation safe (never a
 silent misroute). The real `config/taxonomy.json` (112 subs) is gitignored; the fixture is the
 test input. Fidelity verified by CSV↔JSON symmetric-difference (empty) + oracle dumps unchanged.
+
+## Milestone Log (consolidated from QUICK.md, 2026-07-01)
+Session-by-session detail formerly kept in QUICK.md Status. Plans live in `.claude/plans/`.
+
+**Phase G / sessions 29–31 — workbook generator.** `internal/inspect` = structural-dump core
+(lifted from cmd/workbook-inspect, now a thin wrapper); `internal/generate` = spec-v2 builder:
+`Generate(Options)`, taxonomy JSON (spec §1.1) + entries JSONL loader (DD/MM dates, unknown
+subcat → warn+skip exit 0, taxonomy authority), English identifiers (pt-BR strings only in
+`Labels`), sheet order derived from taxonomy via registry `sheetOrder` (hardcoded 4-sheet
+order bug fixed). Scratch builder SUPERSEDED. Sessions 30–31: behavior-preserving refactor
+(styles vocabulary, shared helpers → util.go/data_sheet.go, unified block sizing).
+
+**2026-06-16, PR #27 — `internal/taxonomy` extracted.** Pure input layer (domain types +
+loader) split from generate; identity = **full path**, not bare leaf name —
+`[ref:taxonomy-identity-key]`. Real `config/taxonomy.json` authored (112 subs, gitignored).
+
+**2026-06-19, PRs #29+#30 — Plan A (T-05) + Plan B (T-04).** Expense **type** persisted
+end-to-end (feedback.Entry/ExpenseEntry carry `Type`, set on the apply path);
+`ExpenseSheet`→`ExpenseType` rename + JSON key `sheets`→`types`/`sheet`→`type` (legacy
+read-compat in apply); generator routes typed entries by full path (two-tier: `byPath` typed,
+transitional bare-name `byName` + ambiguous-skip for type-less), NFC-normalized keys.
+`backfill-type.py` recovers type into existing logs.
+
+**Session 42 (2026-06-29) — T-13 follow-ups (PR #36).** (1) Classifier default reverted
+qcoder→`my-classifier-q3` for all commands — enum validity is GRAMMAR-enforced (Ollama
+`format`→GBNF), not model-dependent; qcoder (20.7 GB) doesn't fit the 12 GB GPU and bought
+nothing; q3 validated end-to-end but slow (~12 s/call). (2) T-15 slice 1: predicted `type`
+surfaced in `CandidateOutput`/`AddOutput` JSON (`type,omitempty`) — was dropped at the MCP
+boundary. (3) Acceptance regressions repaired (T-17+T-18, 13 tests): T-13 made
+`taxonomy_path` mandatory but build-tagged tests hid it; plus a pre-existing `correct`
+seed-id bug (T-11 date normalization). See `.claude/session42-postmortem.md`.
+
+**Session 43 (2026-06-30) — WS-B slice 3: batch-auto → log-append.** Auto-rows append to
+`expenses_log.jsonl` via new `appendClassified`/`appendOneRow` →
+`appender.ExpandAndAppend` (installments expand at append time; cross-year installments
+carry their real next-year date — **rollover.csv retired**). Failure honesty: an append
+error downgrades the row (AutoInserted=false) → honest summary + non-zero exit + row lands
+in review.csv (CSVs written AFTER append). Pre-flight `preflightLogPath` fails fast on an
+unwritable log before classifying. `--dry-run` = classify + CSVs, no append.
+`workflow.InsertBatchExpensesFromClassified` deprecated (kept for WS-E delete); plain
+`batch` keeps `InsertBatchExpenses` live. `logExpense` deleted; `auto` vocabulary renamed
+(`✓ Appended`). Plan: `.claude/plans/ws-b-slice3-batch-auto-log-append.md`.
+
+**Session 44 (2026-07-01) — WS-B slice 4: apply → log-append. WS-B COMPLETE.** New
+confirmed/corrected rows append via `appender.ExpandAndAppend` (count=1; T-21 =
+reviewed-installment under-recording deferred). Write-order flipped (log-first,
+feedback-second, downgrade-on-log-failure); `dryRun` gates the found+corrected feedback
+write (leak fix); non-destructive both-path pre-flight (classifications before
+`processEntries`; expense-log only when newRows>0, NO `O_CREATE`). Deleted
+`insertNewRows`+excel-allocation pipeline, `--workbook`/`--backup`, the `uninsertable`
+concept, dead `IsInsertable`/`IsAlreadyHandled`. Shared excel helpers stay live under plain
+`batch`. Plan: `.claude/plans/ws-b-slice4-apply-log-append.md`.

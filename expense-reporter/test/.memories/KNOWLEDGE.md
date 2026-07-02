@@ -152,3 +152,55 @@ validated the `sheets`→`types` fix. Design decisions worth reusing:
 - **Routing assertion without a frozen oracle:** for a single-value routing check, scan the
   generated sheet's cells for the entry's unique value (inline excelize) rather than
   `WorkbookStructureMatches` — cheaper than freezing/maintaining dump fixtures.
+
+## WS-B Acceptance Retarget — batch-auto & apply → expense log (sessions 43–44, consolidated from QUICK.md 2026-07-01)
+Both commands stopped writing the workbook; acceptance now asserts the durable log.
+- `verify.ExpenseLogMatches(<fixDir>/expected-expenses_log.jsonl)` — field-subset, line-exact,
+  skips id/timestamp. `batch-auto-typed` = canonical NON-dry-run append anchor (workbook gate
+  dropped). `batch-auto-installments` asserts the N expanded dated log lines.
+  `batch-auto-rollover` INVERTED → `verify.NoRolloverFileCreated()` + next-year dates in the
+  log (rollover.csv retired).
+- **Unit-vs-acceptance split:** append-failure downgrade is a unit test
+  (`cmd.TestAppendClassified_DowngradesRowOnAppendFailure`, `cmd.TestAppendNewRows_*`) because
+  the pre-flight makes an acceptance-level append failure unreachable. Acceptance covers the
+  pre-flight deterministically (no RequireOllama): parent-is-a-file path →
+  `TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification`,
+  `TestApply_UnwritableLogPath_FailsFast`, `TestApply_UnwritableClassificationsPath_FailsFast`.
+- Apply (slice 4): `TestApply_IdempotencyAndFeedback` asserts summary substring
+  `"no expense-log change"` + `ExpenseLogNotCreated` (found-only → no append).
+  `TestApply_DryRunWritesNothing` pins the found+corrected feedback leak (both logs
+  byte-unchanged). `type_routing_cycle_test.go` step 3 dropped `buildSkeletonWorkbook`
+  (apply needs no workbook). PR #35 naming sweep applied.
+**Why:** JSONL log is the single source of truth (retire-insertion pivot); asserting workbook
+rows tested a writer that no longer exists.
+
+## Generate-Workbook Fixture Sub-Format (session 29+, consolidated from QUICK.md)
+`generate-basic` / `generate-income` use taxonomy.json + entries.jsonl + oracle-frozen
+`expected-dump-*/` — NOT config.json+input.csv (see PATTERNS.md "Generate-Workbook Fixture
+Sub-Format"). Assertions: `verify.WorkbookStructureMatches(expectedDumpDir)` over
+`internal/inspect` dumps. `generate-income` (WS-C, session 38) covers the 3-level income
+route: nested `incomeCategories` + `income-entries.jsonl` (extractor schema) via
+`--income-entries`; asserts signed sums (Salário Jan 4150 etc.) + per-Block Listas rollup.
+**Coupling:** changing the income/summary render re-freezes BOTH `generate-income` AND
+`generate-basic` data+skeleton oracles (income summary shifts Listas rows).
+
+## type-routing-cycle — Incremental Full-Cycle Suite (details, consolidated from QUICK.md)
+batch-auto→review→apply→generate-workbook; each test = one CLI step folding prior steps into
+its Given; the last seeds the cumulative typed log and runs only generate-workbook, asserting
+the ambiguous leaf (Dentista ∈ Variáveis+Extras) routes by type. T1 is Ollama-gated (~38s);
+T2–T4 deterministic (<0.05s). apply's skeleton workbook (pre-slice-4) was built hermetically
+via generate-workbook in the Given — dropped in slice 4.
+
+## Traps That Masked Regressions (sessions 42–43, consolidated from QUICK.md)
+- **Explicit-year time-bomb:** the append path reformats dates to `DD/MM/YYYY`
+  (`ParseDateFlexible` fills bare `DD/MM` with `time.Now().Year()`). Non-dry-run
+  batch-auto/auto/add fixtures MUST use `DD/MM/YYYY` inputs + explicit-year expected logs, and
+  clean-dividing installment values (`90,00/3`→30) to avoid float JSON drift.
+- **Dry-run hides the append path:** fixtures with `--dry-run` in `extra_args`
+  (batch-auto-basic/exclusions/type-routing-cycle) never append — they prove CSV production
+  only. `RequireWorkbook` also SKIPs when the test workbook is absent — that hid a stale
+  non-dry-run feedback test through the whole session-42 sweep.
+- **Build tag hides breakage:** T-13 made `taxonomy_path` mandatory but many Givens never set
+  it; `go test ./...` stayed green. Session 42 repaired 13 tests; fixture taxonomy must cover
+  the input CSV's expected leaves (accuracy tests compare subcategory only).
+  [[feedback_rename_json_tag_acceptance]]

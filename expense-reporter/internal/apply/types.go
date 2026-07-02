@@ -38,25 +38,6 @@ type ReviewedLocation struct {
 	Subcategory string `json:"subcategory"`
 }
 
-// IsInsertable returns true when Action is confirmed or corrected AND Reviewed is non-nil
-func (e *ReviewedEntry) IsInsertable() bool {
-	if e.Reviewed == nil {
-		return false
-	}
-
-	switch e.Action {
-	case ActionConfirmed, ActionCorrected:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsAlreadyHandled returns true when priorFound is true (idempotency guard helper)
-func (e *ReviewedEntry) IsAlreadyHandled(priorFound bool) bool {
-	return priorFound
-}
-
 // UnmarshalJSON handles backward compatibility: legacy "sheet" key → Type field.
 func (l *ReviewedLocation) UnmarshalJSON(b []byte) error {
 	type alias ReviewedLocation // avoid recursion
