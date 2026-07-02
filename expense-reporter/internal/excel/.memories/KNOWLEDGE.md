@@ -89,3 +89,18 @@ Mapping was done on `Planilha_Normalized_Final.xlsx` (the target shape). The run
 but the Normalized one is the canonical generator target.
 **Implication:** When implementing the generator, target the Normalized layout; don't assume the
 configured workbook is identical in every styled detail.
+
+## Reference Sheet Columns & Dead Code (session 25, consolidated from QUICK.md 2026-07-01)
+`LoadReferenceSheet` reads 6 columns: A sheet name (mainType), B category,
+C subcategory, D subcategory header row → `SubcategoryMapping.RowNumber`, F TOTAL row →
+`SubcategoryMapping.TotalRow`. **Columns D and F are never read back after loading** —
+confirmed across all commands; the write path always resolves row numbers dynamically via
+`FindSubcategoryRowBatch` (scans column B of the data sheet). New reference sheet entries
+only need A, B, C. `CapacityInfo` and `GetSubcategoryCapacity` (reader.go) consume
+`TotalRow` but are dead code — no callers outside reader.go as of session 25 (2026-06-08).
+
+## Subcategory Boundary Detection (session 25 fix)
+`AllocateEmptyRows`/`FindNextEmptyRow` scan column B; a non-empty value differing from the
+current subcategory is a section boundary. **Must `strings.TrimSpace` both sides** —
+workbook cells often carry trailing spaces (e.g. `"Escritório "`), which without trimming
+falsely trigger "section full".
