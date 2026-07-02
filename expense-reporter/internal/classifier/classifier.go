@@ -34,6 +34,7 @@ type Config struct {
 	DataDir      string // path to data/classification/
 	FeedbackPath string // path to classifications.jsonl (optional; skipped when empty)
 	TopN         int    // number of candidates to return (default: 3)
+	NoThink      bool   // send "think": false — disables qwen thinking tokens (default: model decides)
 }
 
 // Classify sends item/value/date to Ollama and returns top-N full-path candidates.
@@ -144,6 +145,7 @@ type ollamaRequest struct {
 	Model    string          `json:"model"`
 	Stream   bool            `json:"stream"`
 	Format   json.RawMessage `json:"format"`
+	Think    *bool           `json:"think,omitempty"`
 	Messages []ollamaMessage `json:"messages"`
 }
 
@@ -206,6 +208,10 @@ func buildRequest(item string, value float64, date string, sheets []taxonomy.Exp
 		Stream:   false,
 		Format:   buildResponseSchema(enum),
 		Messages: messages,
+	}
+	if cfg.NoThink {
+		think := false
+		req.Think = &think
 	}
 	data, err := json.Marshal(req)
 	if err != nil {

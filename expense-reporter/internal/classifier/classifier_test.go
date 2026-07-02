@@ -292,3 +292,24 @@ func TestBuildRequest_FewShot(t *testing.T) {
 func TestClassify_PathWithSlashSubcategoryRoundTrips(t *testing.T) {
 	assert.True(t, strings.Contains("Variáveis/Transporte/Uber/Taxi", "Uber/Taxi"))
 }
+
+// T-14: the "think" field must be absent by default (preserves current behavior for
+// every model) and serialized as false when NoThink is set — qwen3/qwen3.5 honor the
+// API-level think switch; the /no_think prompt tag is ignored by qwen3.5.
+func TestBuildRequest_ThinkField(t *testing.T) {
+	sheets := testSheets()
+	enum, err := taxonomy.PathEnum(sheets)
+	require.NoError(t, err)
+
+	t.Run("default omits think", func(t *testing.T) {
+		body, err := buildRequest("Item", 10.0, "20/05", sheets, enum, nil, Config{Model: "m", TopN: 3})
+		require.NoError(t, err)
+		assert.NotContains(t, string(body), `"think"`)
+	})
+
+	t.Run("NoThink sends think false", func(t *testing.T) {
+		body, err := buildRequest("Item", 10.0, "20/05", sheets, enum, nil, Config{Model: "m", TopN: 3, NoThink: true})
+		require.NoError(t, err)
+		assert.Contains(t, string(body), `"think":false`)
+	})
+}

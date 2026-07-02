@@ -56,7 +56,10 @@ func init() {
 	batchAutoCmd.Flags().IntVar(&batchAutoTopN, "top", 3, "Number of classification candidates")
 	batchAutoCmd.Flags().BoolVar(&batchAutoDryRun, "dry-run", false, "Classify and write CSVs without inserting into workbook")
 	batchAutoCmd.Flags().StringVar(&batchAutoOutputDir, "output-dir", "", "Directory for output CSV files (default: same as input file)")
+	batchAutoCmd.Flags().BoolVar(&batchAutoThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
 }
+
+var batchAutoThink bool
 
 // classifiedRow holds the result of classifying a single input row.
 type classifiedRow struct {
@@ -95,6 +98,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		DataDir:      batchAutoDataDir,
 		FeedbackPath: appCfg.ClassificationsFilePath(),
 		TopN:         batchAutoTopN,
+		NoThink:      !batchAutoThink,
 	}
 
 	// Log-append pivot: the expense log is now the only durable persistence, so
