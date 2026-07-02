@@ -1,40 +1,42 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-06-30 — Session 44: WS-B slice 4 — apply → log-append
-**Current Layer:** Log-append pivot (WS-B COMPLETE, slices 1–4) → next WS-D
+**Current Session:** 2026-07-02 — Session 45: T-19 sentinel decline path — classifier can answer "none of these"
+**Current Layer:** Log-Append Pivot (WS-B complete; WS-D next, gated on T-14)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-06-30 - Session 44: WS-B slice 4 — apply → log-append
+## 2026-07-02 - Session 45: T-19 sentinel decline path — classifier can answer "none of these"
 
 ### Context
 
-Started by reviewing PR #37 (WS-B slice 3, since merged); then planned and shipped WS-B slice 4 (`apply` → log-append) end-to-end via an acceptance-first Sonnet subagent for the tests and a local-model core, mostly unattended with commits between tasks.
+Started from PR #38 review + T-19 discussion; user merged PR #38 early in the session, then the session became T-19 end-to-end: probe → design → TDD implementation → live re-probe → PR #40.
 
 ### What Was Done
 
-- Wrote + advisor-reviewed the slice-4 plan (`.claude/plans/ws-b-slice4-apply-log-append.md`) across TWO advisor passes: initial design, then a pre-implementation coreB pass that caught the non-destructive-pre-flight trap.
-- Created `.claude/workflows/sonnet-max-subagent.js` — a single-agent Workflow harness exposing the per-agent `effort` knob the `Agent` tool lacks (max/xhigh Sonnet subagent).
-- Subagent A (Sonnet, acceptance-first) wrote 5 slice-4 acceptance tests RED-first (test/ tree only); independently tree-verified (git status + rerun, confirmed RED for real behavioural reasons).
-- Core B (Ollama `my-go-qcoder`, verdict 2): `appendNewRows` (log-first/feedback-second/downgrade-on-append-failure + nil-guard), `dryRun` gate on the found+corrected feedback write, non-destructive both-path pre-flight; deleted `insertNewRows`+excel-allocation pipeline, `--workbook`/`--backup`, `uninsertable`, dead `IsInsertable`/`IsAlreadyHandled`; 2 unit tests.
-- Full `-tags=acceptance` suite green (`ok 1020s`, 0 fail) + full unit suite green. Opened **PR #38**.
-- Updated memory (apply/feedback/test QUICK, expense-reporter QUICK+KNOWLEDGE) + README.
+- Merged PR #38 (WS-B slice 4, apply → log-append) — WS-B is now complete.
+- Live-probed the T-19 risk: 8 out-of-domain items through `classify` on the real 112-path taxonomy. 2/8 wrong picks at exactly 0.85 (would auto-insert); `Diversos` exists in the enum but the model never picked it top-1 — it dumped into the vaguest-*named* leaf instead.
+- Implemented the sentinel decline path (TDD, codegen via my-go-qcoder): `SentinelPath = "NENHUMA DAS OPÇÕES"` appended to the enum + prompt line; `splitResults` maps it to the `Diversos` leaf at FIXED 0.30 confidence; dropped when no Diversos leaf. 4 unit tests in `sentinel_test.go`; full suite green.
+- Live re-probe: both pre-fix 0.85 offenders now route to sentinel → Diversos@0.30 → caught by `auto_insert_excluded`.
+- `config/config.json` gained the `taxonomy_path` key classify has hard-required since T-13 (was missing; probe failed without it).
+- Opened PR #40 (`feat/t19-sentinel-decline` → master, 2 commits).
+- tasks.md updated in-session at user request: T-19 closed with residual-risk note; T-22 (taxonomy descriptions) added.
+- User renamed the taxonomy leaf "alguma coisa sindicato" → "extra sindicato" (it was acting as the model's improvised dumping ground).
 
 ### Decisions Made
 
-- **Non-destructive expense-log pre-flight** — `MkdirAll(dir)` + open only if the file already exists (NO `O_CREATE`). An `O_CREATE` probe would leave an empty `expenses_log.jsonl` and flip the found-only `TestApply_IdempotencyAndFeedback` (`ExpenseLogNotCreated`) red. apply is the first caller that pre-flights a log it may never write (batch-auto always appends).
-- **Pre-flight timing falls out of the data dependency** — classifications probed BEFORE `processEntries` (its dedup index, read there); expense-log probed AFTER, only when `newRows>0`.
-- **count=1 installments (T-21)** — the installment count is discarded upstream at `review.ReadQueue` and absent from `reviewed.json`, so apply cannot expand; count=1 is the faithful port. Logged the under-recording as T-21.
-- **apply's cross-file idempotency is best-effort** — a feedback-write failure after a successful log append can dup on re-run (T-20); pre-flighting both paths makes the common case unreachable.
-- **`Agent` tool has no effort knob** → a single-agent Workflow (`sonnet-max-subagent`) is the only way to run a max/xhigh-effort subagent.
+- Sentinel is enum+prompt surface only; the pipeline never sees it — `splitResults` converts it to a normal Diversos result, so no consumer schema changes (review/apply/feedback untouched).
+- Model-reported confidence on a decline is discarded (fixed 0.30): it scores the forced pick, not pre-constraint uncertainty.
+- Residual confident-wrong risk (plausible-looking wrong leaves still return 0.95, e.g. drone→Lazer/Diamba) is a model-accuracy problem, routed to T-14 — do NOT start WS-D before benchmarking.
+- T-22 (type-level taxonomy `description` field for the classifier prompt) logged as an idea coupled to T-14; open design question is the authoring home (export flow vs sidecar) since taxonomy.json regeneration would wipe it.
 
 ### Next
 
-- Review + merge **PR #38** (slice-4 branch, `feat/ws-b-slice4-apply-log-append`).
-- Then **WS-D** (retire bare-name routing fallback, T-09) — resolve the **T-19** escape-hatch gap first (coupled). Then **WS-E** (delete dead insert code, narrow scope).
-- Still open: **T-14** (model accuracy+speed benchmark), **T-20** (expense-log dedup), **T-21** (reviewed-installment under-recording).
+- Review + merge PR #40 (T-19 sentinel).
+- T-14 benchmark, now carrying three riders: model accuracy+speed (q3/q35/qcoder), sentinel-decline rate on out-of-domain items, and the T-22 descriptions A/B.
+- Then WS-D (retire bare-name fallback, T-09) — T-19 structural gap is closed, but gate on T-14 results.
 
 ### Gotchas
 
-- The `O_CREATE` pre-flight trap above would have flipped a green test red at integration with a misleading "file exists" failure pointing away from the cause — caught by the coreB advisor pass, fixed before implementing.
-- `Agent` tool exposes `model` but not `effort`; only `Workflow.agent({effort})` sets it. The new `sonnet-max-subagent` harness wraps that.
+- qcoder full-file rewrites time out even warm — the 30B is CPU-offloaded on the 12 GB GPU and ~300 lines of output exceeds the window. Ask for snippet-sized output and splice; also q3 probe runs evict qcoder (real cold-starts between interleaved model use).
+- q3's self-reported confidence has large run-to-run variance on the same items — another argument that auto-insert safety belongs to T-14 calibration, not prompt surgery.
+- User feedback saved to memory: grade `generate_code` output (verdict) before/as it lands in the tree, not after the `output_file` write.
