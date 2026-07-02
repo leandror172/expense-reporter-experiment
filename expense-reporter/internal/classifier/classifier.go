@@ -11,6 +11,11 @@ import (
 	"strings"
 )
 
+// SentinelPath is a synthetic enum member appended to the taxonomy path enum so the
+// grammar-constrained model can decline when no real path fits (T-19). It is mapped
+// downstream to the Diversos leaf at a fixed low confidence.
+const SentinelPath = "NENHUMA DAS OPÇÕES"
+
 // Result is a single classification candidate. Since T-13 the model predicts a
 // full taxonomy path, so a Result carries the expense Type alongside category and
 // subcategory — every field comes from one validated path, never from independent
@@ -60,7 +65,8 @@ func Classify(item string, value float64, date string, sheets []taxonomy.Expense
 
 	examples := resolveExamplePaths(selectExamples(item, cfg), sheets, pm)
 
-	body, err := buildRequest(item, value, date, sheets, pm.Enum(), examples, cfg)
+	enum := append(append([]string{}, pm.Enum()...), SentinelPath)
+	body, err := buildRequest(item, value, date, sheets, enum, examples, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +81,8 @@ func Classify(item string, value float64, date string, sheets []taxonomy.Expense
 		return nil, fmt.Errorf("Ollama returned status %d", resp.StatusCode)
 	}
 
-	return parseResponse(resp.Body, pm, cfg.TopN)
+	fallback, hasFallback := sentinelFallback(sheets)
+	return parseResponse(resp.Body, pm, cfg.TopN, fallback, hasFallback)
 }
 
 // selectExamples loads and selects the few-shot example pool for item. Returns nil
@@ -230,7 +237,7 @@ func formatExampleMessages(examples []fewShotExample) []ollamaMessage {
 	return msgs
 }
 
-func parseResponse(body interface{ Read([]byte) (int, error) }, pm taxonomy.PathMap, topN int) ([]Result, error) {
+func parseResponse(body interface{ Read([]byte) (int, error) }, pm taxonomy.PathMap, topN int, fallback Result, hasFallback bool) ([]Result, error) {
 	var ollamaResp ollamaResponse
 	if err := json.NewDecoder(body).Decode(&ollamaResp); err != nil {
 		return nil, fmt.Errorf("decoding Ollama response: %w", err)
@@ -241,7 +248,7 @@ func parseResponse(body interface{ Read([]byte) (int, error) }, pm taxonomy.Path
 		return nil, fmt.Errorf("parsing classification JSON: %w", err)
 	}
 
-	results := splitResults(classified, pm)
+	results := splitResults(classified, pm, fallback, hasFallback)
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Confidence > results[j].Confidence
 	})
@@ -252,20 +259,37 @@ func parseResponse(body interface{ Read([]byte) (int, error) }, pm taxonomy.Path
 	return results, nil
 }
 
-// splitResults turns each predicted path into a typed Result via the path map.
-// A candidate whose path is not in the taxonomy (a model violation of the enum) is
-// logged and dropped rather than producing a half-populated Result.
-//
-// TODO(T-19): this off-enum drop is now near-dead code. The structured-output schema
-// constrains the model to the 112-path enum via a GBNF grammar, so the model can no
-// longer emit "none of these" — every expense is forced into some leaf, even novel /
-// out-of-domain ones (sometimes at high confidence). The pre-T-13 algorithm had an
-// explicit escape (Diversos, conf 0.30, require_manual_review); the enum design removed
-// it. Decide on a sentinel path the model *can* choose. See tasks.md T-19. Couples to
-// IsAutoInsertable's threshold (decision.go) and config auto_insert_excluded.
-func splitResults(classified classifyResponse, pm taxonomy.PathMap) []Result {
+// sentinelFallback resolves the Diversos leaf the sentinel maps to. The
+// model-reported confidence on a decline is meaningless (it scores the forced pick,
+// not the pre-constraint uncertainty), so a fixed floor below every auto-insert
+// threshold replaces it.
+func sentinelFallback(sheets []taxonomy.ExpenseType) (Result, bool) {
+	typ, cat, err := taxonomy.ResolveLeaf(sheets, "Diversos", "")
+	if err != nil {
+		return Result{}, false
+	}
+	return Result{
+		Type:        typ,
+		Category:    cat,
+		Subcategory: "Diversos",
+		Confidence:  0.30,
+	}, true
+}
+
+// splitResults turns each predicted path into a typed Result via the path map. A
+// SentinelPath candidate (the model declined, T-19) becomes the Diversos fallback;
+// the off-enum drop stays as a defensive guard against grammar violations.
+func splitResults(classified classifyResponse, pm taxonomy.PathMap, fallback Result, hasFallback bool) []Result {
 	results := make([]Result, 0, len(classified.Results))
 	for _, r := range classified.Results {
+		if r.Path == SentinelPath {
+			if hasFallback {
+				results = append(results, fallback)
+			} else {
+				logger.Debug("classify: dropping sentinel, no Diversos leaf in taxonomy")
+			}
+			continue
+		}
 		typ, cat, sub, ok := pm.Split(r.Path)
 		if !ok {
 			logger.Debug("classify: dropping off-enum path", "path", r.Path)
@@ -289,7 +313,9 @@ func buildSystemPrompt(sheets []taxonomy.ExpenseType, topN int) string {
 	sb.WriteString("Classify the given expense into exactly one full path from the taxonomy below.\n")
 	sb.WriteString(fmt.Sprintf("Return exactly %d candidates ranked by confidence (highest first).\n", topN))
 	sb.WriteString("Each candidate's \"path\" must be a string copied verbatim from the taxonomy, in the form Type/Category/Subcategory.\n")
-	sb.WriteString("Confidence is a float between 0.0 and 1.0.\n\n")
+	sb.WriteString("Confidence is a float between 0.0 and 1.0.\n")
+	sb.WriteString(fmt.Sprintf("If NO taxonomy path fits the expense, answer with the path %q instead of forcing a bad match.\n", SentinelPath))
+	sb.WriteString("\n")
 	sb.WriteString("Taxonomy (choose one full path):\n")
 	writeTaxonomyTree(&sb, sheets)
 	return sb.String()
