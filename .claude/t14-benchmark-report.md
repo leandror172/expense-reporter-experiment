@@ -127,3 +127,7 @@ pre-change baseline), `descen` (English), `descpt` (Portuguese).
   baseline, ~72 min) — to confirm the type-accuracy gain holds in the production-default
   mode AND to measure OOD sentinel decline *with* descriptions (the mode where the
   sentinel is alive). Couples to T-24 (`--think` default) and T-23 (gate rethink).
+  **Runner caveat:** `run_t22.sh` swaps `taxonomy.json` (pre-adoption mechanism, used only
+  for the no-think A/B above). Post-adoption the think-on run must toggle the **sidecar**
+  instead — `descen` = `config/type-descriptions.json` present, `nodesc` = sidecar
+  removed/renamed. Rework the runner before that run (a warning is in its header).

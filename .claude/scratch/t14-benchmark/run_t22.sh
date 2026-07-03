@@ -13,6 +13,16 @@
 #
 # The original config/taxonomy.json is backed up once to config/taxonomy.json.t22bak
 # and restored on EXIT via trap, regardless of how the script terminates.
+#
+# ⚠ STALE MECHANISM after T-22 adoption (session 47). This runner swaps taxonomy.json —
+# the PRE-adoption approach used only for the no-think A/B. English descriptions are now
+# the DEFAULT via the tracked sidecar config/type-descriptions.json (merged at classify
+# time), so the DEFERRED think-on confirmation run must instead toggle the SIDECAR, not
+# taxonomy.json:
+#     descen  = sidecar present  (config/type-descriptions.json in place — current default)
+#     nodesc  = sidecar absent   (rename/remove config/type-descriptions.json for the run)
+# Rework this script to back up + swap config/type-descriptions.json before that run.
+# Portuguese (descpt) was dropped after the no-think A/B; think-on only needs nodesc+descen.
 
 set -euo pipefail
 
