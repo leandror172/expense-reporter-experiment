@@ -7,7 +7,10 @@
 `[]taxonomy.ExpenseType`; structured output = atomic `path` enum (`taxonomy.PathEnum`,
 112 values), split via `PathMap.Split`; off-enum dropped. Flat feature-dict taxonomy
 DELETED — feature dict is keyword-only. **Default model `my-classifier-q3`** (enum
-validity is grammar-enforced, not model-dependent — KNOWLEDGE.md). T-14 benchmark open.
+validity is grammar-enforced, not model-dependent — KNOWLEDGE.md). **T-14 benchmarked
+(s46): 63% full-path, confidence UNINFORMATIVE (91% of errors ≥0.85 — the auto-insert
+gate does not protect); `--think=false` = 10× faster at −3.3 pp but kills the T-19
+sentinel; q35 disqualified (think:false drops the grammar). WS-D gate NOT passed.**
 Few-shot layer 1 (keyword) done; TF-IDF planned (5.R1). Corpus 1788 examples (5.R4).
 
 ## Structure

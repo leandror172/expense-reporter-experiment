@@ -59,6 +59,7 @@
 | Phase B data extract (template-data.xlsx block/column model) | `.claude/workbook-template/phaseB-data-extract.md` |
 | Phase B re-review report (data-bearing template, PASS) | `.claude/workbook-template/phaseB-rereview.md` |
 | Template builder (SUPERSEDED by `internal/generate`, kept as Phase A/B history) | `.claude/scratch/template-builder/` (standalone Go module) |
+| T-14 benchmark report (accuracy/calibration/OOD + --think findings, session 46) | `.claude/t14-benchmark-report.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -412,5 +413,6 @@ Desktop-era planning documents — read for context, do not modify.
 | `lookup-category.py` | `.claude/tools/lookup-category.py` | Look up canonical category for one or more subcategories (`<sub> [...]` or `--list`) |
 | `backfill-type.py` | `.claude/tools/backfill-type.py` | Backfill expense type into log files from reviewed.json exports (Plan A Phase B-fill recovery) |
 | 5.R4 extraction scripts | `.claude/scratch/{extract_old_workbooks,dedup_corpus,build_corpus,build_logs}.py` | One-off (session 35): 2022–2024 workbooks → deduped corpus + per-year logs. Alias map externalized to gitignored `extraction-aliases.json`. |
-| WS-A.3 merge script | `.claude/scratch/merge_year_logs.py` | One-off (session 37): merge per-year `expenses_log-{2022,2023,2024}.jsonl` + base 2025 → one `expenses_log-allyears.jsonl`, rewriting `DD/MM`→`DD/MM/YYYY`. Output gitignored. Verified byte-identical (excl. manifest source) vs per-year `generate-workbook --year N` for all 4 years. |
+| WS-A.3 merge script | `.claude/scratch/merge_year_logs.py` |
+| T-14 benchmark harness | `.claude/scratch/t14-benchmark/{build_sample,run_benchmark,score}.py` + `ood.jsonl` (sample/results JSONLs gitignored — real expense data). Sample builder, resumable runner (drives `classify --json`; `--prefix`/`--extra-args`), scorer (accuracy/leakage/calibration/OOD). | One-off (session 37): merge per-year `expenses_log-{2022,2023,2024}.jsonl` + base 2025 → one `expenses_log-allyears.jsonl`, rewriting `DD/MM`→`DD/MM/YYYY`. Output gitignored. Verified byte-identical (excl. manifest source) vs per-year `generate-workbook --year N` for all 4 years. |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |

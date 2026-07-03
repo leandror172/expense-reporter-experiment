@@ -22,6 +22,7 @@ var (
 	autoModel   string
 	autoDataDir string
 	autoConfirm bool
+	autoThink   bool
 )
 
 var autoCmd = &cobra.Command{
@@ -42,6 +43,7 @@ func init() {
 	autoCmd.Flags().StringVar(&autoModel, "model", "my-classifier-q3", "Ollama model to use")
 	autoCmd.Flags().StringVar(&autoDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	autoCmd.Flags().BoolVar(&autoConfirm, "confirm", false, "Always ask for confirmation before inserting")
+	autoCmd.Flags().BoolVar(&autoThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
 }
 
 func runAuto(cmd *cobra.Command, args []string) error {
@@ -75,6 +77,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		DataDir:      autoDataDir,
 		FeedbackPath: appCfg.ClassificationsFilePath(),
 		TopN:         3,
+		NoThink:      !autoThink,
 	}
 
 	results, err := classifier.Classify(item, value, date, sheets, cfg)

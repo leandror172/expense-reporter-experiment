@@ -42,7 +42,6 @@
 ---
 
 <!-- ref:current-status -->
-
 - **Pre-history (Claude Desktop):** Phases 1–11 complete — full CLI (add/batch/version), 190+ tests, v2.1.0
 - **Classification analysis:** Complete (auto-category work) — results in `data/classification/`
 - **Workbook Generator:** COMPLETE; PR #27 merged. `internal/taxonomy` extracted (T-02) + real `config/taxonomy.json` (gitignored) + full-path identity key.
@@ -50,10 +49,11 @@
 - **5.R4 historical extraction — DONE.** 2022–2025 old workbooks → 1808 deduped records; corpus 694→1788; per-year expense logs.
 - **PIVOT (session 36): retire workbook insertion, keep only generation** — JSONL logs become the single source of truth, `generate-workbook` the only writer. Plan: `.claude/plans/retire-insertion-keep-generation.md`.
 - **WS-A / T-11 — DONE (s37):** multi-year log support. **WS-C / income route — DONE & validated on real 2024 data (s38).**
-- **T-13 — DONE (session 41), PR #36 MERGED.** Classifier predicts the full `(type,category,subcategory)` path via an atomic 112-path enum. Session 42 follow-ups: default model reverted to `my-classifier-q3` (enum validity is grammar-enforced), T-15 slice 1, acceptance repaired (T-17/T-18).
-- **WS-B (commands → log-append) — COMPLETE & MERGED (slices 1–4, PR #38 merged session 45):** `add`/`auto`/`batch-auto`/`apply` all append via `internal/appender.ExpandAndAppend`; no classifier-fed command writes the workbook (plain `batch` still does).
-- **T-19 — DONE (session 45), PR #40 OPEN** (`feat/t19-sentinel-decline`): sentinel decline path — `SentinelPath` ("NENHUMA DAS OPÇÕES") in the enum + prompt; `splitResults` maps it to `Diversos`@0.30 fixed (below auto-insert; caught by `auto_insert_excluded`). Live 8-item probe validated risk (2/8 wrong @0.85 pre-fix) and fix (both route to sentinel). **Residual → T-14:** plausible-looking wrong leaves still return 0.95; q3 confidence is noisy run-to-run. `config.json` gained `taxonomy_path`.
-- **Next:** review + merge **PR #40**. Then **T-14** (accuracy+speed benchmark q3/q35/qcoder + sentinel-decline rate + T-22 descriptions A/B — gates WS-D) → **WS-D** (retire bare-name fallback, T-09) → **WS-E** (delete dead insert code, NARROW). Open: **T-20** expense-log dedup, **T-21** reviewed-installment under-recording, **T-22** taxonomy descriptions (idea, coupled to T-14); promote merged `expenses_log-allyears.jsonl` to canonical (deferred).
+- **T-13 — DONE (session 41), PR #36 MERGED.** Classifier predicts the full `(type,category,subcategory)` path via an atomic 112-path enum. Session 42 follow-ups: default model reverted to `my-classifier-q3`, T-15 slice 1, acceptance repaired (T-17/T-18).
+- **WS-B (commands → log-append) — COMPLETE & MERGED (slices 1–4, PR #38):** `add`/`auto`/`batch-auto`/`apply` all append via `internal/appender.ExpandAndAppend`; no classifier-fed command writes the workbook (plain `batch` still does).
+- **T-19 — DONE (session 45), PR #40 OPEN** (`feat/t19-sentinel-decline`): sentinel decline path (`Diversos`@0.30 fixed). User is reviewing/merging PR #40.
+- **T-14 — DONE (session 46), branch `feat/t14-think-flag` (stacked on PR #40, PR to open).** Full report: `.claude/t14-benchmark-report.md`. q3 = 63.0% full-path (clean items 49.1%), **calibration broken (91% of errors ≥0.85 → the auto-insert gate does not protect; WS-D gate NOT passed)**. New `--think` flag: no-think = 10× faster (1.5 s vs 14.4 s) at −3.3 pp, but T-19 sentinel goes 0/20 on OOD (2/20 with thinking). q35 disqualified (think:false drops the format grammar on Ollama 0.17.5; thinking unbounded); qcoder skipped as moot. Default stays think-on.
+- **Next:** **T-22** taxonomy-descriptions A/B (harness ready, ~8 min/condition) → **T-23** calibration/gate rethink (new WS-D blocker) → then WS-D (T-09) → WS-E. Open: T-20 dedup, T-21 installment under-recording, T-24 --think default decision, T-25 q35 grammar-bug upstream + persona cleanup; promote merged all-years log (deferred).
 - **Cross-repo:** LLM infra at `/mnt/i/workspaces/llm/` — personas, MCP server, platform docs.
 <!-- /ref:current-status -->
 
@@ -256,20 +256,21 @@ Or manually:
 <!-- /ref:active-decisions -->
 
 <!-- ref:session-reading-guide -->
-
 ## Pre-Session Reading Guide
 
 *What to read before each pending work item.*
 
 | Task | Read first | Notes |
 |------|-----------|-------|
-| **Review + merge PR #40 (T-19 sentinel, do FIRST)** | PR #40 (`feat/t19-sentinel-decline` → master); tasks.md T-19 closing note | 2 commits (feature + tasks.md), full unit suite green, live 8-item probe validated. Point at master, don't fuss over base ([[feedback_pr_base_no_rebase_fuss]]). |
-| **T-14 — model benchmark (gates WS-D, do after PR #40)** | `.claude/session42-postmortem.md`; classifier `.memories/KNOWLEDGE.md` (grammar-enforcement); tasks.md T-19 residual-risk note + T-22 | Three riders: (a) accuracy+speed q3/q35/qcoder on labeled data → set smallest-that-fits default; (b) sentinel-decline rate on out-of-domain items (confident-wrong picks at 0.95 survive the sentinel); (c) T-22 descriptions A/B (with vs without type-level descriptions). Needs `data/classification/` populated. |
-| **WS-D — retire bare-name fallback (T-09, after T-14)** | `[ref:taxonomy-identity-key]`; `internal/taxonomy/loader.go` `scanEntries`; stderr fallback count | **T-19 structural gap CLOSED (session 45)** — the model can decline via the sentinel. Gate on T-14 results + real-data type-less surface ~0. The now-dead `BuildTypeIndex`/`LookupType` may be removed in WS-E. |
-| Delete dead insert code (WS-E) | plan "WS-E"; `internal/workflow`, `internal/excel` write side, `internal/batch` insert path | Only after WS-D. **NARROW scope:** delete only the deprecated `InsertBatchExpensesFromClassified` + its test; `InsertBatchExpenses`/rollover/excel stay LIVE under plain `batch`. Verify `internal/inspect` reader needs before deleting `internal/excel/reader.go`. Also: unused `taxonomy.BuildTypeIndex`/`LookupType`. |
-| Slice-2/3 loose ends (T-12) + stale memory | plan "WS-B progress" (LOOSE ENDS); `test/auto_test.go` | `auto.go` rename + `logExpense` delete DONE (s43). Still: rewire `test/auto_test.go`'s `RequireWorkbook`-gated cases (LOW/ambiguous path skips → uncovered). `internal/appender/.memories` still absent. |
-| Expense-log dedup (T-20) | `internal/feedback/expense_log.go` `AppendExpense`; appender | `AppendExpense` is a plain `O_APPEND` write with no hash-ID dedup → a re-run after a partial failure double-appends. apply's cross-file dedup (via classifications.jsonl) is only best-effort. Add dedup-on-ID or `--resume` before batch use at volume. |
-| Reviewed-installment under-recording (T-21) | `internal/review/queue.go` `ReadQueue`; `internal/review/template/review.html` export JS; `internal/apply/types.go` `ReviewedEntry`; `cmd/.../apply.go` `appendNewRows` (count=1) | apply records a reviewed installment as a SINGLE per-installment row — the count is discarded at `ReadQueue:63` and absent from `reviewed.json`. Fix threads count/rawValue through ReadQueue → HTML export → reviewed.json → ReviewedEntry. UX question: 3 rows vs 1 with a ×3 badge. |
-| Taxonomy descriptions (T-22, idea — do inside T-14) | tasks.md T-22; `internal/taxonomy` structs; `buildSystemPrompt`/`writeTaxonomyTree` in `classifier.go` | Optional `description` field, type-level first (3–4 lines, nearly free). Authoring-home question (export flow vs sidecar) must be settled or regeneration wipes it. Adopt only if the T-14 A/B shows accuracy gain. |
+| **Merge PR #40 + open PR for `feat/t14-think-flag`** | PR #40; branch `feat/t14-think-flag` (2 commits, stacked on the T-19 branch) | User is merging #40 themselves. Then open the think-flag PR at master ([[feedback_pr_base_no_rebase_fuss]]). |
+| **T-22 — taxonomy descriptions A/B (do FIRST, next session)** | `.claude/t14-benchmark-report.md`; tasks.md T-22; `buildSystemPrompt`/`writeTaxonomyTree` in `classifier.go`; harness `.claude/scratch/t14-benchmark/` | Harness ready: rebuild binary, run 300-item sample + OOD with/without type-level descriptions (~8 min/condition at `--think=false`; run think-on if measuring the sentinel). Settle the authoring-home question (taxonomy.json is regenerable). Adopt only on measured gain. |
+| **T-23 — calibration/gate rethink (blocks WS-D)** | `.claude/t14-benchmark-report.md` (calibration section); `internal/classifier/decision.go`; `config.json` `auto_insert_excluded` | Confidence is uninformative (91% of errors ≥0.85, means 0.95-vs-0.90). Options to weigh: threshold on margin/agreement instead of raw confidence, few-shot pairs with varied confidence (0.95 anchor suspicion), review-first default, stronger exclusions. |
+| **WS-D — retire bare-name fallback (T-09, after T-22/T-23)** | `[ref:taxonomy-identity-key]`; `internal/taxonomy/loader.go` `scanEntries`; stderr fallback count | **Gate NOT passed in T-14** — 37% wrong full paths behind a gate that stops ~9% of them. Requires T-23 + real-data type-less surface ~0. |
+| Delete dead insert code (WS-E) | plan "WS-E"; `internal/workflow`, `internal/excel` write side, `internal/batch` insert path | Only after WS-D. **NARROW scope:** delete only the deprecated `InsertBatchExpensesFromClassified` + its test; `InsertBatchExpenses`/rollover/excel stay LIVE under plain `batch`. Also: unused `taxonomy.BuildTypeIndex`/`LookupType`. |
+| Slice-2/3 loose ends (T-12) + stale memory | plan "WS-B progress" (LOOSE ENDS); `test/auto_test.go` | Rewire `test/auto_test.go`'s `RequireWorkbook`-gated cases (LOW/ambiguous path skips → uncovered). `internal/appender/.memories` still absent. |
+| Expense-log dedup (T-20) | `internal/feedback/expense_log.go` `AppendExpense`; appender | Plain `O_APPEND`, no hash-ID dedup → re-run after partial failure double-appends. Add dedup-on-ID or `--resume` before volume use. |
+| Reviewed-installment under-recording (T-21) | `internal/review/queue.go` `ReadQueue`; review.html export JS; `internal/apply/types.go`; `cmd/.../apply.go` | Count discarded at `ReadQueue:63`, absent from `reviewed.json`. Thread count/rawValue through the chain. UX: 3 rows vs ×3 badge. |
+| --think default decision (T-24, after T-22) | `.claude/t14-benchmark-report.md`; T-22 results | 10× speed vs −3.3 pp + dead sentinel. If T-23 moves safety off confidence anyway, the speed case strengthens. |
+| q35 grammar bug + persona cleanup (T-25) | `.claude/t14-benchmark-report.md` "Model matrix outcome"; Ollama issue tracker | Reproduce minimal case (qwen3.5 + `think:false` + `format`), check newer Ollama, file upstream. Delete inert `my-classifier-q35-nothink` from the LLM-repo registry. |
 | Promote merged log to canonical (deferred) | `.claude/scratch/merge_year_logs.py`; gitignored `expenses_log-allyears.jsonl` | User decides when to swap canonical + delete per-year files. |
 <!-- /ref:session-reading-guide -->

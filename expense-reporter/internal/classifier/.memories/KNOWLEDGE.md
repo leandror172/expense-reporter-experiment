@@ -108,3 +108,26 @@ Historical workbook extraction 2022–2025 deduped + merged into
 `training_data_complete.json`: 694→1788 examples, 15 cats / 81 subs, multi-year. Bigger
 few-shot/keyword pool; classifier now emits expense `type`.
 See [[project_workbook_extraction_5r4]].
+
+## T-14 Benchmark Results + --think Flag (session 46, 2026-07-02)
+Full report: `.claude/t14-benchmark-report.md`; harness `.claude/scratch/t14-benchmark/`.
+300 stratified corpus items (80/112 leaves) + 20 out-of-domain probes, real binary path.
+- **q3 think-on: 63.0% full-path / 77% type / mean 14.4 s.** Leaky (few-shot twin
+  exists) 71.7% vs clean 49.1% — novel items are a coin flip.
+- **Calibration is the blocker, not accuracy:** ~91% of WRONG answers carry
+  confidence ≥0.85 in BOTH think modes → the 0.85 auto-insert threshold filters
+  almost nothing. WS-D (retire bare-name fallback) gated on fixing this, not on
+  raw accuracy.
+- **`--think` flag (Config.NoThink → request `"think":false`, omitted by default):**
+  q3 no-think = 59.7% at **1.5 s/item (10×)**, grammar intact, zero parse failures —
+  but OOD sentinel-decline drops 2/20 → 0/20 with maximally absurd confident picks.
+  Default stays think-on; batch runs can opt into speed.
+- **qwen3.5 + think:false SILENTLY DROPS the `format` grammar (Ollama 0.17.5)** —
+  structured output broken (verified at API level); `/no_think` soft switch also
+  ignored by qwen3.5. With thinking on, q35 runs 70–240 s/item (unbounded thinking).
+  **q35 disqualified as default**; the no-think fast lane is q3-only.
+- **Ops gotcha:** client timeouts don't stop server-side generation — abandoned
+  grammar+thinking requests queue-starve Ollama (GPU pegged, later calls hang until
+  restart). Keep benchmark timeouts above worst case.
+- T-19 sentinel is structurally present but behaviorally near-dead (10% decline rate
+  on OOD at best); out-of-domain safety must come from review/exclusion, not confidence.

@@ -35,7 +35,10 @@ func init() {
 	classifyCmd.Flags().StringVar(&classifyModel, "model", "my-classifier-q3", "Ollama model to use")
 	classifyCmd.Flags().IntVar(&classifyTopN, "top", 3, "Number of candidates to return")
 	classifyCmd.Flags().StringVar(&classifyDataDir, "data-dir", "data/classification", "Path to classification data directory")
+	classifyCmd.Flags().BoolVar(&classifyThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
 }
+
+var classifyThink bool
 
 func runClassify(cmd *cobra.Command, args []string) error {
 	item := args[0]
@@ -61,6 +64,7 @@ func runClassify(cmd *cobra.Command, args []string) error {
 		Model:     classifyModel,
 		DataDir:   classifyDataDir,
 		TopN:      classifyTopN,
+		NoThink:   !classifyThink,
 	}
 
 	results, err := classifier.Classify(item, value, date, sheets, cfg)
