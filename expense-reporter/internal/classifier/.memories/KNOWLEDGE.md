@@ -131,3 +131,18 @@ Full report: `.claude/t14-benchmark-report.md`; harness `.claude/scratch/t14-ben
   restart). Keep benchmark timeouts above worst case.
 - T-19 sentinel is structurally present but behaviorally near-dead (10% decline rate
   on OOD at best); out-of-domain safety must come from review/exclusion, not confidence.
+
+## T-22 Type Descriptions Adopted (session 47, 2026-07-03)
+Optional per-type `Description` rendered parenthetically on the type header line of the
+system prompt (`writeTaxonomyTree`) — additive, no enum/grammar/routing change. Sourced
+from a tracked sidecar `config/type-descriptions.json`, overlaid at classify-time
+(`taxonomy.LoadTypeDescriptions`/`ApplyDescriptions`, applied in cmd `loadTaxonomyTree`;
+`generate-workbook` unaffected). No-think A/B (300 items, q3): **English +6.0 pp TYPE
+accuracy** (74.3→80.3), +2.6 pp full-path; both EN and PT lift type ~5–6 pp (→ real, not
+q3 noise); mechanism = T-14's dominant "right sheet, wrong leaf" error, and descriptions
+are type-level so leaf disambiguation is untouched (argues for a future leaf-level
+extension). English > Portuguese (dropped). Small −2.6 pp on novel items. **Calibration
+UNCHANGED** (HC-wrong ~91–95%) — NOT a gate fix (that's T-23). OOD 0/20 at no-think
+(sentinel dead without thinking). Deferred: think-on confirmation (only mode with a live
+sentinel; couples to T-23/T-24). Report addendum in `.claude/t14-benchmark-report.md`.
+[[project_t22_type_descriptions]].

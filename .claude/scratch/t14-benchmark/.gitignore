@@ -3,3 +3,7 @@
 *.bak
 # The OOD probe set is synthetic and safe
 !ood.jsonl
+# Taxonomy variants derived from the personal config/taxonomy.json — never commit
+taxonomy-*.json
+# Run logs (item ids only, but ephemeral)
+*.log

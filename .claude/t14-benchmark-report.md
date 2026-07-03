@@ -74,3 +74,56 @@ or exclusion rules compensate. `--think=false` gives 10× speed for −3.3 pp ac
 3. **T-22 (taxonomy descriptions A/B)** is now cheap (~8 min/condition at no-think
    speed) — next session. Measure: full-path accuracy, clean-subset accuracy, and
    OOD decline rate, same sample.
+
+---
+
+# T-22 Addendum — Type-Description A/B (session 47, 2026-07-03)
+
+**Question:** Does adding a short, type-level description (Fixas/Variáveis/Extras/
+Adicionais) to the classifier prompt improve accuracy — and in which language?
+
+**Change under test:** optional `Description` on `taxonomy.ExpenseType`, rendered
+parenthetically on the type header line of the system prompt (`writeTaxonomyTree`).
+Strictly additive — no enum/grammar/routing change; the GBNF path grammar is untouched,
+so the 112 valid paths and their validity are unaffected. Three conditions differ ONLY by
+the four description lines: `nodesc` (no `description` keys → byte-identical prompt to the
+pre-change baseline), `descen` (English), `descpt` (Portuguese).
+
+## Results — no-think, 300 items, q3 (same T-14 sample)
+
+| condition | full-path | **type** | leaky/recurring (184) | clean/novel (116) | mean lat | HC-wrong |
+|---|---|---|---|---|---|---|
+| nodesc | 58.7% | 74.3% | 66.3% | 46.6% | 1.5 s | 91% |
+| **descen** (English) | **61.3%** (+2.6) | **80.3%** (+6.0) | **72.3%** (+6.0) | 44.0% (−2.6) | 1.4 s | 94% |
+| descpt (Portuguese) | 59.7% (+1.0) | 79.0% (+4.7) | 70.1% (+3.8) | 43.1% (−3.5) | 1.4 s | 95% |
+
+- **Headline signal is TYPE accuracy: +6 pp (English), and BOTH languages lift it ~5–6 pp.**
+  That consistency across two independently-authored description sets is strong evidence
+  it is a real effect, not q3 run-to-run noise. Mechanism matches T-14's dominant error
+  class ("right sheet, wrong leaf"): type-level text helps pick the right *type*; leaf
+  disambiguation is untouched, so full-path lifts less (+2.6 pp). Argues for a future
+  leaf-level description extension.
+- **English > Portuguese** on every metric → English adopted; Portuguese dropped.
+- **Small cost on novel items** (−2.6 pp): descriptions help recurring items (which
+  dominate production) but slightly mislead genuinely-new merchants. Net positive.
+- **Calibration UNCHANGED** — HC-wrong still ~91–95% everywhere. Descriptions are NOT a
+  fix for the auto-insert gate; that remains T-23.
+- **OOD: 0/20 decline in all three conditions** — expected, since no-think kills the T-19
+  sentinel regardless. Descriptions did shift *where* OOD items land (English pulls
+  oddities toward `Extras` = "irregular/unexpected", less absurd than baseline's
+  `Detetive→Supermercado`), but produced no actual declines. Whether descriptions restore
+  sentinel declines only shows up in think-on — deferred.
+- The `nodesc` re-run (58.7%) matches T-14's prior no-think baseline (59.7%) within noise
+  → harness validated. Result files: `.claude/scratch/t14-benchmark/results-{nodesc,descen,descpt}-my-classifier-q3.jsonl`.
+
+## Decision
+- **Adopted English type descriptions** via a tracked, non-sensitive sidecar
+  `config/type-descriptions.json`, merged into the loaded taxonomy at classify-time
+  (`taxonomy.LoadTypeDescriptions`/`ApplyDescriptions`, applied in the classifier-scoped
+  `loadTaxonomyTree`). The gitignored `config/taxonomy.json` is left untouched — the
+  sidecar is the durable, version-controlled authoring home, surviving any future taxonomy
+  regeneration. `generate-workbook` never renders descriptions, so it is unaffected.
+- **Deferred:** the think-on confirmation run (descen vs the existing T-14 think-on
+  baseline, ~72 min) — to confirm the type-accuracy gain holds in the production-default
+  mode AND to measure OOD sentinel decline *with* descriptions (the mode where the
+  sentinel is alive). Couples to T-24 (`--think` default) and T-23 (gate rethink).

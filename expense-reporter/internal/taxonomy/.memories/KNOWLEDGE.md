@@ -80,6 +80,19 @@ the feature dict is now keyword-only (few-shot selection), no longer a category 
 NOTE: `BuildTypeIndex`/`LookupType` (the old `(cat,sub)→type` reverse index) is unused by
 production code — kept + tested; a future WS-E cleanup may remove it.
 
+**Type descriptions (T-22, session 47).** `ExpenseType.Description` (optional) carries a
+short type-level blurb rendered into the classifier prompt only (`writeTaxonomyTree`
+parenthetical) — NO enum/grammar/routing effect (GBNF path grammar untouched).
+`descriptions.go`: `LoadTypeDescriptions(path)` (flat name→desc JSON; empty map on
+""/missing, error only on malformed) + `ApplyDescriptions(types,byName)` (NFC
+`normalizeKey` match on BOTH sides so accented `Variáveis` can't drop; index-mutates the
+backing slice). Overlay is applied in the classifier-scoped cmd `loadTaxonomyTree`, NOT in
+`LoadTaxonomy` (whose signature `generate` depends on) → `generate-workbook` never renders
+descriptions. Source of truth = tracked, non-sensitive sidecar
+`config/type-descriptions.json` (gitignored `taxonomy.json` untouched → survives
+regeneration). Adopted English: +6 pp TYPE accuracy (no-think A/B), calibration unchanged.
+[[project_t22_type_descriptions]].
+
 **Real file is gitignored** (`config/taxonomy.json` reveals personal categories); the
 committed test input is `test/fixtures/generate-basic/taxonomy.json`. Fidelity of a
 hand-authored taxonomy is checked by CSV↔JSON symmetric-difference, not "112 subs + no

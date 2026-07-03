@@ -41,6 +41,32 @@ func TestBuildSystemPrompt_RendersTree(t *testing.T) {
 	assert.Contains(t, prompt, "Habitação: Diarista")
 }
 
+func testSheetsWithDescription() []taxonomy.ExpenseType {
+	sheets := testSheets()
+	sheets[1].Description = "Recurring fixed monthly costs"
+	return sheets
+}
+
+func TestBuildSystemPrompt_RendersTypeDescriptionWhenPresent(t *testing.T) {
+	prompt := buildSystemPrompt(testSheetsWithDescription(), 3)
+
+	assert.Contains(t, prompt, "Fixas (Recurring fixed monthly costs):")
+	assert.Contains(t, prompt, "Variáveis:")
+}
+
+func TestBuildSystemPrompt_NoDescriptionAddsNoParens(t *testing.T) {
+	prompt := buildSystemPrompt(testSheets(), 3)
+
+	// Backward compat: with no Description set on any type, header lines are
+	// unchanged (no parenthetical text added). Scoped to the header lines
+	// themselves — the surrounding boilerplate prompt text legitimately
+	// contains "(highest first)".
+	assert.Contains(t, prompt, "Variáveis:\n")
+	assert.Contains(t, prompt, "Fixas:\n")
+	assert.NotContains(t, prompt, "Variáveis (")
+	assert.NotContains(t, prompt, "Fixas (")
+}
+
 // --- buildResponseSchema ---
 
 func TestBuildResponseSchema_EmbedsEnumAndRequiresPath(t *testing.T) {

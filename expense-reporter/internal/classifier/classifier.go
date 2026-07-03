@@ -332,6 +332,11 @@ func buildSystemPrompt(sheets []taxonomy.ExpenseType, topN int) string {
 func writeTaxonomyTree(sb *strings.Builder, sheets []taxonomy.ExpenseType) {
 	for _, sheet := range sheets {
 		sb.WriteString(sheet.Name)
+		if sheet.Description != "" {
+			sb.WriteString(" (")
+			sb.WriteString(sheet.Description)
+			sb.WriteString(")")
+		}
 		sb.WriteString(":\n")
 		for _, cat := range sheet.Cats {
 			sb.WriteString("  ")

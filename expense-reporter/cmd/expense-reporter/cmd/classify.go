@@ -102,7 +102,23 @@ func loadTaxonomyTree(appCfg *config.Config) ([]taxonomy.ExpenseType, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading taxonomy: %w", err)
 	}
+	if err := applyTypeDescriptions(appCfg, types); err != nil {
+		return nil, err
+	}
 	return types, nil
+}
+
+// applyTypeDescriptions overlays the classifier-scoped type-descriptions sidecar
+// (config/type-descriptions.json, T-22) onto the loaded taxonomy tree. A missing
+// or unconfigured sidecar is not an error — LoadTypeDescriptions handles that
+// gracefully — only a malformed sidecar propagates.
+func applyTypeDescriptions(appCfg *config.Config, types []taxonomy.ExpenseType) error {
+	descriptions, err := taxonomy.LoadTypeDescriptions(appCfg.TypeDescriptionsFilePath())
+	if err != nil {
+		return fmt.Errorf("loading type descriptions: %w", err)
+	}
+	taxonomy.ApplyDescriptions(types, descriptions)
+	return nil
 }
 
 func confidenceBar(confidence float64) string {

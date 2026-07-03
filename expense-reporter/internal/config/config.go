@@ -8,14 +8,15 @@ import (
 
 // Config holds application-wide settings loaded from config/config.json.
 type Config struct {
-	WorkbookPath        string   `json:"workbook_path"`
-	ReferenceSheet      string   `json:"reference_sheet"`
-	DateYear            int      `json:"date_year"`
-	Verbose             bool     `json:"verbose"`
-	AutoInsertExcluded  []string `json:"auto_insert_excluded"`
-	ClassificationsPath string   `json:"classifications_path"`
-	ExpensesLogPath     string   `json:"expenses_log_path"`
-	TaxonomyPath        string   `json:"taxonomy_path"`
+	WorkbookPath         string   `json:"workbook_path"`
+	ReferenceSheet       string   `json:"reference_sheet"`
+	DateYear             int      `json:"date_year"`
+	Verbose              bool     `json:"verbose"`
+	AutoInsertExcluded   []string `json:"auto_insert_excluded"`
+	ClassificationsPath  string   `json:"classifications_path"`
+	ExpensesLogPath      string   `json:"expenses_log_path"`
+	TaxonomyPath         string   `json:"taxonomy_path"`
+	TypeDescriptionsPath string   `json:"type_descriptions_path"`
 }
 
 // TaxonomyFilePath returns the absolute path to the taxonomy JSON file.
@@ -32,6 +33,22 @@ func (c *Config) TaxonomyFilePath() string {
 		return c.TaxonomyPath
 	}
 	return filepath.Join(filepath.Dir(exe), c.TaxonomyPath)
+}
+
+// TypeDescriptionsFilePath returns the absolute path to the type-descriptions
+// sidecar JSON file. Same resolution logic as TaxonomyFilePath.
+func (c *Config) TypeDescriptionsFilePath() string {
+	if c.TypeDescriptionsPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(c.TypeDescriptionsPath) {
+		return c.TypeDescriptionsPath
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return c.TypeDescriptionsPath
+	}
+	return filepath.Join(filepath.Dir(exe), c.TypeDescriptionsPath)
 }
 
 // WorkbookFilePath returns the absolute path to the Excel workbook.
