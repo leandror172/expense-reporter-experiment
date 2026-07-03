@@ -1,40 +1,43 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-02 — Session 46: T-14 benchmark — q3 accuracy/calibration measured, --think flag, q35 disqualified
-**Current Layer:** Classifier quality — T-14 done; next T-22/T-23 (calibration) before WS-D/WS-E
+**Current Session:** 2026-07-03 — Session 47: T-22 type descriptions — no-think A/B, English adopted via sidecar (PR #42)
+**Current Layer:** Classifier accuracy & calibration (post-T-22) → T-23 gate rethink → WS-D
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-02 - Session 46: T-14 benchmark — q3 accuracy/calibration measured, --think flag, q35 disqualified
+## 2026-07-03 - Session 47: T-22 type descriptions — no-think A/B, English adopted via sidecar (PR #42)
 
 ### Context
 
-Started from the session-45 handoff: PR #40 (T-19 sentinel) open, T-14 benchmark next. User is reviewing/merging PR #40 themselves; this session executed T-14 on branch `feat/t14-think-flag` (stacked on the T-19 branch).
+Resumed after the T-14 PR (and the stacked T-19 #40) merged to master. Picked T-22
+(taxonomy type-descriptions A/B) as the next item, per the reading guide. Ran on branch
+`feat/t22-type-descriptions`; work offloaded to sonnet subagents with Ollama-delegated codegen.
 
 ### What Was Done
 
-- Built the T-14 benchmark harness (`.claude/scratch/t14-benchmark/`): stratified sample builder (300 items over 80/112 leaves from the 1713 taxonomy-exact corpus entries, leakage-flagged), resumable runner driving the real `classify --json` path, scorer (accuracy/leakage split/calibration/OOD), plus a 20-item synthetic out-of-domain probe set.
-- Ran q3 full benchmark: 63.0% full-path (leaky 71.7% / clean 49.1%), type 77.0%, mean 14.4 s/item. **Calibration broken: 91% of wrong answers at confidence ≥0.85** — the auto-insert gate filters almost nothing. OOD: T-19 sentinel fires only 2/20.
-- feat(classifier): `--think` flag (`Config.NoThink` → `"think":false`, omitted by default) on classify/auto/batch-auto; TDD unit test; commit `e449bdb`.
-- Ran q3 `--think=false` full benchmark: 59.7% at **1.5 s/item (10×)**, grammar intact, zero failures — but OOD sentinel drops to 0/20 with absurd confident picks.
-- q35 disqualified: thinking-on runs 70–240 s/item (unbounded thinking); `think:false` **silently drops the `format` grammar** on Ollama 0.17.5 (verified at API level); `/no_think` soft switch ignored by qwen3.5. Created `my-classifier-q35-nothink` persona on the false /no_think premise — inert, to delete (T-25).
-- qcoder subset skipped as moot (doesn't fit VRAM; nothing suggests a 30B fixes calibration).
-- docs(t14): report `.claude/t14-benchmark-report.md`, harness committed (data JSONLs gitignored — real expense descriptions), classifier QUICK/KNOWLEDGE updated, index.md entries; commit `c009dfe`.
+- Implemented T-22: optional type-level `Description` on `taxonomy.ExpenseType`, rendered parenthetically on the classifier prompt's type header line (`writeTaxonomyTree`). Strictly additive — no enum/grammar/routing change.
+- Ran a no-think A/B/C benchmark (300 items + 20 OOD each) via `run_t22.sh`: nodesc / English / Portuguese. Result: **English +6.0 pp TYPE accuracy** (74.3→80.3), +2.6 pp full-path; Portuguese weaker (dropped). Both languages lift type ~5–6 pp → real effect, not q3 noise. Calibration unchanged (HC-wrong ~91–95%); OOD 0/20 decline at no-think.
+- Adopted English via a tracked, non-sensitive sidecar `config/type-descriptions.json`, merged at classify-time (`taxonomy.LoadTypeDescriptions`/`ApplyDescriptions`, applied in the classifier-scoped cmd `loadTaxonomyTree`). Gitignored `config/taxonomy.json` left untouched; `generate-workbook` unaffected.
+- Verified end-to-end: 6 new taxonomy tests + prompt-render tests green; live `classify` works with the real sidecar; a malformed sidecar errors pre-Ollama (overlay proven live, not dead code).
+- Docs: index.md, benchmark-report "T-22 Addendum", both packages' QUICK+KNOWLEDGE, durable memory `project_t22_type_descriptions`; gitignore hardening for personal-derived scratch `taxonomy-*.json`.
+- Committed the 20-file explicit set on `feat/t22-type-descriptions`, opened **PR #42**; follow-up doc commit flags the runner's now-stale sidecar-toggle mechanism for the deferred think-on run.
 
 ### Decisions Made
 
-- **WS-D gate NOT passed** — blocker is calibration, not accuracy: the 0.85 threshold passes ~91% of errors. Do not retire the bare-name fallback until T-23 resolves the gate.
-- `--think` default stays **true** (accuracy +3.3 pp and the only nonzero sentinel behavior); the 10× fast lane is opt-in per command. Default revisit = T-24, after T-22.
-- T-14 closed with q35/qcoder columns resolved by disqualification rather than measurement; leakage reported both ways rather than held out (production skews recurring).
+- **English adopted; Portuguese dropped** — English won the language A/B on every metric.
+- **Authoring home = tracked sidecar**, not injection into the gitignored `taxonomy.json` — so descriptions survive any future taxonomy regeneration; overlay is classifier-scoped so `generate` is untouched.
+- **Type-level descriptions help TYPE accuracy (~6 pp, robust) but NOT calibration and NOT leaf disambiguation** — leaf-level descriptions are the future lever (T-27); calibration stays T-23's job.
+- **Deferred the think-on confirmation run** (long pole, ~72 min) — captured as T-26; couples to T-23/T-24.
 
 ### Next
 
-- T-22 descriptions A/B — harness ready; ~8 min/condition at no-think speed (same 300-item sample; measure full-path, clean-subset, OOD decline rate).
-- T-23 calibration/gate rethink before WS-D.
-- Open PR for `feat/t14-think-flag` (stacked on `feat/t19-sentinel-decline` / PR #40, which the user is merging).
+- **T-23 — calibration / gate rethink** (the real WS-D blocker). T-22 confirmed descriptions do NOT fix the auto-insert gate, so it still needs replacing before WS-D can lean on the model path.
+- Merge PR #42.
+- Later: T-26 (T-22 think-on confirmation), T-27 (leaf-level descriptions), T-28 (alternative classification strategies).
 
 ### Gotchas
 
-- qwen3.5 + `think:false` silently drops the `format` grammar (Ollama 0.17.5) — structured output returns free-form JSON with out-of-enum labels; grammar-enforcement claims are qwen3-only for no-think.
-- A client-side timeout does NOT stop Ollama's server-side generation; abandoned grammar+thinking requests queue-starve every later call (GPU pegged) until `systemctl restart ollama`.
-- ollama-bridge `generate_code output_file`/`patch_file` relative paths resolve against the LLM repo (`/mnt/i/workspaces/llm`), not this repo — pass absolute paths.
+- `run_t22.sh` argparse bug: `--extra-args "--think=false"` (two tokens) fails ("expected one argument" — argparse reads the dash-prefixed value as a flag); needs the `=` form `--extra-args="--think=false"`. Fixed.
+- `go build ./...` does NOT emit the cmd binary — must `go build -o expense-reporter ./cmd/expense-reporter` before benchmarking or the run drives stale code.
+- Personal-derived scratch `taxonomy-descen/descpt.json` are NOT covered by the `*.jsonl` ignore — added `taxonomy-*.json` to the local `.gitignore`. Always commit with explicit file lists, never `-A` (a `git diff --cached | grep ^+ | grep <personal-leaf>` check caught nothing, but the variants would leak under `-A`).
+- Post-adoption, the deferred think-on run must toggle the SIDECAR (`config/type-descriptions.json` present=descen, absent=nodesc), NOT swap `taxonomy.json` — `run_t22.sh`'s mechanism is now stale (⚠ warning in its header).
