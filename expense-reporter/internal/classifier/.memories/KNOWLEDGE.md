@@ -146,3 +146,29 @@ UNCHANGED** (HC-wrong ~91–95%) — NOT a gate fix (that's T-23). OOD 0/20 at n
 (sentinel dead without thinking). Deferred: think-on confirmation (only mode with a live
 sentinel; couples to T-23/T-24). Report addendum in `.claude/t14-benchmark-report.md`.
 [[project_t22_type_descriptions]].
+
+## T-23 Probe — Token Logprobs as a Confidence Signal (session 49, 2026-07-04)
+Full report: `.claude/t23-logprob-confidence-probe.md`. [[project_logprob_confidence_leaf_first]].
+Exploring whether the model's token distribution can replace the uninformative self-reported
+`confidence` at the auto-insert gate (the WS-D blocker). Empirical (Ollama 0.17.5, q3, think:false):
+- **Logprobs ARE exposed** on `/api/chat` (`logprobs:true` + `top_logprobs:N`) under the active
+  `format` enum grammar. Feasibility gate passes.
+- **BUT Ollama reports PRE-grammar-mask logprobs** — the raw unconstrained distribution, not the
+  one renormalized over legal tokens. Proof: a schema-forced key (`"leaf"`/`"path"`) reports the
+  chosen token at p≈0 while the model's wanted token (`"category"`) shows 1.0. Legal tokens are
+  often outside `top_logprobs`, so the renormalized distribution can't be reconstructed. This
+  **overturns** the initial "grammar renormalizes → token-dist == taxonomy-dist" assumption.
+- **Type-first enum fights tokenization** — forces the abstract Type decision first (leaf last);
+  the model wants to emit the leaf token ("Uber") but is dragged onto a Type rail (chosen tokens
+  raw p≈0), picks the wrong subtree, locks in. Margin unreadable.
+- **Leaf-first enum fixes it** — enum = bare leaf names, derive type/cat upward via `ResolveLeaf`
+  (mirrors the `add` path). The decision token is the model's own high-prob token with readable
+  competitors (`Uber` leaf p=0.986). Real decision concentrates at ONE branch; trailing tokens
+  just complete the unique leaf.
+- **A single token ≠ the margin** — first char = "which initial letter" (many leaves share it),
+  not "which leaf." Correct signal = sequence logprob of the whole leaf + margin to runner-up.
+- **Calibration NOT proven** by these probes (single-token, n≈4). Needs the T-14 labeled set.
+  Encouraging n=1: `Drone DJI Mavic` (novel) showed real uncertainty (0.56) and routed to
+  `Diversos`. Two signals to benchmark: logprob-margin vs K-sample ensemble agreement.
+- Side flags: junk taxonomy leaf `Apoia-se 4i20` (audit `config/taxonomy.json`); think-on
+  prepends reasoning tokens that move the JSON/decision span (aggregation must find it first).

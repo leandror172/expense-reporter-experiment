@@ -31,6 +31,7 @@
 | Implementation plan (session 10 — 5.7) | `.claude/plans/5.7-few-shot-injection.md` |
 | Implementation plan (session 20 — workbook path fix) | `.claude/plans/fix-workbook-path-resolution.md` |
 | Implementation plan (`review` command) | `.claude/plans/review-command.md` |
+| T-23 calibration benchmark plan (leaf-first confidence signal, session 49) | `.claude/plans/t23-calibration-benchmark.md` |
 | Review UI design brief (for claude.ai/design) | `docs/plans/review-ui-design-brief.md` + `docs/plans/review-ui-fixtures/` |
 | Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
 | Workbook mapping plan (3-layer, session 26) | `.claude/plans/workbook-mapping-plan.md` |
@@ -60,6 +61,7 @@
 | Phase B re-review report (data-bearing template, PASS) | `.claude/workbook-template/phaseB-rereview.md` |
 | Template builder (SUPERSEDED by `internal/generate`, kept as Phase A/B history) | `.claude/scratch/template-builder/` (standalone Go module) |
 | T-14 benchmark report (accuracy/calibration/OOD + --think findings, session 46) | `.claude/t14-benchmark-report.md` |
+| T-23 logprob-confidence probe (leaf-first; pre-mask logprobs, session 49) | `.claude/t23-logprob-confidence-probe.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
