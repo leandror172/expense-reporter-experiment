@@ -131,3 +131,66 @@ pre-change baseline), `descen` (English), `descpt` (Portuguese).
   for the no-think A/B above). Post-adoption the think-on run must toggle the **sidecar**
   instead — `descen` = `config/type-descriptions.json` present, `nodesc` = sidecar
   removed/renamed. Rework the runner before that run (a warning is in its header).
+
+## Results — think-on (T-26 confirmation run, 2026-07-03)
+
+Runner: `.claude/scratch/t14-benchmark/run_t26.sh think` (sidecar-toggle mechanism;
+`nodesc` = `config/type-descriptions.json` removed, `descen` = present). 300-item accuracy
++ 20-item OOD per condition, q3, think-on default. Result files:
+`.claude/scratch/t14-benchmark/results-think-{nodesc,descen}-my-classifier-q3.jsonl`
+(+ `ood-results-think-*`). Portuguese dropped after the no-think A/B.
+
+| condition | full-path | **type** | leaky/recurring (184) full | clean/novel (116) full | novel **type** | OOD sentinel | mean lat | HC-wrong |
+|---|---|---|---|---|---|---|---|---|
+| think-nodesc | 64.7% | 79.0% | 76.6% | 45.7% | 70.7% | **4/20 (20%)** | 15.1 s | 86% |
+| **think-descen** (English) | 64.0% (−0.7) | **81.3%** (+2.3) | 72.8% (−3.8) | **50.0%** (+4.3) | **79.3%** (+8.6) | **0/20 (0%)** | 12.8 s | 88% |
+
+**⚠ Significance-tested (paired McNemar / Fisher exact, `sigtest_t26.py`, zero model
+calls). This is a SINGLE run; almost every delta below is within noise. Treat the
+think-on numbers as suggestive, not established — the cross-run *consistency* is the only
+real evidence, no single-run delta here clears p<0.05.**
+
+Paired McNemar (nodesc vs descen, same 300 items):
+
+| metric | Δ | McNemar p | verdict |
+|---|---|---|---|
+| full-path, all | −0.7 pp | 0.86 | noise |
+| full-path, novel (n=116) | +4.3 pp | 0.30 | not sig |
+| full-path, recurring (n=184) | −3.8 pp | 0.17 | not sig |
+| type, all | +2.3 pp | 0.36 | not sig (this run alone) |
+| type, novel | +8.6 pp | 0.052 | borderline, misses 0.05 |
+| type, recurring | −1.6 pp | 0.66 | noise |
+| OOD sentinel 4/20 vs 0/20 | — | 0.11 (Fisher) | not sig |
+
+**Q1 — Does the +6 pp type gain hold in think-on? Direction-consistent, but not
+independently significant here.**
+- Aggregate type: +2.3 pp (vs +6.0 no-think), **p=0.36 — not significant on this run.**
+  The evidence for a real type effect is the *consistency of direction across two
+  independent runs* (+6.0 no-think, +2.3 think-on), NOT this run's own p-value. Think-on
+  has less headroom (nodesc type already 79.0%), which is the plausible reason it is smaller.
+- **RETRACTED (was stated as a finding, is noise):** the "gain concentrates on novel
+  items / redistributes easy→hard" story. The novel-subgroup deltas are non-significant
+  (full-path p=0.30, type p=0.052), AND the leaky/novel effect **flips sign between the
+  no-think and think-on runs** (no-think: +leaky/−novel; think-on: −leaky/+novel) — a real
+  mechanism cannot flip sign, so this is run-to-run noise, not a redistribution mechanism.
+- Adoption still holds on the type signal (direction-consistent across runs). T-27
+  (leaf-level descriptions) should be motivated by **T-14's robust "right sheet, wrong
+  leaf" dominant error class**, NOT by this run's noisy novel-type +8.6 pp.
+
+**Q2 — Does the T-19 sentinel survive with descriptions? Observed drop 20%→0%, but
+UNDERPOWERED (n=20, Fisher p=0.11) — do not treat as established.**
+- think-`nodesc` 4/20 vs think-`descen` 0/20. The *mechanism* is visible (OOD items route
+  to a real `Adicionais/Outros/Diversos` leaf @0.95 with descriptions, so the model never
+  emits the explicit decline), but 4-vs-0 on n=20 does not clear significance and q3's
+  confidence is run-to-run unstable (T-25). **A bigger OOD probe set is needed to settle
+  this.**
+- What IS observable (not statistical): the sentinel is a **weak** net in *every* condition
+  — even at its best (think-nodesc 20%), confident-wrong non-`Diversos` OOD picks
+  (paraquedas→`Extras/Casa`@0.95, taxidermia→`Extras/Casa`@0.90) slip through. `Diversos`
+  routings are separately caught by `auto_insert_excluded`. **This** — not "descriptions
+  drive declines to 0" — is the defensible basis for the T-24 conclusion.
+
+**Calibration:** still broken — HC-wrong 86–88% in both conditions (marginally better than
+no-think's 91–94%, still unusable as a gate). This null is the only ordering-relevant output
+of T-26: nothing here touches the gate. Descriptions do NOT fix calibration — **T-23 stands
+as the WS-D blocker, unchanged.**
