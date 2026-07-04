@@ -102,8 +102,48 @@ Reuse the T-14 stratified set: **300 labeled corpus items** (80/112 leaves) + **
 - Per-item results JSONL (gitignored — carries expense descriptions).
 - Report section with the risk–coverage curves and the adopt/retire recommendation.
 
-## Tooling — see the session-49 library rundown in the chat log / handoff.
-Ensemble + perplexity need nothing beyond Ollama + Python (scikit-learn/scipy for metrics).
-The logprob-**margin** arm (2b) is the only piece that may justify moving the benchmark off
-Ollama to an engine that exposes renormalized/teacher-forced logprobs (llama.cpp server `n_probs`,
-or vLLM `prompt_logprobs`, or Outlines-controlled masking). Decide in Procedure step 0.
+## Tooling — library rundown (session 49)
+
+**Signals 1 / 2a / 3 need nothing beyond Ollama + Python — start there.** Only signal **2b**
+(logprob margin to a runner-up leaf) needs capability Ollama lacks: renormalized (post-mask) or
+teacher-forced logprobs. Engine options if 2b is pursued:
+
+- **llama.cpp `llama-server`** — *recommended default.* Lightest, and it's literally the engine
+  *under* Ollama (same GGUF weights, fits the 12 GB GPU). Native GBNF grammars; `/completion`
+  with `n_probs` returns top-N per-token probs; driving the sampler yourself yields the **masked**
+  distribution (the thing Ollama hides). Also supports supplying a continuation to score.
+- **vLLM** — *most capable, heavier.* OpenAI-compatible `logprobs` on output **and**
+  `prompt_logprobs` — that's teacher-forcing: feed a candidate leaf string, read its per-token
+  logprobs → the runner-up sequence score for 2b. Plus `guided_decoding` (outlines/lm-format-
+  enforcer backends) for the grammar. qwen3:8b fits 12 GB but VRAM headroom is tighter than
+  llama.cpp.
+- **Outlines** (Python) — structured-gen lib where *you own the logit processor*, so you can read
+  the **renormalized "P over legal leaves"** directly — the cleanest fix for the pre-mask problem.
+  Wraps transformers/vLLM/llama.cpp. Siblings: **lm-format-enforcer**, **guidance**,
+  **llama-cpp-python** (in-process bindings with `logits_processor` hooks).
+
+**Metrics — Python, not Go.** scikit-learn (`roc_auc_score`, `calibration_curve`) + scipy
+(bootstrap CIs) + **netcal** (ECE/reliability). Matches the existing harness (`sigtest_t26.py` is
+already Python). Go/gonum has AUROC but you'd hand-roll risk-coverage + calibration — not worth it
+for a research script.
+
+## Deferred subagent — engine PoC for signal 2b (only if 2b is pursued)
+
+A self-contained, install-heavy investigation worth isolating from the main context. **Ask the
+user which model to run it on before spawning** ([[feedback_ask_subagent_model]]).
+- **Question it answers:** can we get, on *our* model (qwen3:8b) and the *actual 12 GB GPU*, clean
+  masked and/or teacher-forced logprobs — and at what setup/VRAM/latency cost?
+- **Tasks:** (1) stand up llama.cpp `llama-server` with the qwen3:8b GGUF; verify `/completion`
+  `n_probs` + a driven GBNF grammar returns a *masked* per-token distribution (does it solve the
+  pre-mask problem?); (2) test teacher-forced scoring of a supplied candidate leaf string →
+  sequence score; (3) fall back to vLLM `prompt_logprobs` only if llama.cpp can't; (4) measure
+  VRAM headroom (coexist with / replace running Ollama?), cold-start + per-call latency, setup
+  friction.
+- **Deliverable:** a short verdict doc — which engine, exact command/flags, does it produce usable
+  masked + teacher-forced logprobs on our model, fits the GPU y/n, latency numbers, minimal repro.
+  Enough to classify 2b as "cheap, do it" vs "rabbit hole, drop it."
+- **Constraints:** no sudo (user-space installs / existing binaries only — sudo can't run through
+  Claude Code); do NOT disrupt the running Ollama (GPU contention is a known ops gotcha); the
+  pre-mask finding is the bar to clear; read-only w.r.t. the Go codebase.
+- **Why not now:** gated on the user committing to the 2b arm. Signals 1/2a/3 run on Ollama today,
+  so the natural order is run those first and only send the PoC if 2b is the piece worth chasing.
