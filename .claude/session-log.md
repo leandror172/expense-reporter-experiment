@@ -1,43 +1,41 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-03 — Session 47: T-22 type descriptions — no-think A/B, English adopted via sidecar (PR #42)
-**Current Layer:** Classifier accuracy & calibration (post-T-22) → T-23 gate rethink → WS-D
+**Current Session:** 2026-07-03 — Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
+**Current Layer:** Classifier accuracy & calibration → T-23 gate rethink (WS-D blocker) next
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-03 - Session 47: T-22 type descriptions — no-think A/B, English adopted via sidecar (PR #42)
+## 2026-07-03 - Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
 
 ### Context
 
-Resumed after the T-14 PR (and the stacked T-19 #40) merged to master. Picked T-22
-(taxonomy type-descriptions A/B) as the next item, per the reading guide. Ran on branch
-`feat/t22-type-descriptions`; work offloaded to sonnet subagents with Ollama-delegated codegen.
+Resumed on branch `feat/t22-type-descriptions` (PR #42 open). User asked to discuss next steps, chose the "cheaper adjacent win" — T-26 (the deferred T-22 think-on confirmation) — over starting the harder T-23. Ordered T-26 before T-24 because T-24's `--think` decision consumes T-26's sentinel data.
 
 ### What Was Done
 
-- Implemented T-22: optional type-level `Description` on `taxonomy.ExpenseType`, rendered parenthetically on the classifier prompt's type header line (`writeTaxonomyTree`). Strictly additive — no enum/grammar/routing change.
-- Ran a no-think A/B/C benchmark (300 items + 20 OOD each) via `run_t22.sh`: nodesc / English / Portuguese. Result: **English +6.0 pp TYPE accuracy** (74.3→80.3), +2.6 pp full-path; Portuguese weaker (dropped). Both languages lift type ~5–6 pp → real effect, not q3 noise. Calibration unchanged (HC-wrong ~91–95%); OOD 0/20 decline at no-think.
-- Adopted English via a tracked, non-sensitive sidecar `config/type-descriptions.json`, merged at classify-time (`taxonomy.LoadTypeDescriptions`/`ApplyDescriptions`, applied in the classifier-scoped cmd `loadTaxonomyTree`). Gitignored `config/taxonomy.json` left untouched; `generate-workbook` unaffected.
-- Verified end-to-end: 6 new taxonomy tests + prompt-render tests green; live `classify` works with the real sidecar; a malformed sidecar errors pre-Ollama (overlay proven live, not dead code).
-- Docs: index.md, benchmark-report "T-22 Addendum", both packages' QUICK+KNOWLEDGE, durable memory `project_t22_type_descriptions`; gitignore hardening for personal-derived scratch `taxonomy-*.json`.
-- Committed the 20-file explicit set on `feat/t22-type-descriptions`, opened **PR #42**; follow-up doc commit flags the runner's now-stale sidecar-toggle mechanism for the deferred think-on run.
+- Reworked the stale benchmark runner: authored `.claude/scratch/t14-benchmark/run_t26.sh` — toggles the **sidecar** `config/type-descriptions.json` (removed=nodesc, present=descen) instead of `run_t22.sh`'s pre-adoption taxonomy-swap; builds the binary itself; encodes the think-mode into result prefixes (`results-<mode>-<cond>-…`) so `run_benchmark.py`'s resume-by-id can't mistake the old no-think files for this run's work.
+- Ran the think-on A/B (nodesc vs descen, 300-item accuracy + 20-item OOD each, q3, ~2.5 h wall-clock, resumable, 0 failures). Sidecar restored to adopted state by the EXIT trap.
+- Significance-tested the deltas with `sigtest_t26.py` (paired McNemar + Fisher exact, reuses `score.py` predicates, zero model calls) — prompted by an advisor call.
+- Updated `.claude/t14-benchmark-report.md` with a "Results — think-on" section, softened to significance-tested language.
+- Created `.claude/scratch/t14-benchmark/.memories/{QUICK,KNOWLEDGE}.md`.
+- No package code changed this session — benchmark/report/tooling only (hence no feature commits).
 
 ### Decisions Made
 
-- **English adopted; Portuguese dropped** — English won the language A/B on every metric.
-- **Authoring home = tracked sidecar**, not injection into the gitignored `taxonomy.json` — so descriptions survive any future taxonomy regeneration; overlay is classifier-scoped so `generate` is untouched.
-- **Type-level descriptions help TYPE accuracy (~6 pp, robust) but NOT calibration and NOT leaf disambiguation** — leaf-level descriptions are the future lever (T-27); calibration stays T-23's job.
-- **Deferred the think-on confirmation run** (long pole, ~72 min) — captured as T-26; couples to T-23/T-24.
+- **T-26 done; task order UNCHANGED — T-23 is still next.** The only ordering-relevant output is a null: calibration is untouched (86–88% HC-wrong), so nothing here moves the auto-insert gate.
+- **Retracted two report findings as noise after significance testing** (they had been written in as fact): (1) "descriptions concentrate the win on novel items / redistribute easy→hard" — the leaky/novel effect **flips sign** between the no-think (+leaky/−novel) and think-on (−leaky/+novel) runs, and a real mechanism can't flip sign; subgroup deltas non-sig (novel full-path p=0.30, novel type p=0.052). (2) "descriptions suppress the T-19 sentinel to 0" — 4/20-vs-0/20, Fisher p=0.11, underpowered.
+- **T-22 adoption still holds**, but on the *cross-run direction consistency* of the type lift (+6.0 no-think, +2.3 think-on), NOT think-on's own delta (p=0.36, not significant alone).
+- **T-24 framing corrected:** with descriptions on (production default), think-on's sentinel advantage vanishes (the sentinel is a weak net in *every* condition — confident-wrong non-`Diversos` OOD picks slip through even at its best 20%). So the `--think` call is accuracy-vs-speed (~+2.7 pp full-path for ~10× latency), not "descriptions kill the sentinel."
 
 ### Next
 
-- **T-23 — calibration / gate rethink** (the real WS-D blocker). T-22 confirmed descriptions do NOT fix the auto-insert gate, so it still needs replacing before WS-D can lean on the model path.
-- Merge PR #42.
-- Later: T-26 (T-22 think-on confirmation), T-27 (leaf-level descriptions), T-28 (alternative classification strategies).
+- **T-23 — calibration / gate rethink** (the WS-D blocker). T-26 confirmed descriptions do NOT fix the gate. Directions: margin/agreement thresholding, few-shot with varied confidence, review-first for non-recurring items (recurrence beats confidence as a safety signal), stronger `auto_insert_excluded`.
+- Merge PR #42 (updated with the T-26 think-on results).
+- Candidate follow-up task (propose via amend): a larger OOD probe set to settle the sentinel-suppression question the n=20 run left underpowered.
+- Later: T-27 (leaf-level descriptions — justify via T-14's "wrong leaf" error class, NOT this run's noisy novel-type number), T-24 (`--think` default), T-28 (alt strategies).
 
 ### Gotchas
 
-- `run_t22.sh` argparse bug: `--extra-args "--think=false"` (two tokens) fails ("expected one argument" — argparse reads the dash-prefixed value as a flag); needs the `=` form `--extra-args="--think=false"`. Fixed.
-- `go build ./...` does NOT emit the cmd binary — must `go build -o expense-reporter ./cmd/expense-reporter` before benchmarking or the run drives stale code.
-- Personal-derived scratch `taxonomy-descen/descpt.json` are NOT covered by the `*.jsonl` ignore — added `taxonomy-*.json` to the local `.gitignore`. Always commit with explicit file lists, never `-A` (a `git diff --cached | grep ^+ | grep <personal-leaf>` check caught nothing, but the variants would leak under `-A`).
-- Post-adoption, the deferred think-on run must toggle the SIDECAR (`config/type-descriptions.json` present=descen, absent=nodesc), NOT swap `taxonomy.json` — `run_t22.sh`'s mechanism is now stale (⚠ warning in its header).
+- `go build ./...` does NOT emit the cmd binary — must `go build -o expense-reporter ./cmd/expense-reporter` before benchmarking (`run_t26.sh` does this).
+- Benchmark resume keys on the results **filename** — reusing a prior run's prefix makes `done_ids` "skip everything" silently. New runs need a fresh prefix (`run_t26.sh` encodes the think-mode).
+- A single 300-item run resolves only ~±5 pp; subgroup splits (n=116, n=20) can't clear noise alone, and a subgroup effect that flips sign across runs is noise. Run `sigtest_t26.py` before treating any delta as real.
