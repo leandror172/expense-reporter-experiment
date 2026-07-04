@@ -77,16 +77,22 @@ survives only as the confidence-signal enabler, judged on T-23's terms instead.
 - **Derive** `(type, category)` from the chosen leaf via `taxonomy.ResolveLeaf`. Reconstruct the
   full path for logging/routing exactly as today — nothing downstream of `classifier.Result`
   changes (it still carries `Type/Category/Subcategory`).
-- **Cross-type collisions** — 5 leaf names are ambiguous by bare name: `Estacionamento`, `Orion`,
-  `Lilly`, `Ambos`, `Dentista` (verify exact multiplicity; 112→104 implies 8 instances). Bare
-  leaf-first cannot resolve these. **Open decision (D1)** — options:
-  - (a) **Hybrid enum**: keep the 5 as full `Type/…/leaf` strings, rest as bare leaves. Minimal,
-    preserves resolvability, but reintroduces the surface-form problem for exactly those 5.
-  - (b) **Second field**: model also emits a `type` when the leaf is ambiguous (small enum of the
-    2–3 owning types). Clean, one extra token only when needed.
-  - (c) **Route ambiguous to review** — never auto-insert a collision leaf. Safe, lossy.
-  - (d) **Amount/context heuristic** post-hoc. Fragile.
-  - Lean: (b) — mirrors how `add` uses `--type`, and keeps the common 99 leaves clean.
+- **Cross-type collisions** — 5 leaf names are ambiguous by bare name (audit-confirmed
+  multiplicity, 13 instances → 112−8=104 unique): `Ambos`/`Lilly`/`Orion` (Pets, ×3 each across
+  Fixas/Variáveis/Extras — pet names), `Dentista` (Saúde ×2), `Estacionamento` (Transporte ×2).
+  Bare leaf-first cannot resolve these. **DECISION (D1) — LOCKED = (b), session 49.**
+  - **(b) Second `type` field.** Schema emits **`leaf` (104-enum) THEN `type` (3–4 types)** — field
+    order is load-bearing: leaf first preserves the leaf-first commitment (the model's strong
+    signal), type second is a genuine *recurrence* judgment (the audit showed the collision axis
+    IS Fixas/Variáveis/Extras — not derivable from the leaf name; "Lilly" can't say monthly-vet
+    vs one-off-toy). Same recurrence axis T-23 flags as a better safety signal than confidence.
+  - **Always predict `type`** (a static grammar can't make a field conditionally required on the
+    leaf value); `ResolveLeaf` uses it ONLY for the 5 collisions and ignores it for the 99 unique
+    leaves. For unique leaves, **cross-check** model-type vs the leaf's real type and log
+    disagreements as a free extra calibration signal (don't gate on it yet).
+  - Rejected: (a) hybrid enum reintroduces the surface-form problem for the 5; (c) route-to-review
+    is lossy (pets span all 3 types, likely frequent); (d) amount heuristic is fragile.
+  - Mirrors how the manual `add` path already uses `--type`.
 - **Sentinel (T-19)** — still append `SentinelPath` ("NENHUMA DAS OPÇÕES") → Diversos@0.30. The
   decline path is orthogonal to leaf-vs-path.
 - **Prompt** — still render the type→category→leaf **tree** for context (the model needs to see
@@ -101,15 +107,19 @@ survives only as the confidence-signal enabler, judged on T-23's terms instead.
 
 ## Prerequisite — taxonomy hygiene audit (also its own task)
 
-`config/taxonomy.json` contains at least one junk leaf: **`Apoia-se 4i20`** looks like a leaked
-expense *description* that got captured as a taxonomy leaf (probably from the 5.R4 historical
-extraction). Junk leaves hurt BOTH the current classifier (they're valid enum members the model
-can be forced into) and leaf-first (they pollute the 104-name enum and can absorb OOD items).
-**Audit:** walk all 112 leaves, flag any that are descriptions/typos/duplic*semantic* entries,
-and decide fix vs keep with the user (taxonomy is user-authoritative — exported from the
-workbook per T-02, so a fix must survive regeneration: fix at the source/export or via a
-sidecar, not by hand-editing the generated file). Do this BEFORE the A/B so garbage doesn't
-distort the enum or the accuracy numbers.
+**DONE (session 49).** Audit of all 112 leaves flagged exactly one junk leaf: `Apoia-se 4i20`
+(a campaign-specific description captured as a leaf during 5.R4 extraction — confirmed: it
+appeared identically as both `item` and `subcategory` in training data). **Resolved:**
+generalized to the vendor-level leaf **`Apoia-se`** (user chose vendor granularity over an
+`Assinaturas` bucket, to stay consistent with future Netflix/HBO/Spotify generalizations).
+**Full propagation applied** (surgical — label positions only, real `item` text preserved):
+`config/taxonomy.json` (1), `feature_dictionary_enhanced.json` (4), `training_data_complete.json`
+(12 subcategory, 12 items kept), `expenses_log.jsonl` + `expenses_log-allyears.jsonl` (12 each).
+Backups: `*.bak-apoia-rename`. All JSON re-validated; 112 leaves (count unchanged).
+**REMAINING durability step:** the taxonomy is exported from the workbook (T-02), so the local
+`config/taxonomy.json` edit is wiped on re-export — the leaf must also be renamed in the workbook
+Referência sheet (or the export step) to survive regeneration. Frozen T-14 benchmark artifacts
+(`.claude/scratch/t14-benchmark/`) were intentionally NOT touched (they record what was run).
 
 ## The A/B experiment
 
@@ -154,8 +164,9 @@ distort the enum or the accuracy numbers.
 
 ## Decision log (OPEN — resolve with user before building)
 
-- **D1** — cross-type collision handling: hybrid enum / second type field / route-to-review /
-  heuristic. (Lean: second type field.)
+- **D1** — LOCKED (session 49) = second `type` field, schema order `leaf` then `type`,
+  always-predict, ResolveLeaf disambiguates the 5 collisions + cross-checks the 99 as a free
+  signal. See Design § collisions.
 - **D2** — prompt shows the tree vs a flat leaf list.
 - **D3** — benchmark-only script vs production flag for the A/B. (Lean: benchmark-only first.)
 - **D4** — adopt-for-accuracy threshold: how big a clean-item gain justifies productionizing.
