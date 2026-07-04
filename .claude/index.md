@@ -32,6 +32,7 @@
 | Implementation plan (session 20 — workbook path fix) | `.claude/plans/fix-workbook-path-resolution.md` |
 | Implementation plan (`review` command) | `.claude/plans/review-command.md` |
 | T-23 calibration benchmark plan (leaf-first confidence signal, session 49) | `.claude/plans/t23-calibration-benchmark.md` |
+| Leaf-first classification plan (standalone accuracy A/B + T-23 precondition, session 49) | `.claude/plans/leaf-first-classification.md` |
 | Review UI design brief (for claude.ai/design) | `docs/plans/review-ui-design-brief.md` + `docs/plans/review-ui-fixtures/` |
 | Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
 | Workbook mapping plan (3-layer, session 26) | `.claude/plans/workbook-mapping-plan.md` |

@@ -3,6 +3,13 @@
 **Status:** proposed (session 49). Depends on the leaf-first probe finding
 (`.claude/t23-logprob-confidence-probe.md`). Gates WS-D (T-09).
 
+**PRECONDITION — do leaf-first FIRST.** The non-baseline signals here assume a leaf-first
+classify path (that's what makes any token signal legible — see the probe report). Leaf-first
+is now its own change with its own accuracy A/B: `.claude/plans/leaf-first-classification.md`.
+Run/adopt that first; this benchmark then rides on a leaf-first base. Sequencing intent: split
+so leaf-first can be judged on accuracy alone, and the calibration signal on a base that already
+uses the enum it needs.
+
 ## Objective & the decision it drives
 
 Decide whether a **token-derived confidence signal** can replace the uninformative
