@@ -1,40 +1,41 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-02 — Session 46: T-14 benchmark — q3 accuracy/calibration measured, --think flag, q35 disqualified
-**Current Layer:** Classifier quality — T-14 done; next T-22/T-23 (calibration) before WS-D/WS-E
+**Current Session:** 2026-07-03 — Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
+**Current Layer:** Classifier accuracy & calibration → T-23 gate rethink (WS-D blocker) next
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-02 - Session 46: T-14 benchmark — q3 accuracy/calibration measured, --think flag, q35 disqualified
+## 2026-07-03 - Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
 
 ### Context
 
-Started from the session-45 handoff: PR #40 (T-19 sentinel) open, T-14 benchmark next. User is reviewing/merging PR #40 themselves; this session executed T-14 on branch `feat/t14-think-flag` (stacked on the T-19 branch).
+Resumed on branch `feat/t22-type-descriptions` (PR #42 open). User asked to discuss next steps, chose the "cheaper adjacent win" — T-26 (the deferred T-22 think-on confirmation) — over starting the harder T-23. Ordered T-26 before T-24 because T-24's `--think` decision consumes T-26's sentinel data.
 
 ### What Was Done
 
-- Built the T-14 benchmark harness (`.claude/scratch/t14-benchmark/`): stratified sample builder (300 items over 80/112 leaves from the 1713 taxonomy-exact corpus entries, leakage-flagged), resumable runner driving the real `classify --json` path, scorer (accuracy/leakage split/calibration/OOD), plus a 20-item synthetic out-of-domain probe set.
-- Ran q3 full benchmark: 63.0% full-path (leaky 71.7% / clean 49.1%), type 77.0%, mean 14.4 s/item. **Calibration broken: 91% of wrong answers at confidence ≥0.85** — the auto-insert gate filters almost nothing. OOD: T-19 sentinel fires only 2/20.
-- feat(classifier): `--think` flag (`Config.NoThink` → `"think":false`, omitted by default) on classify/auto/batch-auto; TDD unit test; commit `e449bdb`.
-- Ran q3 `--think=false` full benchmark: 59.7% at **1.5 s/item (10×)**, grammar intact, zero failures — but OOD sentinel drops to 0/20 with absurd confident picks.
-- q35 disqualified: thinking-on runs 70–240 s/item (unbounded thinking); `think:false` **silently drops the `format` grammar** on Ollama 0.17.5 (verified at API level); `/no_think` soft switch ignored by qwen3.5. Created `my-classifier-q35-nothink` persona on the false /no_think premise — inert, to delete (T-25).
-- qcoder subset skipped as moot (doesn't fit VRAM; nothing suggests a 30B fixes calibration).
-- docs(t14): report `.claude/t14-benchmark-report.md`, harness committed (data JSONLs gitignored — real expense descriptions), classifier QUICK/KNOWLEDGE updated, index.md entries; commit `c009dfe`.
+- Reworked the stale benchmark runner: authored `.claude/scratch/t14-benchmark/run_t26.sh` — toggles the **sidecar** `config/type-descriptions.json` (removed=nodesc, present=descen) instead of `run_t22.sh`'s pre-adoption taxonomy-swap; builds the binary itself; encodes the think-mode into result prefixes (`results-<mode>-<cond>-…`) so `run_benchmark.py`'s resume-by-id can't mistake the old no-think files for this run's work.
+- Ran the think-on A/B (nodesc vs descen, 300-item accuracy + 20-item OOD each, q3, ~2.5 h wall-clock, resumable, 0 failures). Sidecar restored to adopted state by the EXIT trap.
+- Significance-tested the deltas with `sigtest_t26.py` (paired McNemar + Fisher exact, reuses `score.py` predicates, zero model calls) — prompted by an advisor call.
+- Updated `.claude/t14-benchmark-report.md` with a "Results — think-on" section, softened to significance-tested language.
+- Created `.claude/scratch/t14-benchmark/.memories/{QUICK,KNOWLEDGE}.md`.
+- No package code changed this session — benchmark/report/tooling only (hence no feature commits).
 
 ### Decisions Made
 
-- **WS-D gate NOT passed** — blocker is calibration, not accuracy: the 0.85 threshold passes ~91% of errors. Do not retire the bare-name fallback until T-23 resolves the gate.
-- `--think` default stays **true** (accuracy +3.3 pp and the only nonzero sentinel behavior); the 10× fast lane is opt-in per command. Default revisit = T-24, after T-22.
-- T-14 closed with q35/qcoder columns resolved by disqualification rather than measurement; leakage reported both ways rather than held out (production skews recurring).
+- **T-26 done; task order UNCHANGED — T-23 is still next.** The only ordering-relevant output is a null: calibration is untouched (86–88% HC-wrong), so nothing here moves the auto-insert gate.
+- **Retracted two report findings as noise after significance testing** (they had been written in as fact): (1) "descriptions concentrate the win on novel items / redistribute easy→hard" — the leaky/novel effect **flips sign** between the no-think (+leaky/−novel) and think-on (−leaky/+novel) runs, and a real mechanism can't flip sign; subgroup deltas non-sig (novel full-path p=0.30, novel type p=0.052). (2) "descriptions suppress the T-19 sentinel to 0" — 4/20-vs-0/20, Fisher p=0.11, underpowered.
+- **T-22 adoption still holds**, but on the *cross-run direction consistency* of the type lift (+6.0 no-think, +2.3 think-on), NOT think-on's own delta (p=0.36, not significant alone).
+- **T-24 framing corrected:** with descriptions on (production default), think-on's sentinel advantage vanishes (the sentinel is a weak net in *every* condition — confident-wrong non-`Diversos` OOD picks slip through even at its best 20%). So the `--think` call is accuracy-vs-speed (~+2.7 pp full-path for ~10× latency), not "descriptions kill the sentinel."
 
 ### Next
 
-- T-22 descriptions A/B — harness ready; ~8 min/condition at no-think speed (same 300-item sample; measure full-path, clean-subset, OOD decline rate).
-- T-23 calibration/gate rethink before WS-D.
-- Open PR for `feat/t14-think-flag` (stacked on `feat/t19-sentinel-decline` / PR #40, which the user is merging).
+- **T-23 — calibration / gate rethink** (the WS-D blocker). T-26 confirmed descriptions do NOT fix the gate. Directions: margin/agreement thresholding, few-shot with varied confidence, review-first for non-recurring items (recurrence beats confidence as a safety signal), stronger `auto_insert_excluded`.
+- Merge PR #42 (updated with the T-26 think-on results).
+- Candidate follow-up task (propose via amend): a larger OOD probe set to settle the sentinel-suppression question the n=20 run left underpowered.
+- Later: T-27 (leaf-level descriptions — justify via T-14's "wrong leaf" error class, NOT this run's noisy novel-type number), T-24 (`--think` default), T-28 (alt strategies).
 
 ### Gotchas
 
-- qwen3.5 + `think:false` silently drops the `format` grammar (Ollama 0.17.5) — structured output returns free-form JSON with out-of-enum labels; grammar-enforcement claims are qwen3-only for no-think.
-- A client-side timeout does NOT stop Ollama's server-side generation; abandoned grammar+thinking requests queue-starve every later call (GPU pegged) until `systemctl restart ollama`.
-- ollama-bridge `generate_code output_file`/`patch_file` relative paths resolve against the LLM repo (`/mnt/i/workspaces/llm`), not this repo — pass absolute paths.
+- `go build ./...` does NOT emit the cmd binary — must `go build -o expense-reporter ./cmd/expense-reporter` before benchmarking (`run_t26.sh` does this).
+- Benchmark resume keys on the results **filename** — reusing a prior run's prefix makes `done_ids` "skip everything" silently. New runs need a fresh prefix (`run_t26.sh` encodes the think-mode).
+- A single 300-item run resolves only ~±5 pp; subgroup splits (n=116, n=20) can't clear noise alone, and a subgroup effect that flips sign across runs is noise. Run `sigtest_t26.py` before treating any delta as real.

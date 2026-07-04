@@ -211,6 +211,23 @@ func TestLoadTaxonomy_CrossPathDuplicateAllowed(t *testing.T) {
 // full-path routing redesign (task #5) is deferred. The entry is skipped (warned
 // to stderr, exit 0), never silently misrouted. This guards the 3x re-add trap:
 // a naive delete-on-collision would re-add Orion on the third occurrence.
+func TestLoadTaxonomy_TypeDescriptionRoundTrips(t *testing.T) {
+	taxonomyPath := writeTempFile(t, "taxonomy.json", `{
+    "types": [
+        { "name": "Sheet1", "description": "Some description text", "categories": [
+            { "name": "Category1", "subcategories": ["Diarista"] } ] },
+        { "name": "Sheet2", "categories": [
+            { "name": "Category2", "subcategories": ["Outra"] } ] }
+    ],
+    "incomeCategories": []
+}`)
+
+	sheets, _, err := LoadTaxonomy(taxonomyPath, "", "", 0)
+	require.NoError(t, err)
+	assert.Equal(t, "Some description text", sheets[0].Description)
+	assert.Equal(t, "", sheets[1].Description)
+}
+
 func TestLoadTaxonomy_AmbiguousEntrySkipped(t *testing.T) {
 	dir := t.TempDir()
 	taxonomyPath := filepath.Join(dir, "taxonomy.json")

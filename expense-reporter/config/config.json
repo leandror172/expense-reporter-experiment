@@ -6,5 +6,6 @@
   "auto_insert_excluded": ["Diversos"],
   "classifications_path": "classifications.jsonl",
   "expenses_log_path": "expenses_log.jsonl",
-  "taxonomy_path": "config/taxonomy.json"
+  "taxonomy_path": "config/taxonomy.json",
+  "type_descriptions_path": "config/type-descriptions.json"
 }

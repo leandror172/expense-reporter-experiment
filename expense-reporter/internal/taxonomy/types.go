@@ -39,8 +39,9 @@ type Category struct {
 
 // ExpenseType is one of Fixas/Variáveis/Extras/Adicionais.
 type ExpenseType struct {
-	Name string
-	Cats []Category
+	Name        string
+	Description string // optional; rendered in the classifier prompt only (T-22)
+	Cats        []Category
 }
 
 // RevenueBlock is one income leaf — the intersection of a taxonomy category, a

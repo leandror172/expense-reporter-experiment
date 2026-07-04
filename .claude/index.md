@@ -99,9 +99,10 @@
 | `internal/resolver` | `expense-reporter/internal/resolver/` | Category resolution: matches expense → (category, subcategory) |
 | `internal/workflow` | `expense-reporter/internal/workflow/` | Multi-step workflow: parse → resolve → insert |
 | `pkg/utils` | `expense-reporter/pkg/utils/` | Public utility functions (currency, date, format) |
-| `config` | `expense-reporter/config/` | Configuration files and constants |
+| `config` | `expense-reporter/config/` | Configuration files and constants; `type-descriptions.json` (tracked, non-sensitive sidecar: expense-type → English description, merged into the classifier prompt — T-22) |
 | `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic; `examples.go` (SelectExamples, KeywordIndex, tokenization); `loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools) |
-| `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` |
+| `internal/taxonomy` | `expense-reporter/internal/taxonomy/` | Pure-input taxonomy domain types + loader + full-path routing (`path.go`); `descriptions.go` (`LoadTypeDescriptions`, `ApplyDescriptions` — type-description sidecar overlay, T-22) |
+| `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` + `TaxonomyFilePath()` + `TypeDescriptionsFilePath()` |
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`) |
 | `internal/review` | `expense-reporter/internal/review/` | Review command package: `ReadQueue` (7-field CSV reader), `BuildTaxonomy` (3-level tree from workbook mappings), `Render` (placeholder injection), `TemplateHTML` (go:embed); types in `types.go` |
 | `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check, SetupBinaryConfig) |

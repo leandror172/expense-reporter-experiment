@@ -11,7 +11,9 @@ validity is grammar-enforced, not model-dependent — KNOWLEDGE.md). **T-14 benc
 (s46): 63% full-path, confidence UNINFORMATIVE (91% of errors ≥0.85 — the auto-insert
 gate does not protect); `--think=false` = 10× faster at −3.3 pp but kills the T-19
 sentinel; q35 disqualified (think:false drops the grammar). WS-D gate NOT passed.**
-Few-shot layer 1 (keyword) done; TF-IDF planned (5.R1). Corpus 1788 examples (5.R4).
+**T-22 (s47): English type-level descriptions adopted via tracked sidecar
+`config/type-descriptions.json` — +6pp TYPE accuracy, calibration unchanged; think-on
+confirm deferred.** Few-shot layer 1 (keyword) done; TF-IDF planned (5.R1). Corpus 1788 examples (5.R4).
 
 ## Structure
 ```

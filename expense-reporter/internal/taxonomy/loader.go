@@ -55,8 +55,9 @@ func LoadTaxonomy(taxonomyPath, entriesPath, incomeEntriesPath string, targetYea
 
 // rawType mirrors one element of the taxonomy file's "types" array.
 type rawType struct {
-	Name       string `json:"name"`
-	Categories []struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Categories  []struct {
 		Name          string   `json:"name"`
 		Subcategories []string `json:"subcategories"`
 	} `json:"categories"`
@@ -119,7 +120,7 @@ func loadTaxonomyFile(path string) ([]ExpenseType, []RevenueBlock, error) {
 func rawTypesToExpenseTypes(raw []rawType) []ExpenseType {
 	types := make([]ExpenseType, len(raw))
 	for i, rs := range raw {
-		types[i] = ExpenseType{Name: rs.Name}
+		types[i] = ExpenseType{Name: rs.Name, Description: rs.Description}
 		cats := make([]Category, len(rs.Categories))
 		for j, rc := range rs.Categories {
 			cats[j] = Category{Name: rc.Name}

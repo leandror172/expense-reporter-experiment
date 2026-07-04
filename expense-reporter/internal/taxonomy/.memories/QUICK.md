@@ -16,6 +16,10 @@ depends on it (path enum). Mechanics + rationale → KNOWLEDGE.md.
 - **path.go (T-13):** `BuildPathMap`→`Enum()` (112 enum strings), `Split(path)`
   reverse-map lookup — **NEVER parse on `/`** (names contain `/`); `PathFor`,
   `ResolveLeaf(sub,typeHint)`, `TypesForLeaf`.
+- **Type descriptions (T-22):** `ExpenseType.Description` + `descriptions.go`
+  (`LoadTypeDescriptions`/`ApplyDescriptions`) overlay a tracked sidecar
+  (`config/type-descriptions.json`) onto types by NFC name-match — classifier prompt only,
+  graceful if absent; `generate` ignores it.
 - **Multi-year (WS-A):** `parseDate` accepts `DD/MM` and `DD/MM/YYYY`; `scanEntries`
   filters by `targetYear` — one merged log can feed `generate --year N`.
 
