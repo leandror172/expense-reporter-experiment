@@ -1,41 +1,41 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-03 — Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
-**Current Layer:** Classifier accuracy & calibration → T-23 gate rethink (WS-D blocker) next
+**Current Session:** 2026-07-04 — Session 49: T-23 logprob-confidence probe + leaf-first spin-off (D1 locked) + taxonomy audit
+**Current Layer:** Classifier calibration & accuracy — T-23 gate rethink / leaf-first
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-03 - Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
+## 2026-07-04 - Session 49: T-23 logprob-confidence probe + leaf-first spin-off (D1 locked) + taxonomy audit
 
 ### Context
 
-Resumed on branch `feat/t22-type-descriptions` (PR #42 open). User asked to discuss next steps, chose the "cheaper adjacent win" — T-26 (the deferred T-22 think-on confirmation) — over starting the harder T-23. Ordered T-26 before T-24 because T-24's `--think` decision consumes T-26's sentinel data.
+Started mid-review of PR #42 (T-22) with a request to discuss next steps. A T-23 (gate rethink) discussion — sparked by the user's idea of reading confidence off the token distribution — turned into an empirical Ollama-logprob probe, which spun off leaf-first classification as its own thread. All output this session is docs/plans/memory (no product code); the taxonomy rename touched gitignored data files (not in git).
 
 ### What Was Done
 
-- Reworked the stale benchmark runner: authored `.claude/scratch/t14-benchmark/run_t26.sh` — toggles the **sidecar** `config/type-descriptions.json` (removed=nodesc, present=descen) instead of `run_t22.sh`'s pre-adoption taxonomy-swap; builds the binary itself; encodes the think-mode into result prefixes (`results-<mode>-<cond>-…`) so `run_benchmark.py`'s resume-by-id can't mistake the old no-think files for this run's work.
-- Ran the think-on A/B (nodesc vs descen, 300-item accuracy + 20-item OOD each, q3, ~2.5 h wall-clock, resumable, 0 failures). Sidecar restored to adopted state by the EXIT trap.
-- Significance-tested the deltas with `sigtest_t26.py` (paired McNemar + Fisher exact, reuses `score.py` predicates, zero model calls) — prompted by an advisor call.
-- Updated `.claude/t14-benchmark-report.md` with a "Results — think-on" section, softened to significance-tested language.
-- Created `.claude/scratch/t14-benchmark/.memories/{QUICK,KNOWLEDGE}.md`.
-- No package code changed this session — benchmark/report/tooling only (hence no feature commits).
+- Probed Ollama 0.17.5 logprobs empirically: feasibility gate PASSES (logprobs exposed under the `format` grammar), but the reported logprobs are PRE-grammar-mask (raw, not renormalized) — overturned the initial "grammar renormalizes → token-dist == taxonomy-dist" theory.
+- Ran the leaf-first legibility probe: type-first enum makes the margin unreadable (chosen tokens raw p≈0); LEAF-FIRST makes it legible (Uber leaf p=0.986, readable competitors). Wrote it up: `.claude/t23-logprob-confidence-probe.md`.
+- Authored the T-23 calibration-benchmark plan (`.claude/plans/t23-calibration-benchmark.md`): 4 signals (self-confidence baseline / answer-perplexity / logprob-margin / ensemble-agreement), risk-coverage as primary metric, engine/library rundown + deferred 2b engine-PoC subagent scope.
+- Authored the leaf-first classification plan (`.claude/plans/leaf-first-classification.md`) as a standalone accuracy change + T-23 precondition, with full intent narrative.
+- Ran the taxonomy junk-leaf audit: 1 junk leaf `Apoia-se 4i20` → generalized to `Apoia-se`; full surgical propagation (labels only, real `item` text kept) across taxonomy + feature dict + training + logs (backups `*.bak-apoia-rename`). The 5 cross-type collisions confirmed as real recurrence structure.
+- Updated classifier QUICK.md + KNOWLEDGE.md, wrote memory `project_logprob_confidence_leaf_first`, created internal tasks (#1 audit DONE, #2 leaf-first, #3 = T-23 benchmark, #4 = T-20). Branch `docs/t23-calibration-probe` (4 commits, unpushed).
 
 ### Decisions Made
 
-- **T-26 done; task order UNCHANGED — T-23 is still next.** The only ordering-relevant output is a null: calibration is untouched (86–88% HC-wrong), so nothing here moves the auto-insert gate.
-- **Retracted two report findings as noise after significance testing** (they had been written in as fact): (1) "descriptions concentrate the win on novel items / redistribute easy→hard" — the leaky/novel effect **flips sign** between the no-think (+leaky/−novel) and think-on (−leaky/+novel) runs, and a real mechanism can't flip sign; subgroup deltas non-sig (novel full-path p=0.30, novel type p=0.052). (2) "descriptions suppress the T-19 sentinel to 0" — 4/20-vs-0/20, Fisher p=0.11, underpowered.
-- **T-22 adoption still holds**, but on the *cross-run direction consistency* of the type lift (+6.0 no-think, +2.3 think-on), NOT think-on's own delta (p=0.36, not significant alone).
-- **T-24 framing corrected:** with descriptions on (production default), think-on's sentinel advantage vanishes (the sentinel is a weak net in *every* condition — confident-wrong non-`Diversos` OOD picks slip through even at its best 20%). So the `--think` call is accuracy-vs-speed (~+2.7 pp full-path for ~10× latency), not "descriptions kill the sentinel."
+- **D1 LOCKED** for leaf-first collision handling = second `type` field, schema order `leaf` THEN `type` (order load-bearing), always-predict, `ResolveLeaf` disambiguates the 5 collisions + cross-checks the 99 unique leaves as a free calibration signal. Grounded in the audit: the collision axis IS recurrence (pets/dentista/parking span Fixas/Variáveis/Extras — not derivable from the leaf name).
+- **Split leaf-first from T-23** — judged on accuracy alone first (attacks T-14's dominant "right sheet, wrong leaf"); the confidence benchmark rides on a leaf-first base.
+- **`Apoia-se 4i20` → `Apoia-se`** (vendor granularity, NOT an `Assinaturas` bucket — keeps future Netflix/HBO/Spotify generalizations consistent).
+- **2b engine work deferred** — run signals 1/2a/3 on Ollama first; only send the llama.cpp/vLLM engine-PoC subagent if 2b earns it (ask model before spawning).
 
 ### Next
 
-- **T-23 — calibration / gate rethink** (the WS-D blocker). T-26 confirmed descriptions do NOT fix the gate. Directions: margin/agreement thresholding, few-shot with varied confidence, review-first for non-recurring items (recurrence beats confidence as a safety signal), stronger `auto_insert_excluded`.
-- Merge PR #42 (updated with the T-26 think-on results).
-- Candidate follow-up task (propose via amend): a larger OOD probe set to settle the sentinel-suppression question the n=20 run left underpowered.
-- Later: T-27 (leaf-level descriptions — justify via T-14's "wrong leaf" error class, NOT this run's noisy novel-type number), T-24 (`--think` default), T-28 (alt strategies).
+- Build the **leaf-first A/B** (new T-30) — D1 settled; decide D2 (tree vs flat prompt) / D3 (benchmark-only vs prod) / D4 (adopt threshold) at build time.
+- **T-20** dedup as an independent pick-up while PR #42 is under review (deterministic, no Ollama).
+- **T-23** calibration benchmark rides on the leaf-first base once it lands.
+- Durability: rename the `Apoia-se` leaf in the workbook Referência (or export step) so it survives taxonomy re-export (T-02).
 
 ### Gotchas
 
-- `go build ./...` does NOT emit the cmd binary — must `go build -o expense-reporter ./cmd/expense-reporter` before benchmarking (`run_t26.sh` does this).
-- Benchmark resume keys on the results **filename** — reusing a prior run's prefix makes `done_ids` "skip everything" silently. New runs need a fresh prefix (`run_t26.sh` encodes the think-mode).
-- A single 300-item run resolves only ~±5 pp; subgroup splits (n=116, n=20) can't clear noise alone, and a subgroup effect that flips sign across runs is noise. Run `sigtest_t26.py` before treating any delta as real.
+- Ollama 0.17.5 reports PRE-grammar-mask logprobs (raw distribution, not renormalized over legal tokens; legal tokens often outside top_logprobs) — you cannot read "P over legal paths" directly.
+- A single token is NOT the leaf margin — the first char measures "which initial letter" (many leaves share it), not "which leaf"; the real signal is the whole-leaf sequence logprob + margin to runner-up.
+- The taxonomy rename touched gitignored data files (not in git); `*.bak-apoia-rename` backups sit in the working tree; the docs branch is unpushed; classifier QUICK/KNOWLEDGE edits are uncommitted.
