@@ -1,42 +1,37 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-05 — Session 50: T-30 leaf-first A/B — D4 = HOLD (enum gain washes out under few-shot; scoped to T-23 logprob precondition)
-**Current Layer:** Classifier calibration & accuracy — T-23 gate rethink / leaf-first
+**Current Session:** 2026-07-05 — Session 51: T-23 route reframe — external validators over model-introspection (recurrence-first); validated leaf-first HOLD; PR #43
+**Current Layer:** Classifier calibration & accuracy — T-23 gate route (external validators)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-05 - Session 50: T-30 leaf-first A/B — D4 = HOLD (enum gain washes out under few-shot; scoped to T-23 logprob precondition)
+## 2026-07-05 - Session 51: T-23 route reframe — external validators over model-introspection (recurrence-first); validated leaf-first HOLD; PR #43
 
 ### Context
 
-Continued session 49's leaf-first thread. User caught an early over-reach — I proposed a production Go `--leaf-first` flag; corrected to a benchmark-only probe (the plans' stated approach) and saved a feedback memory. GPU usage was gated tightly (paused between arms for another task). All work is benchmark + docs — no product code changed (D3 = benchmark-only).
+Resumed after session 50's handoff to (a) validate its leaf-first D4=HOLD and (b) decide the T-23 signal route it unblocked. Pure analysis/docs — no product code.
 
 ### What Was Done
 
-- Re-read every leaf-first/T-23 companion doc; **reframed the work from "production feature" to "standalone benchmark probe"** and saved `feedback_probe_not_feature` memory.
-- **Verified the GBNF property-order assumption FIRST** (highest risk): a two-field schema `leaf → type → confidence` makes q3 *generate* leaf before type (decl order → GBNF generation order pinned) → D1's two-field design is sound, no single-string-enum fallback needed.
-- Built the benchmark-only A/B harness `.claude/scratch/leaf-first-ab/` — `run_leaf_ab.py` (both arms via direct Ollama, emits the exact `score.py` record shape, resumable, `--fewshot`/`--think` axes), `analyze_leaf_ab.py` (paired McNemar + right-sheet-wrong-leaf rate + `type_crosscheck`), symlinked sample/ood, reused `score.py`/`sigtest` unchanged. Ported `SelectExamples` few-shot (arm-shaped: `{leaf,type}` JSON vs `{path}` string).
-- Ran the full **4-cell A/B** (few-shot OFF/ON × no-think/think-on, 300 items each, 0 failures): FS-A +12.7 / +8.7 pp full-path (both p<0.001); FS-B +3.3 (p=0.064) / **+1.7 (p=0.46) = production, not sig**.
-- Wrote the **T-30 report section** (`.claude/t14-benchmark-report.md`) + the plan execution log; updated classifier QUICK/KNOWLEDGE, `project_logprob_confidence_leaf_first`, harness QUICK.
-- Advisor-reviewed the HOLD verdict; applied 3 sharpenings (underpowered ≠ proven null; scoped T-23 precondition; T-22 descriptions held absent) + the T-27 coupling flag.
+- **Independently validated session-50's leaf-first D4=HOLD:** recomputed the production cell (full-path +1.7 p=0.46) and the load-bearing novel stratum (+2.6 n.s.) from the cached A/B results — HOLD confirmed (the novel number was the one that could have overturned it).
+- **Read the classifier end-to-end** (`decision.go` / `examples.go` / `loader.go` + `auto`/`batch-auto` wiring): the gate is confidence-only (`IsAutoInsertable`), and the recurrence signal (keyword specificity) is computed in `SelectExamples` then **DISCARDED** — grep-confirmed it never leaves the function.
+- **Reframed the T-23 route (advisor-reviewed)** around external validators vs. model-introspection; wrote it into `.claude/plans/t23-calibration-benchmark.md` "Route decision" (session-49 token framing retained + scoped) + a new `.claude/t23-strategic-implications.md`.
+- Persisted: classifier KNOWLEDGE (as-is gate + reframe), memories (updated `project_logprob_confidence_leaf_first`, created `project_t23_gate_route_strategy`), index.
+- **Created PR #43** (`docs/t23-calibration-probe` → master; #42 merged so the base is clean, docs-only diff).
 
 ### Decisions Made
 
-- **D4 = HOLD — do NOT adopt leaf-first for accuracy.** Production config (few-shot ON + think-on) shows no significant gain on any metric; the FS-A gain is real but few-shot retrieval already fixes the same "wrong-leaf" errors (sub-additive stacking). Not measurably worse, but the +1.7pp point estimate is underpowered — "too small to justify a rewrite," not a proven null.
-- **Leaf-first remains the T-23 precondition but SCOPED:** proven only for the logprob-margin/perplexity signals (2a/2b); OPEN/possibly-unneeded for the ensemble-agreement signal (3, extractable from K sampled full-paths). If T-23 goes ensemble, leaf-first is fully on the shelf.
-- **`type_crosscheck` rejected as a calibration signal** — disagree→worse in 3/4 runs, inverted once, disagreements → 0 as accuracy rises. T-23 footnote, not a gate.
-- **Resolved D2=tree, D3=benchmark-only; few-shot is its own axis (FS-A/FS-B), not D3.**
-- **T-27 (leaf-level descriptions) motivation undercut** — few-shot already recovers most wrong-leaf errors; re-justify on few-shot-ON evidence or drop.
+- **Gate route = EXTERNAL VALIDATORS (recurrence-strength / value-range) primary, MODEL-INTROSPECTION (ensemble → logprob) secondary.** Recurrence (recurring ≈70% vs novel ≈49%, ~25pp) dwarfs any token signal and is orthogonal to the model's anti-informative self-confidence. First study = recurrence-strength risk–coverage stratified recurrent/novel; the curve decides whether any introspection signal is needed. **NOT a final gate decision — deferred.**
+- Advisor corrections integrated: it's the first STUDY, not the decided route; introspection's unique test is the NOVEL pool (not "refining the recurrent pool"); "can't gate a coin flip" is too strong (49% is an average); E3 retrieval-agreement carries the `type_crosscheck` circularity (few-shot injection breaks independence → 4-cell stability test first); value-range is a NEGATIVE flag only; nothing pre-shelved.
+- Strategic: the auto-insert vision **bifurcates by recurrence, not confidence**; the review UI is first-class; the review→feedback loop amortizes the novel-review cost; retrieval (5.R2 embeddings > 5.R1 TF-IDF) is the real accuracy lever; deprioritize prompt/enum tuning (T-27 re-justify or drop).
 
 ### Next
 
-- **T-23 calibration benchmark — decide the signal route FIRST:** logprob/perplexity (2a/2b, needs a leaf-first base) vs **ensemble-agreement** (3, needs NO leaf-first) vs recurrence-first fallback. Risk-coverage on the T-14 sample, stratify leaky/clean. This choice decides whether leaf-first is ever revived.
-- Independent pick-up: **T-20** expense-log dedup (deterministic, no Ollama).
-- Housekeeping: merge **PR #42** (T-22); rename `Apoia-se` in the workbook Referência (durability, or re-export wipes it).
+- **T-23 recurrence-strength study** (E1 risk–coverage stratified recurrent/novel, + E2 value-range negative flag) — the cheapest, unblocked first move and the WS-D critical-path opener.
+- **T-20** dedup — independent, deterministic pick-up.
+- Then **WS-D (T-09)** retire bare-name fallback → **WS-E**.
 
 ### Gotchas
 
-- **FS-A's +12.7pp is misleading in isolation** — it evaporates to +1.7pp (ns) once few-shot is on. Always gate adoption on the few-shot-ON cell, never the enum-isolated one.
-- **Client-kill does NOT stop Ollama server-side generation** (queue-starve) — used `pkill` to break the chained `&&` job so the second arm wouldn't auto-start, then resumed the first arm (resumable by id).
-- **GBNF pins schema property-declaration order → generation order** (leaf-then-type verified); Python `json.dumps` preserves dict order — the Go map-key-sorting trap is Go-only, irrelevant to this pure-Python harness.
-- Harness reuse: `score.py` globs `results-*.jsonl` in `--dir`; the new harness symlinks `sample.jsonl`/`ood.jsonl` and emits the matching record shape, so `score.py`/`sigtest_t26.py` run unchanged. `path-first+few-shot` = 59.3% matched the production baseline (~58.7%) → few-shot port validated.
+- The recurrence signal EXISTS but is thrown away in `SelectExamples` (never reaches `Result`/gate). Wiring it in = ~5-file plumbing (expose → thread out of `Classify` → widen `IsAutoInsertable` → 3 call sites), no new inference.
+- E3 retrieval-generation agreement is NOT two independent methods — few-shot injects the matched keyword's examples, nudging the model toward the retrieved answer (the same non-independence that sign-flipped `type_crosscheck`). Test 4-cell stability before relying on it.
