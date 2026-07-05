@@ -16,7 +16,14 @@ sentinel; q35 disqualified (think:false drops the grammar). WS-D gate NOT passed
 confirm deferred.** **T-23 probe (s49): token logprobs as a confidence signal — Ollama 0.17.5
 exposes logprobs but reports them PRE-grammar-mask (raw, not renormalized); type-first enum
 makes the margin unreadable, LEAF-FIRST enum makes it legible (Uber leaf p=0.986). Calibration
-NOT yet proven. Report `.claude/t23-logprob-confidence-probe.md`; KNOWLEDGE.md.** Few-shot layer
+NOT yet proven. Report `.claude/t23-logprob-confidence-probe.md`; KNOWLEDGE.md.**
+**LEAF-FIRST A/B DONE (T-30, session 50) → D4 = HOLD, do NOT adopt for accuracy.** Benchmark-only
+harness `.claude/scratch/leaf-first-ab/` (enum=104 leaves, derive type/cat via `ResolveLeaf`,
+GBNF leaf-then-type order confirmed). Full-path Δ vs current enum decays +12.7(fs off)→+1.7
+(production: few-shot ON + think-on, p=0.46 NOT sig) — few-shot already fixes the same wrong-leaf
+errors. Not worse, just not worth productionizing. Still the T-23 precondition ONLY for the
+logprob/perplexity signal (open for ensemble). Report `.claude/t14-benchmark-report.md` "T-30".
+Taxonomy audit (s49): junk leaf `Apoia-se 4i20`→`Apoia-se` (workbook re-export still needed).** Few-shot layer
 1 (keyword) done; TF-IDF planned (5.R1). Corpus 1788 examples (5.R4).
 
 ## Structure

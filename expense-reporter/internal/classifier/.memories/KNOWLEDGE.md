@@ -172,3 +172,39 @@ Exploring whether the model's token distribution can replace the uninformative s
   `Diversos`. Two signals to benchmark: logprob-margin vs K-sample ensemble agreement.
 - Side flags: junk taxonomy leaf `Apoia-se 4i20` (audit `config/taxonomy.json`); think-on
   prepends reasoning tokens that move the JSON/decision span (aggregation must find it first).
+
+## Leaf-First Classification — planned + D1 locked (session 49)
+Plan: `.claude/plans/leaf-first-classification.md`. Standalone accuracy change AND the
+precondition that makes the T-23 confidence signal legible. Split from T-23 so it can be judged
+on accuracy alone.
+- **Change:** enum = the 104 unique **leaf** names (not 112 full paths); derive `(type,category)`
+  upward via `taxonomy.ResolveLeaf`. Mirrors the manual `add` path (which already does this).
+  Attacks T-14's dominant "right sheet, wrong leaf" error class; puts the model's strong-signal
+  decision (the leaf, cf. "Uber") first instead of forcing an abstract Type guess first.
+- **D1 LOCKED = second `type` field.** Schema emits **`leaf` THEN `type`** (order load-bearing:
+  leaf first keeps the leaf-first commitment; type second is a real *recurrence* judgment).
+  Always-predict `type`; `ResolveLeaf` consults it ONLY for the 5 cross-type collisions and
+  cross-checks the 99 unique leaves as a free calibration signal. Grounded in the audit: the
+  collision axis IS recurrence (pets `Ambos`/`Lilly`/`Orion` ×3, `Dentista`/`Estacionamento` ×2
+  span Fixas/Variáveis/Extras) — not derivable from the leaf name.
+- **A/B DONE (session 50) → D4 = HOLD (do not adopt for accuracy).** D2=tree, D3=benchmark-only
+  (`.claude/scratch/leaf-first-ab/`), GBNF property-order (leaf-then-type) empirically confirmed.
+  4 cells (few-shot OFF/ON × no-think/think-on, n=300 paired, McNemar): full-path Δ decays
+  monotonically +12.7 → +8.7 → +3.3 → **+1.7 (production = few-shot ON + think-on, p=0.46, NOT
+  sig)**. The FS-A gain was real but **few-shot retrieval + thinking already fix the same
+  "wrong-leaf" errors** (sub-additive stacking). Type Δ survives longest (derived lookup off the
+  leaf: sig in 3/4 cells) but also washes out in prod (+2.3, p=0.30). Not measurably *worse* (all
+  prod deltas mildly +), but underpowered to prove a true null — "too small to justify a rewrite,"
+  not "costs nothing". Report: `.claude/t14-benchmark-report.md` "T-30". Full log:
+  `.claude/plans/leaf-first-classification.md`.
+- **Still valuable ONLY as the T-23 precondition, SCOPED:** proven for the logprob-margin/perplexity
+  signals (2a/2b); OPEN/possibly-unneeded for the ensemble-agreement signal (3). If T-23 goes
+  ensemble, leaf-first is fully on the shelf. `type_crosscheck` is NOT a usable calibration signal
+  (sign-flips across runs; disagreements → 0 as accuracy rises). Couples to T-27 (few-shot already
+  recovers most wrong-leaf errors → re-justify T-27 or drop).
+- **Taxonomy audit DONE (session 49):** all 112 leaves clean except `Apoia-se 4i20` (a leaked
+  description auto-minted as a leaf in 5.R4 — appeared identically as `item` AND `subcategory`).
+  Generalized to vendor leaf `Apoia-se`; full surgical propagation (labels only, real `item`
+  text kept) across taxonomy + feature dict + training + logs; `*.bak-apoia-rename` backups.
+  **Durability gap:** the leaf must also be renamed in the workbook Referência (T-02 export
+  source) or the next re-export wipes it.

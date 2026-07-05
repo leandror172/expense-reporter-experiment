@@ -175,3 +175,139 @@ Referência sheet (or the export step) to survive regeneration. Frozen T-14 benc
 
 - This plan; the taxonomy-audit outcome; the A/B harness (under `.claude/scratch/`); a report
   section (append to `.claude/t14-benchmark-report.md`); an adopt/hold decision.
+
+---
+
+## Execution log (session 50, 2026-07-04)
+
+- **GBNF property-order assumption — EMPIRICALLY CONFIRMED (highest-risk item, checked FIRST).**
+  A two-field schema declaring properties `leaf → type → confidence` makes q3 *generate* `leaf`
+  before `type` in the raw stream (3/3 probes: Uber→`Uber/Taxi`, Netflix→`Netflix`,
+  dentista→`Dentista`, all `{"leaf":…,"type":…}`). Schema declaration order → generation order is
+  pinned by the schema→GBNF compile. **D1's two-field mechanism is sound — no fallback to a
+  concatenated `leaf|type` single-string enum needed.** The `Dentista` probe also showed the
+  collision case working: `type:"Variáveis"` came back as a separate field for `ResolveLeaf` to
+  consume. Probe: `scratchpad/gbnf_order_probe.py`.
+- **Label fix (carried from review):** the **few-shot axis is SEPARATE from D3.** D3 = where the
+  arm lives (benchmark-only vs prod flag) — locked benchmark-only. The few-shot on/off choice is
+  its own axis: **FS-A** (few-shot OFF, both arms — the signal check) vs **FS-B** (few-shot ON,
+  arm-shaped assistant messages: leaf+type JSON for treatment vs path string for control — the
+  production-realistic verdict).
+- **D4 is gated on FS-B, not FS-A.** FS-A answers only "does the enum direction move accuracy,
+  all else equal." Production always runs few-shot ON, and few-shot may wash out or interact with
+  the enum effect, so a promising FS-A delta ALONE must not trigger "adopt." FS-A = signal; FS-B =
+  verdict.
+- **Harness built (D3=benchmark-only, D2=tree):** `.claude/scratch/leaf-first-ab/`
+  (`run_leaf_ab.py` two arms + direct Ollama calls; `analyze_leaf_ab.py` adds the
+  right-sheet-wrong-leaf rate + paired McNemar + the `type_crosscheck` free calibration signal;
+  `sample.jsonl`/`ood.jsonl` symlinked from `../t14-benchmark`; `score.py`/`sigtest_t26.py`
+  reused unchanged — the runner emits their exact record shape). Both arms few-shot OFF, same tree
+  prompt, NO T-22 descriptions (held constant/absent).
+
+### FS-A result (no-think, few-shot OFF, enum-isolated, n=300 paired) — LARGE + SIGNIFICANT
+
+| metric | control (path-first) | treat (leaf-first) | Δ | McNemar p |
+|---|---|---|---|---|
+| full-path | 39.7% | 52.3% | **+12.7** | <0.001 |
+| type | 60.7% | 71.7% | +11.0 | <0.001 |
+| leaf | 41.3% | 53.7% | +12.3 | <0.001 |
+
+- **Holds on the load-bearing CLEAN/novel stratum:** full-path +12.9pp (20.7→33.6%), p=0.001
+  (17 treatment-wins vs 2 control-wins). Leaky +12.5pp, p<0.001. Decisively clears noise (unlike
+  the T-26 within-noise deltas).
+- **Mechanism correction (honest):** the "right sheet, wrong leaf" *rate* barely moved
+  (−1.7pp, not sig). The gain is NOT from fixing wrong-leaf-within-right-sheet; it's that the
+  **type decision itself improved** because leaf-first *derives* type from a confident leaf
+  (`ResolveLeaf`) instead of guessing it first — path-first type 60.7% (predicted first) vs
+  leaf-first 71.7% (derived). The probe's core insight, confirmed at scale.
+- **`type_crosscheck` is a real free calibration signal** (feeds T-23): of 256 unique-leaf
+  predictions, 42 had the model's field-2 `type` guess disagree with the leaf's owner →
+  full-path acc **60.8% (agree) vs 40.5% (disagree)**, a 20pp spread self-confidence never gave.
+- **Binding caveat (why FS-A ≠ adoption):** control few-shot-OFF (39.7%) sits far below production
+  path-first few-shot-ON (~58.7%) — **few-shot is worth more than the enum direction**. Leaf-first
+  few-shot-OFF (52.3%) is still *below* path-first few-shot-ON. FS-A proves the enum gain is real
+  and large in isolation; it can't say whether it SURVIVES with few-shot on. → FS-B decides D4.
+
+### Think-on FS-A result (few-shot OFF, n=300 paired) — enum gain HOLDS across think mode
+
+| metric | control | treat | Δ | McNemar p | (no-think Δ) |
+|---|---|---|---|---|---|
+| full-path | 46.7% | 55.3% | +8.7 | <0.001 | +12.7 |
+| type | 63.3% | 75.0% | +11.7 | <0.001 | +11.0 |
+| leaf | 48.3% | 57.0% | +8.7 | <0.001 | +12.3 |
+
+- **Aggregate + type gains are robust and significant in BOTH think modes, direction-consistent**
+  (the real evidence, per the T-26 cross-run-consistency lesson — not any single p-value).
+- **Two honest corrections to the no-think writeup:**
+  1. **Clean/novel win is weaker than first stated.** Think-on clean full-path +6.0pp is
+     **p=0.143 (not sig)**; only clean *type* clears (+12.1pp, p=0.007). Clean full-path is
+     positive in both modes (+12.9 no-think / +6.0 think-on — no sign flip) but individually
+     significant only in no-think. Robust effects = aggregate + type.
+  2. **`type_crosscheck` calibration signal WALKED BACK — does not replicate.** No-think:
+     disagree→worse (60.8 vs 40.5). Think-on: disagree→*better* (60.1 vs 77.8, n=18). Sign flip
+     across modes on tiny n = noise, not a mechanism (T-26 rule). NOT an established signal — a
+     hypothesis for T-23 to test properly, not a finding. (Removes the earlier "free calibration
+     signal" claim.)
+
+### FS-B block (the D4 adoption gate) — few-shot ON, arm-shaped examples
+
+FS-B setup: `--fewshot` injects arm-shaped example pairs — `{"leaf","type"}` JSON for treatment vs
+`{"path"}` string for control; same `SelectExamples` port feeds both arms (training pool only, for
+reproducibility); `fs-` filename segment. User authorized the whole block.
+
+**FS-B no-think result (few-shot ON, n=300 paired) — enum full-path gain largely WASHES OUT:**
+
+| metric | control (path+fs) | treat (leaf+fs) | Δ | McNemar p | (FS-A Δ) |
+|---|---|---|---|---|---|
+| full-path | 59.3% | 62.7% | +3.3 | 0.064 (NOT sig) | +12.7 |
+| type | 75.7% | 81.3% | +5.7 | 0.008 (sig) | +11.0 |
+| leaf | 60.3% | 63.7% | +3.3 | 0.064 (NOT sig) | +12.3 |
+
+- **The caveat held:** few-shot captures most of the leaf-first full-path benefit. Few-shot lifted
+  the control +19.6pp (39.7→59.3) but the treatment only +10.4pp (52.3→62.7) — the two mechanisms
+  (retrieval vs generation-order) fix overlapping errors, so stacking is sub-additive and the
+  marginal full-path gain drops to +3.3pp / not significant.
+- **TYPE gain survives** (+5.7pp, p=0.008) — type is a *derived* lookup off the leaf, a structural
+  gain few-shot can't replicate by example. Clean-subset type also sig (+8.6pp, p=0.041); clean
+  full-path +6.0pp borderline (p=0.065).
+- **Harness validated:** path-first+few-shot = 59.3% matches the production T-14/T-22 no-think
+  baseline (~58.7%) → the few-shot port faithfully reproduces production.
+- `type_crosscheck`: disagree→worse again here (69.8 vs 34.8, n=23) — but it flipped in FS-A
+  think-on, so still not established (awaiting FS-B think-on as the 4th datapoint).
+
+**FS-B think-on result (few-shot ON + think-on = PRODUCTION default, n=300 paired) — DECISIVE:**
+
+| metric | control (path+fs) | treat (leaf+fs) | Δ | McNemar p |
+|---|---|---|---|---|
+| full-path | 59.3% | 61.0% | +1.7 | 0.458 (NOT sig) |
+| type | 77.0% | 79.3% | +2.3 | 0.296 (NOT sig) |
+| leaf | 61.0% | 62.0% | +1.0 | 0.701 (NOT sig) |
+
+**In the production configuration, leaf-first has NO significant advantage on any metric.**
+
+### D4 DECISION — HOLD (do not adopt leaf-first for accuracy). Session 50.
+
+Full-path Δ decays monotonically across the 4 cells: +12.7 (FS-A nothink) → +8.7 (FS-A think) →
++3.3 (FS-B nothink) → **+1.7 (FS-B think = prod, not sig)**. Type Δ: +11.0 → +11.7 → +5.7 → +2.3
+(sig in 3/4, not in prod). Every mechanism that lets the path-first control catch up (few-shot
+retrieval, then thinking) erodes the leaf-first edge; the two mechanisms fix overlapping errors, so
+stacking is sub-additive.
+
+- **HOLD for accuracy** — the plan admitted a negative result was valid; this is a clean one.
+- **Point estimate too small to justify a change (NOT a proven null)** — prod-cell full-path +1.7pp
+  on ~29 discordant pairs is underpowered; n=300 can't resolve a true +2–3pp effect. Leaf-first is
+  not measurably worse, but "costs nothing" would overclaim. Conservative read: a ≤+1.7pp effect
+  isn't worth a production rewrite.
+- **Still the T-23 precondition — SCOPED (advisor sharpening).** Proven only for the
+  **logprob-margin / answer-perplexity** route (2a/2b; type-first drags chosen tokens to raw p≈0).
+  For the **ensemble-agreement** route (signal 3), leaf-first is **untested/possibly unnecessary**
+  (leaves can be extracted from K sampled full-paths without a leaf-first enum). So: precondition
+  for the logprob route; OPEN for ensemble. If T-23 goes ensemble → leaf-first fully on the shelf.
+- **T-22 descriptions held absent** in both arms (isolates the enum); prod has them. Strengthens
+  HOLD — leaf-first got its best shot (no competing type booster) and its type edge still washed out.
+- **`type_crosscheck` NOT a usable signal** — disagree→worse in 3/4 runs, inverted in FS-A think,
+  and disagreements collapse toward 0 as accuracy rises (n=42→18→23→4). A T-23 footnote, not a gate.
+- **Couples to T-27** — few-shot already recovers most "wrong-leaf" errors in production, undercutting
+  T-27's (leaf-level descriptions) "right sheet, wrong leaf" motivation. Re-justify T-27 on few-shot-ON
+  evidence or drop it.
+- Report section: `.claude/t14-benchmark-report.md` "T-30 Leaf-First A/B".

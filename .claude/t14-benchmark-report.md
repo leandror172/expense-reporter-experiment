@@ -194,3 +194,89 @@ UNDERPOWERED (n=20, Fisher p=0.11) — do not treat as established.**
 no-think's 91–94%, still unusable as a gate). This null is the only ordering-relevant output
 of T-26: nothing here touches the gate. Descriptions do NOT fix calibration — **T-23 stands
 as the WS-D blocker, unchanged.**
+
+---
+
+# T-30 Leaf-First A/B (session 50, 2026-07-04/05)
+
+**Question:** Does making the classifier predict the LEAF first (enum = 104 unique leaf names,
+derive type/category upward via `taxonomy.ResolveLeaf`) beat the current TYPE-first full-path
+enum (112 `Type/Category/Subcategory` paths)? Spun off from the session-49 T-23 logprob probe,
+which found type-first fights the model's tokenization (drags it onto a Type rail before the
+discriminating leaf is reachable). Judged on accuracy first; also the precondition that makes any
+token-confidence signal legible (T-23).
+
+**Harness:** `.claude/scratch/leaf-first-ab/` — `run_leaf_ab.py` runs both arms via direct
+Ollama `/api/chat` calls (D3 = benchmark-only, NO production change), emitting the exact `score.py`
+record shape so `score.py`/`sigtest`-style analysis run unchanged. `analyze_leaf_ab.py` adds the
+right-sheet-wrong-leaf rate + paired McNemar. Same 300-item stratified T-14 sample.
+
+**GBNF property-order confirmed FIRST** (highest-risk assumption): a two-field schema declaring
+`leaf → type → confidence` makes q3 *generate* `leaf` before `type` (schema decl order → GBNF
+generation order is pinned). So D1's two-field design (leaf enum + separate `type` field, the
+latter disambiguating the 5 cross-type collision leaves `Ambos`/`Lilly`/`Orion`/`Dentista`/
+`Estacionamento`) works — no fallback to a concatenated single-string enum needed.
+
+**Two axes, 4 cells** (both n=300 paired, McNemar exact): **FS** = few-shot OFF (FS-A, enum-isolated
+signal check) vs ON (FS-B, arm-shaped examples — `{leaf,type}` JSON for treatment vs `{path}` string
+for control, same `SelectExamples` port for both; the production-realistic verdict). **think** =
+no-think vs think-on (production default = few-shot ON + think-on).
+
+## Full-path accuracy: control (path-first) → treatment (leaf-first)
+
+| condition | control | treat | Δpp | McNemar p |
+|---|---|---|---|---|
+| FS-A no-think | 39.7% | 52.3% | +12.7 | <0.001 |
+| FS-A think-on | 46.7% | 55.3% | +8.7 | <0.001 |
+| FS-B no-think | 59.3% | 62.7% | +3.3 | 0.064 |
+| **FS-B think-on (PROD)** | **59.3%** | **61.0%** | **+1.7** | **0.458** |
+
+## Type accuracy Δ (same cells): +11.0 / +11.7 / +5.7(p=.008) / +2.3(p=.296)
+
+**Monotonic decay to nothing.** Every mechanism that helps the path-first control catch up —
+few-shot retrieval, then thinking — erodes the leaf-first advantage. In the **production
+configuration (FS-B think-on), leaf-first shows NO significant gain on any metric** (full-path
++1.7 p=0.46, type +2.3 p=0.30, leaf +1.0 p=0.70; all deltas mildly positive, within noise).
+
+**Mechanism (why the FS-A gain was real but evaporates):** leaf-first fixes "wrong-leaf" errors by
+letting the model commit its strongest token (the leaf) first; few-shot fixes the SAME errors by
+retrieving a near-twin with the right answer. Overlapping fixes → sub-additive when stacked.
+Few-shot lifted the control +19.6pp (39.7→59.3) but the treatment only +10.4pp (52.3→62.7),
+because leaf-first had already recovered part of what few-shot recovers. The one effect with a
+structural (not example-substitutable) basis — TYPE, a derived lookup off the leaf — survives
+longest (sig in 3/4 cells) but still washes to non-significance in the full production config.
+
+**Harness validation:** path-first + few-shot = 59.3% (no-think) matches the production T-14/T-22
+no-think baseline (~58.7%) → the few-shot port faithfully reproduces the production path.
+
+**Caveat — T-22 descriptions held absent:** both arms rendered the taxonomy tree WITHOUT the
+adopted `descen` type descriptions (held constant/absent to isolate the enum). Production runs
+*with* them. This does not threaten HOLD — it strengthens it: leaf-first was given its best shot
+(no competing type-boost mechanism) and its type edge still washed out; adding `descen`, itself a
+type-accuracy booster, would only erode the leaf-first type Δ further.
+
+**`type_crosscheck` (leaf-first's field-2 type vs the leaf's real owner):** proposed as a free
+calibration signal. NOT established — disagree→worse in 3/4 runs but inverted in FS-A think-on,
+and the disagreement count collapses toward zero as accuracy rises (n=42→18→23→**4** across cells),
+so it cannot serve as a gate. A footnote for T-23, not a finding.
+
+## Decision (D4): HOLD — do NOT adopt leaf-first *for accuracy*
+
+- **Point estimate too small to justify a production change.** Prod-cell full-path is +1.7pp with
+  only ~29 discordant pairs (12 vs 17) — n=300 cannot resolve a genuine +2–3pp effect at p<0.05,
+  so this is "too small to be worth a rewrite," NOT a proven null. All prod-adjacent deltas are
+  mildly positive; leaf-first is not measurably *worse*, but "costs nothing" would overclaim.
+- **Still the T-23 precondition — but SCOPED.** Leaf-first is proven to make the **logprob-margin /
+  answer-perplexity** signals (2a/2b) legible (type-first drags chosen tokens to raw p≈0; session-49).
+  For the **ensemble-agreement** route (signal 3 — the calibration plan's "possibly more robust"
+  option), leaf-first's necessity is **untested**: you can extract leaves from K sampled full-paths
+  and count votes without a leaf-first enum. So: precondition for the logprob route; **open** for the
+  ensemble route. If T-23 goes ensemble, leaf-first's justification is an open question (accuracy null
+  + possibly-unneeded → fully on the shelf), not an established need.
+- **Recommendation:** don't productionize as an accuracy change; adopt *only* if/when T-23 pursues a
+  logprob-based signal, at negligible accuracy cost.
+- **Couples to T-27 (leaf-level descriptions):** this probe's core finding — few-shot retrieval
+  already recovers most "wrong-leaf" errors in production — undercuts T-27's stated motivation (the
+  same "right sheet, wrong leaf" error class). T-27 should be re-justified on production-realistic
+  (few-shot ON) evidence, or dropped.
+- Full record + per-stratum tables: `.claude/plans/leaf-first-classification.md` "Execution log".
