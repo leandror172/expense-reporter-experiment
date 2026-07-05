@@ -1,16 +1,107 @@
 # T-23 Calibration Benchmark — Plan (option "c")
 
-**Status:** proposed (session 49). Depends on the leaf-first probe finding
-(`.claude/t23-logprob-confidence-probe.md`). Gates WS-D (T-09).
+**Status:** REFRAMED session 50. The "Route decision" section immediately below supersedes the
+session-49 token-signal framing in "Objective/Signals under test" (retained, not deleted — it is
+now the *model-introspection* detail, scoped). Gates WS-D (T-09). Strategic read:
+`.claude/t23-strategic-implications.md`.
 
-**PRECONDITION — do leaf-first FIRST.** The non-baseline signals here assume a leaf-first
-classify path (that's what makes any token signal legible — see the probe report). Leaf-first
-is now its own change with its own accuracy A/B: `.claude/plans/leaf-first-classification.md`.
-Run/adopt that first; this benchmark then rides on a leaf-first base. Sequencing intent: split
-so leaf-first can be judged on accuracy alone, and the calibration signal on a base that already
-uses the enum it needs.
+---
+
+## Route decision (session 50) — external validators vs. model-introspection
+
+**READ FIRST.** Written session 49, this plan assumed a *token-derived confidence signal* was the
+answer. Session 50's leaf-first A/B (D4 = HOLD — no production accuracy gain, `leaf-first-classification.md`
+"Execution log") + the recurrence data + an advisor review reshaped the route. Everything from
+"## Objective" down is kept verbatim (no detail lost) but is now scoped as the introspection detail.
+
+### The empirical picture forcing the reframe
+- Self-confidence is dead as a gate (T-14: 86–91% of WRONG answers carry ≥0.85). Unchanged.
+- **Recurrence is the single dominant discriminator:** leaky/recurring ≈70% vs clean/novel ≈45–49%
+  full-path — a **~25pp gap, larger than any prompt/enum/think effect in the entire benchmark**, and
+  ORTHOGONAL to the model's broken self-assessment.
+- Leaf-first (T-30) gave no production accuracy gain → the logprob route lost its bundled accuracy
+  co-justification; leaf-first is parked.
+
+### The axis (the organizing idea)
+- **External validators** — computed from data OUTSIDE the model's output, so they cannot be fooled
+  by confident-wrong:
+  - **(E1) Recurrence-strength** — keyword-specificity match. Already computed in `SelectExamples`
+    then DISCARDED (see As-is). Cheapest; no new inference.
+  - **(E2) Value-range plausibility (task 5.R3)** — per-subcategory `value_ranges` in
+    `feature_dictionary_enhanced.json`. "R$5000 → Diarista (max 220)" is implausible. Use as a
+    NEGATIVE flag / exclusion, NOT a positive gate (plausible ≠ correct). Data already present.
+  - **(E3) Retrieval-generation agreement** — does the predicted leaf match the dominant subcategory
+    the keyword index expected? **CAVEAT (advisor):** few-shot INJECTS the matched keyword's examples,
+    nudging the model toward the retrieved answer → agreement is NOT two independent methods, and
+    disagreement is ambiguous (smart multi-word override like "VA compras" vs. error). This is the
+    exact non-independence that sign-flipped `type_crosscheck`. TEST stability across all 4 (fs×think)
+    cells BEFORE building on it.
+- **Model-introspection** — reads the model's own certainty; shares confidence's failure-mode risk
+  but might work where the model is genuinely uncertain (variance) rather than confidently-wrong (bias):
+  - **(M1) Ensemble agreement** — K samples, vote share of the top complete leaf. Cheapest
+    introspection signal: needs NO leaf-first, NO engine (extract leaves from K sampled full-paths).
+    Catches variance-uncertainty, not confident-consistent-wrong.
+  - **(M2) Answer perplexity / logprob-margin** — needs leaf-first (legibility) + margin needs a
+    teacher-forcing engine (llama.cpp/vLLM PoC, see Tooling/subagent below). Most infra, least-justified now.
+  - Self-confidence (dead) = the degenerate M0 baseline.
+
+### The decision (sequenced; the curve decides — NOTHING pre-shelved)
+1. **First study — cheapest, unblocked TODAY: recurrence-strength (E1) risk–coverage, stratified
+   recurrent/novel**, with value-range (E2) as a negative flag in the same pass. It is the first
+   *study*, NOT the decided route — 70% recurrent is still 30% wrong, so the curve must PROVE the
+   top of the specificity range (uber/spotify ≈1.0) reaches usable precision-at-coverage.
+2. **The curve DECIDES whether model-introspection signals are still needed.** Do NOT pre-shelve
+   them. If E1(+E2) can't reach usable precision even on the recurrent pool, a per-item signal is
+   required after all.
+3. **Model-introspection's UNIQUE test is the NOVEL pool** (advisor correction — I originally
+   mis-targeted them at "refining the recurrent pool," which recurrence already handles). Their only
+   defensible value is whether ANY signal separates correct-from-wrong among *novel* items — the sole
+   path to auto-inserting them. So stratify risk–coverage recurrent/novel and ask, per introspection
+   signal: does it work on the NOVEL subset? **"Can't gate a coin flip" is too strong** — 49% is an
+   AVERAGE; an informative signal can carve a high-precision subset out of a low-average pool. Whether
+   ensemble/logprob can is the empirical question — do NOT pre-answer "no."
+4. **Introspection ordering if pursued:** ensemble (M1) first (no leaf-first/engine); logprob-margin
+   (M2) last (needs leaf-first revival + engine PoC). **Leaf-first is parked but revivable — ONLY if
+   the novel-pool study shows logprob is the one signal that works there.**
+
+### As-is gate (verified session 50 — the change surface)
+- **`classifier.IsAutoInsertable(result, threshold, excluded)`** (`internal/classifier/decision.go`)
+  checks ONLY `result.Confidence >= 0.85 && result.Subcategory ∉ excluded`. That is the ENTIRE gate.
+  It carries a `TODO(T-19)`: this threshold is the only guard and the model (GBNF-constrained) can't decline.
+- **The recurrence signal is computed then THROWN AWAY.** `SelectExamples` (`examples.go`) computes
+  per-subcategory keyword-specificity, branches on `sorted[0].score >= 0.7`, returns only `[]Example`
+  — the score never leaves the function (grep-confirmed: `subcatScore`/`.score` appear ONLY in
+  `examples.go`). It never reaches `Result`, the command, or the gate.
+- **Wiring:** `auto.go` (2 sites) / `batch_auto.go` (1) call `classifier.Classify(...)` → `top :=
+  results[0]` → `IsAutoInsertable(top, 0.85, excluded)` → append (`appender.ExpandAndAppend`) or review.
+- **Plumbing cost for E1/E3 (no new inference, ~5 files):** expose match-strength (top specificity +
+  dominant subcategory) from `SelectExamples`; thread it out of `Classify` (per-ITEM → a return-shape
+  change, since `Result` is per-candidate); widen `IsAutoInsertable` to take the recurrence score/flags;
+  update the 3 call sites. Contained, mechanical.
+- **Value-range (E2):** `feature_dictionary_enhanced.json` already carries per-subcategory `value_ranges`
+  (min/max/mean; I edited the Apoia-se block during the rename) — E2 = load them + compare to the
+  predicted subcategory's range. Task 5.R3.
+
+### Decided vs. open
+- **DECIDED:** external validators are the primary-gate family; recurrence-strength (E1) is the first,
+  cheapest, unblocked study; value-range (E2) folds in as a negative flag; self-confidence is retired
+  as the sole gate.
+- **OPEN (curve decides):** whether E1(+E2) alone reaches usable precision; whether any
+  model-introspection signal works on the NOVEL pool; ensemble vs. logprob; whether to revive leaf-first
+  (only if logprob wins novel).
+- **DO NOT:** pre-shelve introspection signals; build on E3 before the 4-cell stability test; treat
+  value-range as a positive gate.
+
+---
 
 ## Objective & the decision it drives
+
+> **SCOPE NOTE (session 50):** everything from here down was written session 49 as if a
+> token-derived signal were THE answer. It is retained in full as the **model-introspection
+> (M1/M2)** detail — the risk–coverage method, cost, tooling, and engine-PoC subagent all still
+> apply *if* the novel-pool study (Route decision §3) shows an introspection signal is needed.
+> The primary gate is now external validators (E1 recurrence-strength / E2 value-range); read the
+> Route decision first.
 
 Decide whether a **token-derived confidence signal** can replace the uninformative
 self-reported `confidence` at the auto-insert gate. T-14 showed 86–91% of WRONG answers carry

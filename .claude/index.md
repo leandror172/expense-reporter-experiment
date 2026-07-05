@@ -63,6 +63,7 @@
 | Template builder (SUPERSEDED by `internal/generate`, kept as Phase A/B history) | `.claude/scratch/template-builder/` (standalone Go module) |
 | T-14 benchmark report (accuracy/calibration/OOD + --think findings, session 46) | `.claude/t14-benchmark-report.md` |
 | T-23 logprob-confidence probe (leaf-first; pre-mask logprobs, session 49) | `.claude/t23-logprob-confidence-probe.md` |
+| T-23 strategic implications (gate route → workbook plan + grand vision, session 50) | `.claude/t23-strategic-implications.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |

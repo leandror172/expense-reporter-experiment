@@ -208,3 +208,29 @@ on accuracy alone.
   text kept) across taxonomy + feature dict + training + logs; `*.bak-apoia-rename` backups.
   **Durability gap:** the leaf must also be renamed in the workbook Referência (T-02 export
   source) or the next re-export wipes it.
+
+## Auto-insert gate — as-is + T-23 route reframe (session 50)
+Full decision: `.claude/plans/t23-calibration-benchmark.md` "Route decision"; strategy:
+`.claude/t23-strategic-implications.md`. [[project_logprob_confidence_leaf_first]].
+- **As-is gate is confidence-only.** `IsAutoInsertable(result, threshold, excluded)` (`decision.go`)
+  checks ONLY `result.Confidence >= 0.85 && Subcategory ∉ excluded`. Carries a `TODO(T-19)`. T-14
+  proved confidence is anti-informative (86–91% of wrong ≥0.85) → this gate barely filters.
+- **The recurrence signal is computed then DISCARDED.** `SelectExamples` (`examples.go`) derives
+  per-subcategory keyword-specificity, branches on `sorted[0].score >= 0.7`, returns only
+  `[]Example`; the score never escapes the function (grep: `subcatScore`/`.score` live only in
+  `examples.go`) — never reaches `Result`, the command, or the gate.
+- **Route reframe: external validators > model-introspection.** The dominant discriminator is
+  RECURRENCE (leaky ≈70% vs clean ≈45–49%, ~25pp, orthogonal to self-confidence), not any token
+  signal. Gate family = **external validators**: E1 recurrence-strength (specificity — exists,
+  discarded), E2 value-range plausibility (`feature_dictionary_enhanced.json` `value_ranges`; task
+  5.R3; use as a NEGATIVE flag), E3 retrieval-generation agreement (CAVEAT: few-shot injection
+  breaks independence like `type_crosscheck` — test 4-cell stability first). Model-introspection
+  (ensemble M1 cheapest / logprob M2 needs leaf-first+engine) is tested ONLY on the NOVEL pool,
+  where recurrence gives nothing — do NOT assume it can't work there ("can't gate a coin flip" is
+  too strong; 49% is an average).
+- **First study (unblocked):** recurrence-strength (E1) risk–coverage stratified recurrent/novel,
+  +E2 negative flag. The curve decides whether any introspection signal is still needed. Plumbing
+  to wire E1: expose match-strength from `SelectExamples` → thread out of `Classify` (return-shape
+  change) → widen `IsAutoInsertable` → 3 call sites (`auto.go` ×2, `batch_auto.go`). No new inference.
+- **Critical path:** this gate is the WS-D (T-09) unblock — recurrence-first means novel rows never
+  reach the append path, so retiring the bare-name fallback stops risking confident-wrong novel rows.
