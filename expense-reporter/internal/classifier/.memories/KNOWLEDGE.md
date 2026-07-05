@@ -234,3 +234,10 @@ Full decision: `.claude/plans/t23-calibration-benchmark.md` "Route decision"; st
   change) → widen `IsAutoInsertable` → 3 call sites (`auto.go` ×2, `batch_auto.go`). No new inference.
 - **Critical path:** this gate is the WS-D (T-09) unblock — recurrence-first means novel rows never
   reach the append path, so retiring the bare-name fallback stops risking confident-wrong novel rows.
+- **Real-data measurement (session 51):** `classifications.jsonl` = 649 human-verified `(item→actual)`
+  labels from real 2025 usage. **GOTCHA — do NOT measure the gate off the stored fields:** all rows are
+  `model="review"` with DEFAULTED confidence (0.95×502, 0.85×38) and the review queue is selection-biased
+  (602 corrected / 47 confirmed) → a naive accuracy/risk-coverage is an ARTIFACT (7.2%, flat — invalid).
+  Real gate + 5.R1 keyword-miss-rate measurement = **REPLAY the 649 through the current classifier**
+  (exclude self-matches — they're in the example pool now; leaky-vs-clean split). See
+  [[project_t23_gate_route_strategy]] "Real-data grounding" + [[project_r1_evaluation_procedure]].

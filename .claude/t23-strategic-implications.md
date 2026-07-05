@@ -137,3 +137,29 @@ deterministic/auditable gate rather than an opaque confidence threshold — a ne
    external gate leaves safe novel auto-insertion on the table.
 
 *Nothing here is decided — it's the strategic frame for the gate decision the user is deferring.*
+
+---
+
+## 6. Real-data grounding (session 51) — the measurement is unblocked; the labels already exist
+
+An earlier draft of §5 implied we'd need to *generate* real data (run `batch-auto` on a fresh month).
+Wrong — it already exists: **`classifications.jsonl` = 649 human-verified `(item → actual category)`
+labels** from real 2025 usage (review/apply pipeline, WS-B slice 4).
+
+- **Observation that matters strategically:** every one of the 649 went through the **review-first**
+  path (`model="review"`), so the auto-insert gate was never battle-tested on real data. You've been
+  running the recurrence/review-first vision *by hand* already — corroborating §2a.
+- **Do NOT measure the gate directly off this file.** The confidences are review DEFAULTS (0.95×502,
+  0.85×38) and the queue is selection-biased (602 corrected / 47 confirmed) — a naive "accuracy" reads
+  7.2% with a flat risk–coverage curve, which is an **artifact**, not a finding. (Lesson: check the
+  `model` field before trusting any confidence in a feedback log.)
+- **The real move — REPLAY the 649 labeled items through the current classifier.** One pass yields the
+  real gate risk–coverage (→ WS-D readiness) *and* the real keyword miss rate (→ 5.R1 TF-IDF go/no-go).
+  Keyword-miss rate is cheap (replay `SelectExamples`, no Ollama); real confidence needs the full run
+  (~16 min no-think / ~2.5 h think-on). **Leakage caveat:** many of the 649 are now in the example pool
+  → exclude self-matches / split leaky-vs-clean or the numbers flatter the classifier.
+
+**Bottom line for the roadmap question:** insertion removal (WS-D/E) and TF-IDF are each *one
+measurement away from a decision*, and that measurement no longer needs fresh data collection — the
+expensive part (labeling 649 real expenses) is already done. Replay-and-measure is the unblocking step.
+See [[project_t23_gate_route_strategy]] + [[project_r1_evaluation_procedure]].

@@ -132,8 +132,20 @@ full-path enum to isolate "leaf-first accuracy gain" from "signal quality."
 
 ## Sample
 
-Reuse the T-14 stratified set: **300 labeled corpus items** (80/112 leaves) + **20 OOD probes**
-(`.claude/scratch/t14-benchmark/`). Labels = the known-correct leaf. No new labeling needed.
+Two options, both already labeled:
+- **T-14 stratified set** — 300 corpus items (80/112 leaves) + 20 OOD (`.claude/scratch/t14-benchmark/`).
+  Balanced for coverage; NOT representative of the real expense distribution.
+- **REAL usage set (session-51 finding, preferred for the gate decision)** — `classifications.jsonl`
+  = **649 human-verified `(item → actual)` labels** from real 2025 usage (review/apply). This is the
+  real distribution, so the risk–coverage it produces is the one that actually decides WS-D readiness.
+  **Method = REPLAY these 649 through the current classifier** (the stored `confidence`/`status` are
+  review DEFAULTS — `model="review"`, 0.95×502 — and selection-biased, so they are NOT usable directly;
+  a naive read gives an artifactual 7.2% flat curve). **Leakage caveat:** many of the 649 are now in the
+  example pool (`MergeExamplePools`) → they self-retrieve as few-shot twins → exclude self-matches /
+  split leaky-vs-clean or the curve flatters the model. This same replay also yields the **5.R1 keyword
+  miss rate** in one pass ([[project_r1_evaluation_procedure]]) — cheap part (miss rate) needs no Ollama
+  (replay `SelectExamples` only); the confidence part needs the full run. See
+  `.claude/t23-strategic-implications.md` §6 + [[project_t23_gate_route_strategy]].
 
 ## Metrics
 

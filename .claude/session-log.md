@@ -18,6 +18,7 @@ Resumed after session 50's handoff to (a) validate its leaf-first D4=HOLD and (b
 - **Reframed the T-23 route (advisor-reviewed)** around external validators vs. model-introspection; wrote it into `.claude/plans/t23-calibration-benchmark.md` "Route decision" (session-49 token framing retained + scoped) + a new `.claude/t23-strategic-implications.md`.
 - Persisted: classifier KNOWLEDGE (as-is gate + reframe), memories (updated `project_logprob_confidence_leaf_first`, created `project_t23_gate_route_strategy`), index.
 - **Created PR #43** (`docs/t23-calibration-probe` → master; #42 merged so the base is clean, docs-only diff).
+- **Real-data finding (post-reframe):** `classifications.jsonl` = **649 human-verified `(item→actual)` labels** from real 2025 usage (review/apply). Real usage has been REVIEW-FIRST, so the auto-insert gate was never battle-tested on real data (corroborates the reframe). Corrected an over-hasty computation: the stored fields are review DEFAULTS (`model="review"`, confidence 0.95×502) + selection-biased (602 corrected/47 confirmed), so a naive accuracy/risk-coverage over them (7.2%, flat curve) is an ARTIFACT, not a finding. Persisted across memories/plans/tracking.
 
 ### Decisions Made
 
@@ -27,11 +28,11 @@ Resumed after session 50's handoff to (a) validate its leaf-first D4=HOLD and (b
 
 ### Next
 
-- **T-23 recurrence-strength study** (E1 risk–coverage stratified recurrent/novel, + E2 value-range negative flag) — the cheapest, unblocked first move and the WS-D critical-path opener.
+- **REPLAY the 649 real labeled expenses (`classifications.jsonl`) through the current classifier** — the unblocked measurement that decides BOTH the T-23 gate (real risk–coverage of recurrence-strength/confidence → WS-D readiness) AND the 5.R1 TF-IDF trigger (keyword miss rate), in one pass. Miss-rate part is cheap (no Ollama — replay `SelectExamples`); confidence part ~16 min no-think. Exclude example-pool self-matches (leakage; split leaky-vs-clean). This supersedes "run batch-auto fresh" — the labels already exist. Feeds the recurrence-first gate → **WS-D (T-09)** → **WS-E**.
 - **T-20** dedup — independent, deterministic pick-up.
-- Then **WS-D (T-09)** retire bare-name fallback → **WS-E**.
 
 ### Gotchas
 
 - The recurrence signal EXISTS but is thrown away in `SelectExamples` (never reaches `Result`/gate). Wiring it in = ~5-file plumbing (expose → thread out of `Classify` → widen `IsAutoInsertable` → 3 call sites), no new inference.
 - E3 retrieval-generation agreement is NOT two independent methods — few-shot injects the matched keyword's examples, nudging the model toward the retrieved answer (the same non-independence that sign-flipped `type_crosscheck`). Test 4-cell stability before relying on it.
+- Do NOT measure a gate/accuracy off a feedback log without checking the `model` field: `classifications.jsonl` confidences are review-path DEFAULTS (0.95×502), NOT genuine classify-time confidences, and the review queue is selection-biased. The 649 are also now in the example pool → they self-retrieve on replay (leakage) — exclude self-matches.
