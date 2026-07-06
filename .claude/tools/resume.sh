@@ -49,6 +49,18 @@ else
 fi
 echo ""
 
+# 2b. Pre-session reading guide (what to read before each pending task)
+echo "── Pre-session reading guide (ref:session-reading-guide) ──"
+GUIDE=$("$SCRIPT_DIR/ref-lookup.sh" session-reading-guide 2>/dev/null \
+  | grep -v "^<!-- " | grep -v "^$" \
+  | grep -v "^\*What to read" | grep -v "^## Pre-Session" || true)
+if [ -n "$GUIDE" ]; then
+  echo "$GUIDE"
+else
+  echo "(no ref:session-reading-guide block found)"
+fi
+echo ""
+
 # 3. Key file locations
 echo "── Key files (ref:quick-pointers) ─────────────────"
 PTRS=$("$SCRIPT_DIR/ref-lookup.sh" quick-pointers 2>/dev/null \
