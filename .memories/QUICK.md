@@ -6,8 +6,11 @@
 Layer 5 (Expense Classifier) done through 5.9; workbook generator COMPLETE.
 **Pivot: JSONL logs are the single source of truth; `generate-workbook` is the only
 workbook writer.** Landed: full-path typed classification (T-13), multi-year logs
-(WS-A), income route (WS-C), commands→log-append (WS-B). Next: WS-D (retire bare-name
-fallback) → WS-E (delete dead insert code). History → KNOWLEDGE.md "Milestone Log".
+(WS-A), income route (WS-C), commands→log-append (WS-B). **T-23/5.R1 MEASURED on real
+data (649-replay, s52): confidence dead as gate; specificity+agreement is the gate;
+5.R2 embeddings (not 5.R1) is the accuracy lever. Settled next = cheap NN-retrieval
+precondition → 5.R2. Reports `.claude/scratch/replay-649/`.** Then WS-D (retire
+bare-name fallback) → WS-E. History → KNOWLEDGE.md "Milestone Log".
 
 ## Repo Structure
 ```

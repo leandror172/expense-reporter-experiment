@@ -1,41 +1,41 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-03 — Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
-**Current Layer:** Classifier accuracy & calibration → T-23 gate rethink (WS-D blocker) next
+**Current Session:** 2026-07-06 — Session 52: 649-replay measures T-23 gate + retrieval on real data — confidence dead, specificity+agreement gate, 5.R2 lever
+**Current Layer:** Layer 5 — classifier gate & retrieval (T-23 measured → 5.R2 next)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-03 - Session 48: T-26 think-on confirmation of T-22 descriptions — validated (mostly noise), T-23 stands
+## 2026-07-06 - Session 52: 649-replay measures T-23 gate + retrieval on real data — confidence dead, specificity+agreement gate, 5.R2 lever
 
 ### Context
 
-Resumed on branch `feat/t22-type-descriptions` (PR #42 open). User asked to discuss next steps, chose the "cheaper adjacent win" — T-26 (the deferred T-22 think-on confirmation) — over starting the harder T-23. Ordered T-26 before T-24 because T-24's `--think` decision consumes T-26's sentinel data.
+Resumed from session 51 (T-23 route reframe). User asked to discuss next steps besides PR #43, then chose to run the settled unblocked measurement — the 649-replay — as a retrieval probe, weighing it against the grand vision (chat-tap / messaging workflow, review-first).
 
 ### What Was Done
 
-- Reworked the stale benchmark runner: authored `.claude/scratch/t14-benchmark/run_t26.sh` — toggles the **sidecar** `config/type-descriptions.json` (removed=nodesc, present=descen) instead of `run_t22.sh`'s pre-adoption taxonomy-swap; builds the binary itself; encodes the think-mode into result prefixes (`results-<mode>-<cond>-…`) so `run_benchmark.py`'s resume-by-id can't mistake the old no-think files for this run's work.
-- Ran the think-on A/B (nodesc vs descen, 300-item accuracy + 20-item OOD each, q3, ~2.5 h wall-clock, resumable, 0 failures). Sidecar restored to adopted state by the EXIT trap.
-- Significance-tested the deltas with `sigtest_t26.py` (paired McNemar + Fisher exact, reuses `score.py` predicates, zero model calls) — prompted by an advisor call.
-- Updated `.claude/t14-benchmark-report.md` with a "Results — think-on" section, softened to significance-tested language.
-- Created `.claude/scratch/t14-benchmark/.memories/{QUICK,KNOWLEDGE}.md`.
-- No package code changed this session — benchmark/report/tooling only (hence no feature commits).
+- Built a faithful in-package build-tagged replay harness (`//go:build replay`) that drives the REAL production retrieval + classifier (not a Python reimplementation): `replay_retrieval_test.go` (Ollama-free) + `replay_model_test.go` (Ollama, resumable, LOO by item, env-tunable band/think).
+- Retrieval half: keyword miss rate 24.7%, 100% `no_keyword_match`, 160/160 misses have an in-pool same-subcat neighbor; specificity monotone (90.5% keyword-top1 at spec=1.0), frequency not additive, singleton-masquerade absent. self_match=0 tripwire clean.
+- Model half (649 rows, no-think): confidence DEAD as gate (52.5→56.3% flat); specificity `top_score` real monotone discriminator (52→87% all / 44→83% clean); AGREEMENT gate (spec=1.0 ∧ model==keyword-top1) → 95.0% subcat (201 rows); keyword-top1 beats the 8B model on subcat at the top band (91.0 vs 87.8).
+- think-on top-band re-run (316 rows, 58 min): discriminator shape robust to think mode (band-lift spread 0.2pp), level −2.3pp → gate can run no-think.
+- Advisor stress-test → caught the review-subset representativeness bug (via `expenses_log.jsonl`: 725 unique expenses, only 347 reviewed, 378 bypassed+unlabeled → absolute precision UNMEASURABLE), corrected the "model beats keyword" claim, softened 5.R2 to a hypothesis.
+- Durable findings + memory: `.claude/scratch/replay-649/{FINDINGS,FINDINGS-model}.md` + analysis scripts + folder QUICK.md; updated classifier + repo-root memories, index.md, project memories. Committed c0a3015; PR #43 title/body updated.
 
 ### Decisions Made
 
-- **T-26 done; task order UNCHANGED — T-23 is still next.** The only ordering-relevant output is a null: calibration is untouched (86–88% HC-wrong), so nothing here moves the auto-insert gate.
-- **Retracted two report findings as noise after significance testing** (they had been written in as fact): (1) "descriptions concentrate the win on novel items / redistribute easy→hard" — the leaky/novel effect **flips sign** between the no-think (+leaky/−novel) and think-on (−leaky/+novel) runs, and a real mechanism can't flip sign; subgroup deltas non-sig (novel full-path p=0.30, novel type p=0.052). (2) "descriptions suppress the T-19 sentinel to 0" — 4/20-vs-0/20, Fisher p=0.11, underpowered.
-- **T-22 adoption still holds**, but on the *cross-run direction consistency* of the type lift (+6.0 no-think, +2.3 think-on), NOT think-on's own delta (p=0.36, not significant alone).
-- **T-24 framing corrected:** with descriptions on (production default), think-on's sentinel advantage vanishes (the sentinel is a weak net in *every* condition — confident-wrong non-`Diversos` OOD picks slip through even at its best 20%). So the `--think` call is accuracy-vs-speed (~+2.7 pp full-path for ~10× latency), not "descriptions kill the sentinel."
+- SHIP vs HOLD split is load-bearing: SHIP (bias-robust, same-sample) = confidence dead + specificity replaces it + agreement gate + gate runs no-think. HOLD (depend on absolute precision the confidence-selected subset can't establish) = "no unattended auto-insert justified" + WS-D silent-insert scoping.
+- Gate design candidate = AGREEMENT (spec=1.0 ∧ model==keyword-top1), possibly keyword-first/model-fallback hybrid; runs no-think.
+- 5.R1 TF-IDF RULED OUT (misses are semantic zero-overlap, not vocab); 5.R2 embeddings is the lever but SOFTENED — gated on a cheap NN-retrieval precondition before building.
+- Faithful Go build-tagged harness chosen over Python reimplementation (divergence risk on tokenizer/specificity) — advisor-blessed.
 
 ### Next
 
-- **T-23 — calibration / gate rethink** (the WS-D blocker). T-26 confirmed descriptions do NOT fix the gate. Directions: margin/agreement thresholding, few-shot with varied confidence, review-first for non-recurring items (recurrence beats confidence as a safety signal), stronger `auto_insert_excluded`.
-- Merge PR #42 (updated with the T-26 think-on results).
-- Candidate follow-up task (propose via amend): a larger OOD probe set to settle the sentinel-suppression question the n=20 run left underpowered.
-- Later: T-27 (leaf-level descriptions — justify via T-14's "wrong leaf" error class, NOT this run's noisy novel-type number), T-24 (`--think` default), T-28 (alt strategies).
+- **5.R2 embeddings — settled next point, gated on the NN-retrieval precondition (T-31):** embed the 160 no-keyword-match misses + their pool-mates (Ollama `/api/embeddings`, ~minutes), measure nearest-neighbor subcat hit-rate. Weak → novel items are permanent-review, not 5.R2; strong → build 5.R2.
+- Then wire the specificity/agreement gate into `IsAutoInsertable` (T-32) — the WS-D unblock (no new inference; expose match-strength from `SelectExamples` → thread out of `Classify` → widen gate → 3 call sites).
+- T-20 log dedup remains a clean independent pick-up.
 
 ### Gotchas
 
-- `go build ./...` does NOT emit the cmd binary — must `go build -o expense-reporter ./cmd/expense-reporter` before benchmarking (`run_t26.sh` does this).
-- Benchmark resume keys on the results **filename** — reusing a prior run's prefix makes `done_ids` "skip everything" silently. New runs need a fresh prefix (`run_t26.sh` encodes the think-mode).
-- A single 300-item run resolves only ~±5 pp; subgroup splits (n=116, n=20) can't clear noise alone, and a subgroup effect that flips sign across runs is noise. Run `sigtest_t26.py` before treating any delta as real.
+- Go-test cwd = PACKAGE dir; `REPLAY_*_OUT` relative paths resolve from `internal/classifier/` (default `../../../.claude/...`), and O_CREATE does NOT mkdir parents — a wrong path fails fast (that killed the first think-run).
+- `classify` does NOT set FeedbackPath (training-only few-shot); `auto`/`batch-auto` DO → the gate lives on the auto path; the model harness replicates the `auto` config.
+- The 649 = confidence-selected review subset (378/725 bypassed, unlabeled) → never claim absolute precision off it; only relative (same-sample) findings are safe.
+- T-14's "+3pp think-on" is a full-sample average — it goes slightly NEGATIVE (−2.3pp) on the high-specificity band where the gate operates.

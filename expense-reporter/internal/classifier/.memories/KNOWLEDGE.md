@@ -146,3 +146,122 @@ UNCHANGED** (HC-wrong ~91–95%) — NOT a gate fix (that's T-23). OOD 0/20 at n
 (sentinel dead without thinking). Deferred: think-on confirmation (only mode with a live
 sentinel; couples to T-23/T-24). Report addendum in `.claude/t14-benchmark-report.md`.
 [[project_t22_type_descriptions]].
+
+## T-23 Probe — Token Logprobs as a Confidence Signal (session 49, 2026-07-04)
+Full report: `.claude/t23-logprob-confidence-probe.md`. [[project_logprob_confidence_leaf_first]].
+Exploring whether the model's token distribution can replace the uninformative self-reported
+`confidence` at the auto-insert gate (the WS-D blocker). Empirical (Ollama 0.17.5, q3, think:false):
+- **Logprobs ARE exposed** on `/api/chat` (`logprobs:true` + `top_logprobs:N`) under the active
+  `format` enum grammar. Feasibility gate passes.
+- **BUT Ollama reports PRE-grammar-mask logprobs** — the raw unconstrained distribution, not the
+  one renormalized over legal tokens. Proof: a schema-forced key (`"leaf"`/`"path"`) reports the
+  chosen token at p≈0 while the model's wanted token (`"category"`) shows 1.0. Legal tokens are
+  often outside `top_logprobs`, so the renormalized distribution can't be reconstructed. This
+  **overturns** the initial "grammar renormalizes → token-dist == taxonomy-dist" assumption.
+- **Type-first enum fights tokenization** — forces the abstract Type decision first (leaf last);
+  the model wants to emit the leaf token ("Uber") but is dragged onto a Type rail (chosen tokens
+  raw p≈0), picks the wrong subtree, locks in. Margin unreadable.
+- **Leaf-first enum fixes it** — enum = bare leaf names, derive type/cat upward via `ResolveLeaf`
+  (mirrors the `add` path). The decision token is the model's own high-prob token with readable
+  competitors (`Uber` leaf p=0.986). Real decision concentrates at ONE branch; trailing tokens
+  just complete the unique leaf.
+- **A single token ≠ the margin** — first char = "which initial letter" (many leaves share it),
+  not "which leaf." Correct signal = sequence logprob of the whole leaf + margin to runner-up.
+- **Calibration NOT proven** by these probes (single-token, n≈4). Needs the T-14 labeled set.
+  Encouraging n=1: `Drone DJI Mavic` (novel) showed real uncertainty (0.56) and routed to
+  `Diversos`. Two signals to benchmark: logprob-margin vs K-sample ensemble agreement.
+- Side flags: junk taxonomy leaf `Apoia-se 4i20` (audit `config/taxonomy.json`); think-on
+  prepends reasoning tokens that move the JSON/decision span (aggregation must find it first).
+
+## Leaf-First Classification — planned + D1 locked (session 49)
+Plan: `.claude/plans/leaf-first-classification.md`. Standalone accuracy change AND the
+precondition that makes the T-23 confidence signal legible. Split from T-23 so it can be judged
+on accuracy alone.
+- **Change:** enum = the 104 unique **leaf** names (not 112 full paths); derive `(type,category)`
+  upward via `taxonomy.ResolveLeaf`. Mirrors the manual `add` path (which already does this).
+  Attacks T-14's dominant "right sheet, wrong leaf" error class; puts the model's strong-signal
+  decision (the leaf, cf. "Uber") first instead of forcing an abstract Type guess first.
+- **D1 LOCKED = second `type` field.** Schema emits **`leaf` THEN `type`** (order load-bearing:
+  leaf first keeps the leaf-first commitment; type second is a real *recurrence* judgment).
+  Always-predict `type`; `ResolveLeaf` consults it ONLY for the 5 cross-type collisions and
+  cross-checks the 99 unique leaves as a free calibration signal. Grounded in the audit: the
+  collision axis IS recurrence (pets `Ambos`/`Lilly`/`Orion` ×3, `Dentista`/`Estacionamento` ×2
+  span Fixas/Variáveis/Extras) — not derivable from the leaf name.
+- **A/B DONE (session 50) → D4 = HOLD (do not adopt for accuracy).** D2=tree, D3=benchmark-only
+  (`.claude/scratch/leaf-first-ab/`), GBNF property-order (leaf-then-type) empirically confirmed.
+  4 cells (few-shot OFF/ON × no-think/think-on, n=300 paired, McNemar): full-path Δ decays
+  monotonically +12.7 → +8.7 → +3.3 → **+1.7 (production = few-shot ON + think-on, p=0.46, NOT
+  sig)**. The FS-A gain was real but **few-shot retrieval + thinking already fix the same
+  "wrong-leaf" errors** (sub-additive stacking). Type Δ survives longest (derived lookup off the
+  leaf: sig in 3/4 cells) but also washes out in prod (+2.3, p=0.30). Not measurably *worse* (all
+  prod deltas mildly +), but underpowered to prove a true null — "too small to justify a rewrite,"
+  not "costs nothing". Report: `.claude/t14-benchmark-report.md` "T-30". Full log:
+  `.claude/plans/leaf-first-classification.md`.
+- **Still valuable ONLY as the T-23 precondition, SCOPED:** proven for the logprob-margin/perplexity
+  signals (2a/2b); OPEN/possibly-unneeded for the ensemble-agreement signal (3). If T-23 goes
+  ensemble, leaf-first is fully on the shelf. `type_crosscheck` is NOT a usable calibration signal
+  (sign-flips across runs; disagreements → 0 as accuracy rises). Couples to T-27 (few-shot already
+  recovers most wrong-leaf errors → re-justify T-27 or drop).
+- **Taxonomy audit DONE (session 49):** all 112 leaves clean except `Apoia-se 4i20` (a leaked
+  description auto-minted as a leaf in 5.R4 — appeared identically as `item` AND `subcategory`).
+  Generalized to vendor leaf `Apoia-se`; full surgical propagation (labels only, real `item`
+  text kept) across taxonomy + feature dict + training + logs; `*.bak-apoia-rename` backups.
+  **Durability gap:** the leaf must also be renamed in the workbook Referência (T-02 export
+  source) or the next re-export wipes it.
+
+## Auto-insert gate — as-is + T-23 route reframe (session 50)
+Full decision: `.claude/plans/t23-calibration-benchmark.md` "Route decision"; strategy:
+`.claude/t23-strategic-implications.md`. [[project_logprob_confidence_leaf_first]].
+- **As-is gate is confidence-only.** `IsAutoInsertable(result, threshold, excluded)` (`decision.go`)
+  checks ONLY `result.Confidence >= 0.85 && Subcategory ∉ excluded`. Carries a `TODO(T-19)`. T-14
+  proved confidence is anti-informative (86–91% of wrong ≥0.85) → this gate barely filters.
+- **The recurrence signal is computed then DISCARDED.** `SelectExamples` (`examples.go`) derives
+  per-subcategory keyword-specificity, branches on `sorted[0].score >= 0.7`, returns only
+  `[]Example`; the score never escapes the function (grep: `subcatScore`/`.score` live only in
+  `examples.go`) — never reaches `Result`, the command, or the gate.
+- **Route reframe: external validators > model-introspection.** The dominant discriminator is
+  RECURRENCE (leaky ≈70% vs clean ≈45–49%, ~25pp, orthogonal to self-confidence), not any token
+  signal. Gate family = **external validators**: E1 recurrence-strength (specificity — exists,
+  discarded), E2 value-range plausibility (`feature_dictionary_enhanced.json` `value_ranges`; task
+  5.R3; use as a NEGATIVE flag), E3 retrieval-generation agreement (CAVEAT: few-shot injection
+  breaks independence like `type_crosscheck` — test 4-cell stability first). Model-introspection
+  (ensemble M1 cheapest / logprob M2 needs leaf-first+engine) is tested ONLY on the NOVEL pool,
+  where recurrence gives nothing — do NOT assume it can't work there ("can't gate a coin flip" is
+  too strong; 49% is an average).
+- **First study (unblocked):** recurrence-strength (E1) risk–coverage stratified recurrent/novel,
+  +E2 negative flag. The curve decides whether any introspection signal is still needed. Plumbing
+  to wire E1: expose match-strength from `SelectExamples` → thread out of `Classify` (return-shape
+  change) → widen `IsAutoInsertable` → 3 call sites (`auto.go` ×2, `batch_auto.go`). No new inference.
+- **Critical path:** this gate is the WS-D (T-09) unblock — recurrence-first means novel rows never
+  reach the append path, so retiring the bare-name fallback stops risking confident-wrong novel rows.
+- **Real-data measurement (session 51):** `classifications.jsonl` = 649 human-verified `(item→actual)`
+  labels from real 2025 usage. **GOTCHA — do NOT measure the gate off the stored fields:** all rows are
+  `model="review"` with DEFAULTED confidence (0.95×502, 0.85×38) and the review queue is selection-biased
+  (602 corrected / 47 confirmed) → a naive accuracy/risk-coverage is an ARTIFACT (7.2%, flat — invalid).
+  Real gate + 5.R1 keyword-miss-rate measurement = **REPLAY the 649 through the current classifier**
+  (exclude self-matches — they're in the example pool now; leaky-vs-clean split). See
+  [[project_t23_gate_route_strategy]] "Real-data grounding" + [[project_r1_evaluation_procedure]].
+
+## 649-replay results — gate + retrieval measured on real data (session 52)
+Reports: `.claude/scratch/replay-649/FINDINGS.md` (retrieval) + `FINDINGS-model.md` (gate).
+Harness `replay_{retrieval,model}_test.go` (`//go:build replay`, in-package, faithful — drives real
+`SelectExamples`/tokenizer + `Classify`). Advisor-stress-tested; SHIP vs HOLD split is load-bearing.
+- **SHIP (bias-robust): confidence is DEAD** (52.5->56.3% flat; conf>=0.85 admits 97% at 53%).
+  **Specificity (`top_score`) is a real MONOTONE discriminator -> replace confidence as the gate**
+  (52->87% all / 44->83% clean full-path). **Best gate = AGREEMENT: spec==1.0 AND model==keyword-top1
+  -> 95.0% subcat (201 rows)** = clears the auto-insert bar. Keyword-top1 > model on subcat at spec=1.0
+  (91.0 vs 87.8) -> keyword-first/model-fallback hybrid worth designing. Frequency is NOT the axis
+  (specificity is; high-freq generic tokens hurt); singleton-masquerade does NOT occur (0 freq<=1 drivers).
+- **think-on top-band re-run: discriminator SHAPE robust to think mode** (band-lift spread 0.2pp, uniform),
+  level -2.3pp (think-on slightly worse on high-spec) -> **the gate runs no-think, 10x faster, no loss**
+  (feeds T-24).
+- **HOLD (absolute level not representative): the 649 is a confidence-SELECTED review subset** —
+  `expenses_log.jsonl` 725 unique expenses, only 347 reviewed; 378 (52%) bypassed review UNLABELED ->
+  true full-stream precision UNMEASURABLE. So "no unattended auto-insert" + WS-D silent-insert scoping are
+  HELD, not proven.
+- **Retrieval: keyword miss rate 24.7%, 100% `no_keyword_match`, 160/160 misses have an in-pool same-subcat
+  neighbor** -> 5.R1 TF-IDF ruled out (lexical can't bridge zero-overlap), **5.R2 embeddings is the lever**
+  — but SOFTENED, gated on a cheap NN-retrieval precondition (embed the 160 misses + pool-mates, measure
+  neighbor subcat hit-rate) = the settled NEXT step before building 5.R2. Miss pool is the accuracy
+  sinkhole (18.8% full-path). Leakage controls: feedback LOO by item (self_match=0), training kept +
+  clean(362)/leaky(287) stratified (44.2% vs 63.1% = ~19pp recurrence effect).

@@ -1,0 +1,6 @@
+# gitignore real-expense data + run artifacts (mirror ../t14-benchmark)
+results-*.jsonl
+ood-results-*.jsonl
+sample.jsonl
+*.log
+*.bak

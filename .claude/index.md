@@ -31,6 +31,8 @@
 | Implementation plan (session 10 — 5.7) | `.claude/plans/5.7-few-shot-injection.md` |
 | Implementation plan (session 20 — workbook path fix) | `.claude/plans/fix-workbook-path-resolution.md` |
 | Implementation plan (`review` command) | `.claude/plans/review-command.md` |
+| T-23 calibration benchmark plan (leaf-first confidence signal, session 49) | `.claude/plans/t23-calibration-benchmark.md` |
+| Leaf-first classification plan (standalone accuracy A/B + T-23 precondition, session 49) | `.claude/plans/leaf-first-classification.md` |
 | Review UI design brief (for claude.ai/design) | `docs/plans/review-ui-design-brief.md` + `docs/plans/review-ui-fixtures/` |
 | Lovable companion suggestion (superseded by local design) | `docs/plans/lovable-suggestion-plan.md` |
 | Workbook mapping plan (3-layer, session 26) | `.claude/plans/workbook-mapping-plan.md` |
@@ -60,6 +62,8 @@
 | Phase B re-review report (data-bearing template, PASS) | `.claude/workbook-template/phaseB-rereview.md` |
 | Template builder (SUPERSEDED by `internal/generate`, kept as Phase A/B history) | `.claude/scratch/template-builder/` (standalone Go module) |
 | T-14 benchmark report (accuracy/calibration/OOD + --think findings, session 46) | `.claude/t14-benchmark-report.md` |
+| T-23 logprob-confidence probe (leaf-first; pre-mask logprobs, session 49) | `.claude/t23-logprob-confidence-probe.md` |
+| T-23 strategic implications (gate route → workbook plan + grand vision, session 50) | `.claude/t23-strategic-implications.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -416,4 +420,5 @@ Desktop-era planning documents — read for context, do not modify.
 | 5.R4 extraction scripts | `.claude/scratch/{extract_old_workbooks,dedup_corpus,build_corpus,build_logs}.py` | One-off (session 35): 2022–2024 workbooks → deduped corpus + per-year logs. Alias map externalized to gitignored `extraction-aliases.json`. |
 | WS-A.3 merge script | `.claude/scratch/merge_year_logs.py` |
 | T-14 benchmark harness | `.claude/scratch/t14-benchmark/{build_sample,run_benchmark,score}.py` + `ood.jsonl` (sample/results JSONLs gitignored — real expense data). Sample builder, resumable runner (drives `classify --json`; `--prefix`/`--extra-args`), scorer (accuracy/leakage/calibration/OOD). | One-off (session 37): merge per-year `expenses_log-{2022,2023,2024}.jsonl` + base 2025 → one `expenses_log-allyears.jsonl`, rewriting `DD/MM`→`DD/MM/YYYY`. Output gitignored. Verified byte-identical (excl. manifest source) vs per-year `generate-workbook --year N` for all 4 years. |
+| 649-replay harness (T-23 gate + 5.R1) | `expense-reporter/internal/classifier/replay_{retrieval,model}_test.go` (`//go:build replay`) + `.claude/scratch/replay-649/{FINDINGS,FINDINGS-model}.md` + `analyze*.py`/`compare_think.py` | Session 52: replays the 649 real labels through production retrieval + classifier (LOO). Verdict: confidence dead as gate, specificity+agreement is the gate, 5.R2 (not 5.R1) is the lever. Raw `*.jsonl` gitignored (real data). |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |
