@@ -241,3 +241,27 @@ Full decision: `.claude/plans/t23-calibration-benchmark.md` "Route decision"; st
   Real gate + 5.R1 keyword-miss-rate measurement = **REPLAY the 649 through the current classifier**
   (exclude self-matches — they're in the example pool now; leaky-vs-clean split). See
   [[project_t23_gate_route_strategy]] "Real-data grounding" + [[project_r1_evaluation_procedure]].
+
+## 649-replay results — gate + retrieval measured on real data (session 52)
+Reports: `.claude/scratch/replay-649/FINDINGS.md` (retrieval) + `FINDINGS-model.md` (gate).
+Harness `replay_{retrieval,model}_test.go` (`//go:build replay`, in-package, faithful — drives real
+`SelectExamples`/tokenizer + `Classify`). Advisor-stress-tested; SHIP vs HOLD split is load-bearing.
+- **SHIP (bias-robust): confidence is DEAD** (52.5->56.3% flat; conf>=0.85 admits 97% at 53%).
+  **Specificity (`top_score`) is a real MONOTONE discriminator -> replace confidence as the gate**
+  (52->87% all / 44->83% clean full-path). **Best gate = AGREEMENT: spec==1.0 AND model==keyword-top1
+  -> 95.0% subcat (201 rows)** = clears the auto-insert bar. Keyword-top1 > model on subcat at spec=1.0
+  (91.0 vs 87.8) -> keyword-first/model-fallback hybrid worth designing. Frequency is NOT the axis
+  (specificity is; high-freq generic tokens hurt); singleton-masquerade does NOT occur (0 freq<=1 drivers).
+- **think-on top-band re-run: discriminator SHAPE robust to think mode** (band-lift spread 0.2pp, uniform),
+  level -2.3pp (think-on slightly worse on high-spec) -> **the gate runs no-think, 10x faster, no loss**
+  (feeds T-24).
+- **HOLD (absolute level not representative): the 649 is a confidence-SELECTED review subset** —
+  `expenses_log.jsonl` 725 unique expenses, only 347 reviewed; 378 (52%) bypassed review UNLABELED ->
+  true full-stream precision UNMEASURABLE. So "no unattended auto-insert" + WS-D silent-insert scoping are
+  HELD, not proven.
+- **Retrieval: keyword miss rate 24.7%, 100% `no_keyword_match`, 160/160 misses have an in-pool same-subcat
+  neighbor** -> 5.R1 TF-IDF ruled out (lexical can't bridge zero-overlap), **5.R2 embeddings is the lever**
+  — but SOFTENED, gated on a cheap NN-retrieval precondition (embed the 160 misses + pool-mates, measure
+  neighbor subcat hit-rate) = the settled NEXT step before building 5.R2. Miss pool is the accuracy
+  sinkhole (18.8% full-path). Leakage controls: feedback LOO by item (self_match=0), training kept +
+  clean(362)/leaky(287) stratified (44.2% vs 63.1% = ~19pp recurrence effect).

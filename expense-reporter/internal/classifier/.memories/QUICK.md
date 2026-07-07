@@ -13,18 +13,16 @@ gate does not protect); `--think=false` = 10× faster at −3.3 pp but kills the
 sentinel; q35 disqualified (think:false drops the grammar). WS-D gate NOT passed.**
 **T-22 (s47): English type-level descriptions adopted via tracked sidecar
 `config/type-descriptions.json` — +6pp TYPE accuracy, calibration unchanged; think-on
-confirm deferred.** **T-23 probe (s49): token logprobs as a confidence signal — Ollama 0.17.5
-exposes logprobs but reports them PRE-grammar-mask (raw, not renormalized); type-first enum
-makes the margin unreadable, LEAF-FIRST enum makes it legible (Uber leaf p=0.986). Calibration
-NOT yet proven. Report `.claude/t23-logprob-confidence-probe.md`; KNOWLEDGE.md.**
-**LEAF-FIRST A/B DONE (T-30, session 50) → D4 = HOLD, do NOT adopt for accuracy.** Benchmark-only
-harness `.claude/scratch/leaf-first-ab/` (enum=104 leaves, derive type/cat via `ResolveLeaf`,
-GBNF leaf-then-type order confirmed). Full-path Δ vs current enum decays +12.7(fs off)→+1.7
-(production: few-shot ON + think-on, p=0.46 NOT sig) — few-shot already fixes the same wrong-leaf
-errors. Not worse, just not worth productionizing. Still the T-23 precondition ONLY for the
-logprob/perplexity signal (open for ensemble). Report `.claude/t14-benchmark-report.md` "T-30".
-Taxonomy audit (s49): junk leaf `Apoia-se 4i20`→`Apoia-se` (workbook re-export still needed).** Few-shot layer
-1 (keyword) done; TF-IDF planned (5.R1). Corpus 1788 examples (5.R4).
+confirm deferred.** **T-23 GATE + RETRIEVAL MEASURED on real data (649-replay, session 52).** Report
+`.claude/scratch/replay-649/FINDINGS{,-model}.md`; harness `replay_{retrieval,model}_test.go`
+(`//go:build replay`). SHIP: **confidence DEAD as gate** (52→56% flat); **specificity `top_score`
+replaces it** (monotone, 52→87%); **best gate = AGREEMENT `spec==1.0` ∧ model==keyword-top1 → 95% subcat**;
+gate runs NO-THINK (shape robust, 10× faster). HOLD (649 = confidence-selected review subset, 378/725
+bypassed+unlabeled → absolute levels unmeasurable): "no silent auto-insert" + WS-D scoping. RETRIEVAL:
+miss 24.7% all `no_keyword_match` → **5.R1 ruled out, 5.R2 embeddings is the lever** (softened; NEXT =
+cheap NN-retrieval precondition on the 160 misses). T-30 leaf-first A/B → HOLD (few-shot already fixes
+wrong-leaf); T-23 logprob probe (s49) parked. Taxonomy: `Apoia-se 4i20`→`Apoia-se` (workbook re-export
+pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4).
 
 ## Structure
 ```

@@ -1,0 +1,2 @@
+# Raw replay outputs contain real expense descriptions (personal financial data) — never commit.
+*.jsonl
