@@ -1,38 +1,41 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-05 — Session 51: T-23 route reframe — external validators over model-introspection (recurrence-first); validated leaf-first HOLD; PR #43
-**Current Layer:** Classifier calibration & accuracy — T-23 gate route (external validators)
+**Current Session:** 2026-07-06 — Session 52: 649-replay measures T-23 gate + retrieval on real data — confidence dead, specificity+agreement gate, 5.R2 lever
+**Current Layer:** Layer 5 — classifier gate & retrieval (T-23 measured → 5.R2 next)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-05 - Session 51: T-23 route reframe — external validators over model-introspection (recurrence-first); validated leaf-first HOLD; PR #43
+## 2026-07-06 - Session 52: 649-replay measures T-23 gate + retrieval on real data — confidence dead, specificity+agreement gate, 5.R2 lever
 
 ### Context
 
-Resumed after session 50's handoff to (a) validate its leaf-first D4=HOLD and (b) decide the T-23 signal route it unblocked. Pure analysis/docs — no product code.
+Resumed from session 51 (T-23 route reframe). User asked to discuss next steps besides PR #43, then chose to run the settled unblocked measurement — the 649-replay — as a retrieval probe, weighing it against the grand vision (chat-tap / messaging workflow, review-first).
 
 ### What Was Done
 
-- **Independently validated session-50's leaf-first D4=HOLD:** recomputed the production cell (full-path +1.7 p=0.46) and the load-bearing novel stratum (+2.6 n.s.) from the cached A/B results — HOLD confirmed (the novel number was the one that could have overturned it).
-- **Read the classifier end-to-end** (`decision.go` / `examples.go` / `loader.go` + `auto`/`batch-auto` wiring): the gate is confidence-only (`IsAutoInsertable`), and the recurrence signal (keyword specificity) is computed in `SelectExamples` then **DISCARDED** — grep-confirmed it never leaves the function.
-- **Reframed the T-23 route (advisor-reviewed)** around external validators vs. model-introspection; wrote it into `.claude/plans/t23-calibration-benchmark.md` "Route decision" (session-49 token framing retained + scoped) + a new `.claude/t23-strategic-implications.md`.
-- Persisted: classifier KNOWLEDGE (as-is gate + reframe), memories (updated `project_logprob_confidence_leaf_first`, created `project_t23_gate_route_strategy`), index.
-- **Created PR #43** (`docs/t23-calibration-probe` → master; #42 merged so the base is clean, docs-only diff).
-- **Real-data finding (post-reframe):** `classifications.jsonl` = **649 human-verified `(item→actual)` labels** from real 2025 usage (review/apply). Real usage has been REVIEW-FIRST, so the auto-insert gate was never battle-tested on real data (corroborates the reframe). Corrected an over-hasty computation: the stored fields are review DEFAULTS (`model="review"`, confidence 0.95×502) + selection-biased (602 corrected/47 confirmed), so a naive accuracy/risk-coverage over them (7.2%, flat curve) is an ARTIFACT, not a finding. Persisted across memories/plans/tracking.
+- Built a faithful in-package build-tagged replay harness (`//go:build replay`) that drives the REAL production retrieval + classifier (not a Python reimplementation): `replay_retrieval_test.go` (Ollama-free) + `replay_model_test.go` (Ollama, resumable, LOO by item, env-tunable band/think).
+- Retrieval half: keyword miss rate 24.7%, 100% `no_keyword_match`, 160/160 misses have an in-pool same-subcat neighbor; specificity monotone (90.5% keyword-top1 at spec=1.0), frequency not additive, singleton-masquerade absent. self_match=0 tripwire clean.
+- Model half (649 rows, no-think): confidence DEAD as gate (52.5→56.3% flat); specificity `top_score` real monotone discriminator (52→87% all / 44→83% clean); AGREEMENT gate (spec=1.0 ∧ model==keyword-top1) → 95.0% subcat (201 rows); keyword-top1 beats the 8B model on subcat at the top band (91.0 vs 87.8).
+- think-on top-band re-run (316 rows, 58 min): discriminator shape robust to think mode (band-lift spread 0.2pp), level −2.3pp → gate can run no-think.
+- Advisor stress-test → caught the review-subset representativeness bug (via `expenses_log.jsonl`: 725 unique expenses, only 347 reviewed, 378 bypassed+unlabeled → absolute precision UNMEASURABLE), corrected the "model beats keyword" claim, softened 5.R2 to a hypothesis.
+- Durable findings + memory: `.claude/scratch/replay-649/{FINDINGS,FINDINGS-model}.md` + analysis scripts + folder QUICK.md; updated classifier + repo-root memories, index.md, project memories. Committed c0a3015; PR #43 title/body updated.
 
 ### Decisions Made
 
-- **Gate route = EXTERNAL VALIDATORS (recurrence-strength / value-range) primary, MODEL-INTROSPECTION (ensemble → logprob) secondary.** Recurrence (recurring ≈70% vs novel ≈49%, ~25pp) dwarfs any token signal and is orthogonal to the model's anti-informative self-confidence. First study = recurrence-strength risk–coverage stratified recurrent/novel; the curve decides whether any introspection signal is needed. **NOT a final gate decision — deferred.**
-- Advisor corrections integrated: it's the first STUDY, not the decided route; introspection's unique test is the NOVEL pool (not "refining the recurrent pool"); "can't gate a coin flip" is too strong (49% is an average); E3 retrieval-agreement carries the `type_crosscheck` circularity (few-shot injection breaks independence → 4-cell stability test first); value-range is a NEGATIVE flag only; nothing pre-shelved.
-- Strategic: the auto-insert vision **bifurcates by recurrence, not confidence**; the review UI is first-class; the review→feedback loop amortizes the novel-review cost; retrieval (5.R2 embeddings > 5.R1 TF-IDF) is the real accuracy lever; deprioritize prompt/enum tuning (T-27 re-justify or drop).
+- SHIP vs HOLD split is load-bearing: SHIP (bias-robust, same-sample) = confidence dead + specificity replaces it + agreement gate + gate runs no-think. HOLD (depend on absolute precision the confidence-selected subset can't establish) = "no unattended auto-insert justified" + WS-D silent-insert scoping.
+- Gate design candidate = AGREEMENT (spec=1.0 ∧ model==keyword-top1), possibly keyword-first/model-fallback hybrid; runs no-think.
+- 5.R1 TF-IDF RULED OUT (misses are semantic zero-overlap, not vocab); 5.R2 embeddings is the lever but SOFTENED — gated on a cheap NN-retrieval precondition before building.
+- Faithful Go build-tagged harness chosen over Python reimplementation (divergence risk on tokenizer/specificity) — advisor-blessed.
 
 ### Next
 
-- **REPLAY the 649 real labeled expenses (`classifications.jsonl`) through the current classifier** — the unblocked measurement that decides BOTH the T-23 gate (real risk–coverage of recurrence-strength/confidence → WS-D readiness) AND the 5.R1 TF-IDF trigger (keyword miss rate), in one pass. Miss-rate part is cheap (no Ollama — replay `SelectExamples`); confidence part ~16 min no-think. Exclude example-pool self-matches (leakage; split leaky-vs-clean). This supersedes "run batch-auto fresh" — the labels already exist. Feeds the recurrence-first gate → **WS-D (T-09)** → **WS-E**.
-- **T-20** dedup — independent, deterministic pick-up.
+- **5.R2 embeddings — settled next point, gated on the NN-retrieval precondition (T-31):** embed the 160 no-keyword-match misses + their pool-mates (Ollama `/api/embeddings`, ~minutes), measure nearest-neighbor subcat hit-rate. Weak → novel items are permanent-review, not 5.R2; strong → build 5.R2.
+- Then wire the specificity/agreement gate into `IsAutoInsertable` (T-32) — the WS-D unblock (no new inference; expose match-strength from `SelectExamples` → thread out of `Classify` → widen gate → 3 call sites).
+- T-20 log dedup remains a clean independent pick-up.
 
 ### Gotchas
 
-- The recurrence signal EXISTS but is thrown away in `SelectExamples` (never reaches `Result`/gate). Wiring it in = ~5-file plumbing (expose → thread out of `Classify` → widen `IsAutoInsertable` → 3 call sites), no new inference.
-- E3 retrieval-generation agreement is NOT two independent methods — few-shot injects the matched keyword's examples, nudging the model toward the retrieved answer (the same non-independence that sign-flipped `type_crosscheck`). Test 4-cell stability before relying on it.
-- Do NOT measure a gate/accuracy off a feedback log without checking the `model` field: `classifications.jsonl` confidences are review-path DEFAULTS (0.95×502), NOT genuine classify-time confidences, and the review queue is selection-biased. The 649 are also now in the example pool → they self-retrieve on replay (leakage) — exclude self-matches.
+- Go-test cwd = PACKAGE dir; `REPLAY_*_OUT` relative paths resolve from `internal/classifier/` (default `../../../.claude/...`), and O_CREATE does NOT mkdir parents — a wrong path fails fast (that killed the first think-run).
+- `classify` does NOT set FeedbackPath (training-only few-shot); `auto`/`batch-auto` DO → the gate lives on the auto path; the model harness replicates the `auto` config.
+- The 649 = confidence-selected review subset (378/725 bypassed, unlabeled) → never claim absolute precision off it; only relative (same-sample) findings are safe.
+- T-14's "+3pp think-on" is a full-sample average — it goes slightly NEGATIVE (−2.3pp) on the high-specificity band where the gate operates.
