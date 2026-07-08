@@ -1,41 +1,40 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-06 — Session 52: 649-replay measures T-23 gate + retrieval on real data — confidence dead, specificity+agreement gate, 5.R2 lever
-**Current Layer:** Layer 5 — classifier gate & retrieval (T-23 measured → 5.R2 next)
+**Current Session:** 2026-07-07 — Session 53: T-31 NN-retrieval precondition — GO for 5.R2 (5-model embedding bake-off on the 160 misses)
+**Current Layer:** Layer 5 — classifier gate & retrieval (T-31 GO → build 5.R2 / wire T-32)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-06 - Session 52: 649-replay measures T-23 gate + retrieval on real data — confidence dead, specificity+agreement gate, 5.R2 lever
+## 2026-07-07 - Session 53: T-31 NN-retrieval precondition — GO for 5.R2 (5-model embedding bake-off on the 160 misses)
 
 ### Context
 
-Resumed from session 51 (T-23 route reframe). User asked to discuss next steps besides PR #43, then chose to run the settled unblocked measurement — the 649-replay — as a retrieval probe, weighing it against the grand vision (chat-tap / messaging workflow, review-first).
+Resumed after PR #43 (session-52 docs) merged; picked T-31 (the settled next step) — the cheap NN-retrieval precondition gating the 5.R2 embeddings build.
 
 ### What Was Done
 
-- Built a faithful in-package build-tagged replay harness (`//go:build replay`) that drives the REAL production retrieval + classifier (not a Python reimplementation): `replay_retrieval_test.go` (Ollama-free) + `replay_model_test.go` (Ollama, resumable, LOO by item, env-tunable band/think).
-- Retrieval half: keyword miss rate 24.7%, 100% `no_keyword_match`, 160/160 misses have an in-pool same-subcat neighbor; specificity monotone (90.5% keyword-top1 at spec=1.0), frequency not additive, singleton-masquerade absent. self_match=0 tripwire clean.
-- Model half (649 rows, no-think): confidence DEAD as gate (52.5→56.3% flat); specificity `top_score` real monotone discriminator (52→87% all / 44→83% clean); AGREEMENT gate (spec=1.0 ∧ model==keyword-top1) → 95.0% subcat (201 rows); keyword-top1 beats the 8B model on subcat at the top band (91.0 vs 87.8).
-- think-on top-band re-run (316 rows, 58 min): discriminator shape robust to think mode (band-lift spread 0.2pp), level −2.3pp → gate can run no-think.
-- Advisor stress-test → caught the review-subset representativeness bug (via `expenses_log.jsonl`: 725 unique expenses, only 347 reviewed, 378 bypassed+unlabeled → absolute precision UNMEASURABLE), corrected the "model beats keyword" claim, softened 5.R2 to a hypothesis.
-- Durable findings + memory: `.claude/scratch/replay-649/{FINDINGS,FINDINGS-model}.md` + analysis scripts + folder QUICK.md; updated classifier + repo-root memories, index.md, project memories. Committed c0a3015; PR #43 title/body updated.
+- feat(t31): NN-retrieval precondition — GO for 5.R2 (hit@5 62-65% multilingual on the 160 misses) — PR #44 (`feat/t31-nn-precondition` → master)
+- Built `nn_precondition.py` (`.claude/scratch/replay-649/`) via local-model codegen (verdicts 0 → 1 + inline patches): faithful Python port of `MergeExamplePools` (incl. keep-training-duplicates → pool=1,744 exactly matching the replay), LOO by the same dedup key, per-model resumable embedding caches, hit@1/3/5 + per-subcat + neighbor-source breakdowns
+- Ran the 5-model bake-off: qwen3-embedding:8b 65.0% hit@5 / snowflake-arctic-embed2 62.5% (best hit@1 50.0%, 1.2 GB) / bge-m3 61.3% / embeddinggemma 57.5% / nomic-embed-text 41.2%; pulled embeddinggemma + snowflake-arctic-embed2
+- Robustness cuts: excl-Diversos 61.6%, unique-item (78) 65.4%, unique-excl-Div 62.0% → signal is real, not grab-bag/recurrence inflation; report `FINDINGS-nn.md`
+- Tracking updated: index.md replay row, replay/classifier/repo QUICKs, repo KNOWLEDGE cascade section (5.R1 RULED OUT / 5.R2 GO)
 
 ### Decisions Made
 
-- SHIP vs HOLD split is load-bearing: SHIP (bias-robust, same-sample) = confidence dead + specificity replaces it + agreement gate + gate runs no-think. HOLD (depend on absolute precision the confidence-selected subset can't establish) = "no unattended auto-insert justified" + WS-D silent-insert scoping.
-- Gate design candidate = AGREEMENT (spec=1.0 ∧ model==keyword-top1), possibly keyword-first/model-fallback hybrid; runs no-think.
-- 5.R1 TF-IDF RULED OUT (misses are semantic zero-overlap, not vocab); 5.R2 embeddings is the lever but SOFTENED — gated on a cheap NN-retrieval precondition before building.
-- Faithful Go build-tagged harness chosen over Python reimplementation (divergence risk on tokenizer/specificity) — advisor-blessed.
+- GO for 5.R2 — clears the pre-committed ≥60% hit@5 bar (set this session: ≥60% GO, ≤40% no-go, between = judge hit quality)
+- Model pick for 5.R2: snowflake-arctic-embed2 (1.2 GB, best hit@1, −2.5pp hit@5 vs the 8B) — VRAM-practical next to my-classifier-q3; benchmark qwen3-embedding:8b as alternate in the build A/B
+- Probe embeds item text only (value belongs to E2, would muddy the measurement); full 1,744 production pool (what 5.R2 actually retrieves from)
+- K=5 injection mandatory — hit@1 ≤50% for every model, top-1-only would be wrong half the time
 
 ### Next
 
-- **5.R2 embeddings — settled next point, gated on the NN-retrieval precondition (T-31):** embed the 160 no-keyword-match misses + their pool-mates (Ollama `/api/embeddings`, ~minutes), measure nearest-neighbor subcat hit-rate. Weak → novel items are permanent-review, not 5.R2; strong → build 5.R2.
-- Then wire the specificity/agreement gate into `IsAutoInsertable` (T-32) — the WS-D unblock (no new inference; expose match-strength from `SelectExamples` → thread out of `Classify` → widen gate → 3 call sites).
-- T-20 log dedup remains a clean independent pick-up.
+- Build 5.R2: embed-on-miss cascade layer in `internal/classifier` (Ollama /api/embeddings, disk cache, cosine top-K → few-shot injection), then A/B final classifier accuracy via the same replay harness
+- T-32 (independent, parallel-able): wire the specificity/agreement gate into `IsAutoInsertable`
+- Merge PR #44; T-20 dedup remains a clean independent pick-up
 
 ### Gotchas
 
-- Go-test cwd = PACKAGE dir; `REPLAY_*_OUT` relative paths resolve from `internal/classifier/` (default `../../../.claude/...`), and O_CREATE does NOT mkdir parents — a wrong path fails fast (that killed the first think-run).
-- `classify` does NOT set FeedbackPath (training-only few-shot); `auto`/`batch-auto` DO → the gate lives on the auto path; the model harness replicates the `auto` config.
-- The 649 = confidence-selected review subset (378/725 bypassed, unlabeled) → never claim absolute precision off it; only relative (same-sample) findings are safe.
-- T-14's "+3pp think-on" is a full-sample average — it goes slightly NEGATIVE (−2.3pp) on the high-specificity band where the gate operates.
+- Go `MergeExamplePools` only adds FEEDBACK keys to `seen` — duplicate training items are all kept (pool 1,744, not 1,179); a faithful port must NOT dedup training-vs-training (first probe run was wrong for this reason)
+- Multilingual embedding training matters more than size on PT expense text: 274MB nomic collapses to 41% while every multilingual model clears 57% (closes embedding-retrieval.md open question #1)
+- ~35% of misses have NO same-subcat top-5 neighbor even with the best embedder → permanent-review residue inside the novel pool; 5.R2 shrinks the sinkhole, doesn't eliminate it
+- The probe is a retrieval UPPER BOUND — whether the model uses the injected examples is the 5.R2 build's own A/B
