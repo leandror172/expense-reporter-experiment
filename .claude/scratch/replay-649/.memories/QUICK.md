@@ -13,8 +13,13 @@ Faithful Go build-tagged harness (drives real code), NOT a Python reimplementati
 - **Retrieval:** miss 24.7%, all `no_keyword_match`, 160/160 have in-pool neighbors → 5.R1 ruled out,
   **5.R2 embeddings is the lever** (softened — NEXT = NN-retrieval precondition on the 160 misses).
 
+- **T-31 NN precondition (session 53): GO for 5.R2.** hit@5 on the 160 misses: qwen3-embedding:8b
+  65.0% / arctic-embed2 62.5% (best hit@1 50%, 1.2 GB — practical pick) / bge-m3 61.3%; nomic collapses
+  41.2% (multilingual matters). Robust to Diversos-exclusion + unique-item cuts. `FINDINGS-nn.md`.
+
 ## Files
 - `FINDINGS.md` (retrieval half) · `FINDINGS-model.md` (gate half, incl. advisor reconciliation + think-on)
+- `FINDINGS-nn.md` (T-31 NN precondition) · `nn_precondition.py` (5-model probe; emb caches + `nn-*.jsonl` gitignored)
 - Harness (in `internal/classifier/`, `//go:build replay`): `replay_retrieval_test.go` (Ollama-free),
   `replay_model_test.go` (Ollama, resumable; env: `REPLAY_LIMIT`/`REPLAY_MIN_TOPSCORE`/`REPLAY_THINK`)
 - Analysis: `analyze.py` (retrieval), `analyze_model.py` (gate risk-coverage), `compare_think.py` (think-on)

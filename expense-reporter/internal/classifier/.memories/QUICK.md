@@ -19,8 +19,10 @@ confirm deferred.** **T-23 GATE + RETRIEVAL MEASURED on real data (649-replay, s
 replaces it** (monotone, 52→87%); **best gate = AGREEMENT `spec==1.0` ∧ model==keyword-top1 → 95% subcat**;
 gate runs NO-THINK (shape robust, 10× faster). HOLD (649 = confidence-selected review subset, 378/725
 bypassed+unlabeled → absolute levels unmeasurable): "no silent auto-insert" + WS-D scoping. RETRIEVAL:
-miss 24.7% all `no_keyword_match` → **5.R1 ruled out, 5.R2 embeddings is the lever** (softened; NEXT =
-cheap NN-retrieval precondition on the 160 misses). T-30 leaf-first A/B → HOLD (few-shot already fixes
+miss 24.7% all `no_keyword_match` → **5.R1 ruled out, 5.R2 embeddings is the lever**. **T-31 NN
+precondition (s53): GO for 5.R2** — hit@5 on the 160 misses 62–65% multilingual (arctic-embed2 1.2 GB
+the practical pick, best hit@1 50%; nomic collapses 41%); K=5 mandatory (hit@1 ≤50%); ~35%
+permanent-review residue. `FINDINGS-nn.md`. T-30 leaf-first A/B → HOLD (few-shot already fixes
 wrong-leaf); T-23 logprob probe (s49) parked. Taxonomy: `Apoia-se 4i20`→`Apoia-se` (workbook re-export
 pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4).
 
