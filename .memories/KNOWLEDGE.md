@@ -33,8 +33,10 @@ individual monthly entries.
 ## Classification Strategy — Three-Layer Cascade (2026-03)
 1. **Layer 1 (keyword):** Tokenize item → look up in feature dictionary → find dominant
    subcategory by specificity score. Implemented in `classifier/examples.go`.
-2. **Layer 2 (TF-IDF):** Planned (5.R1) — corpus-level term frequency for better retrieval.
-3. **Layer 3 (embedding):** Deferred — vector similarity for semantic matching.
+2. **Layer 2 (TF-IDF):** RULED OUT (5.R1, session 52) — the 649-replay showed all retrieval
+   misses are zero-lexical-overlap; TF-IDF cannot bridge them.
+3. **Layer 3 (embedding):** GO (5.R2; T-31 precondition passed session 53 — NN hit@5 62–65%
+   on the miss pool, multilingual models only; arctic-embed2 the practical pick).
 Each layer feeds few-shot examples to the LLM prompt, improving classification accuracy.
 **Rationale:** Empirical finding — LLM resolves multi-word context ("VA compras") better
 than keyword specificity alone, but keywords select which few-shot examples to inject.

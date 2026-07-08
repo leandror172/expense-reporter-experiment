@@ -8,9 +8,11 @@ Layer 5 (Expense Classifier) done through 5.9; workbook generator COMPLETE.
 workbook writer.** Landed: full-path typed classification (T-13), multi-year logs
 (WS-A), income route (WS-C), commands→log-append (WS-B). **T-23/5.R1 MEASURED on real
 data (649-replay, s52): confidence dead as gate; specificity+agreement is the gate;
-5.R2 embeddings (not 5.R1) is the accuracy lever. Settled next = cheap NN-retrieval
-precondition → 5.R2. Reports `.claude/scratch/replay-649/`.** Then WS-D (retire
-bare-name fallback) → WS-E. History → KNOWLEDGE.md "Milestone Log".
+5.R2 embeddings (not 5.R1) is the accuracy lever. T-31 NN precondition (s53): GO for
+5.R2 — hit@5 62–65% multilingual on the 160 misses; arctic-embed2 the practical pick.
+Reports `.claude/scratch/replay-649/`.** Next = build 5.R2 (embed-on-miss layer) and/or
+T-32 gate wiring; then WS-D (retire bare-name fallback) → WS-E. History → KNOWLEDGE.md
+"Milestone Log".
 
 ## Repo Structure
 ```
