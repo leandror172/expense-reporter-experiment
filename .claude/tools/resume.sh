@@ -50,6 +50,11 @@ fi
 echo ""
 
 # 2b. Pre-session reading guide (what to read before each pending task)
+# overlay-keep:reading-guide
+#   Repo-owned region: a consumer may customize the title and output filter below
+#   (e.g. career-search's "What to read first" variant). The overlay seeds this on
+#   first install and never overwrites it again — see the customizable: category in
+#   overlays/session-tracking/manifest.yaml (docs/plans/overlay-customizable-regions.md).
 echo "── Pre-session reading guide (ref:session-reading-guide) ──"
 GUIDE=$("$SCRIPT_DIR/ref-lookup.sh" session-reading-guide 2>/dev/null \
   | grep -v "^<!-- " | grep -v "^$" \
@@ -59,6 +64,7 @@ if [ -n "$GUIDE" ]; then
 else
   echo "(no ref:session-reading-guide block found)"
 fi
+# /overlay-keep:reading-guide
 echo ""
 
 # 3. Key file locations
