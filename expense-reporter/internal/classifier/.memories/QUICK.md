@@ -28,9 +28,13 @@ pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4). **5.R2 Phase 1+2 
 `embedding.go` (Embedder iface + OllamaEmbedder `/api/embeddings`, per-model JSONL cache
 `embeddings-<model>.jsonl`, dim-check fail-loud, embed-only-missing reconcile) +
 `embedding_retriever.go` (brute-force cosine top-K → `[]Example`, slate-dedup by lowercased key,
-LOO, source-priority tiebreak, deterministic index-permutation sort). Unit-only; Phase 3 wiring
-into `selectExamples` NOT done. Embed model default `snowflake-arctic-embed2` (D7). Plan:
-`.claude/plans/5r2-embedding-retrieval.md`.**
+LOO, source-priority tiebreak, deterministic index-permutation sort). **Phase 3 wired (s54):
+`selectExamples` falls back to `embeddingFallback` on keyword miss (`embedding_fallback.go` —
+lazy sync.Once reconcile via package `embedState`, degrade-to-nil on any error); Config gains
+`EmbedModel` (default `snowflake-arctic-embed2`) + `NoEmbedRetrieval` (off=ON, D2 — replay A/B
+toggles it). Acceptance: `test/embedding_fallback_test.go` (mini fake pool fixture). Cache
+gitignored (`/data/classification/embeddings-*.jsonl`). Phase 4 replay A/B pending.** Plan:
+`.claude/plans/5r2-embedding-retrieval.md`.
 
 ## Structure
 ```

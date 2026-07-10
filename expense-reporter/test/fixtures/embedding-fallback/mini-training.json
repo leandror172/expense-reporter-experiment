@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "total_expenses": 3,
+    "note": "Fake mini pool for the 5.R2 embedding-fallback acceptance test — no personal data"
+  },
+  "expenses": [
+    {
+      "id": 1,
+      "item": "Uber Leblon",
+      "date": "2025-04-10",
+      "value": 32.5,
+      "subcategory": "Uber/Taxi",
+      "category": "Transporte",
+      "source": "Fake.xlsx:Variáveis",
+      "year": 2025
+    },
+    {
+      "id": 2,
+      "item": "Supermercado Zona Sul",
+      "date": "2025-04-11",
+      "value": 210.4,
+      "subcategory": "Supermercado",
+      "category": "Alimentação",
+      "source": "Fake.xlsx:Variáveis",
+      "year": 2025
+    },
+    {
+      "id": 3,
+      "item": "Aluguel apartamento",
+      "date": "2025-04-05",
+      "value": 2500.0,
+      "subcategory": "Aluguel",
+      "category": "Moradia",
+      "source": "Fake.xlsx:Fixas",
+      "year": 2025
+    }
+  ]
+}
