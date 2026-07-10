@@ -59,14 +59,6 @@ roles:
     write_mode: nomodel
     used_by: [write]
 
-  header-previous-logs:
-    description: '"**Previous logs:**" field — owned by rotate-session-log.sh on rotation.'
-    file: .claude/session-log.md
-    locator:
-      type: field
-      label: Previous logs
-    write_mode: nomodel
-    used_by: [write]
 
   # ---- .claude/session-context.md (existing ref blocks; verified present) ----
 
