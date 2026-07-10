@@ -265,3 +265,20 @@ Harness `replay_{retrieval,model}_test.go` (`//go:build replay`, in-package, fai
   neighbor subcat hit-rate) = the settled NEXT step before building 5.R2. Miss pool is the accuracy
   sinkhole (18.8% full-path). Leakage controls: feedback LOO by item (self_match=0), training kept +
   clean(362)/leaky(287) stratified (44.2% vs 63.1% = ~19pp recurrence effect).
+
+## 5.R2 Embedding Retrieval — Phase 1+2 (session 54, 2026-07-10)
+Plan: `.claude/plans/5r2-embedding-retrieval.md` (locked D1–D12). Built by an Opus-medium
+subagent, codegen via `my-go-q3-14b` (verdicts 0/1/0/1 — below qcoder's 2/2/1/1 for Go).
+- **Two distinct keys by design:** the disk cache is keyed by **exact raw item text** (D6 —
+  casing preserved, near-dup casings embed separately), while `TopKEmbeddingExamples` dedups
+  the returned slate by the **lowercased/trimmed** key (`itemKey`, mirrors `MergeExamplePools`)
+  so K=5 yields 5 distinct examples; among same-key rows the highest source-priority row wins
+  (first-seen on ties).
+- **Deterministic ranking:** sorts an **index permutation** (not the reps slice, not map
+  iteration) so equal-similarity ties — guaranteed, because training duplicates share identical
+  vectors — keep reproducible first-seen order. The Phase-4 A/B depends on this.
+- **Cache robustness:** within-file vector-dimension mismatch is a hard error (fail loud, not
+  garbage cosines); torn/malformed JSONL lines are skipped and re-embedded on next reconcile.
+- `itemKey` deliberately named to avoid colliding with the `replay`-tagged test's `dedupKey`.
+- All failures return errors (D9) so Phase 3 wiring can degrade to nil examples (today's
+  keyword-miss behavior) — never panic, never block classification.

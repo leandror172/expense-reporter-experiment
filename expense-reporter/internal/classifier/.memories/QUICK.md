@@ -24,7 +24,13 @@ precondition (s53): GO for 5.R2** — hit@5 on the 160 misses 62–65% multiling
 the practical pick, best hit@1 50%; nomic collapses 41%); K=5 mandatory (hit@1 ≤50%); ~35%
 permanent-review residue. `FINDINGS-nn.md`. T-30 leaf-first A/B → HOLD (few-shot already fixes
 wrong-leaf); T-23 logprob probe (s49) parked. Taxonomy: `Apoia-se 4i20`→`Apoia-se` (workbook re-export
-pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4).
+pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4). **5.R2 Phase 1+2 landed (s54):
+`embedding.go` (Embedder iface + OllamaEmbedder `/api/embeddings`, per-model JSONL cache
+`embeddings-<model>.jsonl`, dim-check fail-loud, embed-only-missing reconcile) +
+`embedding_retriever.go` (brute-force cosine top-K → `[]Example`, slate-dedup by lowercased key,
+LOO, source-priority tiebreak, deterministic index-permutation sort). Unit-only; Phase 3 wiring
+into `selectExamples` NOT done. Embed model default `snowflake-arctic-embed2` (D7). Plan:
+`.claude/plans/5r2-embedding-retrieval.md`.**
 
 ## Structure
 ```
@@ -32,6 +38,8 @@ classifier.go   # Classify() — Ollama client, prompt, response parsing
 decision.go     # IsAutoInsertable() — threshold + exclusion check
 examples.go     # SelectExamples() — keyword-based few-shot selection
 loader.go       # Training data, feedback examples, keyword index
+embedding.go    # Embedder + Ollama client + JSONL embedding cache/reconcile (5.R2)
+embedding_retriever.go # cosineSimilarity + TopKEmbeddingExamples (5.R2)
 ```
 
 ## Key Rules
