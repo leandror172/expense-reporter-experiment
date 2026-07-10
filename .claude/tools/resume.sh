@@ -1,120 +1,30 @@
-#!/bin/bash
-# Session-start context summary — replaces reading multiple tracking files.
-# Outputs ~80-100 lines covering everything needed to begin a session.
+#!/usr/bin/env bash
+# Session-start context summary. Thin shim — the sections live in .claude/resume.yaml.
 #
-# Section order (post-advisor revision, session 60):
-#   1. Current status (ref:current-status, head -30)
-#   2. Last session Next pointer (parsed from session-log.md)
-#   3. Key file locations (ref:quick-pointers, full)
-#   4. Active decisions (ref:active-decisions, head -12)
-#   5. Recent commits + uncommitted changes
-#   6. Footer: user-prefs (multiline), deferred hint, ref key count
+# This file used to be six hardcoded bash sections, which is why it needed an
+# `overlay-keep:` region for repos that wanted a different summary. It doesn't any more:
+# WHAT gets printed, in what order, filtered how, is now per-repo CONFIG. Edit
+# .claude/resume.yaml. See docs/plans/resume-config-steps.md (R-D1/R-D2/R-D5).
 #
-# Usage: .claude/tools/resume.sh
-
+# Engine resolution mirrors run-handoff.sh:
+#   1. `st-resume` on PATH        — the installed package. Preferred.
+#   2. a sibling src/ tree        — the overlay source checkout (dev home repo).
 set -euo pipefail
+_here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SESSION_LOG="$PROJECT_ROOT/.claude/session-log.md"
-
-echo "═══════════════════════════════════════════════════"
-echo "  PROJECT RESUME — $(date +%Y-%m-%d)"
-echo "═══════════════════════════════════════════════════"
-echo ""
-
-# 1. Current status (layer, next tasks, branch)
-STATUS_OUT=$("$SCRIPT_DIR/ref-lookup.sh" current-status 2>/dev/null \
-  | grep -v "^<!-- " | grep -v "^$" || true)
-if [ -n "$STATUS_OUT" ]; then
-  echo "$STATUS_OUT" | head -30
-else
-  echo "(no ref:current-status block found)"
-fi
-echo ""
-
-# 2. "Next" pointer from most recent session entry in session-log.md
-echo "── Last session ────────────────────────────────────"
-NEXT_SECTION=$(awk '
-  /^## 20/ && !found { found=1; print; next }
-  found && /^### Next/ { in_next=1; print; next }
-  found && in_next && /^---/ { exit }
-  found && in_next { print }
-' "$SESSION_LOG" 2>/dev/null || true)
-
-if [ -n "$NEXT_SECTION" ]; then
-  echo "$NEXT_SECTION"
-else
-  echo "(no Next pointer found in session-log.md)"
-fi
-echo ""
-
-# 2b. Pre-session reading guide (what to read before each pending task)
-# overlay-keep:reading-guide
-#   Repo-owned region: a consumer may customize the title and output filter below
-#   (e.g. career-search's "What to read first" variant). The overlay seeds this on
-#   first install and never overwrites it again — see the customizable: category in
-#   overlays/session-tracking/manifest.yaml (docs/plans/overlay-customizable-regions.md).
-echo "── Pre-session reading guide (ref:session-reading-guide) ──"
-GUIDE=$("$SCRIPT_DIR/ref-lookup.sh" session-reading-guide 2>/dev/null \
-  | grep -v "^<!-- " | grep -v "^$" \
-  | grep -v "^\*What to read" | grep -v "^## Pre-Session" || true)
-if [ -n "$GUIDE" ]; then
-  echo "$GUIDE"
-else
-  echo "(no ref:session-reading-guide block found)"
-fi
-# /overlay-keep:reading-guide
-echo ""
-
-# 3. Key file locations
-echo "── Key files (ref:quick-pointers) ─────────────────"
-PTRS=$("$SCRIPT_DIR/ref-lookup.sh" quick-pointers 2>/dev/null \
-  | grep -v "^<!-- " | grep -v "^$" || true)
-if [ -n "$PTRS" ]; then
-  echo "$PTRS"
-else
-  echo "(no ref:quick-pointers block found)"
-fi
-echo ""
-
-# 4. Active decisions (cross-cutting principles, frozen layer pointers)
-echo "── Active decisions (ref:active-decisions) ─────────"
-DECISIONS=$("$SCRIPT_DIR/ref-lookup.sh" active-decisions 2>/dev/null \
-  | grep -v "^<!-- " | grep -v "^$" || true)
-if [ -n "$DECISIONS" ]; then
-  echo "$DECISIONS" | head -12
-else
-  echo "(no ref:active-decisions block found)"
-fi
-echo ""
-
-# 5. Recent git commits
-echo "── Recent commits ──────────────────────────────────"
-git -C "$PROJECT_ROOT" log --oneline -5 2>/dev/null || echo "(not a git repo)"
-echo ""
-
-# 6. Git working tree status (conditional)
-DIRTY=$(git -C "$PROJECT_ROOT" status -s 2>/dev/null)
-if [ -n "$DIRTY" ]; then
-  echo "── Uncommitted changes ─────────────────────────────"
-  echo "$DIRTY"
-  echo ""
+if command -v st-resume >/dev/null 2>&1; then
+  exec st-resume "$@"
 fi
 
-# Footer
-echo "═══════════════════════════════════════════════════"
-PREFS=$("$SCRIPT_DIR/ref-lookup.sh" user-prefs 2>/dev/null \
-  | grep -v "^<!-- " | grep -v "^$" || true)
-if [ -n "$PREFS" ]; then
-  echo "  User preferences:"
-  echo "$PREFS"
-else
-  echo "  (no ref:user-prefs block found)"
-fi
+# Overlay source checkout: this script installs to .claude/tools/, but in the source
+# tree it sits at <overlay>/files/, so try both roots for a sibling src/.
+for _candidate in "$_here/../src" "$_here/../../src"; do
+  if [ -d "$_candidate/sessiontracking" ]; then
+    _src="$(cd "$_candidate" && pwd)"
+    exec env PYTHONPATH="$_src${PYTHONPATH:+:$PYTHONPATH}" python3 -m sessiontracking.resume.cli "$@"
+  fi
+done
 
-echo "═══════════════════════════════════════════════════"
-KEY_COUNT=$("$SCRIPT_DIR/ref-lookup.sh" list 2>/dev/null | wc -l || echo "?")
-echo "  (items pending — see ref:deferred-infra)"
-echo "  $KEY_COUNT ref keys available — run: .claude/tools/ref-lookup.sh --list"
-echo "═══════════════════════════════════════════════════"
+echo "resume: session-tracking is not installed. Install it with:" >&2
+echo "  uv tool install --editable <llm-repo>/overlays/session-tracking" >&2
+exit 127

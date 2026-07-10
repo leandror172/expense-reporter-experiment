@@ -126,7 +126,16 @@ roles:
     write_mode: append
     used_by: [write]
 
-# Deferred (resume.sh refactor): read-only regions resume.sh also consumes — e.g.
-# ref:quick-pointers (lives in .claude/index.md in THIS repo, not session-context.md).
-# Add them here when resume.sh is migrated onto this register, so a renamed/moved block
-# updates both read and write in one place.
+  # ---- read-only roles (resume, R-D1) ----------------------------------------
+  # resume resolves its `region:` steps THROUGH this register, so a renamed or moved
+  # block updates read and write in one edit. `write_mode: nomodel` is the fence — the
+  # applier REFUSES nomodel, so a handoff payload can never write these.
+
+  quick-pointers:
+    description: Key file locations shown at session start.
+    file: .claude/session-context.md
+    locator:
+      type: ref_block
+      key: quick-pointers
+    write_mode: nomodel
+    used_by: [read]

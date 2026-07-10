@@ -1,0 +1,119 @@
+# resume.yaml — what `st-resume` prints at session start, in what order.
+#
+# This file is per-repo CONFIG. Customize it freely: reorder sections, retitle them,
+# change filters, drop steps, add `run:` steps of your own. The overlay ships this as a
+# starting point and never overwrites your copy.
+#
+# Step kinds (R-D2 — fixed vocabulary + a `run:` escape hatch):
+#   text        literal lines; `{date}` is substituted
+#   region      a REGISTER ROLE, resolved through .claude/handoff/registry.yaml
+#   log_next    the `### Next` block of the newest session-log entry
+#   git_log     recent commits (plain git — `rtk git log` drops merge commits)
+#   git_status  working-tree dirt
+#   run         arbitrary shell. Executable config, at Makefile trust level.
+#
+# Shared options: title, head, filters (drop a line matching ANY regex), fallback,
+# title_on_empty (default true), omit_if_empty, trailing_blank.
+#
+# Prefer `role:` over `ref_key:` — a role resolves through the register, so renaming or
+# moving a block updates BOTH what resume reads and what the handoff writes, in one edit.
+
+version: 1
+
+steps:
+  # ── banner ──
+  # Spacing is `trailing_blank:`, never a bare "" in `lines:` — the presentation layer
+  # sheds trailing newlines, so a blank data line would be silently eaten.
+  - kind: text
+    lines:
+      - "═══════════════════════════════════════════════════"
+      - "  PROJECT RESUME — {date}"
+      - "═══════════════════════════════════════════════════"
+    trailing_blank: true
+
+  # 1. Current status (layer, next tasks, branch)
+  - kind: region
+    role: current-status
+    head: 30
+    filters: ["^<!-- ", "^$"]
+    fallback: "(no ref:current-status block found)"
+    trailing_blank: true
+
+  # 2. "Next" pointer from the newest session-log entry
+  - kind: log_next
+    role: log-entry
+    title: "── Last session ────────────────────────────────────"
+    fallback: "(no Next pointer found in session-log.md)"
+    trailing_blank: true
+
+  # 2b. Pre-session reading guide (what to read before each pending task).
+  # Repo-owned by virtue of being config: retitle it, change the filters, or delete it.
+  # (Pre-v11 this needed an `overlay-keep:` region carved into resume.sh.)
+  - kind: region
+    role: reading-guide
+    title: "── Pre-session reading guide (ref:session-reading-guide) ──"
+    filters: ["^<!-- ", "^$", "^\\*What to read", "^## Pre-Session"]
+    fallback: "(no ref:session-reading-guide block found)"
+    trailing_blank: true
+
+  # 3. Key file locations
+  - kind: region
+    role: quick-pointers
+    title: "── Key files (ref:quick-pointers) ─────────────────"
+    filters: ["^<!-- ", "^$"]
+    fallback: "(no ref:quick-pointers block found)"
+    trailing_blank: true
+
+  # 4. Active decisions (cross-cutting principles, frozen layer pointers)
+  - kind: region
+    role: active-decisions
+    title: "── Active decisions (ref:active-decisions) ─────────"
+    head: 12
+    filters: ["^<!-- ", "^$"]
+    fallback: "(no ref:active-decisions block found)"
+    trailing_blank: true
+
+  # 5. Recent git commits
+  - kind: git_log
+    count: 5
+    title: "── Recent commits ──────────────────────────────────"
+    fallback: "(not a git repo)"
+    trailing_blank: true
+
+  # 6. Working tree status — the whole section vanishes when the tree is clean
+  - kind: git_status
+    title: "── Uncommitted changes ─────────────────────────────"
+    omit_if_empty: true
+    trailing_blank: true
+
+  # ── footer ──
+  - kind: text
+    lines: ["═══════════════════════════════════════════════════"]
+
+  - kind: region
+    role: user-prefs
+    title: "  User preferences:"
+    title_on_empty: false
+    filters: ["^<!-- ", "^$"]
+    fallback: "  (no ref:user-prefs block found)"
+
+  - kind: text
+    lines: ["═══════════════════════════════════════════════════"]
+
+  # T-43 residue: the sentence used to read "(items pending — …)" with no number.
+  # The count was never wired. It is a `run:` step because only the repo knows where
+  # its deferred tasks live.
+  - kind: run
+    command: |
+      # grep -c prints 0 AND exits 1 when nothing matches, so `|| echo 0`
+      # would print a SECOND zero. `|| true` keeps grep's own count.
+      n=$(.claude/tools/ref-lookup.sh deferred 2>/dev/null | grep -c '^- \[ \]' || true)
+      echo "  ${n:-0} items pending — see ref:deferred"
+
+  - kind: run
+    command: |
+      n=$(.claude/tools/ref-lookup.sh list 2>/dev/null | wc -l || echo '?')
+      echo "  $n ref keys available — run: .claude/tools/ref-lookup.sh --list"
+
+  - kind: text
+    lines: ["═══════════════════════════════════════════════════"]
