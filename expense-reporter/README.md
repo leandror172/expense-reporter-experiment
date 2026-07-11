@@ -194,8 +194,14 @@ for few-shot example selection:
 1. **Keyword layer** (implemented) — tokenizes the expense description, looks up tokens
    in a feature dictionary with specificity scores, selects training examples from
    the most relevant subcategories
-2. **TF-IDF layer** (planned) — corpus-level term frequency for better retrieval
-3. **Embedding layer** (deferred) — vector similarity for semantic matching
+2. **TF-IDF layer** (RULED OUT, session 52) — the 649-replay showed 100% of retrieval
+   misses share zero tokens with the pool, so lexical similarity cannot bridge them
+3. **Embedding layer** (implemented — 5.R2, session 54) — on a keyword miss, the item is
+   embedded via Ollama (`snowflake-arctic-embed2` by default) and the top-5 cosine
+   neighbors from a disk-cached pool embedding are injected as few-shot examples.
+   Measured on real data: miss-stratum full-path accuracy 18.8% → 52.5%.
+   Config: `Config.EmbedModel` / `Config.NoEmbedRetrieval` (on by default); cache at
+   `data/classification/embeddings-<model>.jsonl` (gitignored — real descriptions)
 
 ### How it works
 

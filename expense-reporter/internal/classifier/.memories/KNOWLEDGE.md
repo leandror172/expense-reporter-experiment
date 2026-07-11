@@ -282,3 +282,21 @@ subagent, codegen via `my-go-q3-14b` (verdicts 0/1/0/1 — below qcoder's 2/2/1/
 - `itemKey` deliberately named to avoid colliding with the `replay`-tagged test's `dedupKey`.
 - All failures return errors (D9) so Phase 3 wiring can degrade to nil examples (today's
   keyword-miss behavior) — never panic, never block classification.
+
+## 5.R2 Phases 3+4 — wired + ADOPTED (session 54, 2026-07-10)
+- **Wiring:** `selectExamples` (classifier.go) falls back to `embeddingFallback` when
+  `SelectExamples` returns nil (keyword miss ONLY — D1; weak/ambiguous matches keep the
+  keyword path, CL1 revisits). `embedding_fallback.go`: package-level `embedState`
+  (sync.Once) reconciles the pool cache lazily on the FIRST miss in a process — blocking
+  by design (the triggering item needs the vectors; async would classify early/late misses
+  inconsistently within one batch). Progress via `logger.Info` so batches don't look hung.
+  Every failure degrades to nil examples — classification never blocks on retrieval.
+- **Config:** `EmbedModel` (default snowflake-arctic-embed2) + `NoEmbedRetrieval` — zero
+  values = ON with default model, so the commands needed no changes (D2).
+- **A/B (replay, miss stratum n=80 unique):** full-path 18.8%→52.5% no-think (+33.8pp,
+  29 fixed/2 broke) / 55.0% think-on. Think adds +2.5pp churn (10/8) at 5.5× latency →
+  no-think is right for the miss path (feeds T-24). `FINDINGS-5r2.md`. Harness gained
+  `REPLAY_MISS_ONLY` + `REPLAY_NO_EMBED` env knobs. NOTE: `GenerateID` collides for
+  repeat expenses → replay outputs hold ~2 lines/id; score on unique ids.
+- **First-activation burst:** full-pool embed = 1,744 items ≈ 3 min, one-time (CL2 has
+  the pre-warm option if it ever annoys).

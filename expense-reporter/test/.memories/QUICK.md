@@ -5,7 +5,10 @@
 ## Status
 Harness operational; 15+ fixture dirs cover all commands incl. apply, review,
 generate-workbook. WS-B complete: batch-auto and apply acceptance assert
-`expenses_log.jsonl` (`verify.ExpenseLogMatches`), not workbook rows. Details → KNOWLEDGE.md.
+`expenses_log.jsonl` (`verify.ExpenseLogMatches`), not workbook rows. 5.R2 (s54):
+`embedding_fallback_test.go` + `fixtures/embedding-fallback/` (fake 3-item mini pool in a
+temp DataDir forces a keyword miss; asserts the fallback debug line + cache-file side
+effect; needs arctic-embed2 pulled). Details → KNOWLEDGE.md.
 
 ## Structure
 ```

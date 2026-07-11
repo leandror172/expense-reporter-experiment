@@ -3,8 +3,11 @@
 **Purpose:** Reference document for the embedding-based few-shot retrieval layer.
 This is the third (and most advanced) layer in the retrieval pipeline
 (§ `data/classification/retrieval-strategy.md` for the full cascade).
-Not planned for near-term implementation — this documents findings and design
-considerations for future sessions.
+**IMPLEMENTED (5.R2, session 54, 2026-07-10)** — embed-on-miss cascade layer in
+`internal/classifier` (`embedding.go` / `embedding_retriever.go` / `embedding_fallback.go`),
+model `snowflake-arctic-embed2`, K=5, per-model JSONL disk cache. Replay A/B: miss-stratum
+full-path 18.8% → 52.5%. See `.claude/plans/5r2-embedding-retrieval.md` +
+`.claude/scratch/replay-649/FINDINGS-5r2.md`. The design notes below predate the build.
 
 **Created:** 2026-03-18 (session 10 planning)
 
