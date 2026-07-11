@@ -71,7 +71,7 @@ layer — see `data/classification/retrieval-strategy.md` for the full pipeline 
   Pure Go implementation, no external dependency. ~1.2MB memory for 694 training vectors.
   **Trigger:** keyword miss rate > 10% or accuracy on misses < 70%.
   Reference: `data/classification/tfidf-retrieval.md`
-- [ ] **5.R2** Embedding retrieval layer (RAG): third cascade layer for semantic matching.
+- [x] **5.R2** Embedding retrieval layer (RAG): third cascade layer for semantic matching.
   Uses Ollama `/api/embeddings` endpoint (local, no external API). Handles synonym/brand
   gaps that lexical methods can't bridge. Needs embedding model benchmarking for Portuguese.
   **Trigger:** semantic gap cases > 5% of corrections after TF-IDF is active.

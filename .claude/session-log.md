@@ -1,40 +1,43 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-07 — Session 53: T-31 NN-retrieval precondition — GO for 5.R2 (5-model embedding bake-off on the 160 misses)
-**Current Layer:** Layer 5 — classifier gate & retrieval (T-31 GO → build 5.R2 / wire T-32)
+**Current Session:** 2026-07-10 — Session 54: 5.R2 embedding retrieval — built, A/B'd, ADOPTED (miss full-path 18.8%→52.5%); PR #45
+**Current Layer:** Layer 5 — retrieval & gate (5.R2 DONE; T-32 next)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-07 - Session 53: T-31 NN-retrieval precondition — GO for 5.R2 (5-model embedding bake-off on the 160 misses)
+## 2026-07-10 - Session 54: 5.R2 embedding retrieval — built, A/B'd, ADOPTED (miss full-path 18.8%→52.5%); PR #45
 
 ### Context
 
-Resumed after PR #43 (session-52 docs) merged; picked T-31 (the settled next step) — the cheap NN-retrieval precondition gating the 5.R2 embeddings build.
+Started from the T-31 GO verdict (session 53). Planned 5.R2 interactively (12 locked decisions), then executed all 4 phases in one session: subagent for Phases 1+2, in-session Phases 3+4.
 
 ### What Was Done
 
-- feat(t31): NN-retrieval precondition — GO for 5.R2 (hit@5 62-65% multilingual on the 160 misses) — PR #44 (`feat/t31-nn-precondition` → master)
-- Built `nn_precondition.py` (`.claude/scratch/replay-649/`) via local-model codegen (verdicts 0 → 1 + inline patches): faithful Python port of `MergeExamplePools` (incl. keep-training-duplicates → pool=1,744 exactly matching the replay), LOO by the same dedup key, per-model resumable embedding caches, hit@1/3/5 + per-subcat + neighbor-source breakdowns
-- Ran the 5-model bake-off: qwen3-embedding:8b 65.0% hit@5 / snowflake-arctic-embed2 62.5% (best hit@1 50.0%, 1.2 GB) / bge-m3 61.3% / embeddinggemma 57.5% / nomic-embed-text 41.2%; pulled embeddinggemma + snowflake-arctic-embed2
-- Robustness cuts: excl-Diversos 61.6%, unique-item (78) 65.4%, unique-excl-Div 62.0% → signal is real, not grab-bag/recurrence inflation; report `FINDINGS-nn.md`
-- Tracking updated: index.md replay row, replay/classifier/repo QUICKs, repo KNOWLEDGE cascade section (5.R1 RULED OUT / 5.R2 GO)
+- docs(5r2): embedding retrieval plan — decisions locked (D1–D12), phases defined (`.claude/plans/5r2-embedding-retrieval.md`)
+- feat(5r2): embedding client + JSONL cache + cosine top-K retriever (Phases 1+2) — built by an `impl-opus-med` subagent (new agent definition copied from latent-topic-graph, adapted to this repo at `.claude/agents/impl-opus-med.md`); 24 unit tests
+- feat(5r2): wire embed-on-miss fallback into `selectExamples` (Phase 3) — `embedding_fallback.go`, `Config.EmbedModel`/`NoEmbedRetrieval` (zero-value = ON), 6 unit tests + 1 live-verified acceptance test (`test/embedding_fallback_test.go` + fake mini-pool fixture); embedding caches gitignored
+- feat(5r2): Phase 4 replay A/B — ADOPTED: miss-stratum full-path 18.8%→52.5% no-think (+33.8pp, 29 fixed/2 broke), 55.0% think-on; `REPLAY_MISS_ONLY`/`REPLAY_NO_EMBED` harness knobs; report `.claude/scratch/replay-649/FINDINGS-5r2.md`
+- docs(5r2): adoption propagated to QUICK/KNOWLEDGE/README/index + `embedding-retrieval.md` status header
+- Created persona `my-go-q3-14b` (qwen3:14b, copied from my-go-qcoder) and ran it as the session's sole Go codegen model — informal benchmark: verdicts 0/1/0/1 (subagent, Phases 1+2) + 1 (Phase 3) vs qcoder's 2/2/1/1; pulled `snowflake-arctic-embed2`
+- Opened PR #45 (`feat/5r2-embedding-retrieval` → master); merged PR #44 (user, session start)
 
 ### Decisions Made
 
-- GO for 5.R2 — clears the pre-committed ≥60% hit@5 bar (set this session: ≥60% GO, ≤40% no-go, between = judge hit quality)
-- Model pick for 5.R2: snowflake-arctic-embed2 (1.2 GB, best hit@1, −2.5pp hit@5 vs the 8B) — VRAM-practical next to my-classifier-q3; benchmark qwen3-embedding:8b as alternate in the build A/B
-- Probe embeds item text only (value belongs to E2, would muddy the measurement); full 1,744 production pool (what 5.R2 actually retrieves from)
-- K=5 injection mandatory — hit@1 ≤50% for every model, top-1-only would be wrong half the time
+- 5.R2 ADOPTED as production default (fallback ON by zero-value config) — the +33.8pp miss-stratum lift with 29 fixed/2 broke is decisive; think-on adds only +2.5pp churn at 5.5× latency, so no-think is right for the miss path (feeds T-24)
+- D1–D12 locked in the plan; notably: miss-only trigger (CL1 revisits widening), lazy BLOCKING sync.Once reconcile (async would classify early/late misses inconsistently within a batch), raw-text cache keys, K=5 mandatory
+- CL1 (trigger widening) + CL2 (pre-warm/burst) deliberately deferred to post-A/B — recorded in the plan's Check-later section, not on the tasks board
+- qwen3:14b below qcoder for Go on this sample (needed a directed retry per file); model strategy reverted to cascade (q3-14b first, then previous tiers on repeated 0s)
 
 ### Next
 
-- Build 5.R2: embed-on-miss cascade layer in `internal/classifier` (Ollama /api/embeddings, disk cache, cosine top-K → few-shot injection), then A/B final classifier accuracy via the same replay harness
-- T-32 (independent, parallel-able): wire the specificity/agreement gate into `IsAutoInsertable`
-- Merge PR #44; T-20 dedup remains a clean independent pick-up
+- Merge PR #45 (user)
+- T-32: wire the specificity/agreement gate into `IsAutoInsertable` (WS-D unblock) — independent, parallel-able; design gate-to-review, not silent insert
+- Still open: rename `Apoia-se` in workbook Referência; promote all-years log; T-20 dedup; T-24/T-25/T-27/T-28
 
 ### Gotchas
 
-- Go `MergeExamplePools` only adds FEEDBACK keys to `seen` — duplicate training items are all kept (pool 1,744, not 1,179); a faithful port must NOT dedup training-vs-training (first probe run was wrong for this reason)
-- Multilingual embedding training matters more than size on PT expense text: 274MB nomic collapses to 41% while every multilingual model clears 57% (closes embedding-retrieval.md open question #1)
-- ~35% of misses have NO same-subcat top-5 neighbor even with the best embedder → permanent-review residue inside the novel pool; 5.R2 shrinks the sinkhole, doesn't eliminate it
-- The probe is a retrieval UPPER BOUND — whether the model uses the injected examples is the 5.R2 build's own A/B
+- Workflow tool `args` must be a real JSON object, not a stringified one — a string arg made `args.prompt` undefined and the subagent received only boilerplate (34K tokens wasted)
+- A workflow/background agent's final message ENDS its run — the first Phase-1+2 attempt died by ending its turn "waiting for the GPU"; also its abandoned qwen3:14b thinking calls queue-starved Ollama (the T-14 ops gotcha, now baked into the agent prompt as guardrails)
+- `generate_code` with a RELATIVE `output_file` resolves against the ollama-bridge REPO_ROOT (the LLM repo), not the target repo — always pass absolute paths (stray file was created and deleted)
+- `GenerateID(item,date,value)` collides for repeat expenses → replay outputs carry ~2 lines per id; score on unique ids (n=80, not 160)
+- `/data/classification/embeddings-*.jsonl` was NOT gitignored until this session — the cache stores real expense descriptions; rule added before any real cache was written
