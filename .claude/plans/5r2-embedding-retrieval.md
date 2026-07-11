@@ -1,6 +1,8 @@
 # 5.R2 — Embedding Retrieval Layer (embed-on-miss cascade)
 
-**Status:** PLANNED (session 54, 2026-07-10). Decisions locked with user; implementation not started.
+**Status:** DONE — ADOPTED (session 54, 2026-07-10). All 4 phases complete; A/B verdict:
+miss-stratum full-path 18.8%→52.5% no-think (+33.8pp, 29 fixed/2 broke) / 55.0% think-on.
+Report: `.claude/scratch/replay-649/FINDINGS-5r2.md`. Check-later items (CL1/CL2) remain open.
 **Branch:** `feat/5r2-embedding-retrieval`
 **Precondition:** T-31 GO (session 53) — NN hit@5 62–65% on the 160 no-keyword-match misses.
 Reports: `.claude/scratch/replay-649/FINDINGS-nn.md` (+ `FINDINGS.md`, `FINDINGS-model.md`).

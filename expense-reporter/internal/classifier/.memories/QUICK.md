@@ -33,8 +33,10 @@ LOO, source-priority tiebreak, deterministic index-permutation sort). **Phase 3 
 lazy sync.Once reconcile via package `embedState`, degrade-to-nil on any error); Config gains
 `EmbedModel` (default `snowflake-arctic-embed2`) + `NoEmbedRetrieval` (off=ON, D2 — replay A/B
 toggles it). Acceptance: `test/embedding_fallback_test.go` (mini fake pool fixture). Cache
-gitignored (`/data/classification/embeddings-*.jsonl`). Phase 4 replay A/B pending.** Plan:
-`.claude/plans/5r2-embedding-retrieval.md`.
+gitignored (`/data/classification/embeddings-*.jsonl`). **Phase 4 A/B (s54): ADOPTED — miss
+stratum (n=80 unique) full-path 18.8%→52.5% no-think (+33.8pp, 29 fixed/2 broke); think-on
+55.0% (+2.5pp over no-think ON = churn, 5.5× latency → no-think right for the miss path).
+`FINDINGS-5r2.md`.** Plan: `.claude/plans/5r2-embedding-retrieval.md`.
 
 ## Structure
 ```
