@@ -92,17 +92,8 @@ func LoadEmbeddingCache(path string) (map[string][]float64, error) {
 	)
 
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		var entry embeddingCacheLine
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			continue
-		}
-
-		if entry.Item == "" || len(entry.Vector) == 0 {
+		entry, ok := parseCacheLine(scanner.Text())
+		if !ok {
 			continue
 		}
 
@@ -123,6 +114,27 @@ func LoadEmbeddingCache(path string) (map[string][]float64, error) {
 	return store, nil
 }
 
+// parseCacheLine parses one JSONL cache line. Blank, malformed, or incomplete
+// lines (e.g. torn by an interrupted write) report ok=false so the caller
+// skips them; a later reconcile re-embeds the lost items.
+func parseCacheLine(raw string) (embeddingCacheLine, bool) {
+	line := strings.TrimSpace(raw)
+	if line == "" {
+		return embeddingCacheLine{}, false
+	}
+
+	var entry embeddingCacheLine
+	if err := json.Unmarshal([]byte(line), &entry); err != nil {
+		return embeddingCacheLine{}, false
+	}
+
+	if entry.Item == "" || len(entry.Vector) == 0 {
+		return embeddingCacheLine{}, false
+	}
+
+	return entry, true
+}
+
 // ReconcileEmbeddings updates the embedding cache with new embeddings for missing items.
 func ReconcileEmbeddings(path string, items []string, embedder Embedder) (map[string][]float64, error) {
 	store, err := LoadEmbeddingCache(path)
@@ -130,6 +142,25 @@ func ReconcileEmbeddings(path string, items []string, embedder Embedder) (map[st
 		return nil, fmt.Errorf("load cache: %w", err)
 	}
 
+	missing := missingCacheItems(store, items)
+
+	file, err := openCacheAppend(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	if err := embedAndAppend(file, store, missing, embedder); err != nil {
+		return nil, err
+	}
+
+	return store, nil
+}
+
+// missingCacheItems returns the items absent from the store, deduplicated by
+// exact raw text (matching the cache key) and sorted for a deterministic
+// embed order.
+func missingCacheItems(store map[string][]float64, items []string) []string {
 	missing := make([]string, 0)
 	seen := make(map[string]bool)
 	for _, item := range items {
@@ -140,36 +171,44 @@ func ReconcileEmbeddings(path string, items []string, embedder Embedder) (map[st
 		missing = append(missing, item)
 	}
 	sort.Strings(missing)
+	return missing
+}
 
-	filePath := path
-	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+// openCacheAppend opens the cache file for appending, creating it and its
+// directory if needed.
+func openCacheAppend(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("mkdir all: %w", err)
 	}
 
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
 	}
-	defer file.Close()
+	return file, nil
+}
 
-	for _, item := range missing {
+// embedAndAppend embeds each item, adds its vector to the store, and appends
+// the corresponding JSONL line to the cache file. Items already embedded when
+// an error occurs stay in the store and on disk, so a rerun resumes where
+// this one stopped.
+func embedAndAppend(file *os.File, store map[string][]float64, items []string, embedder Embedder) error {
+	for _, item := range items {
 		vec, err := embedder.Embed(item)
 		if err != nil {
-			return nil, fmt.Errorf("embed %q: %w", item, err)
+			return fmt.Errorf("embed %q: %w", item, err)
 		}
 
 		store[item] = vec
 
 		line, err := json.Marshal(embeddingCacheLine{Item: item, Vector: vec})
 		if err != nil {
-			return nil, fmt.Errorf("marshal line: %w", err)
+			return fmt.Errorf("marshal line: %w", err)
 		}
 
 		if _, err := file.Write(append(line, '\n')); err != nil {
-			return nil, fmt.Errorf("write line: %w", err)
+			return fmt.Errorf("write line: %w", err)
 		}
 	}
-
-	return store, nil
+	return nil
 }

@@ -46,11 +46,26 @@ func TopKEmbeddingExamples(query string, queryVec []float64, pool []Example, sto
 		return nil
 	}
 
+	candidates := dedupePoolByKey(query, pool, store)
+	ranked := rankBySimilarity(queryVec, candidates, store)
+
+	if len(ranked) < k {
+		return ranked
+	}
+	return ranked[:k]
+}
+
+// dedupePoolByKey builds the ordered list of distinct candidate examples
+// (first-seen order), deduped by normalized key (itemKey — the disk cache is
+// keyed by exact raw item text instead; two keys by design). The query itself
+// is excluded (leave-one-out), as is any item missing from the vector store.
+// Among same-key rows the one with higher source priority wins; if equal,
+// first-seen is kept.
+func dedupePoolByKey(query string, pool []Example, store map[string][]float64) []Example {
 	queryKey := itemKey(query)
-	var reps []Example
+	var candidates []Example
 	idx := make(map[string]int)
 
-	// Build ordered list of distinct examples (first-seen order), deduped by normalized key
 	for _, e := range pool {
 		key := itemKey(e.Item)
 		if key == queryKey || !contains(store, e.Item) {
@@ -58,21 +73,27 @@ func TopKEmbeddingExamples(query string, queryVec []float64, pool []Example, sto
 		}
 
 		if pos, exists := idx[key]; exists {
-			// Keep the one with higher source priority; if equal, keep first-seen
-			if sourcePriority(e.Source) < sourcePriority(reps[pos].Source) {
-				reps[pos] = e
+			if sourcePriority(e.Source) < sourcePriority(candidates[pos].Source) {
+				candidates[pos] = e
 			}
 		} else {
-			reps = append(reps, e)
-			idx[key] = len(reps) - 1
+			candidates = append(candidates, e)
+			idx[key] = len(candidates) - 1
 		}
 	}
 
-	// Rank a permutation of indices so reps and similarities never desynchronize.
-	// SliceStable over an index slice keeps first-seen order for equal-similarity ties.
-	sims := make([]float64, len(reps))
-	order := make([]int, len(reps))
-	for i, e := range reps {
+	return candidates
+}
+
+// rankBySimilarity orders candidates by descending cosine similarity to the
+// query vector. It ranks a permutation of indices so candidates and
+// similarities never desynchronize; SliceStable over the index slice keeps
+// first-seen order for equal-similarity ties — guaranteed to occur, because
+// training duplicates share identical vectors — so ranking is deterministic.
+func rankBySimilarity(queryVec []float64, candidates []Example, store map[string][]float64) []Example {
+	sims := make([]float64, len(candidates))
+	order := make([]int, len(candidates))
+	for i, e := range candidates {
 		sims[i] = cosineSimilarity(queryVec, store[e.Item])
 		order[i] = i
 	}
@@ -82,14 +103,9 @@ func TopKEmbeddingExamples(query string, queryVec []float64, pool []Example, sto
 
 	ranked := make([]Example, len(order))
 	for i, o := range order {
-		ranked[i] = reps[o]
+		ranked[i] = candidates[o]
 	}
-
-	// Return the top k distinct examples.
-	if len(ranked) < k {
-		return ranked
-	}
-	return ranked[:k]
+	return ranked
 }
 
 // contains checks if a key exists in the store map.

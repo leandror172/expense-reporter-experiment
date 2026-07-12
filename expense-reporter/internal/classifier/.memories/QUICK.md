@@ -46,6 +46,7 @@ examples.go     # SelectExamples() — keyword-based few-shot selection
 loader.go       # Training data, feedback examples, keyword index
 embedding.go    # Embedder + Ollama client + JSONL embedding cache/reconcile (5.R2)
 embedding_retriever.go # cosineSimilarity + TopKEmbeddingExamples (5.R2)
+embedding_fallback.go  # embed-on-miss wiring: lazy sync.Once reconcile + degrade-to-nil (5.R2)
 ```
 
 ## Key Rules
