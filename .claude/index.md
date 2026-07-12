@@ -56,6 +56,8 @@
 | WS-B slice 4 — `apply` → log-append (decisions locked, session 44; not yet implemented) | `.claude/plans/ws-b-slice4-apply-log-append.md` |
 | T-13 (revised) — classifier predicts full (type,category,subcategory) path; WS-D prerequisite | `.claude/plans/t13-classifier-full-path.md` |
 | 5.R2 embedding retrieval — embed-on-miss cascade layer (DONE + ADOPTED session 54; A/B miss full-path 18.8%→52.5%) | `.claude/plans/5r2-embedding-retrieval.md` |
+| Harness extraction plan (T2 — standalone `acceptance-harness` repo, career-search repoint, expenses migration, LTG path; session 56) | `.claude/plans/harness-extraction-plan.md` |
+| acceptance-test vs harness comparison (companion: old-job pipeline framework — adopt/adapt/discard analysis; session 56) | `.claude/plans/harness-extraction-acceptance-test-comparison.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
