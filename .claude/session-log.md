@@ -1,35 +1,39 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-11 — Session 55: PR #45 method-extraction refactor (5.R2 embedding files); convention adopted module-wide
-**Current Layer:** Layer 5 — retrieval & gate (5.R2 DONE; T-32 next)
+**Current Session:** 2026-07-12 — Session 56: Harness extraction plan (T2) — 4-source exploration; plan + acceptance-test comparison companion
+**Current Layer:** Layer 5 — retrieval & gate (5.R2 DONE; T-32 next) + T2 extraction planned
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-11 - Session 55: PR #45 method-extraction refactor (5.R2 embedding files); convention adopted module-wide
+## 2026-07-12 - Session 56: Harness extraction plan (T2) — 4-source exploration; plan + acceptance-test comparison companion
 
 ### Context
 
-User-requested review pass on PR #45: apply the method-extraction pattern (step-comments → named helpers, as done in sessions 4–5/31 and documented in cross-session memory) to the 5.R2 embedding files.
+Planning session, no product code. User asked to plan the T2 harness extraction: explore the current harness, how career-search used its copy, latent-topic-graph's acceptance-test concepts (+ a haiku sweep of the llm repo), and the old-job `~/workspaces/acceptance-test` framework — then write a detailed plan for a next session. Exploration ran as 4 parallel subagents (3 sonnet Explore + 1 haiku) feeding targeted direct reads.
 
 ### What Was Done
 
-- refactor(5r2): extract named step helpers in embedding.go + embedding_retriever.go — `TopKEmbeddingExamples` → `dedupePoolByKey` + `rankBySimilarity`; `ReconcileEmbeddings` → `missingCacheItems` + `openCacheAppend` + `embedAndAppend`; `LoadEmbeddingCache` loop → `parseCacheLine`; local `reps` → `candidates`; dead `filePath` alias removed. Pure refactor — tests untouched + green after each file, `-tags=replay` build + vet clean. Pushed to PR #45.
-- Load-bearing inline comments promoted to helper doc comments: index-permutation determinism (replay A/B reproducibility), two-key dedup design (raw-text cache key vs lowercased slate key), torn-line skip → re-embed contract, mid-loop-failure resume property.
-- Method-extraction convention recorded module-wide: `expense-reporter/.memories/KNOWLEDGE.md` new "Method-Extraction Convention" section + QUICK.md Key Rule; classifier KNOWLEDGE.md records the refactor; classifier QUICK.md structure list gained the missing `embedding_fallback.go` line; cross-session memories (`feedback_method_extraction`, `feedback_style_vocabulary`) updated with the adoption + naming refinements.
+- docs(t2): harness extraction plan + acceptance-test comparison companion — `.claude/plans/harness-extraction-plan.md` + `.claude/plans/harness-extraction-acceptance-test-comparison.md`, both indexed in `.claude/index.md`
+- Explored all four sources: this repo's `test/harness-external-usage.md` + harness source; career-search's de-domained copy (`dashboard/test/harness/` + `EXTRACTION-NOTES.md` — the de-facto extraction spec; its TC-EXT task is BLOCKED on our module); old-job `acceptance-test` (worker-pool + circuit-breaker assertions, `ignore_order_on`, status-only asserts, blind-sleep observe anti-lesson; cobra never actually shipped there); LTG's GIVEN→RUN→OBSERVE→ASSERT + MANUAL formalism (`ltg-l06-incremental-refresh.md`); llm repo surveyed → NOT a consumer (pytest + manual scenarios, no harness desire)
+- Wrote the full comparison companion doc (adopt/adapt/discard analysis of acceptance-test, with file:line anchors)
 
 ### Decisions Made
 
-- Step helpers inside a pipeline are named as ACTIONS (`dedupePoolByKey`) to match the caller's imperative voice; the WHAT-not-HOW naming rule stays scoped to definitions (styles/config/constructors). User-picked after a side-by-side comparison.
-- No unwarranted abbreviations in local names (`candidates`, not `reps`) — user flagged `reps` as unreadable.
-- Plain package-level functions over methods for helpers on naked slices/maps — a method would need a named type + call-site conversions and absorbs only one of three params (stdlib style, `slices.SortFunc`).
-- Refactor executed by hand at the user's explicit instruction ("execute without local model") — exception to the local-model-first default for this run only.
+- New repo: `~/workspaces/acceptance-harness`, module `github.com/leandror172/acceptance-harness`, PUBLIC, MIT
+- v1 = lean core only (no LLM extension packages; Ollama gate + soft-assert/drift stay in expense-reporter's domain layer; `extern/llm` is roadmap)
+- Seed from career-search's de-domained copy, NOT the expenses original (second consumer already shook out the boundary)
+- LTG = design influence + adoption-path doc only (Artifacts documented as the OBSERVE named-capture register); no LTG code in v1
+- Split sequencing: Session A = create repo + repoint career-search (closes its TC-EXT); Session B = migrate expense-reporter (`-tags=acceptance -timeout 30m` + replay-tag compile as gates)
+- Library design corrections beyond the field reports: strip `//go:build acceptance` from lib code (consumer policy), replace package-level `flag.Bool` with env vars + opt-in `RegisterFlags()`
 
 ### Next
 
-- Merge PR #45 (user)
-- T-32: wire the specificity/agreement gate into `IsAutoInsertable` (WS-D unblock) — design gate-to-review, not silent insert
-- Still open: rename `Apoia-se` in workbook Referência; promote all-years log; T-20 dedup; T-24/T-25/T-27/T-28
+- Execute harness extraction Session A per `.claude/plans/harness-extraction-plan.md` §4 (scaffold repo from career-search seed → docs → unit tests → publish v0.1.0 → repoint career-search)
+- Merge PR #45 (user) — now also carries this session's docs commit
+- T-32 (specificity/agreement gate into `IsAutoInsertable`) still the settled next product step — independent of the extraction track
 
 ### Gotchas
 
-- New package-level helper names in `internal/classifier` must be grepped against `replay_*.go` before landing — those files are build-tag-hidden from `go test ./...`, so a name collision only surfaces under `-tags=replay` (verified clean this session; same trap class as the acceptance-tag one in [[feedback_rename_json_tag_acceptance]])
+- The session-56 docs commit landed on `feat/5r2-embedding-retrieval` (current branch), so it rides in PR #45 — fine if merging soon, cherry-pick to master if not
+- `ref-lookup.sh` has no `--paths` flag (silently no-ops) — known modes: bare KEY, `--list`, no-args
+- career-search's harness copy was adapted at old expense branch `feat/t13-classifier-full-path` — diff against current master before seeding the new repo (plan §4 caveats)
