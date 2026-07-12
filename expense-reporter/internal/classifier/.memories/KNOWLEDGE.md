@@ -300,3 +300,14 @@ subagent, codegen via `my-go-q3-14b` (verdicts 0/1/0/1 — below qcoder's 2/2/1/
   repeat expenses → replay outputs hold ~2 lines/id; score on unique ids.
 - **First-activation burst:** full-pool embed = 1,744 items ≈ 3 min, one-time (CL2 has
   the pre-warm option if it ever annoys).
+
+## 5.R2 method-extraction refactor (session 55, 2026-07-11)
+PR #45 review pass applied the module-wide method-extraction convention (see
+`expense-reporter/.memories/KNOWLEDGE.md`) to the 5.R2 files — pure refactor, tests untouched:
+- `TopKEmbeddingExamples` → `dedupePoolByKey` (two-key design in its doc comment: cache =
+  exact raw text, slate = lowercased `itemKey`) + `rankBySimilarity` (index-permutation
+  determinism rationale now lives in its doc comment — load-bearing for replay A/Bs).
+- `ReconcileEmbeddings` → `missingCacheItems` + `openCacheAppend` + `embedAndAppend`
+  (doc comment states the resume property: items appended before a mid-loop failure persist).
+- `LoadEmbeddingCache` loop → `parseCacheLine` (torn-line skip → re-embed contract).
+Helper names were checked against `replay_*.go` (build-tag-hidden) before landing.

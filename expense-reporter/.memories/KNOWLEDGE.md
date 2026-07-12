@@ -277,3 +277,22 @@ write (leak fix); non-destructive both-path pre-flight (classifications before
 `insertNewRows`+excel-allocation pipeline, `--workbook`/`--backup`, the `uninsertable`
 concept, dead `IsInsertable`/`IsAlreadyHandled`. Shared excel helpers stay live under plain
 `batch`. Plan: `.claude/plans/ws-b-slice4-apply-log-append.md`.
+
+## Method-Extraction Convention — ADOPTED module-wide (session 55, 2026-07-11)
+Multi-step function bodies must read as **named delegated steps** of ≤~15 lines each.
+Inline comments that describe a step are extraction boundaries: the comment becomes the
+helper's doc comment (rationale like determinism contracts moves where the compiler-adjacent
+reader can't miss it), the step becomes a named function.
+- **Naming:** step helpers inside a pipeline are named as ACTIONS (`dedupePoolByKey`,
+  `rankBySimilarity`, `embedAndAppend`) matching the caller's imperative voice; definitions
+  (styles/config/constructors) are named for WHAT they are. No unwarranted abbreviations in
+  locals (`candidates`, not `reps`).
+- **Plain functions over methods** for helpers on naked slices/maps — a method needs a named
+  type + call-site conversions and absorbs only one parameter; stdlib style (`slices.SortFunc`).
+- **Package-wide:** when refactoring one file, audit siblings for the same shape.
+- **Exemplars:** `internal/generate/summary_sheet.go` (`revenueSection`, `balanceBlock`);
+  `internal/classifier/embedding{,_retriever}.go` (session-55 refactor: `TopKEmbeddingExamples`,
+  `ReconcileEmbeddings`, `LoadEmbeddingCache` each split into named steps).
+- **Verification for pure refactors:** tests untouched + green after each file, plus
+  `go build -tags=replay ./...` (replay/acceptance-tagged files hide from `go test ./...`
+  and can collide with new helper names).
