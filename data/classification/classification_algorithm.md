@@ -293,10 +293,13 @@ confidence_level = {
 }
 ```
 
-**Behavior by level:**
-- **HIGH (≥ 0.85):** Auto-insert. `auto` command proceeds without user confirmation.
-- **MEDIUM (0.50–0.84):** Present top candidates to user, request confirmation.
-- **LOW (< 0.50):** Flag for manual review. `batch-auto` writes to `review.csv`.
+**Behavior by level (SUPERSEDED — T-32):** confidence NO LONGER drives auto-insert. Since
+T-32 the gate is keyword AGREEMENT (`IsAutoInsertable` in `internal/classifier/decision.go`);
+confidence is still assigned as an internal score but does not gate. The canonical current
+description is `[ref:confidence-thresholds]` in `.claude/index.md`. Historical levels:
+- **HIGH (≥ 0.85):** *was* auto-insert without confirmation.
+- **MEDIUM (0.50–0.84):** *was* present top candidates for confirmation.
+- **LOW (< 0.50):** manual review / `batch-auto` `review.csv`.
 <!-- /ref:confidence-thresholds -->
 
 ## 6. Tie-Breaking Rules

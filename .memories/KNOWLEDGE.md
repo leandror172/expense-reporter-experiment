@@ -15,7 +15,7 @@ The expense processing pipeline has distinct stages, each handled by a Go packag
 1. **Parse** (`internal/parser`) — semicolon-delimited input → `models.Expense` struct
 2. **Resolve** (`internal/resolver`) — fuzzy-match subcategory against reference sheet
 3. **Classify** (`internal/classifier`) — LLM-based categorization with confidence scores
-4. **Decide** (`internal/classifier/decision.go`) — threshold + exclusion list → auto-insert or review
+4. **Decide** (`internal/classifier/decision.go`) — keyword-agreement gate + exclusion list → auto-insert or review (T-32; replaced the confidence threshold)
 5. **Insert** (`internal/workflow` + `internal/excel`) — write to Excel workbook with backup
 6. **Log** (`internal/feedback`) — append to `classifications.jsonl` and `expenses_log.jsonl`
 **Rationale:** Each stage is independently testable. The pipeline can stop at any stage
@@ -42,14 +42,18 @@ Each layer feeds few-shot examples to the LLM prompt, improving classification a
 than keyword specificity alone, but keywords select which few-shot examples to inject.
 **Implication:** The keyword layer is a retrieval mechanism, not a classifier itself.
 
-## Confidence Threshold Design (2026-03)
-- HIGH ≥ 0.85 → auto-insert into workbook
-- LOW < 0.85 → print candidates, require manual review
-- Excluded subcategories (e.g., "Diversos") are never auto-inserted regardless of confidence
-**Rationale:** "Diversos" (miscellaneous) at 90% confidence is a false positive — the model
-is confident it doesn't know. Discovered empirically during integration testing.
-**Implication:** Exclusion list is in `config.json`, not hardcoded. New problematic categories
-can be added without code changes.
+## Auto-Insert Gate — Agreement (T-32; was Confidence 2026-03)
+`IsAutoInsertable` (`decision.go`) auto-inserts only when the model's predicted subcategory
+AGREES with an unambiguous, maximum-specificity keyword match, and the subcategory is not
+excluded. Confidence NO LONGER gates — the 649-replay (session 52) proved it uninformative
+(the whole 0.85–0.95 band is a coin flip). All other rows route to review.
+- Excluded subcategories (e.g., "Diversos") are never auto-inserted regardless of the gate.
+- The ~95% subcat precision is a same-sample RELATIVE validation (shipped predicate ==
+  measured predicate), NOT an absolute production guarantee — the 649 is a
+  confidence-selected subset. This is why unattended silent auto-insert (WS-D) stays held.
+**Rationale:** confidence was measured dead, so the gate switched to keyword agreement
+(specificity + model⊕keyword concurrence). "Diversos" exclusion still guards the vaguest leaf.
+**Implication:** Exclusion list is in `config.json`. `--threshold` on `batch-auto` is deprecated.
 
 ## Feedback Loop (2026-03)
 Two JSONL files persist classification results:

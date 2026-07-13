@@ -3,5 +3,5 @@
 # Apr/May/Jun 2026 all fall within the same year — every installment is a normal log line
 # Explicit year keeps the expected log stable (ParseDateFlexible would otherwise use time.Now().Year())
 # 90,00/3 → 30,00 per installment (divides cleanly in float64 — avoids JSON precision drift)
-# Uber Centro is used as it reliably classifies under Transporte
-Uber Centro;01/04/2026;90,00/3
+# Posto Ipiranga is used as it reliably classifies under Transporte
+Posto Ipiranga;01/04/2026;90,00/3

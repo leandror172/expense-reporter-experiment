@@ -50,6 +50,17 @@ type subcatScore struct {
 	score       float64
 }
 
+// MatchSignal is the keyword-match gate signal for an expense item: the strongest
+// keyword specificity found and the subcategory it points to. It is a PURE function of
+// the item text plus the keyword index — it does NOT depend on the model or on
+// few-shot example selection, so it can be computed anywhere the item is known.
+type MatchSignal struct {
+	Matched        bool    // at least one token matched a keyword in the index
+	TopScore       float64 // highest per-subcategory specificity across matched tokens
+	TopSubcategory string  // the subcategory carrying TopScore
+	Ambiguous      bool    // two or more distinct subcategories tie at TopScore
+}
+
 // nonAlphanumRe matches runs of characters that are not Unicode letters, digits, or spaces.
 var nonAlphanumRe = regexp.MustCompile(`[^\p{L}\p{N} ]+`)
 
@@ -116,15 +127,43 @@ func calculateSubcategoryScores(tokens []string, keywords KeywordIndex) map[stri
 }
 
 // sortSubcategoriesByScore returns subcategories sorted by specificity descending.
+// Ties are broken by subcategory name ascending so the ordering is deterministic —
+// the top element now feeds a gate decision (MatchStrength) and must not vary
+// run-to-run with Go's randomized map iteration.
 func sortSubcategoriesByScore(scores map[string]float64) []subcatScore {
 	sorted := make([]subcatScore, 0, len(scores))
 	for subcat, score := range scores {
 		sorted = append(sorted, subcatScore{subcat, score})
 	}
 	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].score == sorted[j].score {
+			return sorted[i].subcategory < sorted[j].subcategory
+		}
 		return sorted[i].score > sorted[j].score
 	})
 	return sorted
+}
+
+// MatchStrength computes the keyword-match gate signal for item against keywords.
+// It reuses the same tokenization and scoring the few-shot selector uses, so the
+// gate sees exactly the specificity that drove example selection. Returns the zero
+// MatchSignal (Matched false) on no tokens, no keyword matches, or a nil index.
+func MatchStrength(item string, keywords KeywordIndex) MatchSignal {
+	tokens := tokenize(item)
+	if len(tokens) == 0 {
+		return MatchSignal{}
+	}
+	scores := calculateSubcategoryScores(tokens, keywords)
+	if len(scores) == 0 {
+		return MatchSignal{}
+	}
+	sorted := sortSubcategoriesByScore(scores)
+	return MatchSignal{
+		Matched:        true,
+		TopScore:       sorted[0].score,
+		TopSubcategory: sorted[0].subcategory,
+		Ambiguous:      len(sorted) > 1 && sorted[1].score == sorted[0].score,
+	}
 }
 
 // selectExamplesBySpecificity picks examples using the high/ambiguous branching rule

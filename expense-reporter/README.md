@@ -95,12 +95,16 @@ and auto-inserts rows exceeding the confidence threshold.
 
 Output files:
 - `classified.csv` — all rows with classification results
-- `review.csv` — rows not auto-inserted (low confidence or excluded)
+- `review.csv` — rows not auto-inserted (agreement gate not met or excluded)
 - `rollover.csv` — installment rows crossing into next year
+
+Auto-insert uses the **agreement gate**: a row is auto-inserted only when the model's
+predicted subcategory agrees with an unambiguous, maximum-specificity keyword match
+(and is not in the exclusion list). All other rows go to `review.csv`.
 
 Flags:
 - `--dry-run` — classify only, skip workbook insertion
-- `--threshold` — confidence threshold (default: 0.85)
+- `--threshold` — **deprecated, ignored** (the gate no longer uses confidence)
 - `--model`, `--data-dir`, `--output-dir`, `--top`
 
 ### `review` — Generate an interactive HTML review page

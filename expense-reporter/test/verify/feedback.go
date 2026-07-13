@@ -129,10 +129,13 @@ func FeedbackMatchesExpected(artifactKey, expectedPath string) func(*harness.Con
 		if expectedLines == nil {
 			return
 		}
+		// NOTE: do NOT early-return when actualLines is nil. An empty log file (which
+		// the batch-auto preflight creates via O_CREATE even when zero rows append) reads
+		// back as nil, and returning here would silently PASS against a non-empty expected
+		// fixture — the exact false-pass the T-32 agreement gate exposed on the installment
+		// tests. Let the count assertion below fail on "expected N, got 0". Genuine
+		// read/registration errors are already reported inside readFeedbackLines.
 		actualLines := readFeedbackLines(ctx, artifactKey)
-		if actualLines == nil {
-			return
-		}
 		if !assert.Equal(ctx.T, len(expectedLines), len(actualLines),
 			"%q: expected %d entries, got %d", artifactKey, len(expectedLines), len(actualLines)) {
 			return

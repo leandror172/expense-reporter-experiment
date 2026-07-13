@@ -21,7 +21,7 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "auto command logs confirmed feedback entry on successful insert",
 		Given: knownExpenseReadyForAutoInsert(fixDir),
-		When:  actions.RunAuto("Uber Centro", "35,50", "15/04"),
+		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04"),
 		Then: slices.Concat(
 			autoAppendSucceeded(),
 			classificationsMatchExpected(fixDir),
