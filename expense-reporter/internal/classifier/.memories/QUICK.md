@@ -24,7 +24,19 @@ precondition (s53): GO for 5.R2** — hit@5 on the 160 misses 62–65% multiling
 the practical pick, best hit@1 50%; nomic collapses 41%); K=5 mandatory (hit@1 ≤50%); ~35%
 permanent-review residue. `FINDINGS-nn.md`. T-30 leaf-first A/B → HOLD (few-shot already fixes
 wrong-leaf); T-23 logprob probe (s49) parked. Taxonomy: `Apoia-se 4i20`→`Apoia-se` (workbook re-export
-pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4).
+pending). Few-shot layer 1 (keyword) done. Corpus 1788 (5.R4). **5.R2 Phase 1+2 landed (s54):
+`embedding.go` (Embedder iface + OllamaEmbedder `/api/embeddings`, per-model JSONL cache
+`embeddings-<model>.jsonl`, dim-check fail-loud, embed-only-missing reconcile) +
+`embedding_retriever.go` (brute-force cosine top-K → `[]Example`, slate-dedup by lowercased key,
+LOO, source-priority tiebreak, deterministic index-permutation sort). **Phase 3 wired (s54):
+`selectExamples` falls back to `embeddingFallback` on keyword miss (`embedding_fallback.go` —
+lazy sync.Once reconcile via package `embedState`, degrade-to-nil on any error); Config gains
+`EmbedModel` (default `snowflake-arctic-embed2`) + `NoEmbedRetrieval` (off=ON, D2 — replay A/B
+toggles it). Acceptance: `test/embedding_fallback_test.go` (mini fake pool fixture). Cache
+gitignored (`/data/classification/embeddings-*.jsonl`). **Phase 4 A/B (s54): ADOPTED — miss
+stratum (n=80 unique) full-path 18.8%→52.5% no-think (+33.8pp, 29 fixed/2 broke); think-on
+55.0% (+2.5pp over no-think ON = churn, 5.5× latency → no-think right for the miss path).
+`FINDINGS-5r2.md`.** Plan: `.claude/plans/5r2-embedding-retrieval.md`.
 
 ## Structure
 ```
@@ -32,6 +44,9 @@ classifier.go   # Classify() — Ollama client, prompt, response parsing
 decision.go     # IsAutoInsertable() — threshold + exclusion check
 examples.go     # SelectExamples() — keyword-based few-shot selection
 loader.go       # Training data, feedback examples, keyword index
+embedding.go    # Embedder + Ollama client + JSONL embedding cache/reconcile (5.R2)
+embedding_retriever.go # cosineSimilarity + TopKEmbeddingExamples (5.R2)
+embedding_fallback.go  # embed-on-miss wiring: lazy sync.Once reconcile + degrade-to-nil (5.R2)
 ```
 
 ## Key Rules

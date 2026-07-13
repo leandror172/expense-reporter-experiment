@@ -1,0 +1,35 @@
+{
+  "lexical_features": {
+    "keywords": {
+      "uber": {
+        "frequency": 1,
+        "dominant_subcategory": "Uber/Taxi",
+        "dominant_count": 1,
+        "specificity": 1.0,
+        "idf": 1.0,
+        "subcategories": ["Uber/Taxi"]
+      },
+      "supermercado": {
+        "frequency": 1,
+        "dominant_subcategory": "Supermercado",
+        "dominant_count": 1,
+        "specificity": 1.0,
+        "idf": 1.0,
+        "subcategories": ["Supermercado"]
+      },
+      "aluguel": {
+        "frequency": 1,
+        "dominant_subcategory": "Aluguel",
+        "dominant_count": 1,
+        "specificity": 1.0,
+        "idf": 1.0,
+        "subcategories": ["Aluguel"]
+      }
+    }
+  },
+  "category_mapping": {
+    "Uber/Taxi": "Transporte",
+    "Supermercado": "Alimentação",
+    "Aluguel": "Moradia"
+  }
+}

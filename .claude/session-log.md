@@ -1,40 +1,39 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-07 — Session 53: T-31 NN-retrieval precondition — GO for 5.R2 (5-model embedding bake-off on the 160 misses)
-**Current Layer:** Layer 5 — classifier gate & retrieval (T-31 GO → build 5.R2 / wire T-32)
+**Current Session:** 2026-07-12 — Session 56: Harness extraction plan (T2) — 4-source exploration; plan + acceptance-test comparison companion
+**Current Layer:** Layer 5 — retrieval & gate (5.R2 DONE; T-32 next) + T2 extraction planned
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-07 - Session 53: T-31 NN-retrieval precondition — GO for 5.R2 (5-model embedding bake-off on the 160 misses)
+## 2026-07-12 - Session 56: Harness extraction plan (T2) — 4-source exploration; plan + acceptance-test comparison companion
 
 ### Context
 
-Resumed after PR #43 (session-52 docs) merged; picked T-31 (the settled next step) — the cheap NN-retrieval precondition gating the 5.R2 embeddings build.
+Planning session, no product code. User asked to plan the T2 harness extraction: explore the current harness, how career-search used its copy, latent-topic-graph's acceptance-test concepts (+ a haiku sweep of the llm repo), and the old-job `~/workspaces/acceptance-test` framework — then write a detailed plan for a next session. Exploration ran as 4 parallel subagents (3 sonnet Explore + 1 haiku) feeding targeted direct reads.
 
 ### What Was Done
 
-- feat(t31): NN-retrieval precondition — GO for 5.R2 (hit@5 62-65% multilingual on the 160 misses) — PR #44 (`feat/t31-nn-precondition` → master)
-- Built `nn_precondition.py` (`.claude/scratch/replay-649/`) via local-model codegen (verdicts 0 → 1 + inline patches): faithful Python port of `MergeExamplePools` (incl. keep-training-duplicates → pool=1,744 exactly matching the replay), LOO by the same dedup key, per-model resumable embedding caches, hit@1/3/5 + per-subcat + neighbor-source breakdowns
-- Ran the 5-model bake-off: qwen3-embedding:8b 65.0% hit@5 / snowflake-arctic-embed2 62.5% (best hit@1 50.0%, 1.2 GB) / bge-m3 61.3% / embeddinggemma 57.5% / nomic-embed-text 41.2%; pulled embeddinggemma + snowflake-arctic-embed2
-- Robustness cuts: excl-Diversos 61.6%, unique-item (78) 65.4%, unique-excl-Div 62.0% → signal is real, not grab-bag/recurrence inflation; report `FINDINGS-nn.md`
-- Tracking updated: index.md replay row, replay/classifier/repo QUICKs, repo KNOWLEDGE cascade section (5.R1 RULED OUT / 5.R2 GO)
+- docs(t2): harness extraction plan + acceptance-test comparison companion — `.claude/plans/harness-extraction-plan.md` + `.claude/plans/harness-extraction-acceptance-test-comparison.md`, both indexed in `.claude/index.md`
+- Explored all four sources: this repo's `test/harness-external-usage.md` + harness source; career-search's de-domained copy (`dashboard/test/harness/` + `EXTRACTION-NOTES.md` — the de-facto extraction spec; its TC-EXT task is BLOCKED on our module); old-job `acceptance-test` (worker-pool + circuit-breaker assertions, `ignore_order_on`, status-only asserts, blind-sleep observe anti-lesson; cobra never actually shipped there); LTG's GIVEN→RUN→OBSERVE→ASSERT + MANUAL formalism (`ltg-l06-incremental-refresh.md`); llm repo surveyed → NOT a consumer (pytest + manual scenarios, no harness desire)
+- Wrote the full comparison companion doc (adopt/adapt/discard analysis of acceptance-test, with file:line anchors)
 
 ### Decisions Made
 
-- GO for 5.R2 — clears the pre-committed ≥60% hit@5 bar (set this session: ≥60% GO, ≤40% no-go, between = judge hit quality)
-- Model pick for 5.R2: snowflake-arctic-embed2 (1.2 GB, best hit@1, −2.5pp hit@5 vs the 8B) — VRAM-practical next to my-classifier-q3; benchmark qwen3-embedding:8b as alternate in the build A/B
-- Probe embeds item text only (value belongs to E2, would muddy the measurement); full 1,744 production pool (what 5.R2 actually retrieves from)
-- K=5 injection mandatory — hit@1 ≤50% for every model, top-1-only would be wrong half the time
+- New repo: `~/workspaces/acceptance-harness`, module `github.com/leandror172/acceptance-harness`, PUBLIC, MIT
+- v1 = lean core only (no LLM extension packages; Ollama gate + soft-assert/drift stay in expense-reporter's domain layer; `extern/llm` is roadmap)
+- Seed from career-search's de-domained copy, NOT the expenses original (second consumer already shook out the boundary)
+- LTG = design influence + adoption-path doc only (Artifacts documented as the OBSERVE named-capture register); no LTG code in v1
+- Split sequencing: Session A = create repo + repoint career-search (closes its TC-EXT); Session B = migrate expense-reporter (`-tags=acceptance -timeout 30m` + replay-tag compile as gates)
+- Library design corrections beyond the field reports: strip `//go:build acceptance` from lib code (consumer policy), replace package-level `flag.Bool` with env vars + opt-in `RegisterFlags()`
 
 ### Next
 
-- Build 5.R2: embed-on-miss cascade layer in `internal/classifier` (Ollama /api/embeddings, disk cache, cosine top-K → few-shot injection), then A/B final classifier accuracy via the same replay harness
-- T-32 (independent, parallel-able): wire the specificity/agreement gate into `IsAutoInsertable`
-- Merge PR #44; T-20 dedup remains a clean independent pick-up
+- Execute harness extraction Session A per `.claude/plans/harness-extraction-plan.md` §4 (scaffold repo from career-search seed → docs → unit tests → publish v0.1.0 → repoint career-search)
+- Merge PR #45 (user) — now also carries this session's docs commit
+- T-32 (specificity/agreement gate into `IsAutoInsertable`) still the settled next product step — independent of the extraction track
 
 ### Gotchas
 
-- Go `MergeExamplePools` only adds FEEDBACK keys to `seen` — duplicate training items are all kept (pool 1,744, not 1,179); a faithful port must NOT dedup training-vs-training (first probe run was wrong for this reason)
-- Multilingual embedding training matters more than size on PT expense text: 274MB nomic collapses to 41% while every multilingual model clears 57% (closes embedding-retrieval.md open question #1)
-- ~35% of misses have NO same-subcat top-5 neighbor even with the best embedder → permanent-review residue inside the novel pool; 5.R2 shrinks the sinkhole, doesn't eliminate it
-- The probe is a retrieval UPPER BOUND — whether the model uses the injected examples is the 5.R2 build's own A/B
+- The session-56 docs commit landed on `feat/5r2-embedding-retrieval` (current branch), so it rides in PR #45 — fine if merging soon, cherry-pick to master if not
+- `ref-lookup.sh` has no `--paths` flag (silently no-ops) — known modes: bare KEY, `--list`, no-args
+- career-search's harness copy was adapted at old expense branch `feat/t13-classifier-full-path` — diff against current master before seeding the new repo (plan §4 caveats)

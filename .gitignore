@@ -84,6 +84,9 @@ expense-reporter/workbook-inspect
 /expense-reporter/expenses_log.jsonl
 /expense-reporter/expenses_log-*.jsonl
 /expense-reporter/expenses_log.jsonl.bak-*
+# 5.R2 embedding caches (real expense descriptions — never commit); anchored so
+# test fixtures with fake data stay committable.
+/data/classification/embeddings-*.jsonl
 
 # Session transcript dumps + local Claude scaffolding (personal paths, not source)
 /*.txt

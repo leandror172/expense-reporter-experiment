@@ -55,6 +55,9 @@
 | WS-B slice 3 — `batch-auto` → log-append (decisions locked, session 43; not yet implemented) | `.claude/plans/ws-b-slice3-batch-auto-log-append.md` |
 | WS-B slice 4 — `apply` → log-append (decisions locked, session 44; not yet implemented) | `.claude/plans/ws-b-slice4-apply-log-append.md` |
 | T-13 (revised) — classifier predicts full (type,category,subcategory) path; WS-D prerequisite | `.claude/plans/t13-classifier-full-path.md` |
+| 5.R2 embedding retrieval — embed-on-miss cascade layer (DONE + ADOPTED session 54; A/B miss full-path 18.8%→52.5%) | `.claude/plans/5r2-embedding-retrieval.md` |
+| Harness extraction plan (T2 — standalone `acceptance-harness` repo, career-search repoint, expenses migration, LTG path; session 56) | `.claude/plans/harness-extraction-plan.md` |
+| acceptance-test vs harness comparison (companion: old-job pipeline framework — adopt/adapt/discard analysis; session 56) | `.claude/plans/harness-extraction-acceptance-test-comparison.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
@@ -411,6 +414,7 @@ Desktop-era planning documents — read for context, do not modify.
 | Tool | Path | Purpose |
 |------|------|---------|
 | `sonnet-max-subagent.js` | `.claude/workflows/sonnet-max-subagent.js` | Workflow harness: run ONE Sonnet 5 subagent at max/xhigh effort (the effort knob the Agent tool lacks). `Workflow({name:'sonnet-max-subagent', args:'<prompt>'})` or `args:{prompt,effort}` |
+| `impl-opus-med` agent | `.claude/agents/impl-opus-med.md` | Opus medium-effort implementation subagent (TDD, directed reading, local-model delegation w/ per-session persona override; copied from latent-topic-graph, adapted session 54) |
 | `resume.sh` | `.claude/tools/resume.sh` | Session-start context summary |
 | `ref-lookup.sh` | `.claude/tools/ref-lookup.sh` | Resolve [ref:KEY] tags |
 | `rotate-session-log.sh` | `.claude/tools/rotate-session-log.sh` | Archive old session log entries |
@@ -420,5 +424,5 @@ Desktop-era planning documents — read for context, do not modify.
 | 5.R4 extraction scripts | `.claude/scratch/{extract_old_workbooks,dedup_corpus,build_corpus,build_logs}.py` | One-off (session 35): 2022–2024 workbooks → deduped corpus + per-year logs. Alias map externalized to gitignored `extraction-aliases.json`. |
 | WS-A.3 merge script | `.claude/scratch/merge_year_logs.py` |
 | T-14 benchmark harness | `.claude/scratch/t14-benchmark/{build_sample,run_benchmark,score}.py` + `ood.jsonl` (sample/results JSONLs gitignored — real expense data). Sample builder, resumable runner (drives `classify --json`; `--prefix`/`--extra-args`), scorer (accuracy/leakage/calibration/OOD). | One-off (session 37): merge per-year `expenses_log-{2022,2023,2024}.jsonl` + base 2025 → one `expenses_log-allyears.jsonl`, rewriting `DD/MM`→`DD/MM/YYYY`. Output gitignored. Verified byte-identical (excl. manifest source) vs per-year `generate-workbook --year N` for all 4 years. |
-| 649-replay harness (T-23 gate + 5.R1) | `expense-reporter/internal/classifier/replay_{retrieval,model}_test.go` (`//go:build replay`) + `.claude/scratch/replay-649/{FINDINGS,FINDINGS-model,FINDINGS-nn}.md` + `analyze*.py`/`compare_think.py`/`nn_precondition.py` | Session 52: replays the 649 real labels through production retrieval + classifier (LOO). Verdict: confidence dead as gate, specificity+agreement is the gate, 5.R2 (not 5.R1) is the lever. Session 53: T-31 NN precondition on the 160 misses → GO for 5.R2 (hit@5 62–65% multilingual; arctic-embed2 practical pick). Raw `*.jsonl` gitignored (real data). |
+| 649-replay harness (T-23 gate + 5.R1) | `expense-reporter/internal/classifier/replay_{retrieval,model}_test.go` (`//go:build replay`) + `.claude/scratch/replay-649/{FINDINGS,FINDINGS-model,FINDINGS-nn,FINDINGS-5r2}.md` + `analyze*.py`/`compare_think.py`/`nn_precondition.py` | Session 52: replays the 649 real labels through production retrieval + classifier (LOO). Verdict: confidence dead as gate, specificity+agreement is the gate, 5.R2 (not 5.R1) is the lever. Session 53: T-31 NN precondition on the 160 misses → GO for 5.R2 (hit@5 62–65% multilingual; arctic-embed2 practical pick). Raw `*.jsonl` gitignored (real data). |
 | session-handoff skill | `.claude/skills/session-handoff/SKILL.md` | End-of-session tracking workflow |

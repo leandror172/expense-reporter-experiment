@@ -26,6 +26,8 @@ pkg/utils/  config/config.json
 - **Table-driven tests with testify** — `assert`/`require`
 - **Brazilian format everywhere** — DD/MM/YYYY, comma decimal, BRL
 - **Error wrapping** — `fmt.Errorf("context: %w", err)`
+- **Method extraction** — multi-step function bodies read as named delegated steps
+  (≤~15 lines); step-comments promote to helper doc comments (KNOWLEDGE.md)
 - **Installments** — "99,90/3" = 3 monthly payments, expanded at APPEND time;
   plain `batch` still expands at insert
 

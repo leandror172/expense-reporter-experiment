@@ -35,6 +35,12 @@ type Config struct {
 	FeedbackPath string // path to classifications.jsonl (optional; skipped when empty)
 	TopN         int    // number of candidates to return (default: 3)
 	NoThink      bool   // send "think": false — disables qwen thinking tokens (default: model decides)
+
+	// Embedding fallback (5.R2): on a keyword miss, examples are retrieved by
+	// embedding similarity instead of returning none. On by default (D2);
+	// the replay A/B harness disables it to measure the keyword-only baseline.
+	EmbedModel       string // Ollama embedding model (default: snowflake-arctic-embed2)
+	NoEmbedRetrieval bool   // disable the embed-on-miss fallback
 }
 
 // Classify sends item/value/date to Ollama and returns top-N full-path candidates.
@@ -104,6 +110,12 @@ func selectExamples(item string, cfg Config) []Example {
 	}
 	pool := MergeExamplePools(training, feedback)
 	examples := SelectExamples(item, pool, keywords, 5)
+	if len(examples) == 0 {
+		// Keyword miss (5.R2): fall back to embedding-similarity retrieval.
+		examples = embeddingFallback(item, pool, cfg, &packageEmbedState)
+		logger.Debug("few-shot: embedding fallback", "count", len(examples), "item", item)
+		return examples
+	}
 	logger.Debug("few-shot", "count", len(examples), "item", item)
 	return examples
 }

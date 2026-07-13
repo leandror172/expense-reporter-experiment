@@ -185,7 +185,9 @@ func TestReplayModel649(t *testing.T) {
 	}
 	minTop := parseFloatSafe(os.Getenv("REPLAY_MIN_TOPSCORE")) // 0 = no band filter
 	nothink := os.Getenv("REPLAY_THINK") == ""                 // think-on when REPLAY_THINK set
-	t.Logf("config: min_topscore=%.2f nothink=%v", minTop, nothink)
+	missOnly := os.Getenv("REPLAY_MISS_ONLY") != ""            // only keyword-miss rows (topScore==0) — the 5.R2 A/B stratum
+	noEmbed := os.Getenv("REPLAY_NO_EMBED") != ""              // disable the 5.R2 embedding fallback (OFF-arm baseline)
+	t.Logf("config: min_topscore=%.2f nothink=%v miss_only=%v no_embed=%v", minTop, nothink, missOnly, noEmbed)
 
 	processed := 0
 	for _, r := range rows {
@@ -209,6 +211,9 @@ func TestReplayModel649(t *testing.T) {
 		if topScore < minTop { // band filter (REPLAY_MIN_TOPSCORE)
 			continue
 		}
+		if missOnly && topScore != 0 { // 5.R2 stratum: keyword layer found nothing
+			continue
+		}
 		if limit > 0 && processed >= limit {
 			break
 		}
@@ -228,11 +233,12 @@ func TestReplayModel649(t *testing.T) {
 		}
 
 		cfg := Config{
-			Model:        "my-classifier-q3",
-			DataDir:      dataDir,
-			FeedbackPath: looPath,
-			TopN:         3,
-			NoThink:      nothink,
+			Model:            "my-classifier-q3",
+			DataDir:          dataDir,
+			FeedbackPath:     looPath,
+			TopN:             3,
+			NoThink:          nothink,
+			NoEmbedRetrieval: noEmbed,
 		}
 		results, cerr := Classify(r.Item, r.Value, r.Date, sheets, cfg)
 		if cerr != nil {

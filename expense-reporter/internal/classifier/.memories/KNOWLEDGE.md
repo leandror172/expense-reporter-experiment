@@ -265,3 +265,49 @@ Harness `replay_{retrieval,model}_test.go` (`//go:build replay`, in-package, fai
   neighbor subcat hit-rate) = the settled NEXT step before building 5.R2. Miss pool is the accuracy
   sinkhole (18.8% full-path). Leakage controls: feedback LOO by item (self_match=0), training kept +
   clean(362)/leaky(287) stratified (44.2% vs 63.1% = ~19pp recurrence effect).
+
+## 5.R2 Embedding Retrieval — Phase 1+2 (session 54, 2026-07-10)
+Plan: `.claude/plans/5r2-embedding-retrieval.md` (locked D1–D12). Built by an Opus-medium
+subagent, codegen via `my-go-q3-14b` (verdicts 0/1/0/1 — below qcoder's 2/2/1/1 for Go).
+- **Two distinct keys by design:** the disk cache is keyed by **exact raw item text** (D6 —
+  casing preserved, near-dup casings embed separately), while `TopKEmbeddingExamples` dedups
+  the returned slate by the **lowercased/trimmed** key (`itemKey`, mirrors `MergeExamplePools`)
+  so K=5 yields 5 distinct examples; among same-key rows the highest source-priority row wins
+  (first-seen on ties).
+- **Deterministic ranking:** sorts an **index permutation** (not the reps slice, not map
+  iteration) so equal-similarity ties — guaranteed, because training duplicates share identical
+  vectors — keep reproducible first-seen order. The Phase-4 A/B depends on this.
+- **Cache robustness:** within-file vector-dimension mismatch is a hard error (fail loud, not
+  garbage cosines); torn/malformed JSONL lines are skipped and re-embedded on next reconcile.
+- `itemKey` deliberately named to avoid colliding with the `replay`-tagged test's `dedupKey`.
+- All failures return errors (D9) so Phase 3 wiring can degrade to nil examples (today's
+  keyword-miss behavior) — never panic, never block classification.
+
+## 5.R2 Phases 3+4 — wired + ADOPTED (session 54, 2026-07-10)
+- **Wiring:** `selectExamples` (classifier.go) falls back to `embeddingFallback` when
+  `SelectExamples` returns nil (keyword miss ONLY — D1; weak/ambiguous matches keep the
+  keyword path, CL1 revisits). `embedding_fallback.go`: package-level `embedState`
+  (sync.Once) reconciles the pool cache lazily on the FIRST miss in a process — blocking
+  by design (the triggering item needs the vectors; async would classify early/late misses
+  inconsistently within one batch). Progress via `logger.Info` so batches don't look hung.
+  Every failure degrades to nil examples — classification never blocks on retrieval.
+- **Config:** `EmbedModel` (default snowflake-arctic-embed2) + `NoEmbedRetrieval` — zero
+  values = ON with default model, so the commands needed no changes (D2).
+- **A/B (replay, miss stratum n=80 unique):** full-path 18.8%→52.5% no-think (+33.8pp,
+  29 fixed/2 broke) / 55.0% think-on. Think adds +2.5pp churn (10/8) at 5.5× latency →
+  no-think is right for the miss path (feeds T-24). `FINDINGS-5r2.md`. Harness gained
+  `REPLAY_MISS_ONLY` + `REPLAY_NO_EMBED` env knobs. NOTE: `GenerateID` collides for
+  repeat expenses → replay outputs hold ~2 lines/id; score on unique ids.
+- **First-activation burst:** full-pool embed = 1,744 items ≈ 3 min, one-time (CL2 has
+  the pre-warm option if it ever annoys).
+
+## 5.R2 method-extraction refactor (session 55, 2026-07-11)
+PR #45 review pass applied the module-wide method-extraction convention (see
+`expense-reporter/.memories/KNOWLEDGE.md`) to the 5.R2 files — pure refactor, tests untouched:
+- `TopKEmbeddingExamples` → `dedupePoolByKey` (two-key design in its doc comment: cache =
+  exact raw text, slate = lowercased `itemKey`) + `rankBySimilarity` (index-permutation
+  determinism rationale now lives in its doc comment — load-bearing for replay A/Bs).
+- `ReconcileEmbeddings` → `missingCacheItems` + `openCacheAppend` + `embedAndAppend`
+  (doc comment states the resume property: items appended before a mid-loop failure persist).
+- `LoadEmbeddingCache` loop → `parseCacheLine` (torn-line skip → re-embed contract).
+Helper names were checked against `replay_*.go` (build-tag-hidden) before landing.
