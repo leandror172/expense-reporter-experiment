@@ -1,39 +1,39 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-12 — Session 56: Harness extraction plan (T2) — 4-source exploration; plan + acceptance-test comparison companion
-**Current Layer:** Layer 5 — retrieval & gate (5.R2 DONE; T-32 next) + T2 extraction planned
+**Current Session:** 2026-07-13 — Session 57: "T-32 agreement gate — replace the dead confidence auto-insert gate (PR #46); verifier false-pass fix; runtime-ref cleanup"
+**Current Layer:** "Layer 5 — Expense Classifier (auto-insert gate: T-32 agreement gate SHIPPED; WS-D next)"
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-12 - Session 56: Harness extraction plan (T2) — 4-source exploration; plan + acceptance-test comparison companion
+## 2026-07-13 - Session 57: "T-32 agreement gate — replace the dead confidence auto-insert gate (PR #46); verifier false-pass fix; runtime-ref cleanup"
 
 ### Context
 
-Planning session, no product code. User asked to plan the T2 harness extraction: explore the current harness, how career-search used its copy, latent-topic-graph's acceptance-test concepts (+ a haiku sweep of the llm repo), and the old-job `~/workspaces/acceptance-test` framework — then write a detailed plan for a next session. Exploration ran as 4 parallel subagents (3 sonnet Explore + 1 haiku) feeding targeted direct reads.
+Resumed with PR #45 (5.R2) merged to master. User picked T-32 (agreement gate — the WS-D unblock) from the three ready tracks.
 
 ### What Was Done
 
-- docs(t2): harness extraction plan + acceptance-test comparison companion — `.claude/plans/harness-extraction-plan.md` + `.claude/plans/harness-extraction-acceptance-test-comparison.md`, both indexed in `.claude/index.md`
-- Explored all four sources: this repo's `test/harness-external-usage.md` + harness source; career-search's de-domained copy (`dashboard/test/harness/` + `EXTRACTION-NOTES.md` — the de-facto extraction spec; its TC-EXT task is BLOCKED on our module); old-job `acceptance-test` (worker-pool + circuit-breaker assertions, `ignore_order_on`, status-only asserts, blind-sleep observe anti-lesson; cobra never actually shipped there); LTG's GIVEN→RUN→OBSERVE→ASSERT + MANUAL formalism (`ltg-l06-incremental-refresh.md`); llm repo surveyed → NOT a consumer (pytest + manual scenarios, no harness desire)
-- Wrote the full comparison companion doc (adopt/adapt/discard analysis of acceptance-test, with file:line anchors)
+- Shipped T-32: `IsAutoInsertable` now gates on keyword AGREEMENT (`matched ∧ ¬ambiguous ∧ top_score>=1.0 ∧ predicted==keyword_top1 ∧ ¬excluded`), confidence dropped. Signal surfaced as a pure `MatchStrength(item, keywords)` in `examples.go` (not a `Classify` return-shape change). Deterministic tiebreak; `--threshold` deprecated. Commit 9cf65d1, PR #46.
+- Replay-validated the shipped gate over the frozen 649 `model.jsonl` (`gate_validation_test.go`, no re-inference): shipped `top_score` == harness on all 649 rows, reproducing FINDINGS 34.2/86.9 band + 94.9% agreement subcat / 30.5% coverage.
+- Fixed a latent verifier false-pass (`FeedbackMatchesExpected` early-returned on the empty log batch-auto's `O_CREATE` preflight always creates) — the agreement gate exposed it on the installment tests.
+- Reconciled the acceptance suite: swapped gate-failing `Uber Centro` (spec 0.8, ambiguous) → `Posto Ipiranga` (spec 1.0 → Combustível) in the auto-append fixtures. 620 unit + full acceptance suite green.
+- Corrected every runtime ref describing the confidence gate (index.md `[ref:confidence-thresholds]` + its duplicate in `classification_algorithm.md`; 5 memory files). Wrote `.claude/t32-agreement-gate-report.md`.
 
 ### Decisions Made
 
-- New repo: `~/workspaces/acceptance-harness`, module `github.com/leandror172/acceptance-harness`, PUBLIC, MIT
-- v1 = lean core only (no LLM extension packages; Ollama gate + soft-assert/drift stay in expense-reporter's domain layer; `extern/llm` is roadmap)
-- Seed from career-search's de-domained copy, NOT the expenses original (second consumer already shook out the boundary)
-- LTG = design influence + adoption-path doc only (Artifacts documented as the OBSERVE named-capture register); no LTG code in v1
-- Split sequencing: Session A = create repo + repoint career-search (closes its TC-EXT); Session B = migrate expense-reporter (`-tags=acceptance -timeout 30m` + replay-tag compile as gates)
-- Library design corrections beyond the field reports: strip `//go:build acceptance` from lib code (consumer policy), replace package-level `flag.Bool` with env vars + opt-in `RegisterFlags()`
+- Gate = AGREEMENT (not pure-specificity, not agreement-AND-confidence). Confidence is inert; ANDing it is strictly dominated (zero precision, random coverage loss, misleading knob).
+- Signal as a pure function, not a `Classify` return-shape change (advisor): model/pool-independent, and it avoids the embedding-fallback contamination case + 11-callsite churn.
+- Precision caveat carried into the commit/PR/docs: the ~95% is same-sample RELATIVE (shipped==measured); absolute production precision is unmeasured → WS-D stays HELD.
+- Collision caveat (5 cross-type leaves can be subcat-right/type-wrong) recorded in `decision.go`, not fixed.
 
 ### Next
 
-- Execute harness extraction Session A per `.claude/plans/harness-extraction-plan.md` §4 (scaffold repo from career-search seed → docs → unit tests → publish v0.1.0 → repoint career-search)
-- Merge PR #45 (user) — now also carries this session's docs commit
-- T-32 (specificity/agreement gate into `IsAutoInsertable`) still the settled next product step — independent of the extraction track
+- WS-D (T-09): retire the bare-name fallback — now protected by the gate but HELD; design gate-to-review, not silent insert (absolute precision unmeasured).
+- Or: Harness extraction Session A (T2), or T-20 log dedup — both independent.
+- Merge PR #46.
 
 ### Gotchas
 
-- The session-56 docs commit landed on `feat/5r2-embedding-retrieval` (current branch), so it rides in PR #45 — fine if merging soon, cherry-pick to master if not
-- `ref-lookup.sh` has no `--paths` flag (silently no-ops) — known modes: bare KEY, `--list`, no-args
-- career-search's harness copy was adapted at old expense branch `feat/t13-classifier-full-path` — diff against current master before seeding the new repo (plan §4 caveats)
+- `Uber Centro` FAILS the agreement gate (keyword `uber` spec 0.8, ambiguous across Viagens/Uber-Taxi). Use `Posto Ipiranga` / `Netflix` / `Diarista Letícia` for any test that must auto-append.
+- `FeedbackMatchesExpected` used to false-pass on an empty log (batch-auto's preflight `O_CREATE`s one) — fixed; watch for the same early-return-on-nil pattern elsewhere.
+- The interactive `auto` append-on-pass path has no running test (`TestAuto_FeedbackLoggedOnInsert` is workbook-gated → skips here).
