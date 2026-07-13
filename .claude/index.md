@@ -67,6 +67,7 @@
 | T-14 benchmark report (accuracy/calibration/OOD + --think findings, session 46) | `.claude/t14-benchmark-report.md` |
 | T-23 logprob-confidence probe (leaf-first; pre-mask logprobs, session 49) | `.claude/t23-logprob-confidence-probe.md` |
 | T-23 strategic implications (gate route → workbook plan + grand vision, session 50) | `.claude/t23-strategic-implications.md` |
+| T-32 agreement-gate report (work + findings: replay validation, verifier false-pass, fixture coupling, session 57) | `.claude/t32-agreement-gate-report.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -151,7 +152,7 @@ See `data/classification/reproducibility_guide.md` for how to reproduce results.
 
 **Key ref blocks for Layer 5 agents:**
 - `ref-lookup.sh training-data-schema` — JSON schema for `training_data_complete.json` and `feature_dictionary_enhanced.json`; classify command input format
-- `ref-lookup.sh confidence-thresholds` — HIGH/MEDIUM/LOW thresholds (0.85/0.50) and per-level behavior
+- `ref-lookup.sh confidence-thresholds` — auto-insert AGREEMENT gate (T-32) + legacy confidence scoring
 - `ref-lookup.sh classification-overview` — executive summary + algorithm performance stats
 <!-- /ref:classification -->
 
@@ -237,22 +238,34 @@ Three fields passed to the classifier:
 ---
 
 <!-- ref:confidence-thresholds -->
-## Confidence Thresholds
+## Auto-Insert Gate (agreement gate — T-32)
 
-Source: `data/classification/algorithm_parameters.json` (tracked).
+**As of T-32, auto-insert is decided by keyword AGREEMENT, not confidence.** The
+649-replay (session 52) measured that the model's self-reported confidence is
+uninformative as a gate (the whole 0.85–0.95 band is a coin flip), so
+`IsAutoInsertable` (`internal/classifier/decision.go`) no longer consults confidence.
 
-| Level | Threshold | Behavior |
-|-------|-----------|----------|
-| HIGH | ≥ 0.85 | Auto-insert into workbook (`auto` command proceeds without prompt) |
-| MEDIUM | ≥ 0.50 | Print top candidates, ask user to confirm |
-| LOW | < 0.50 | Flag for manual review; do not insert |
+A candidate is auto-insertable (`auto`/`batch-auto` append it without review) only when
+ALL hold:
+- a keyword matched the item (a specificity signal exists)
+- the match is unambiguous (no tie at the top specificity)
+- the top keyword specificity is maximal (`top_score >= 1.0`)
+- the model's predicted subcategory equals the keyword's dominant subcategory (agreement)
+- the subcategory is not in `auto_insert_excluded` (e.g. `Diversos`)
 
-**Fallback:** if no keyword matches and value range is inconclusive → category `Diversos`, confidence `0.30`, `require_manual_review: true`.
+Everything else routes to review. Confidence is still emitted per candidate (and shown in
+`--json`) but does NOT gate; `--threshold` on `batch-auto` is deprecated/ignored.
 
-**Feature weights** (for scoring inside the classifier):
-- keyword_match: 0.50
-- semantic_similarity: 0.30
-- value_proximity: 0.20
+**Precision caveat:** the ~95% subcat precision this gate showed on the 649-replay is a
+same-sample RELATIVE validation (shipped predicate == measured predicate). The 649 is a
+confidence-selected subset, so ABSOLUTE production precision is unmeasured — which is why
+unattended silent auto-insert (WS-D) stays held.
+
+**Legacy (pre-T-32) confidence scoring** — retained as the classifier's internal scoring,
+no longer a gate. Source `data/classification/algorithm_parameters.json`: HIGH ≥ 0.85,
+MEDIUM ≥ 0.50, LOW < 0.50; fallback (no keyword + inconclusive value range) → `Diversos`,
+confidence `0.30`. Feature weights: keyword_match 0.50, semantic_similarity 0.30,
+value_proximity 0.20.
 <!-- /ref:confidence-thresholds -->
 
 ---

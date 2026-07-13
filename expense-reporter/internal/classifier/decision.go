@@ -1,25 +1,40 @@
 package classifier
 
-// DefaultHighConfidenceThreshold is the default confidence threshold for auto-insertable decisions.
-const DefaultHighConfidenceThreshold = 0.85
+// IsExcluded reports whether a subcategory is in the exclusion list.
+func IsExcluded(subcategory string, excluded []string) bool {
+	for _, ex := range excluded {
+		if subcategory == ex {
+			return true
+		}
+	}
+	return false
+}
 
 // IsAutoInsertable determines if a result meets the criteria to be considered auto-insertable.
 //
-// TODO(T-19): this confidence threshold is the only guard against auto-inserting a wrong
-// row, but since T-13 the model is GBNF-constrained to the 112-path enum and cannot
-// decline — novel / out-of-domain expenses get forced into a leaf, sometimes above the
-// threshold. The threshold no longer reliably routes unknown items to manual review the
-// way the pre-T-13 Diversos/0.30 fallback did. Do NOT lean harder on this path (e.g. WS-D
-// / T-09 retiring the bare-name fallback) without resolving the escape-hatch gap. See
-// tasks.md T-19; validate the forced-misclassification risk on real data first.
-func IsAutoInsertable(result Result, threshold float64, excluded []string) bool {
-	if result.Confidence < threshold {
+// This is the agreement gate: high keyword specificity AND model⊕keyword concurrence.
+// It deliberately drops the old confidence check because confidence was measured to be
+// uninformative on real data (session-52 replay — the whole 0.85–0.95 band is a coin
+// flip). The gate is intentionally high-precision / low-coverage — non-passing rows
+// (keyword miss, ambiguous match, sub-maximal specificity, or model/keyword
+// disagreement) go to manual review, they are not silently inserted.
+//
+// Caveat (T-32): agreement is verified at the SUBCATEGORY level, but the appended row
+// carries the model's full path (Type/Category). For the 5 cross-type collision leaves
+// (Estacionamento/Dentista/Orion/Lilly/Ambos) a subcat-right row can still be
+// type-wrong and auto-append. Accepted as a known caveat; revisit if it bites.
+func IsAutoInsertable(result Result, signal MatchSignal, excluded []string) bool {
+	if !signal.Matched {
 		return false
 	}
-	for _, subcat := range excluded {
-		if result.Subcategory == subcat {
-			return false
-		}
+	if signal.Ambiguous {
+		return false
 	}
-	return true
+	if signal.TopScore < 1.0 {
+		return false
+	}
+	if result.Subcategory != signal.TopSubcategory {
+		return false
+	}
+	return !IsExcluded(result.Subcategory, excluded)
 }

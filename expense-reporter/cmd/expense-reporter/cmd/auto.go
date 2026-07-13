@@ -16,8 +16,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const highConfidenceThreshold = 0.85
-
 var (
 	autoModel   string
 	autoDataDir string
@@ -27,9 +25,10 @@ var (
 
 var autoCmd = &cobra.Command{
 	Use:   "auto <item> <value> <DD/MM>",
-	Short: "Classify and auto-insert if confident",
-	Long: `Classify an expense and insert it automatically if confidence is high (≥85%).
-If confidence is below the threshold, prints candidates for manual review.
+	Short: "Classify and auto-insert on a confident keyword agreement",
+	Long: `Classify an expense and append it automatically when the model's prediction
+agrees with an unambiguous, high-specificity keyword match (the agreement gate).
+Otherwise prints candidates for manual review.
 
 Examples:
   expense-reporter auto "Uber Centro" 35.50 15/04
@@ -91,6 +90,15 @@ func runAuto(cmd *cobra.Command, args []string) error {
 
 	top := results[0]
 
+	// Agreement gate: the keyword signal is a pure function of the item, computed
+	// once here and shared by the JSON and interactive paths. A nil index (load
+	// failure) yields a miss → the item routes to review.
+	keywords, kerr := classifier.LoadKeywordIndex(autoDataDir)
+	if kerr != nil {
+		keywords = nil
+	}
+	signal := classifier.MatchStrength(item, keywords)
+
 	// JSON mode: read-only — classify and return recommendation, never insert.
 	if outputJSON {
 		topCandidate := &CandidateOutput{
@@ -100,17 +108,16 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		}
 
 		var action, message string
-		if classifier.IsAutoInsertable(top, highConfidenceThreshold, appCfg.AutoInsertExcluded) {
+		if classifier.IsAutoInsertable(top, signal, appCfg.AutoInsertExcluded) {
 			action = "would_insert"
-			message = fmt.Sprintf("%s → %s (%s) — %.0f%% confidence, ready to insert",
-				item, top.Subcategory, top.Category, top.Confidence*100)
-		} else if top.Confidence >= highConfidenceThreshold {
+			message = fmt.Sprintf("%s → %s (%s) — agrees with keyword match, ready to insert",
+				item, top.Subcategory, top.Category)
+		} else if classifier.IsExcluded(top.Subcategory, appCfg.AutoInsertExcluded) {
 			action = "excluded"
 			message = fmt.Sprintf("%q is excluded from auto-insert", top.Subcategory)
 		} else {
 			action = "review"
-			message = fmt.Sprintf("top confidence %.0f%% is below threshold %.0f%%",
-				top.Confidence*100, highConfidenceThreshold*100)
+			message = gateReviewReason(top, signal)
 		}
 
 		return printJSON(AutoOutput{
@@ -125,9 +132,9 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	if classifier.IsAutoInsertable(top, highConfidenceThreshold, appCfg.AutoInsertExcluded) {
+	if classifier.IsAutoInsertable(top, signal, appCfg.AutoInsertExcluded) {
 		if autoConfirm {
-			fmt.Printf("Top match: %s (%s) — %.0f%% confidence\n", top.Subcategory, top.Category, top.Confidence*100)
+			fmt.Printf("Top match: %s (%s) — agrees with keyword match\n", top.Subcategory, top.Category)
 			fmt.Printf("Insert? [y/N] ")
 			if !confirmInsert(os.Stdin) {
 				printCandidates(item, value, date, results)
@@ -139,13 +146,31 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	}
 
 	printCandidates(item, value, date, results)
-	if top.Confidence >= highConfidenceThreshold {
+	if classifier.IsExcluded(top.Subcategory, appCfg.AutoInsertExcluded) {
 		fmt.Printf("\n⚠  Not appended — \"%s\" is excluded from auto-insert.\n", top.Subcategory)
 	} else {
-		fmt.Printf("\n⚠  Not appended — top confidence %.0f%% is below threshold %.0f%%.\n",
-			top.Confidence*100, highConfidenceThreshold*100)
+		fmt.Printf("\n⚠  Not appended — %s\n", gateReviewReason(top, signal))
 	}
 	return nil
+}
+
+// gateReviewReason explains, for a result that failed the agreement gate but is not
+// excluded, which gate condition it missed — so review output names the cause
+// (no keyword match, ambiguous keyword, low specificity, or model/keyword disagreement)
+// instead of a stale confidence threshold.
+func gateReviewReason(top classifier.Result, signal classifier.MatchSignal) string {
+	switch {
+	case !signal.Matched:
+		return "no keyword match to confirm the prediction"
+	case signal.Ambiguous:
+		return "the keyword match is ambiguous across subcategories"
+	case signal.TopScore < 1.0:
+		return fmt.Sprintf("keyword specificity %.2f is below the maximum required for auto-insert", signal.TopScore)
+	case top.Subcategory != signal.TopSubcategory:
+		return fmt.Sprintf("model predicted %q but the keyword match points to %q", top.Subcategory, signal.TopSubcategory)
+	default:
+		return "did not meet the auto-insert gate"
+	}
 }
 
 func appendExpense(item, date string, parsedDate time.Time, value float64, installmentCount int, result classifier.Result, appCfg *config.Config) error {

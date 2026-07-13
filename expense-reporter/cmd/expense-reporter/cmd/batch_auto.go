@@ -29,13 +29,14 @@ var (
 
 var batchAutoCmd = &cobra.Command{
 	Use:   "batch-auto <csv_file>",
-	Short: "Classify a CSV batch and auto-insert high-confidence expenses",
+	Short: "Classify a CSV batch and auto-insert rows that pass the agreement gate",
 	Long: `Read a 3-field semicolon-delimited CSV (item;DD/MM;value), classify each row,
-and auto-insert rows that exceed the confidence threshold into the workbook.
+and auto-insert rows that pass the agreement gate (the model's prediction agrees
+with an unambiguous, high-specificity keyword match) into the workbook.
 
 Output files are written to --output-dir (default: same directory as input):
   classified.csv  — all rows with classification results
-  review.csv      — rows not auto-inserted (low confidence or excluded)
+  review.csv      — rows not auto-inserted (gate not met or excluded)
   rollover.csv    — installment rows whose later months fall into next year (if any)
 
 Use --dry-run to skip workbook insertion and only produce the CSV outputs.
@@ -52,11 +53,14 @@ func init() {
 	batchAutoCmd.Flags().StringVar(&batchAutoModel, "model", "my-classifier-q3", "Ollama model to use")
 	batchAutoCmd.Flags().StringVar(&batchAutoDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	batchAutoCmd.Flags().StringVar(&batchAutoOllamaURL, "ollama-url", "http://localhost:11434", "Ollama API base URL")
-	batchAutoCmd.Flags().Float64Var(&batchAutoThreshold, "threshold", 0.85, "Minimum confidence for auto-insert")
+	batchAutoCmd.Flags().Float64Var(&batchAutoThreshold, "threshold", 0.85, "Deprecated: ignored — the auto-insert gate now uses keyword agreement, not confidence")
 	batchAutoCmd.Flags().IntVar(&batchAutoTopN, "top", 3, "Number of classification candidates")
 	batchAutoCmd.Flags().BoolVar(&batchAutoDryRun, "dry-run", false, "Classify and write CSVs without inserting into workbook")
 	batchAutoCmd.Flags().StringVar(&batchAutoOutputDir, "output-dir", "", "Directory for output CSV files (default: same as input file)")
 	batchAutoCmd.Flags().BoolVar(&batchAutoThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
+	// T-32: the agreement gate replaced the confidence threshold; keep the flag
+	// accepted (so existing scripts/fixtures don't error) but mark it deprecated.
+	_ = batchAutoCmd.Flags().MarkDeprecated("threshold", "ignored — the auto-insert gate now uses keyword agreement, not confidence")
 }
 
 var batchAutoThink bool
@@ -109,7 +113,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	results := classifyLines(lines, sheets, appCfg, cfg, batchAutoThreshold)
+	results := classifyLines(lines, sheets, appCfg, cfg)
 
 	var appendErr error
 	if !batchAutoDryRun {
@@ -169,9 +173,18 @@ func loadBatchAutoDeps() ([]taxonomy.ExpenseType, *config.Config, error) {
 	return sheets, appCfg, nil
 }
 
-func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config.Config, cfg classifier.Config, threshold float64) []classifiedRow {
+func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config.Config, cfg classifier.Config) []classifiedRow {
 	total := len(lines)
 	results := make([]classifiedRow, 0, total)
+
+	// Load the keyword index once for the whole batch. On failure, proceed with a
+	// nil index: MatchStrength treats every row as a keyword miss → REVIEW, rather
+	// than aborting the run.
+	keywords, err := classifier.LoadKeywordIndex(cfg.DataDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "⚠  keyword index unavailable (%v); all rows route to REVIEW\n", err)
+		keywords = nil
+	}
 
 	for i, line := range lines {
 		row, err := parse3FieldLine(line)
@@ -189,7 +202,8 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 		}
 
 		top := classResults[0]
-		autoInsert := classifier.IsAutoInsertable(top, threshold, appCfg.AutoInsertExcluded)
+		signal := classifier.MatchStrength(row.Item, keywords)
+		autoInsert := classifier.IsAutoInsertable(top, signal, appCfg.AutoInsertExcluded)
 		status := "REVIEW"
 		if autoInsert {
 			status = "AUTO  "
@@ -414,4 +428,3 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 	w.Flush()
 	return w.Error()
 }
-

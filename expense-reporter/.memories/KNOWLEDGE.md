@@ -7,8 +7,8 @@ Five user-facing commands, each building on the previous:
 - `add "item;DD/MM;value;subcategory"` — manual insert with known subcategory
 - `batch "file.csv"` — bulk manual inserts from CSV
 - `classify "item" value DD/MM` — LLM classification only, no insert (read-only)
-- `auto "item" value DD/MM` — classify + **append to expenses_log.jsonl** if confidence ≥ 0.85 (was: workbook insert)
-- `batch-auto "file.csv"` — classify CSV batch + **append** high-confidence rows to the log (was: workbook insert)
+- `auto "item" value DD/MM` — classify + **append to expenses_log.jsonl** if it passes the agreement gate (T-32; was confidence ≥ 0.85; was: workbook insert)
+- `batch-auto "file.csv"` — classify CSV batch + **append** rows that pass the agreement gate to the log (T-32; was high-confidence; was: workbook insert)
 **Rationale:** Incremental trust — `classify` lets users verify the model before `auto`
 appends anything. `batch-auto` is the production workflow.
 **Implication:** `auto` and `batch-auto` share the same classifier + decision logic.

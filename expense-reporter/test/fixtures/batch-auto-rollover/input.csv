@@ -4,4 +4,4 @@
 # Post log-append pivot: ALL installments (incl. next-year ones) are normal log lines —
 # there is no rollover.csv; cross-year installments simply carry their real next-year date.
 # 500,00/5 → 100,00 per installment (divides cleanly in float64)
-Uber Centro;01/10/2026;500,00/5
+Posto Ipiranga;01/10/2026;500,00/5

@@ -209,12 +209,20 @@ on accuracy alone.
   **Durability gap:** the leaf must also be renamed in the workbook Referência (T-02 export
   source) or the next re-export wipes it.
 
-## Auto-insert gate — as-is + T-23 route reframe (session 50)
+## Auto-insert gate — AGREEMENT (T-32 SHIPPED) + T-23 route history (session 50)
 Full decision: `.claude/plans/t23-calibration-benchmark.md` "Route decision"; strategy:
 `.claude/t23-strategic-implications.md`. [[project_logprob_confidence_leaf_first]].
-- **As-is gate is confidence-only.** `IsAutoInsertable(result, threshold, excluded)` (`decision.go`)
-  checks ONLY `result.Confidence >= 0.85 && Subcategory ∉ excluded`. Carries a `TODO(T-19)`. T-14
-  proved confidence is anti-informative (86–91% of wrong ≥0.85) → this gate barely filters.
+- **SHIPPED (T-32): the gate is now AGREEMENT, confidence dropped.** `IsAutoInsertable(result,
+  MatchSignal, excluded)` (`decision.go`) requires: a keyword matched, unambiguous, `top_score>=1.0`,
+  model subcategory == keyword dominant subcategory, and not excluded. The old confidence-only gate
+  (`Confidence >= 0.85 && ∉ excluded`) is gone — T-14/replay proved confidence anti-informative
+  (86–91% of wrong ≥0.85). **Implementation note:** the E1 signal is surfaced as a PURE
+  `MatchStrength(item, keywords) MatchSignal` in `examples.go` computed at the gate sites — NOT the
+  planned `Classify` return-shape change (per advisor: the signal is model-independent, so a pure
+  function avoids threading + case-(b) contamination where a high-spec keyword falls to the embedding
+  path). Validated on the 649-replay: shipped `top_score` == harness `top_score` on all 649 rows,
+  reproducing FINDINGS 34.2%/86.9% band + 94.9% agreement subcat precision (same-sample relative;
+  absolute production precision still unmeasured → WS-D held).
 - **The recurrence signal is computed then DISCARDED.** `SelectExamples` (`examples.go`) derives
   per-subcategory keyword-specificity, branches on `sorted[0].score >= 0.7`, returns only
   `[]Example`; the score never escapes the function (grep: `subcatScore`/`.score` live only in

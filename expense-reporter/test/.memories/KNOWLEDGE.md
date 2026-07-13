@@ -37,18 +37,24 @@ requiring exact reproducibility.
 **Implication:** Mechanics tests (installments, rollover) use hard assertions — they
 test deterministic logic. Classification tests use soft assertions.
 
-## Threshold 0.0 Strategy (2026-03)
-Fixtures testing structural mechanics (installments, rollover) set `threshold: 0.0`.
-This means every classified row is auto-inserted regardless of confidence.
-**Rationale:** These tests verify installment expansion, rollover detection, and CSV
-output format — not classification accuracy. A non-zero threshold would make them
-dependent on the classifier's confidence, adding false-negative risk.
-**Implication:** Only use threshold 0.0 for tests where the classification result
-doesn't matter. Classification quality tests should use realistic thresholds.
+## Auto-Insert Fixtures — Gate-Passing Items (T-32; was Threshold 0.0)
+**`--threshold` is deprecated/ignored since T-32.** Auto-insert is now the AGREEMENT gate,
+so a fixture that must exercise the auto-append path needs an item the gate ADMITS: an
+item whose keyword has maximum specificity (spec 1.0, unambiguous) AND that the model
+predicts to that same subcategory. `threshold: 0.0` in fixture configs no longer forces
+auto-insert — it is inert.
+**Rationale:** structural tests (installments, rollover, typed log, feedback) assert the
+auto-append output; under the strict gate only gate-passing items append.
+**Implication:** use gate-passing items (see Canonical Test Items) for any test that must
+auto-append; classification-quality tests still use soft assertions.
 
 ## Canonical Test Items (2026-03)
-- **"Uber Centro"** — the most reliable test item. Consistently returns Uber/Taxi
-  subcategory across models and runs. Used as the baseline in auto and feedback tests.
+- **"Posto Ipiranga"** — gate-PASSING baseline (T-32): keyword `posto`/`ipiranga` spec 1.0 →
+  Combustível (unambiguous), model agrees → auto-inserts. Replaced "Uber Centro" in the
+  auto/feedback/installment/rollover/typed fixtures.
+- **"Uber Centro"** — do NOT use for auto-append tests: keyword `uber` spec 0.8 and AMBIGUOUS
+  (Viagens/Uber-Taxi) → FAILS the agreement gate → routes to review, never appends. Still fine
+  for `add` (no gate) and classified.csv/structural assertions.
 - **"Diarista Letícia"** — reliable for Diarista subcategory. Used in batch tests.
 **Rationale:** Empirically discovered that some items are nearly deterministic across
 Ollama model versions, while others are sensitive to model changes.
