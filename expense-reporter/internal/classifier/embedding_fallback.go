@@ -16,8 +16,8 @@ type embedState struct {
 
 var packageEmbedState embedState
 
-func fallbackExamples(item string, pool []Example, emb Embedder, cachePath string, topK int, st *embedState) []Example {
-	st.Do(func() {
+func fallbackExamples(item string, pool []Example, embedder Embedder, cachePath string, topK int, embedState *embedState) []Example {
+	embedState.Do(func() {
 		if len(pool) > 0 {
 			logger.Info("embedding pool: reconciling cache", "poolSize", len(pool))
 		}
@@ -25,26 +25,26 @@ func fallbackExamples(item string, pool []Example, emb Embedder, cachePath strin
 		for i, e := range pool {
 			texts[i] = e.Item
 		}
-		store, err := ReconcileEmbeddings(cachePath, texts, emb)
-		st.store = store
-		st.err = err
+		store, err := ReconcileEmbeddings(cachePath, texts, embedder)
+		embedState.store = store
+		embedState.err = err
 	})
 
-	if st.err != nil {
-		logger.Debug("embedding fallback: reconcile failed", "err", st.err)
+	if embedState.err != nil {
+		logger.Debug("embedding fallback: reconcile failed", "err", embedState.err)
 		return nil
 	}
 
-	queryVec, err := emb.Embed(item)
+	queryVec, err := embedder.Embed(item)
 	if err != nil {
 		logger.Debug("embedding fallback: query embed failed", "err", err)
 		return nil
 	}
 
-	return TopKEmbeddingExamples(item, queryVec, pool, st.store, topK)
+	return TopKEmbeddingExamples(item, queryVec, pool, embedState.store, topK)
 }
 
-func embeddingFallback(item string, pool []Example, cfg Config, st *embedState) []Example {
+func embeddingFallback(item string, pool []Example, cfg Config, embedState *embedState) []Example {
 	if cfg.NoEmbedRetrieval || cfg.DataDir == "" {
 		return nil
 	}
@@ -62,5 +62,5 @@ func embeddingFallback(item string, pool []Example, cfg Config, st *embedState) 
 
 	cachePath := EmbeddingCachePath(cfg.DataDir, model)
 
-	return fallbackExamples(item, pool, emb, cachePath, 5, st)
+	return fallbackExamples(item, pool, emb, cachePath, 5, embedState)
 }
