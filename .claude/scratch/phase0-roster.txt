@@ -1,0 +1,79 @@
+# Phase 0 baseline roster — 2026-07-17T13:44Z
+# branch feat/t2-session-b-harness-migration @ 747542c
+# suite: 813s, 44 PASS / 5 FAIL / 0 SKIP; EXPENSE_WORKBOOK_PATH auto-set (workbook present)
+
+## FAIL — all 5 PRE-EXISTING, all DETERMINISTIC, none caused by the migration.
+## Phase 4 must reproduce these 5 exactly. If a 6th appears, that one is mine.
+##
+## Class A — dark tests exposed by the workbook being present (3).
+##   RequireWorkbook SKIPs when EXPENSE_WORKBOOK_PATH is unset; the workbook file
+##   exists at ../Planilha_Normalized_Final_copy.xlsx, so run-acceptance.sh sets it
+##   and these RUN for the first time in a long while. They then fail
+##   "taxonomy path not configured" — the T-17 class, never fixed for these because
+##   they were dark during session 42's sweep. This is the exact trap recorded in
+##   test/.memories/KNOWLEDGE.md ("RequireWorkbook also SKIPs ... hid a stale
+##   non-dry-run feedback test through the whole session-42 sweep") and the residue
+##   tasks.md T-12 tracks. Givens lack SetupBinaryConfig(taxonomy_path).
+FAIL TestAuto_KnownExpenseIsClassifiedWithConfidence (0.07s)   # auto_test.go:16  RequireWorkbook
+FAIL TestAuto_AmbiguousExpenseKeptForManualReview (0.01s)      # auto_test.go:30  RequireWorkbook
+FAIL TestAuto_FeedbackLoggedOnInsert (0.02s)                   # feedback_test.go:17 RequireWorkbook
+##
+## Class B — T-32's item swap missed this file (2).
+##   Session 57 swapped gate-failing "Uber Centro" -> "Posto Ipiranga" in the
+##   auto-append FIXTURES, but auto_log_append_test.go passes the item as a literal
+##   CLI arg in When:, not via a fixture — so it still sends "Uber Centro".
+##   Per test/.memories/KNOWLEDGE.md Canonical Test Items, "Uber Centro" has keyword
+##   spec 0.8 and is AMBIGUOUS (Viagens/Uber-Taxi) => FAILS the T-32 agreement gate
+##   => routes to review => never appends => classifications.jsonl never created.
+##   The gate is doing its job; the test's expectation is stale. Model-INDEPENDENT
+##   (the gate rejects on the keyword signal before agreement is consulted), so this
+##   is deterministic red, not Ollama noise. The file's own comment still claims
+##   "Uber Centro -> Uber/Taxi at 100% is stable" — written pre-T-32.
+FAIL TestAuto_HighConfidenceAppendsToLog (11.06s)              # auto_log_append_test.go:30 "Uber Centro"
+FAIL TestAuto_HighConfidenceInstallmentsExpandToNEntries (8.43s) # auto_log_append_test.go:60 "Uber Centro"
+
+## PASS
+PASS TestAdd_LogAppendsTypedEntry (0.01s)
+PASS TestAdd_InstallmentsExpandToNEntriesInLog (0.01s)
+PASS TestAdd_CrossYearInstallmentLogsNextYearDate (0.01s)
+PASS TestApply_IdempotencyAndFeedback (0.01s)
+PASS TestApply_DryRunWritesNothing (0.01s)
+PASS TestApply_UnwritableLogPath_FailsFast (0.01s)
+PASS TestApply_UnwritableClassificationsPath_FailsFast (0.01s)
+PASS TestBatchAuto_Basic (65.92s)
+PASS TestBatchAuto_MixedConfidence (124.80s)
+PASS TestBatchAuto_ExcludedCategoriesGoToReview (48.20s)
+PASS TestBatchAuto_ClassificationAccuracy (90.58s)
+PASS TestBatchAuto_OutputDirFlag (65.67s)
+PASS TestBatchAuto_SameYearInstallmentsExpandedInLog (6.85s)
+PASS TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver (6.17s)
+PASS TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification (0.01s)
+PASS TestCorrect_LogsCorrectedEntryWhenPredictionExists (0.01s)
+PASS TestCorrect_FailsWhenNoPriorPredictionToOverride (0.00s)
+PASS TestCorrect_UsesMostRecentPredictionWhenIdRepeats (0.01s)
+PASS TestEmbeddingFallback_KeywordMissRetrievesByEmbedding (12.52s)
+PASS TestBatchAuto_FeedbackLoggedForAppendedRows (10.14s)
+PASS TestBatchAuto_DryRunNoFeedbackLogged (91.65s)
+PASS TestAdd_ManualFeedbackLogged (0.01s)
+PASS TestAdd_ConfirmedFeedbackWhenPredictionMatches (0.01s)
+PASS TestAdd_CorrectedFeedbackWhenPredictionMismatches (0.01s)
+PASS TestAdd_ManualFeedbackWithoutPredictionFlags (0.01s)
+PASS TestFewShot_ClassifyWithTrainingDataShowsFewShot (17.35s)
+PASS TestFewShot_ClassifyWithoutTrainingDataSucceeds (21.08s)
+PASS TestFewShot_BatchAutoProducesOutputFiles (138.79s)
+PASS TestGenerateWorkbook_IncomeRoute (0.05s)
+PASS TestGenerateWorkbook_Skeleton (0.05s)
+PASS TestGenerateWorkbook_WithEntries (0.06s)
+PASS TestGenerateWorkbook_UnmappedSubcategorySkipped (0.02s)
+PASS TestGenerateWorkbook_MultiYearLogFiltersToYear (0.05s)
+PASS TestClassifyJSON_ReturnsValidJSONWithCandidates (19.86s)
+PASS TestAutoJSON_ReturnsRecommendationWithoutInserting (7.93s)
+PASS TestAddDryRunJSON_ReturnsValidJSONWithAction (0.01s)
+PASS TestAddDryRunJSON_ResolvesCategory (0.01s)
+PASS TestAddDryRunJSON_SurfacesResolvedType (0.01s)
+PASS TestReview_ProducesHTMLWithQueueAndTaxonomy (0.01s)
+PASS TestTypeRoutingCycle_1_BatchAutoEmitsType (53.52s)
+PASS TestTypeRoutingCycle_2_ReviewRendersTypes (0.01s)
+PASS TestTypeRoutingCycle_3_ApplyBackfillsType (0.01s)
+PASS TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType (0.02s)
+PASS TestBatchAuto_TypeEmittedInExpenseLog (11.07s)
