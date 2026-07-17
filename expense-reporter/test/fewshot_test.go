@@ -10,9 +10,10 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 // TestFewShot_ClassifyWithTrainingDataShowsFewShot verifies that when training data
@@ -80,7 +81,7 @@ func requireDataDir(t *testing.T) {
 func classifierWithDataDir() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
@@ -100,7 +101,7 @@ func classifierWithKeywordsOnly() func(*harness.Context) {
 			ctx.T.Fatalf("classifierWithKeywordsOnly: copy feature dict: %v", err)
 		}
 		// Intentionally omit training_data_complete.json.
-		ctx.DataDir = tmpDir
+		domain.SetDataDir(ctx, tmpDir)
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
 	}
 }

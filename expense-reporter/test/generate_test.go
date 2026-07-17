@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/expect"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 // These tests are the Phase G3 acceptance contract for the generate-workbook command
@@ -105,13 +106,13 @@ func multiYearExpensesRecorded(fixDir string) func(*harness.Context) {
 
 func skeletonStructureGenerated(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.WorkbookStructureMatches(filepath.Join(fixDir, "expected-dump-skeleton")),
+		expect.WorkbookStructureMatches(filepath.Join(fixDir, "expected-dump-skeleton")),
 	}
 }
 
 func dataBearingStructureGenerated(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.WorkbookStructureMatches(filepath.Join(fixDir, "expected-dump-data")),
+		expect.WorkbookStructureMatches(filepath.Join(fixDir, "expected-dump-data")),
 	}
 }
 

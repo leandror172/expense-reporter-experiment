@@ -11,7 +11,7 @@ import (
 	"expense-reporter/test/actions"
 	"expense-reporter/test/domain"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
@@ -37,7 +37,7 @@ func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 func typedBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)

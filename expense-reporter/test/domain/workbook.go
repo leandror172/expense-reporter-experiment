@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // RequireWorkbook skips the test if no workbook path is configured.
@@ -26,7 +26,7 @@ func RequireWorkbook(t *testing.T, workbookPath string) {
 }
 
 // CopyWorkbookToWorkDir copies the workbook to the test's isolated work directory
-// and updates ctx.WorkbookPath to point to the copy. This prevents tests that write
+// and records the copy as the workbook subsequent commands should use. This prevents tests that write
 // to the workbook from sharing mutable state across the test suite.
 func CopyWorkbookToWorkDir(ctx *harness.Context, workbookPath string) error {
 	if workbookPath == "" {
@@ -36,7 +36,7 @@ func CopyWorkbookToWorkDir(ctx *harness.Context, workbookPath string) error {
 	if err := copyFile(workbookPath, dst); err != nil {
 		return err
 	}
-	ctx.WorkbookPath = dst
+	SetWorkbookPath(ctx, dst)
 	return nil
 }
 

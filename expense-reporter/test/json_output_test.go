@@ -8,9 +8,11 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 // TestClassifyJSON_ReturnsValidJSONWithCandidates verifies that classify --json
@@ -109,7 +111,7 @@ func binaryOnly() func(*harness.Context) {
 func classifierForJSON() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
@@ -155,21 +157,21 @@ func thenJSONHasActionAndCandidates() []func(*harness.Context) {
 func thenJSONActionIs(action string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.OutputJSONHasKey("action"),
-		verify.OutputJSONHasAction(action),
+		expect.OutputJSONHasAction(action),
 	}
 }
 
 // thenJSONCategoryIs checks that the category field has the expected value.
 func thenJSONCategoryIs(category string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.OutputJSONHasCategory(category),
+		expect.OutputJSONHasCategory(category),
 	}
 }
 
 // thenJSONTypeIs checks that the surfaced expense type has the expected value.
 func thenJSONTypeIs(typ string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.OutputJSONHasType(typ),
+		expect.OutputJSONHasType(typ),
 	}
 }
 

@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 // TestAuto_HighConfidenceAppendsToLog asserts that auto, when the classifier returns
@@ -31,13 +33,13 @@ func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 		When:  actions.RunAuto("Uber Centro", "35,50", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
-			verify.NoRolloverFileCreated(),
+			expect.NoRolloverFileCreated(),
 			// classifications.jsonl: confirmed entry from the Ollama classification
-			verify.FeedbackContainsStatus("classifications.jsonl", "confirmed"),
-			verify.FeedbackContainsItem("classifications.jsonl", "Uber Centro"),
+			expect.FeedbackContainsStatus("classifications.jsonl", "confirmed"),
+			expect.FeedbackContainsItem("classifications.jsonl", "Uber Centro"),
 			// expenses_log.jsonl: exactly one typed entry appended
-			verify.FeedbackEntryCount("expenses_log.jsonl", 1),
-			verify.FeedbackContainsItem("expenses_log.jsonl", "Uber Centro"),
+			expect.FeedbackEntryCount("expenses_log.jsonl", 1),
+			expect.FeedbackContainsItem("expenses_log.jsonl", "Uber Centro"),
 		},
 	})
 }
@@ -61,9 +63,9 @@ func TestAuto_HighConfidenceInstallmentsExpandToNEntries(t *testing.T) {
 		When:  actions.RunAuto("Uber Centro", "90,00/3", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
-			verify.NoRolloverFileCreated(),
+			expect.NoRolloverFileCreated(),
 			// Three installment entries should be in the log
-			verify.FeedbackEntryCount("expenses_log.jsonl", 3),
+			expect.FeedbackEntryCount("expenses_log.jsonl", 3),
 		},
 	})
 }
@@ -73,7 +75,7 @@ func TestAuto_HighConfidenceInstallmentsExpandToNEntries(t *testing.T) {
 func autoLogAppendReady(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}

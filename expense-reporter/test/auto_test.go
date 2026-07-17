@@ -9,8 +9,8 @@ import (
 	"expense-reporter/test/actions"
 	"expense-reporter/test/domain"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
@@ -43,7 +43,7 @@ func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
@@ -53,7 +53,7 @@ func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 func expenseClassifierAvailable() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}

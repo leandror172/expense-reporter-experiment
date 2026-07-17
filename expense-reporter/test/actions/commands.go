@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"expense-reporter/test/harness"
+	"expense-reporter/test/domain"
+
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // RunClassify returns a When closure that runs the classify command.
@@ -17,8 +19,8 @@ import (
 func RunClassify(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		cmdArgs := []string{"classify"}
-		if ctx.DataDir != "" {
-			cmdArgs = append(cmdArgs, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			cmdArgs = append(cmdArgs, "--data-dir", domain.DataDir(ctx))
 		}
 		runCommand(ctx, append(cmdArgs, args...)...)
 	}
@@ -29,11 +31,11 @@ func RunClassify(args ...string) func(*harness.Context) {
 func RunAuto(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		cmdArgs := []string{"auto"}
-		if ctx.DataDir != "" {
-			cmdArgs = append(cmdArgs, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			cmdArgs = append(cmdArgs, "--data-dir", domain.DataDir(ctx))
 		}
-		if ctx.WorkbookPath != "" {
-			cmdArgs = append(cmdArgs, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			cmdArgs = append(cmdArgs, "--workbook", domain.WorkbookPath(ctx))
 		}
 		runCommand(ctx, append(cmdArgs, args...)...)
 	}
@@ -44,11 +46,11 @@ func RunAuto(args ...string) func(*harness.Context) {
 func RunAdd(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"add", expenseString}
-		if ctx.DataDir != "" {
-			args = append(args, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		args = append(args, extraFlags...)
 		runCommand(ctx, args...)
@@ -60,8 +62,8 @@ func RunAdd(expenseString string, extraFlags ...string) func(*harness.Context) {
 func RunCorrect(expenseString string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"correct", expenseString}
-		if ctx.DataDir != "" {
-			args = append(args, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
 		runCommand(ctx, args...)
 	}
@@ -72,8 +74,8 @@ func RunCorrect(expenseString string) func(*harness.Context) {
 func RunAddDryRun(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"add", "--dry-run"}
-		if ctx.DataDir != "" {
-			args = append(args, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
 		args = append(args, expenseString)
 		args = append(args, extraFlags...)
@@ -92,7 +94,7 @@ func RunBatchAuto(args ...string) func(*harness.Context) {
 // and registers classified.csv and review.csv in ctx.Artifacts.
 func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cfg, err := harness.LoadFixtureConfig(fixtureDir)
+		cfg, err := domain.LoadExpenseFixtureConfig(fixtureDir)
 		if err != nil {
 			ctx.T.Fatalf("RunBatchAutoWithFixture: load config: %v", err)
 		}
@@ -104,11 +106,11 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 			"--top", fmt.Sprintf("%d", cfg.TopN),
 			"--output-dir", ctx.WorkDir,
 		}
-		if ctx.DataDir != "" {
-			args = append(args, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
@@ -122,7 +124,7 @@ func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
 // Use when a fixture directory contains multiple input files for different test scenarios.
 func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cfg, err := harness.LoadFixtureConfig(fixtureDir)
+		cfg, err := domain.LoadExpenseFixtureConfig(fixtureDir)
 		if err != nil {
 			ctx.T.Fatalf("RunBatchAutoWithInput: load config: %v", err)
 		}
@@ -134,11 +136,11 @@ func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) 
 			"--top", fmt.Sprintf("%d", cfg.TopN),
 			"--output-dir", ctx.WorkDir,
 		}
-		if ctx.DataDir != "" {
-			args = append(args, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
@@ -153,7 +155,7 @@ func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) 
 // and its path is only known at runtime via ctx.Artifacts.
 func RunBatchAutoIntoArtifactDir(fixtureDir, outputDirKey string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cfg, err := harness.LoadFixtureConfig(fixtureDir)
+		cfg, err := domain.LoadExpenseFixtureConfig(fixtureDir)
 		if err != nil {
 			ctx.T.Fatalf("RunBatchAutoIntoArtifactDir: load config: %v", err)
 		}
@@ -169,11 +171,11 @@ func RunBatchAutoIntoArtifactDir(fixtureDir, outputDirKey string) func(*harness.
 			"--top", fmt.Sprintf("%d", cfg.TopN),
 			"--output-dir", outDir,
 		}
-		if ctx.DataDir != "" {
-			args = append(args, "--data-dir", ctx.DataDir)
+		if domain.DataDir(ctx) != "" {
+			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		args = append(args, cfg.ExtraArgs...)
 		runCommand(ctx, args...)
@@ -194,6 +196,7 @@ func runCommand(ctx *harness.Context, args ...string) {
 	ctx.T.Logf("  $ expense-reporter %s", label)
 	start := time.Now()
 	cmd := exec.Command(ctx.BinaryPath, args...)
+	cmd.Env = domain.CommandEnv(ctx)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -218,8 +221,8 @@ func runCommand(ctx *harness.Context, args ...string) {
 func RunReview(csvPath string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"review", csvPath}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		outputPath := filepath.Join(ctx.WorkDir, "review.html")
 		args = append(args, "--output", outputPath)
@@ -231,8 +234,8 @@ func RunReview(csvPath string) func(*harness.Context) {
 func RunApply(reviewedPath string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"apply", reviewedPath, "--year", "2026"}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		runCommand(ctx, args...)
 	}
@@ -242,8 +245,8 @@ func RunApply(reviewedPath string) func(*harness.Context) {
 func RunApplyDryRun(reviewedPath string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"apply", reviewedPath, "--year", "2026", "--dry-run"}
-		if ctx.WorkbookPath != "" {
-			args = append(args, "--workbook", ctx.WorkbookPath)
+		if domain.WorkbookPath(ctx) != "" {
+			args = append(args, "--workbook", domain.WorkbookPath(ctx))
 		}
 		runCommand(ctx, args...)
 	}

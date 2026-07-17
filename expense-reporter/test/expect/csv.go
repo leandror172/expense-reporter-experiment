@@ -1,6 +1,6 @@
 //go:build acceptance
 
-package verify
+package expect
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // NoRolloverFileCreated asserts that rollover.csv was not created in the work directory.
@@ -25,37 +25,6 @@ func NoRolloverFileCreated() func(*harness.Context) {
 		_, err := os.Stat(rolloverPath)
 		assert.True(ctx.T, os.IsNotExist(err),
 			"rollover.csv should NOT exist — cross-year installments must be logged as normal entries")
-	}
-}
-
-// CommandSucceeded asserts the command exited with code 0.
-func CommandSucceeded() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		assert.Zero(ctx.T, ctx.ExitCode,
-			"command should succeed (exit 0)\nstdout: %s\nstderr: %s", ctx.Stdout, ctx.Stderr)
-	}
-}
-
-// CommandFailed asserts the command exited with a non-zero code.
-func CommandFailed() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		assert.NotZero(ctx.T, ctx.ExitCode,
-			"command should fail (non-zero exit)\nstdout: %s\nstderr: %s", ctx.Stdout, ctx.Stderr)
-	}
-}
-
-// OutputFileExists asserts the artifact key maps to an existing file.
-func OutputFileExists(artifactKey string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		path, ok := ctx.Artifacts[artifactKey]
-		if !assert.True(ctx.T, ok, "artifact %q not registered", artifactKey) {
-			return
-		}
-		_, err := os.Stat(path)
-		assert.NoError(ctx.T, err, "output file %q should exist at %s", artifactKey, path)
 	}
 }
 
@@ -146,34 +115,6 @@ func NoExpenseInBothFiles(artifact1, artifact2 string) func(*harness.Context) {
 			assert.False(ctx.T, set[joinRow(row)],
 				"expense %v appears in both %q and %q", row, artifact1, artifact2)
 		}
-	}
-}
-
-// OutputContains asserts stdout+stderr contains substr.
-func OutputContains(substr string, msgAndArgs ...interface{}) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		output := ctx.Stdout + ctx.Stderr
-		msg := fmt.Sprintf("%q not found in command output\nstdout: %s\nstderr: %s",
-			substr, ctx.Stdout, ctx.Stderr)
-		if len(msgAndArgs) > 0 {
-			msg = fmt.Sprintf("%s — %v\n%s", substr, msgAndArgs[0], msg)
-		}
-		assert.Contains(ctx.T, output, substr, msg)
-	}
-}
-
-// OutputNotContains asserts stdout+stderr does NOT contain substr.
-func OutputNotContains(substr string, msgAndArgs ...interface{}) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		output := ctx.Stdout + ctx.Stderr
-		msg := fmt.Sprintf("%q unexpectedly found in command output\nstdout: %s\nstderr: %s",
-			substr, ctx.Stdout, ctx.Stderr)
-		if len(msgAndArgs) > 0 {
-			msg = fmt.Sprintf("%s — %v\n%s", substr, msgAndArgs[0], msg)
-		}
-		assert.NotContains(ctx.T, output, substr, msg)
 	}
 }
 

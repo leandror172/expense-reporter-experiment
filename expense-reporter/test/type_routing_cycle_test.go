@@ -35,9 +35,10 @@ import (
 
 	"expense-reporter/test/actions"
 	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func typeRoutingFixtureDir() string {
@@ -144,7 +145,7 @@ func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 func expensesAwaitingClassification(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -166,7 +167,7 @@ func expensesClassifiedWithTypes(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
-		ctx.WorkbookPath = createAmbiguousReferenceWorkbook(ctx.T, ctx.WorkDir)
+		domain.SetWorkbookPath(ctx, createAmbiguousReferenceWorkbook(ctx.T, ctx.WorkDir))
 	}
 }
 
@@ -232,7 +233,7 @@ func confirmedReviewRowRecordedAsTypedLogLine(fixDir string) []func(*harness.Con
 func classifiedCsvCarriesTypeColumn() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.OutputFileExists("classified.csv"),
-		verify.OutputFileHasColumns("classified.csv", 8), // 7 original + type
+		expect.OutputFileHasColumns("classified.csv", 8), // 7 original + type
 	}
 }
 
@@ -253,7 +254,7 @@ func predictedTypesPrefilled(want map[string]string) []func(*harness.Context) {
 		func(ctx *harness.Context) {
 			ctx.T.Helper()
 			var data reviewQueuePredicted
-			verify.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
+			expect.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
 			got := make(map[string]string, len(data.Queue))
 			for _, q := range data.Queue {
 				got[q.Item] = q.Predicted.Type

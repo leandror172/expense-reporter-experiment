@@ -9,9 +9,10 @@ import (
 
 	"expense-reporter/test/actions"
 	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestBatchAuto_Basic(t *testing.T) {
@@ -110,7 +111,7 @@ func TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver(t *testing.T) {
 func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -122,7 +123,7 @@ func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
 func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -134,7 +135,7 @@ func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
 func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -154,7 +155,7 @@ func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Cont
 func batchReadyForLogAppend(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixtureDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -168,9 +169,9 @@ func classifiedAndReviewFilesProduced() []func(*harness.Context) {
 		verify.CommandSucceeded(),
 		verify.OutputFileExists("classified.csv"),
 		verify.OutputFileExists("review.csv"),
-		verify.OutputFileHasAtLeastRows("classified.csv", 1),
-		verify.OutputFileHasColumns("classified.csv", 8),
-		verify.AllClassificationScoresValid("classified.csv"),
+		expect.OutputFileHasAtLeastRows("classified.csv", 1),
+		expect.OutputFileHasColumns("classified.csv", 8),
+		expect.AllClassificationScoresValid("classified.csv"),
 	}
 }
 
@@ -179,9 +180,9 @@ func allInputExpensesClassified(rows int) []func(*harness.Context) {
 		verify.CommandSucceeded(),
 		verify.OutputFileExists("classified.csv"),
 		verify.OutputFileExists("review.csv"),
-		verify.OutputFileHasRows("classified.csv", rows),
-		verify.OutputFileHasColumns("classified.csv", 8),
-		verify.AllClassificationScoresValid("classified.csv"),
+		expect.OutputFileHasRows("classified.csv", rows),
+		expect.OutputFileHasColumns("classified.csv", 8),
+		expect.AllClassificationScoresValid("classified.csv"),
 	}
 }
 
@@ -193,7 +194,7 @@ func installmentsExpandedInLog(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
 		verify.OutputFileExists("classified.csv"),
-		verify.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
+		expect.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
 
@@ -204,15 +205,15 @@ func installmentsExpandedInLog(fixDir string) []func(*harness.Context) {
 func crossYearInstallmentsLoggedNotRolledOver(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
-		verify.NoRolloverFileCreated(),
-		verify.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
+		expect.NoRolloverFileCreated(),
+		expect.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
 
 func classificationMatchesExpectedWithMinAccuracy(expectedPath, resultsDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
-		verify.ClassificationAccuracyAtLeast("classified.csv", expectedPath, 0.5, resultsDir),
+		expect.ClassificationAccuracyAtLeast("classified.csv", expectedPath, 0.5, resultsDir),
 	}
 }
 
@@ -241,7 +242,7 @@ func TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification(t *testing.T)
 func batchSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)

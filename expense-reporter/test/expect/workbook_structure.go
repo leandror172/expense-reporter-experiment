@@ -1,6 +1,6 @@
 //go:build acceptance
 
-package verify
+package expect
 
 import (
 	"encoding/json"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"expense-reporter/internal/inspect"
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // sheetNames extracts the ordered sheet-name list from a manifest.

@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
 	"expense-reporter/test/extern"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 // TestEmbeddingFallback_KeywordMissRetrievesByEmbedding verifies the 5.R2
@@ -54,7 +55,7 @@ func smallPoolRecordedWithNoKeywordForQuery() func(*harness.Context) {
 			filepath.Join(tmpDir, "feature_dictionary_enhanced.json")); err != nil {
 			ctx.T.Fatalf("copy mini feature dict: %v", err)
 		}
-		ctx.DataDir = tmpDir
+		domain.SetDataDir(ctx, tmpDir)
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
 	}
 }
@@ -77,7 +78,7 @@ func embeddingFallbackInjectedExamples() []func(*harness.Context) {
 func embeddingCachePopulatedForPool() []func(*harness.Context) {
 	return []func(*harness.Context){
 		func(ctx *harness.Context) {
-			cache := filepath.Join(ctx.DataDir, "embeddings-snowflake-arctic-embed2.jsonl")
+			cache := filepath.Join(domain.DataDir(ctx), "embeddings-snowflake-arctic-embed2.jsonl")
 			info, err := os.Stat(cache)
 			if err != nil {
 				ctx.T.Errorf("embedding cache not created at %s: %v", cache, err)

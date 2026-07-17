@@ -13,8 +13,10 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
@@ -38,8 +40,8 @@ func expensesReceivedForReview(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
-		ctx.DataDir = dataDir
-		ctx.WorkbookPath = createSyntheticWorkbook(ctx.T, ctx.WorkDir)
+		domain.SetDataDir(ctx, dataDir)
+		domain.SetWorkbookPath(ctx, createSyntheticWorkbook(ctx.T, ctx.WorkDir))
 	}
 }
 
@@ -86,7 +88,7 @@ func reviewHTMLProduced() []func(*harness.Context) {
 
 func reviewDataEmbedded() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.HTMLFileContainsScript("review.html", "review-data"),
+		expect.HTMLFileContainsScript("review.html", "review-data"),
 	}
 }
 
@@ -99,7 +101,7 @@ func pendingExpensesQueued(expectedCount int) []func(*harness.Context) {
 		func(ctx *harness.Context) {
 			ctx.T.Helper()
 			var data reviewQueueOnly
-			verify.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
+			expect.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
 			assert.Len(ctx.T, data.Queue, expectedCount, "queue should have %d rows", expectedCount)
 		},
 	}
@@ -118,7 +120,7 @@ func workbookSheetsInTaxonomy(expectedSheets []string) []func(*harness.Context) 
 		func(ctx *harness.Context) {
 			ctx.T.Helper()
 			var data reviewTaxonomyOnly
-			verify.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
+			expect.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
 			actualNames := make([]string, len(data.Taxonomy.Types))
 			for i, s := range data.Taxonomy.Types {
 				actualNames[i] = s.Name

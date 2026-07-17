@@ -10,8 +10,9 @@ import (
 
 	"expense-reporter/test/actions"
 	"expense-reporter/test/domain"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/expect"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestApply_IdempotencyAndFeedback(t *testing.T) {
@@ -93,7 +94,7 @@ func TestApply_UnwritableClassificationsPath_FailsFast(t *testing.T) {
 func expensesAutoInsertedBeforeReview(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackConfig(ctx)
 		if err := harness.SeedFileFromFixture(ctx, fixDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
@@ -111,7 +112,7 @@ func expensesAutoInsertedBeforeReview(fixDir string) func(*harness.Context) {
 func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -137,7 +138,7 @@ func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Con
 func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -159,13 +160,13 @@ func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(
 
 func correctionsLoggedForAlreadyInserted(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
+		expect.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
 	}
 }
 
 func noNewExpensesInserted() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExpenseLogNotCreated(),
+		expect.ExpenseLogNotCreated(),
 	}
 }
 
@@ -174,7 +175,7 @@ func noNewExpensesInserted() []func(*harness.Context) {
 // per the PR #35 naming sweep — the seed file IS the expectation under dry-run.
 func dryRunLeftClassificationsUnchanged(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ClassificationsMatch(filepath.Join(fixDir, "seed-classifications.jsonl")),
+		expect.ClassificationsMatch(filepath.Join(fixDir, "seed-classifications.jsonl")),
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // SetupBinaryConfig writes cfg as JSON to the config/config.json file alongside the binary.
