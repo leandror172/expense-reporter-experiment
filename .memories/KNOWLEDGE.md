@@ -117,3 +117,17 @@ LLM repo; this repo only references model names.
 - **Sessions 43–44 — WS-B done:** batch-auto (slice 3) and apply (slice 4) →
   log-append via `appender.ExpandAndAppend`; rollover.csv retired; pre-flights + failure
   honesty. Next: WS-D (retire fallback, T-09), WS-E (delete dead insert code).
+- **Sessions 58–59 — T2 harness extraction done.** The acceptance engine left this repo:
+  `github.com/leandror172/acceptance-harness` (public, MIT, v0.1.1) now provides
+  Context/Scenario/Run, fixture plumbing, BuildBinary, and the generic `verify.*` Then
+  assertions to both this repo and career-search's `roles` CLI. Session B (59) migrated
+  expenses: `test/harness/` deleted; local `verify` → `test/expect/` (the module owns the
+  `verify` name — scenarios import both); expense-shaped helpers → `test/{domain,extern}/`;
+  `Context.{DataDir,WorkbookPath}` → `ctx.Env` accessors. Gate: the full acceptance roster
+  is byte-identical pre/post (44 pass / 5 fail), the 5 reds being pre-existing bugs filed
+  separately. Details → `expense-reporter/test/.memories/KNOWLEDGE.md`.
+  **Rationale:** a second consumer is the only real test of a "domain-agnostic" claim, and
+  two copies drift — the module's own unit tests immediately caught a latent `Run` bug that
+  had been sitting in both copies.
+  **Implication:** engine changes are now a PR upstream + a version bump here, which is the
+  point: the boundary can no longer erode quietly.

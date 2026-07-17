@@ -77,3 +77,12 @@ PASS TestTypeRoutingCycle_2_ReviewRendersTypes (0.01s)
 PASS TestTypeRoutingCycle_3_ApplyBackfillsType (0.01s)
 PASS TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType (0.02s)
 PASS TestBatchAuto_TypeEmittedInExpenseLog (11.07s)
+
+## ── PHASE 4 GATE RESULT (post-migration, same branch) ───────────────
+## PASS 44 / FAIL 5 / SKIP 0 — per-test verdict roster IDENTICAL to the baseline above
+## (diff of sorted "--- PASS/FAIL/SKIP <test>" lines is empty).
+## Failure reasons identical too: 14x "taxonomy path not configured" (Class A) and
+## 7x "no such file or directory" (Class B) in BOTH runs.
+## Soft assertion: TestBatchAuto_ClassificationAccuracy PASS in both (>=50% floor held).
+## Conclusion: the module swap is behavior-preserving. The 5 reds are the same 5
+## pre-existing bugs, failing the same way, filed for later sessions.
