@@ -1,15 +1,19 @@
 //go:build acceptance
 
-package verify
+package expect
 
 import (
+	"bufio"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // NoRolloverFileCreated asserts that rollover.csv was not created in the work directory.
@@ -21,37 +25,6 @@ func NoRolloverFileCreated() func(*harness.Context) {
 		_, err := os.Stat(rolloverPath)
 		assert.True(ctx.T, os.IsNotExist(err),
 			"rollover.csv should NOT exist — cross-year installments must be logged as normal entries")
-	}
-}
-
-// CommandSucceeded asserts the command exited with code 0.
-func CommandSucceeded() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		assert.Zero(ctx.T, ctx.ExitCode,
-			"command should succeed (exit 0)\nstdout: %s\nstderr: %s", ctx.Stdout, ctx.Stderr)
-	}
-}
-
-// CommandFailed asserts the command exited with a non-zero code.
-func CommandFailed() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		assert.NotZero(ctx.T, ctx.ExitCode,
-			"command should fail (non-zero exit)\nstdout: %s\nstderr: %s", ctx.Stdout, ctx.Stderr)
-	}
-}
-
-// OutputFileExists asserts the artifact key maps to an existing file.
-func OutputFileExists(artifactKey string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		path, ok := ctx.Artifacts[artifactKey]
-		if !assert.True(ctx.T, ok, "artifact %q not registered", artifactKey) {
-			return
-		}
-		_, err := os.Stat(path)
-		assert.NoError(ctx.T, err, "output file %q should exist at %s", artifactKey, path)
 	}
 }
 
@@ -119,7 +92,7 @@ func AllClassificationScoresValid(artifactKey string) func(*harness.Context) {
 				"%q row %d: confidence %q is not a valid float", artifactKey, i, row[confidenceCol]) {
 				continue
 			}
-			assert.True(ctx.T, harness.ConfidenceInRange(v),
+			assert.True(ctx.T, confidenceInRange(v),
 				"%q row %d: confidence %.4f out of [0,1]", artifactKey, i, v)
 		}
 	}
@@ -145,34 +118,6 @@ func NoExpenseInBothFiles(artifact1, artifact2 string) func(*harness.Context) {
 	}
 }
 
-// OutputContains asserts stdout+stderr contains substr.
-func OutputContains(substr string, msgAndArgs ...interface{}) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		output := ctx.Stdout + ctx.Stderr
-		msg := fmt.Sprintf("%q not found in command output\nstdout: %s\nstderr: %s",
-			substr, ctx.Stdout, ctx.Stderr)
-		if len(msgAndArgs) > 0 {
-			msg = fmt.Sprintf("%s — %v\n%s", substr, msgAndArgs[0], msg)
-		}
-		assert.Contains(ctx.T, output, substr, msg)
-	}
-}
-
-// OutputNotContains asserts stdout+stderr does NOT contain substr.
-func OutputNotContains(substr string, msgAndArgs ...interface{}) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.T.Helper()
-		output := ctx.Stdout + ctx.Stderr
-		msg := fmt.Sprintf("%q unexpectedly found in command output\nstdout: %s\nstderr: %s",
-			substr, ctx.Stdout, ctx.Stderr)
-		if len(msgAndArgs) > 0 {
-			msg = fmt.Sprintf("%s — %v\n%s", substr, msgAndArgs[0], msg)
-		}
-		assert.NotContains(ctx.T, output, substr, msg)
-	}
-}
-
 // readArtifact resolves an artifact key to a file path and reads it as CSV.
 func readArtifact(ctx *harness.Context, key string) [][]string {
 	ctx.T.Helper()
@@ -180,7 +125,49 @@ func readArtifact(ctx *harness.Context, key string) [][]string {
 	if !assert.True(ctx.T, ok, "artifact %q not registered in ctx.Artifacts", key) {
 		return nil
 	}
-	return harness.ReadCSVFile(ctx.T, path)
+	return readCSVFile(ctx.T, path)
+}
+
+// readCSVFile reads a semicolon-delimited CSV, skipping lines starting with '#'.
+// Semicolon delimiting and '#' comments are this project's CSV conventions, which is
+// why this lives here rather than in the acceptance-harness module.
+func readCSVFile(t *testing.T, path string) [][]string {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("readCSVFile: open %q: %v", path, err)
+	}
+	defer f.Close()
+
+	// Pre-filter comment lines into a strings.Builder before CSV parsing.
+	var sb strings.Builder
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		sb.WriteString(line)
+		sb.WriteByte('\n')
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("readCSVFile: scan %q: %v", path, err)
+	}
+
+	r := csv.NewReader(strings.NewReader(sb.String()))
+	r.Comma = ';'
+	r.TrimLeadingSpace = true
+
+	records, err := r.ReadAll()
+	if err != nil {
+		t.Fatalf("readCSVFile: parse %q: %v", path, err)
+	}
+	return records
+}
+
+// confidenceInRange reports whether v is a valid confidence score, i.e. within [0.0, 1.0].
+func confidenceInRange(v float64) bool {
+	return v >= 0.0 && v <= 1.0
 }
 
 func joinRow(row []string) string {

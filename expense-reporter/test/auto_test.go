@@ -7,13 +7,15 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/extern"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
-	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
+	extern.RequireOllama(t, "")
+	domain.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
@@ -26,8 +28,8 @@ func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 }
 
 func TestAuto_AmbiguousExpenseKeptForManualReview(t *testing.T) {
-	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
+	extern.RequireOllama(t, "")
+	domain.RequireWorkbook(t, testWorkbook)
 
 	harness.Run(t, harness.Scenario{
 		Name:  "vague expense description must not be auto-inserted",
@@ -41,8 +43,8 @@ func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
-		ctx.DataDir = dataDir
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+		domain.SetDataDir(ctx, dataDir)
+		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 	}
@@ -51,8 +53,8 @@ func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 func expenseClassifierAvailable() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+		domain.SetDataDir(ctx, dataDir)
+		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 	}

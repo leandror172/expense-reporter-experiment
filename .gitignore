@@ -97,3 +97,7 @@ expense-reporter/workbook-inspect
 /.claude/scratch/template-builder/template-builder
 /.claude/skills/**/*.bak-p4
 /.claude/workbook-template/backup-*/
+
+# Session B (T2) — raw acceptance run logs (verbose output may echo real expense items)
+.claude/scratch/phase0-baseline.log
+.claude/scratch/phase4-*.log

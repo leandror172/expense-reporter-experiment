@@ -58,6 +58,7 @@
 | 5.R2 embedding retrieval — embed-on-miss cascade layer (DONE + ADOPTED session 54; A/B miss full-path 18.8%→52.5%) | `.claude/plans/5r2-embedding-retrieval.md` |
 | Harness extraction plan (T2 — standalone `acceptance-harness` repo, career-search repoint, expenses migration, LTG path; session 56) | `.claude/plans/harness-extraction-plan.md` |
 | acceptance-test vs harness comparison (companion: old-job pipeline framework — adopt/adapt/discard analysis; session 56) | `.claude/plans/harness-extraction-acceptance-test-comparison.md` |
+| Harness extraction Session B — executable migration plan (expenses `test/` → module; measured inventory, D1 verify-namespace + D2 Context-carrier open; session 59) | `.claude/plans/harness-extraction-session-b.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
@@ -75,7 +76,7 @@
 | Session log archive (session 17 — 2026-04-23) | `.claude/archive/session-log-2026-04-23-to-2026-04-23.md` |
 | Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
 | Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
-| Generate-workbook acceptance fixture (G3, oracle-frozen dumps) | `expense-reporter/test/fixtures/generate-basic/` + `test/verify/workbook_structure.go` |
+| Generate-workbook acceptance fixture (G3, oracle-frozen dumps) | `expense-reporter/test/fixtures/generate-basic/` + `test/expect/workbook_structure.go` |
 | Full type-routing cycle acceptance (batch-auto→review→apply→generate-workbook, incremental) | `expense-reporter/test/type_routing_cycle_test.go` + `test/fixtures/type-routing-cycle/` |
 | Advisor review — G3 acceptance design | `.claude/advisor-G3-acceptance-design.md` |
 | Advisor reviews — apply phase 3, Phase B builder, session 24 | `.claude/advisor-{apply-phase3,phaseB-builder,session24-review}.md` |
@@ -113,9 +114,11 @@
 | `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` + `TaxonomyFilePath()` + `TypeDescriptionsFilePath()` |
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`) |
 | `internal/review` | `expense-reporter/internal/review/` | Review command package: `ReadQueue` (7-field CSV reader), `BuildTaxonomy` (3-level tree from workbook mappings), `Render` (placeholder injection), `TemplateHTML` (go:embed); types in `types.go` |
-| `test/harness` | `expense-reporter/test/harness/` | Acceptance test engine (Context, Scenario, fixtures, Ollama check, SetupBinaryConfig) |
-| `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd |
-| `test/verify` | `expense-reporter/test/verify/` | Then-closures: ExitCodeZero, RowCount, AllConfidencesInRange, SoftAccuracy, FeedbackFile* |
+| `harness` (module) | `github.com/leandror172/acceptance-harness` v0.1.1 | **External dep since T2 Session B** — the acceptance engine (Context, Scenario, Run, fixtures, FindModuleRoot/BuildBinary) + generic `verify` Then-closures. `test/harness/` no longer exists. Engine changes = a PR upstream + a version bump here |
+| `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd; `runCommand` forwards `ctx.Env` |
+| `test/expect` | `expense-reporter/test/expect/` | **DOMAIN** Then-closures (was `test/verify/`, renamed so the module owns `verify.*`): FeedbackFile*, ExpenseLogMatches, ClassificationsMatch, OutputFileHas*, SoftAccuracy, HTML*, WorkbookStructureMatches |
+| `test/domain` | `expense-reporter/test/domain/` | Expense-specific test helpers the lean-core module excludes: RequireWorkbook + CopyWorkbookToWorkDir, SetupBinaryConfig, ExpenseFixtureConfig (`Raw` decode), ctx.Env accessors (DataDir/WorkbookPath) |
+| `test/extern` | `expense-reporter/test/extern/` | External-service gates: RequireOllama (module core is LLM-free/network-free by design) |
 | `test/fixtures` | `expense-reporter/test/fixtures/` | Fixture data per functional slice (classify-basic, batch-auto-basic, batch-auto-exclusions, batch-auto-feedback) |
 <!-- /ref:go-structure -->
 

@@ -1,5 +1,17 @@
 # Harness — External Usage Report (second consumer)
 
+> **SUPERSEDED / EXECUTED (2026-07-17, T2 Session B).** The extraction this report argued
+> for has happened. The engine is now the public `github.com/leandror172/acceptance-harness`
+> module (v0.1.1) and this repo consumes it; `test/harness/` no longer exists. Every leak
+> catalogued below was resolved — `RequireOllama` → `test/extern/`, the CSV comparator →
+> `test/expect/` (two of its four functions turned out to be dead and were deleted),
+> `Context.{DataDir,WorkbookPath}` → `ctx.Env` accessors in `test/domain/` (`WorkbookDir`
+> had zero references and was dropped), `FixtureConfig`'s domain fields → `Raw` decode.
+> **Keep this as the historical field report** — it is the analysis that shaped the module's
+> boundary, and its "the methodology is the treasure" thesis became the module's docs/.
+> For current state read `test/README.md` + `test/.memories/KNOWLEDGE.md`; for the migration
+> itself, `.claude/plans/harness-extraction-session-b.md`.
+
 **Date:** 2026-06-27
 **Subject:** the `test/harness/` BDD engine is being adopted by a **different repo** — the
 `career-search` `roles` CLI — making it the harness's first external consumer.

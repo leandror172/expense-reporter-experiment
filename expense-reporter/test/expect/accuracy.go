@@ -1,6 +1,6 @@
 //go:build acceptance
 
-package verify
+package expect
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // AccuracyTuple records a single row comparison.
@@ -39,7 +39,7 @@ func ClassificationAccuracyAtLeast(artifactKey, expectedPath string, floor float
 		if actual == nil {
 			return
 		}
-		expected := harness.ReadCSVFile(ctx.T, expectedPath)
+		expected := readCSVFile(ctx.T, expectedPath)
 
 		// Skip header row in actual (classified.csv has a real CSV header).
 		// expected-classified.csv uses # comments (stripped by ReadCSVFile) — no header row.

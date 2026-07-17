@@ -2,17 +2,49 @@
 
 *Acceptance test harness accumulated decisions. Read on demand by agents.*
 
-## Harness Design — Domain-Agnostic Engine (2026-03)
-The `harness/` package contains zero expense-reporter knowledge. It provides:
-- `Context` — per-scenario state bag (binary path, work dir, artifacts, stdout/stderr, exit code)
-- `Scenario` — three-phase struct: Given (setup), When (action), Then (assertions)
-- `Run(t, Scenario)` — wraps in `t.Run` for named subtests
-Domain knowledge lives in `actions/` (how to invoke CLI commands) and `verify/`
-(what to assert about output).
-**Rationale:** The engine is intentionally extractable — it could test any CLI tool
-that produces file artifacts. Keeping domain out of the harness makes it reusable.
-**Implication:** Adding a new command to test means adding a new action function and
-possibly new verify helpers — the harness itself doesn't change.
+## Harness Design — Engine Extracted to a Module (2026-03 → T2 Session B, 2026-07-17)
+The engine that used to live in `test/harness/` is now the public
+`github.com/leandror172/acceptance-harness` module (pinned v0.1.1). It was always written
+to contain zero expense knowledge, and the extraction proved that: `Context`, `Scenario`,
+`Run`, fixture plumbing, `FindModuleRoot`/`BuildBinary` all lifted unchanged.
+**Rationale:** a second consumer (career-search's `roles` CLI — Go, deterministic, non-LLM)
+wanted the same engine. Two copies of a BDD engine drift; one of them had already grown a
+latent bug (`Run` passing `t.Name()` into `os.MkdirTemp` crashes under subtests) that the
+module's unit tests caught and fixed for both.
+**Implication:** the engine is no longer ours to edit. A change to Context/Scenario/Run is a
+PR to the module plus a version bump here — which is the point: it forces the domain-free
+boundary to stay honest.
+
+### What stayed, and why (the module's core is lean by design)
+| Here | Why not in the module |
+|---|---|
+| `extern/` (`RequireOllama`) | core is LLM-free and network-free; a generic CLI-test lib must not assume an LLM |
+| `domain/` (workbook gate+copy, `SetupBinaryConfig`, fixture-config decode, Env accessors) | encodes *this* CLI's conventions: an Excel workbook, `os.Executable()`-relative config |
+| `expect/` (25 domain verifiers) | "what this CLI's bytes mean" |
+| `expect/` `readCSVFile` | semicolon delimiters + `#` comments are this project's CSV conventions |
+
+### Two assertion packages (D1) — the module owns `verify`
+Scenarios import **both**: `verify.*` is the module's generic Then (CommandSucceeded,
+CommandFailed, OutputContains, OutputNotContains, OutputFileExists, OutputIsValidJSON,
+OutputJSONHasKey, OutputJSONHasValue); `expect.*` is ours. The local `verify` package was
+renamed to `expect` and its 8 duplicates of module functions deleted — they were verified
+byte-identical first, so the deletion changed no behavior.
+**Rationale:** two same-named packages would force an import alias in every file that
+asserts anything (the option career-search explicitly rejected). career-search made the same
+call and named its domain package `tracker`.
+**Implication:** never re-add a local package named `verify`. When adding an assertion, ask
+whether it is generic (belongs upstream in the module) or domain (belongs in `expect/`).
+
+### Domain values ride in `ctx.Env` (D2)
+The module's `Context` has no `DataDir`/`WorkbookPath` (and `WorkbookDir` is gone — it had
+zero references). Those values live in `ctx.Env` behind accessors in `domain/env.go`
+(`SetDataDir`/`DataDir`, `SetWorkbookPath`/`WorkbookPath`). They were never scenario state —
+they are flag defaults: every read is in `actions/`, and each becomes `--data-dir`/`--workbook`.
+`runCommand` forwards `ctx.Env` to the subprocess, honoring Env's documented contract as the
+env-injection seam rather than quietly using it as a private bag; the two keys ride along
+harmlessly since the binary takes them as flags.
+**Rejected:** a domain wrapper struct around Context — `harness.Run` hands `*harness.Context`
+to Given/When/Then, so a wrapper can't be the callback parameter without re-wrapping `Run`.
 
 ## Fixture Format (2026-03)
 Each fixture is a directory with:
@@ -71,11 +103,12 @@ hard to compose different assertion sets for different fixtures.
 that returns `[]func(*Context)`. Never add assertions to existing helpers unless
 they're truly part of the same concern.
 
-**Convention (2026-04):** `Then:` blocks must contain only named `then*` helpers —
-never raw `verify.*` calls directly. `verify.*` calls belong inside helper bodies.
-This keeps test intent readable at the scenario level and keeps assertion details
-encapsulated. `then*` helpers live in the same `*_test.go` file as their tests;
-`verify.*` functions live in `verify/` and return single `func(*harness.Context)`.
+**Convention (2026-04; package names updated T2 Session B):** `Then:` blocks must contain
+only named `then*` helpers — never raw `verify.*`/`expect.*` calls directly. Those calls
+belong inside helper bodies. This keeps test intent readable at the scenario level and keeps
+assertion details encapsulated. `then*` helpers live in the same `*_test.go` file as their
+tests; `expect.*` functions live in `expect/` and `verify.*` comes from the module — both
+return a single `func(*harness.Context)`.
 `commandSucceeded()` (feedback_test.go, same package) is the shared base — use it
 via `slices.Concat` rather than calling `verify.CommandSucceeded()` directly.
 
@@ -83,7 +116,7 @@ via `slices.Concat` rather than calling `verify.CommandSucceeded()` directly.
 A `Then` helper name should let a reader infer the scenario's behavior without opening the
 helper or the fixture. Prefer the *outcome* over the *mechanism*:
 `installmentExpandedToNDatedLogLines(fixDir)` over `expenseLogMatchesExpected(fixDir)`;
-`crossYearInstallmentNotDivertedToRollover()` over an inline `verify.NoRolloverFileCreated()`.
+`crossYearInstallmentNotDivertedToRollover()` over an inline `expect.NoRolloverFileCreated()`.
 - **Split on variance:** keep genuinely *invariant* concerns generic (`commandSucceeded()`,
   `classificationsMatchExpected()`); only the *scenario-varying* concern needs the
   outcome-describing name. This reconciles "one concern per helper" with "name the result".
@@ -102,8 +135,8 @@ helper or the fixture. Prefer the *outcome* over the *mechanism*:
 
 ## JSONL Verification Design (2026-03)
 File-specific verifiers (not generic string-keyed):
-- `verify.ClassificationsMatch(expectedPath)` — checks `classifications.jsonl`
-- `verify.ExpenseLogMatches(expectedPath)` — checks `expenses_log.jsonl`
+- `expect.ClassificationsMatch(expectedPath)` — checks `classifications.jsonl`
+- `expect.ExpenseLogMatches(expectedPath)` — checks `expenses_log.jsonl`
 Expected files omit non-deterministic fields (`id`, `timestamp`). For classifier-dependent
 tests, `subcategory`/`category` are also omitted from expected files.
 **Rationale:** JSONL logs include auto-generated fields (hash IDs, timestamps) that
@@ -130,7 +163,7 @@ against itself is circular; an independent already-trusted producer is the only 
 **Limit:** oracle and port can share a bug (hardcoded sheet order emitted invalid D0 refs in
 the frozen dumps). When the contract changes, re-freeze and MANUALLY REVIEW the dump delta —
 acceptance can't distinguish "both fixed" from "both broken".
-**Normalized-subset comparison:** `verify.WorkbookStructureMatches` asserts exact equality on
+**Normalized-subset comparison:** `expect.WorkbookStructureMatches` asserts exact equality on
 values/formulas/merges/dims/rowType/rowFill/bgColor/bold/borders and ignores column widths,
 row heights, and manifest source (excelize float/serialization noise). Full deep-equality
 would turn cosmetic excelize quirks into red tests.
@@ -161,10 +194,10 @@ validated the `sheets`→`types` fix. Design decisions worth reusing:
 
 ## WS-B Acceptance Retarget — batch-auto & apply → expense log (sessions 43–44, consolidated from QUICK.md 2026-07-01)
 Both commands stopped writing the workbook; acceptance now asserts the durable log.
-- `verify.ExpenseLogMatches(<fixDir>/expected-expenses_log.jsonl)` — field-subset, line-exact,
+- `expect.ExpenseLogMatches(<fixDir>/expected-expenses_log.jsonl)` — field-subset, line-exact,
   skips id/timestamp. `batch-auto-typed` = canonical NON-dry-run append anchor (workbook gate
   dropped). `batch-auto-installments` asserts the N expanded dated log lines.
-  `batch-auto-rollover` INVERTED → `verify.NoRolloverFileCreated()` + next-year dates in the
+  `batch-auto-rollover` INVERTED → `expect.NoRolloverFileCreated()` + next-year dates in the
   log (rollover.csv retired).
 - **Unit-vs-acceptance split:** append-failure downgrade is a unit test
   (`cmd.TestAppendClassified_DowngradesRowOnAppendFailure`, `cmd.TestAppendNewRows_*`) because
@@ -183,7 +216,7 @@ rows tested a writer that no longer exists.
 ## Generate-Workbook Fixture Sub-Format (session 29+, consolidated from QUICK.md)
 `generate-basic` / `generate-income` use taxonomy.json + entries.jsonl + oracle-frozen
 `expected-dump-*/` — NOT config.json+input.csv (see PATTERNS.md "Generate-Workbook Fixture
-Sub-Format"). Assertions: `verify.WorkbookStructureMatches(expectedDumpDir)` over
+Sub-Format"). Assertions: `expect.WorkbookStructureMatches(expectedDumpDir)` over
 `internal/inspect` dumps. `generate-income` (WS-C, session 38) covers the 3-level income
 route: nested `incomeCategories` + `income-entries.jsonl` (extractor schema) via
 `--income-entries`; asserts signed sums (Salário Jan 4150 etc.) + per-Block Listas rollup.

@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestCorrect_LogsCorrectedEntryWhenPredictionExists(t *testing.T) {
@@ -58,7 +59,7 @@ func TestCorrect_UsesMostRecentPredictionWhenIdRepeats(t *testing.T) {
 func expenseAutoConfirmed(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		// T-13: correct resolves the corrected entry's category from the taxonomy
 		// (CategoryForLeaf), so a taxonomy must be configured for the success path.
@@ -72,7 +73,7 @@ func expenseAutoConfirmed(fixDir string) func(*harness.Context) {
 func expenseConfirmedThenCorrected(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 		if err := harness.SeedFileFromFixture(ctx, fixDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
@@ -84,7 +85,7 @@ func expenseConfirmedThenCorrected(fixDir string) func(*harness.Context) {
 func noClassificationsRecorded() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		withFeedbackConfig(ctx)
 	}
 }

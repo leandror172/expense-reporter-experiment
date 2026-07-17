@@ -7,31 +7,54 @@ File-driven BDD harness for end-to-end testing of CLI commands against a real Ol
 <!-- ref:acceptance-harness -->
 ## Harness Architecture
 
-The harness follows a Given/When/Then pattern with function injection:
+The Given/When/Then engine is the **`github.com/leandror172/acceptance-harness` module**
+(pinned in `go.mod`), not local code. It was extracted in T2 Session B once a second
+consumer (career-search's `roles` CLI) wanted the same engine. Everything expense-shaped
+stayed here:
 
 ```
-test/
-  harness/          -- domain-agnostic engine (extractable to another repo)
-    scenario.go     -- Context, Scenario, Run()
-    fixture.go      -- FixtureConfig, CopyFixtureToWorkDir, DiscoverFixtures
-    comparator.go   -- ReadCSVFile (semicolon, comment-aware), CompareCSVExact/Fuzzy
-    ollama.go       -- RequireOllama (t.Skip on failure)
-  actions/          -- domain: When functions (command runners)
+                    --- from the module ---
+  harness           -- Context, Scenario, Run, fixture plumbing,
+                       FindModuleRoot/BuildBinary, HARNESS_KEEP_* retention
+  verify            -- GENERIC Then: CommandSucceeded/Failed, OutputContains/NotContains,
+                       OutputFileExists, JSON assertions, file-state assertions
+
+                    --- ours, under test/ ---
+  actions/          -- When: command runners
     commands.go     -- RunClassify, RunAuto, RunBatchAuto, RunBatchAutoWithFixture
-  verify/           -- domain: Then functions (composable assertions)
-    csv.go          -- structural assertions (rows, columns, files, exit code)
+  expect/           -- DOMAIN Then: what our artifacts mean
+    csv.go          -- classified/review CSV structure; semicolon+comment-aware reader
+    feedback.go     -- classifications.jsonl / expenses_log.jsonl
     accuracy.go     -- soft accuracy + drift tracking to test/results/
-    workbook.go     -- stub for future workbook content assertions
+    html.go         -- review.html embedded JSON
+    workbook_structure.go -- generated-workbook dump comparison
+  domain/           -- expense-specific helpers the module excludes
+    workbook.go     -- RequireWorkbook, CopyWorkbookToWorkDir
+    config.go       -- SetupBinaryConfig (config next to the binary)
+    fixture.go      -- ExpenseFixtureConfig (model/threshold/... via the module's Raw)
+    env.go          -- DataDir/WorkbookPath accessors over ctx.Env
+  extern/           -- RequireOllama (the module core is LLM-free by design)
+  fixtures/         -- per-scenario data; results/ gitignored
 ```
 
-**Context** holds per-scenario state: `BinaryPath`, `WorkDir` (temp), `FixtureDir`, `Artifacts map[string]string`, `Stdout`, `Stderr`, `ExitCode`.
+**Two assertion packages, both imported by scenarios:** `verify.*` (module, generic) and
+`expect.*` (ours, domain). The module owns the `verify` name — never add a local package
+called `verify`.
+
+**Context** holds per-scenario state: `BinaryPath`, `WorkDir` (temp), `FixtureDir`,
+`Env map[string]string`, `Artifacts map[string]string`, `Stdout`, `Stderr`, `ExitCode`.
+It carries no domain fields — `DataDir`/`WorkbookPath` ride in `Env` via `domain`'s
+accessors, and `runCommand` forwards `Env` to the command.
 
 **Scenario** has three phases:
 - `Given func(*Context)` — set up: copy fixtures, set binary path, prepare workbook
 - `When func(*Context)` — action: run the CLI command
 - `Then []func(*Context)` — assertions: composable, order-independent checks
 
-**Run(t, Scenario)** wraps everything in `t.Run(s.Name, ...)` so each scenario is a named subtest.
+**Run(t, Scenario)** executes the scenario **directly on `t`, not as a subtest** — so `t.Log`
+output flushes in real time under `-v`, which matters when a step is waiting ~12s on Ollama.
+It creates a fresh temp `WorkDir` per scenario and removes it on cleanup unless retention is
+requested (see § Running).
 <!-- /ref:acceptance-harness -->
 
 ---
@@ -72,21 +95,33 @@ fixtures/<name>/
 <!-- ref:acceptance-verify -->
 ## Available Verifiers
 
-### Structural (`test/verify/csv.go`)
+### Generic — from the module (`verify.*`)
+
+Full list in the module's godoc; the ones this suite leans on:
 
 | Function | Signature | Assertion |
 |----------|-----------|-----------|
 | `CommandSucceeded` | `() func(*Context)` | Last command exited 0 |
+| `CommandFailed` | `() func(*Context)` | Last command exited non-zero |
 | `OutputFileExists` | `(artifactKey) func(*Context)` | Artifact file exists on disk |
+| `OutputContains` | `(substr) func(*Context)` | stdout+stderr contains substr |
+| `OutputNotContains` | `(substr) func(*Context)` | stdout+stderr does not contain substr |
+| `OutputIsValidJSON` | `() func(*Context)` | stdout parses as JSON |
+| `OutputJSONHasKey` | `(key) func(*Context)` | stdout JSON has top-level key |
+| `OutputJSONHasValue` | `(key, expected) func(*Context)` | stdout JSON key equals expected (EqualValues) |
+
+### Structural — ours (`test/expect/csv.go`)
+
+| Function | Signature | Assertion |
+|----------|-----------|-----------|
 | `OutputFileHasRows` | `(artifactKey, n) func(*Context)` | CSV has exactly n rows |
 | `OutputFileHasAtLeastRows` | `(artifactKey, n) func(*Context)` | CSV has >= n rows |
 | `OutputFileHasColumns` | `(artifactKey, n) func(*Context)` | Every row has n columns |
 | `AllClassificationScoresValid` | `(artifactKey) func(*Context)` | Confidence column values in [0.0, 1.0] |
 | `NoExpenseInBothFiles` | `(artifact1, artifact2) func(*Context)` | No row in both files |
-| `OutputContains` | `(substr) func(*Context)` | stdout+stderr contains substr |
-| `OutputNotContains` | `(substr) func(*Context)` | stdout+stderr does not contain substr |
+| `NoRolloverFileCreated` | `() func(*Context)` | rollover.csv absent (retired path) |
 
-### Accuracy (`test/verify/accuracy.go`)
+### Accuracy (`test/expect/accuracy.go`)
 
 | Function | Signature | Assertion |
 |----------|-----------|-----------|
@@ -109,17 +144,32 @@ fixtures/<name>/
 
 **Via script (recommended):**
 ```bash
-cd expense-reporter && ./run-acceptance.sh
+cd expense-reporter && ./run-acceptance.sh              # whole suite
+cd expense-reporter && ./run-acceptance.sh 'TestAdd_'   # filter by regex
 ```
-Pre-flight: checks Ollama reachability, verifies `go build`, then runs tests with 300s timeout.
+Pre-flight: checks Ollama reachability, verifies `go build`, then runs tests with a 1800s
+timeout. It also derives `EXPENSE_WORKBOOK_PATH` from the repo-root workbook when unset —
+so workbook-gated tests run rather than skip if that file is present.
 
 **Directly:**
 ```bash
-cd expense-reporter && go test -tags=acceptance -v -timeout 300s ./test/...
+cd expense-reporter && go test -tags=acceptance -v -timeout 30m ./test/...
 ```
-If Ollama is not running, tests skip gracefully via `t.Skipf`.
+The whole suite takes ~14 min (q3 ≈12 s/classify), so the default 600s timeout is not enough.
+If Ollama is not running, gated tests skip via `extern.RequireOllama`.
 
-**Binary lifecycle:** `TestMain` in `setup_test.go` builds the binary once into a temp dir. All test files share it via the package-level `binaryPath` variable.
+**Keeping the work dir for inspection:**
+```bash
+./run-acceptance.sh 'TestFoo' -keep-artifacts       # flags, via harness.RegisterFlags()
+HARNESS_KEEP_ON_FAILURE=1 go test -tags=acceptance ./test/...   # or env vars
+```
+The module reads `HARNESS_KEEP_ARTIFACTS` / `HARNESS_KEEP_ON_FAILURE`; `TestMain` calls
+`harness.RegisterFlags()` to also bind the `-keep-artifacts` / `-keep-on-failure` flags the
+script forwards. The preserved path is logged.
+
+**Binary lifecycle:** `TestMain` in `setup_test.go` builds the binary once via
+`harness.BuildBinary` into a temp dir and removes it after `m.Run()` (not via `defer` — 
+`os.Exit` skips defers). All test files share it via the package-level `binaryPath`.
 
 **Drift tracking:** `SoftAccuracy` writes JSON reports to `test/results/` (gitignored). Compare across runs to track classification accuracy changes over model/prompt updates.
 <!-- /ref:acceptance-run -->

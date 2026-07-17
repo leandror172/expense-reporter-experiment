@@ -1,6 +1,6 @@
 //go:build acceptance
 
-package verify
+package expect
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"expense-reporter/test/harness"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 func HTMLFileEmbeddedJSON(artifactKey, scriptID string, target any) func(*harness.Context) {

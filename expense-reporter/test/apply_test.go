@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestApply_IdempotencyAndFeedback(t *testing.T) {
@@ -92,7 +94,7 @@ func TestApply_UnwritableClassificationsPath_FailsFast(t *testing.T) {
 func expensesAutoInsertedBeforeReview(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackConfig(ctx)
 		if err := harness.SeedFileFromFixture(ctx, fixDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
@@ -110,7 +112,7 @@ func expensesAutoInsertedBeforeReview(fixDir string) func(*harness.Context) {
 func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -119,7 +121,7 @@ func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Con
 		if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 			ctx.T.Fatalf("writing blocker file: %v", err)
 		}
-		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 			"classifications_path": filepath.Join(ctx.WorkDir, "classifications.jsonl"),
 			"expenses_log_path":    filepath.Join(blocker, "expenses_log.jsonl"),
 		}); err != nil {
@@ -136,7 +138,7 @@ func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Con
 func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -145,7 +147,7 @@ func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(
 		if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 			ctx.T.Fatalf("writing blocker file: %v", err)
 		}
-		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 			"classifications_path": filepath.Join(blocker, "classifications.jsonl"),
 			"expenses_log_path":    filepath.Join(ctx.WorkDir, "expenses_log.jsonl"),
 		}); err != nil {
@@ -158,13 +160,13 @@ func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(
 
 func correctionsLoggedForAlreadyInserted(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
+		expect.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
 	}
 }
 
 func noNewExpensesInserted() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExpenseLogNotCreated(),
+		expect.ExpenseLogNotCreated(),
 	}
 }
 
@@ -173,7 +175,7 @@ func noNewExpensesInserted() []func(*harness.Context) {
 // per the PR #35 naming sweep — the seed file IS the expectation under dry-run.
 func dryRunLeftClassificationsUnchanged(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ClassificationsMatch(filepath.Join(fixDir, "seed-classifications.jsonl")),
+		expect.ClassificationsMatch(filepath.Join(fixDir, "seed-classifications.jsonl")),
 	}
 }
 

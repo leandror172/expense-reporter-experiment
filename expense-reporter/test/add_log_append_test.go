@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 // TestAdd_LogAppendsTypedEntry asserts that add — without a workbook — appends a
@@ -77,7 +78,7 @@ func TestAdd_CrossYearInstallmentLogsNextYearDate(t *testing.T) {
 func expenseManuallyAdded(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}
@@ -86,7 +87,7 @@ func expenseManuallyAdded(fixDir string) func(*harness.Context) {
 func expenseWithInstallmentsAdded(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}
@@ -95,7 +96,7 @@ func expenseWithInstallmentsAdded(fixDir string) func(*harness.Context) {
 func crossYearInstallmentAdded(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}
@@ -125,5 +126,5 @@ func crossYearInstallmentLoggedWithNextYearDate(fixDir string) []func(*harness.C
 // crossYearInstallmentNotDivertedToRollover asserts the retired rollover.csv path
 // stayed retired: no rollover file was produced for the year-crossing installment.
 func crossYearInstallmentNotDivertedToRollover() []func(*harness.Context) {
-	return []func(*harness.Context){verify.NoRolloverFileCreated()}
+	return []func(*harness.Context){expect.NoRolloverFileCreated()}
 }

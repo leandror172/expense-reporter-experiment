@@ -1,13 +1,27 @@
 <!-- ref:acceptance-patterns -->
 ## Adding New Acceptance Scenarios
 
+The BDD engine is the `github.com/leandror172/acceptance-harness` module, and so are the
+generic assertions (`verify.*`). This file covers what is expense-specific; for the generic
+half — the three-phase model, the zero-copy-read vs copy-to-WorkDir-write rule, fixture
+plumbing — read the module's `docs/PATTERNS.md` and `docs/ADOPTION.md`.
+
 | What's needed | Where it lives |
-|---|---|---|
+|---|---|
 | New fixture dir + CSV | `test/fixtures/` |
 | New test function | `test/*_test.go` |
-| New verify function | `test/verify/` |
-| Harness capability gap | `test/harness/` or `test/actions/` |
+| New DOMAIN assertion (what our artifacts mean) | `test/expect/` |
+| New GENERIC assertion (any CLI would want it) | upstream: a PR to the module's `verify/` |
+| New CLI invocation | `test/actions/` |
+| External-service gate | `test/extern/` |
+| Workbook / binary-config / fixture-config helper | `test/domain/` |
+| Engine capability gap (Context, Scenario, Run, fixtures) | upstream: a PR to the module + version bump here |
 | New feature to test | `cmd/` + `internal/` |
+
+**Two assertion packages.** Scenarios import both: `verify.*` is the module's generic Then
+(CommandSucceeded, CommandFailed, OutputContains, OutputNotContains, OutputFileExists,
+OutputIsValidJSON, OutputJSONHasKey, OutputJSONHasValue); `expect.*` is ours. Never add a
+local package named `verify` — the module owns that name.
 
 ## Then Composition Pattern
 
@@ -30,7 +44,7 @@ alone without opening the helper or the fixture.
 
 - Prefer the *outcome* over the *mechanism*: `installmentExpandedToNDatedLogLines(fixDir)`,
   not `expenseLogMatchesExpected(fixDir)`; `crossYearInstallmentNotDivertedToRollover()`,
-  not a raw `verify.NoRolloverFileCreated()` (which also violates the "no raw `verify.*` in
+  not a raw `expect.NoRolloverFileCreated()` (which also violates the "no raw `verify.*`/`expect.*` in
   `Then`" rule).
 - When several scenarios share one verifier, wrap it in per-scenario named helpers that
   delegate to the shared verifier (e.g. `typedExpenseRecordedAsSingleLogLine` →
@@ -76,7 +90,7 @@ events) and keep the test description domain-focused.
 | `entries-with-unmapped.jsonl` | variant with a subcategory absent from the taxonomy (warn+skip contract) |
 | `expected-dump-skeleton/`, `expected-dump-data/` | committed `internal/inspect` dumps frozen from the scratch template-builder oracle |
 
-Verifier: `verify.WorkbookStructureMatches(expectedDumpDir)` — compares a NORMALIZED SUBSET
+Verifier: `expect.WorkbookStructureMatches(expectedDumpDir)` — compares a NORMALIZED SUBSET
 (values, formulas, merges, dims, rowType/rowFill, bgColor/bold/borders); deliberately ignores
 column widths, row heights, manifest source (excelize serialization noise). No Ollama —
 these tests are deterministic and fast.
@@ -87,10 +101,10 @@ For commands that write JSONL log files on insert, use file-specific verifiers (
 
 | Verifier | Artifact checked |
 |----------|-----------------|
-| `verify.ClassificationsMatch(expectedPath)` | `classifications.jsonl` |
-| `verify.ClassificationsNotCreated()` | `classifications.jsonl` |
-| `verify.ExpenseLogMatches(expectedPath)` | `expenses_log.jsonl` |
-| `verify.ExpenseLogNotCreated()` | `expenses_log.jsonl` |
+| `expect.ClassificationsMatch(expectedPath)` | `classifications.jsonl` |
+| `expect.ClassificationsNotCreated()` | `classifications.jsonl` |
+| `expect.ExpenseLogMatches(expectedPath)` | `expenses_log.jsonl` |
+| `expect.ExpenseLogNotCreated()` | `expenses_log.jsonl` |
 
 **Fixture files:** each fixture dir that exercises an insert command must have both:
 - `expected-feedback.jsonl` — for `classifications.jsonl` verification

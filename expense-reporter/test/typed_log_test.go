@@ -9,11 +9,13 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/extern"
+	"github.com/leandror172/acceptance-harness/harness"
 )
 
 func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-typed")
 
@@ -35,7 +37,7 @@ func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 func typedBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -59,7 +61,7 @@ func withFeedbackAndTaxonomyConfig(ctx *harness.Context, fixDir string) {
 		ctx.T.Fatalf("writing taxonomy to workdir: %v", err)
 	}
 
-	if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+	if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 		"classifications_path": classificationsPath,
 		"expenses_log_path":    expensesLogPath,
 		"taxonomy_path":        taxonomyDest,

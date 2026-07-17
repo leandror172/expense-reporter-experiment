@@ -218,7 +218,9 @@ Or manually:
 - **Unit tests use testify:** `assert`/`require` from `github.com/stretchr/testify` (convention change session 10); acceptance `test/verify/` already used testify
 - **Acceptance tests:** `//go:build acceptance` tag, separate from unit tests, live Ollama required
   (EXCEPTION: generate-workbook tests are Ollama-free and deterministic)
-- **Acceptance harness:** `test/harness/` (Context, Scenario, Run), `test/actions/`, `test/verify/`;
+- **Acceptance harness (T2 Session B):** engine is the `github.com/leandror172/acceptance-harness`
+  module (Context, Scenario, Run + generic `verify.*`); domain lives in `test/actions/`,
+  `test/expect/` (was `test/verify/` — module owns the `verify` name), `test/domain/`, `test/extern/`.
   `run-acceptance.sh` with Ollama pre-flight, workbook auto-detect, filter arg, keep-artifacts flags
 - **Workbook config:** `EXPENSE_WORKBOOK_PATH` env var — script auto-detects from relative path to workbook
 - **classify/auto input:** Positional args with `utils.ParseCurrency` for value (accepts both `.` and `,`)

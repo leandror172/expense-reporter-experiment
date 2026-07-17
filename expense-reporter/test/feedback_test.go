@@ -8,13 +8,16 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/expect"
+	"expense-reporter/test/extern"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
-	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
+	extern.RequireOllama(t, "")
+	domain.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
@@ -31,7 +34,7 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 }
 
 func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-feedback")
 
@@ -48,7 +51,7 @@ func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
 }
 
 func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	// batch-auto-basic has --dry-run in extra_args — no workbook needed
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
@@ -84,9 +87,9 @@ func TestAdd_ManualFeedbackLogged(t *testing.T) {
 func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 		withFeedbackConfig(ctx)
@@ -96,7 +99,7 @@ func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 func knownExpenseBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -108,7 +111,7 @@ func knownExpenseBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
 func mixedExpensesReadyForDryRun(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
@@ -129,7 +132,7 @@ func singleExpenseReadyForManualAdd(fixDir string) func(*harness.Context) {
 func withFeedbackConfig(ctx *harness.Context) {
 	classificationsPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
 	expensesLogPath := filepath.Join(ctx.WorkDir, "expenses_log.jsonl")
-	if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+	if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 		"classifications_path": classificationsPath,
 		"expenses_log_path":    expensesLogPath,
 	}); err != nil {
@@ -156,20 +159,20 @@ func autoAppendSucceeded() []func(*harness.Context) {
 
 func classificationsMatchExpected(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
+		expect.ClassificationsMatch(filepath.Join(fixDir, "expected-feedback.jsonl")),
 	}
 }
 
 func expenseLogMatchesExpected(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
+		expect.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
 
 func noLogsCreated() []func(*harness.Context) {
 	return []func(*harness.Context){
-		verify.ClassificationsNotCreated(),
-		verify.ExpenseLogNotCreated(),
+		expect.ClassificationsNotCreated(),
+		expect.ExpenseLogNotCreated(),
 	}
 }
 
@@ -245,7 +248,7 @@ func TestAdd_ManualFeedbackWithoutPredictionFlags(t *testing.T) {
 func expenseClassifiedByModel(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}

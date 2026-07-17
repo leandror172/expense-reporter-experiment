@@ -10,21 +10,23 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/harness"
-	"expense-reporter/test/verify"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/extern"
+	"github.com/leandror172/acceptance-harness/harness"
+	"github.com/leandror172/acceptance-harness/verify"
 )
 
 // TestFewShot_ClassifyWithTrainingDataShowsFewShot verifies that when training data
 // is available, the classify command injects few-shot examples and logs it under --verbose.
 func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 	requireDataDir(t)
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify with training data logs few-shot injection under --verbose",
 		Given: classifierWithDataDir(),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
-		Then: thenFewShotLineVisible(),
+		Then:  thenFewShotLineVisible(),
 	})
 }
 
@@ -32,7 +34,7 @@ func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 // when training_data_complete.json is absent, classify still succeeds (no error)
 // and the few-shot debug line still appears (with count=0).
 func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 	requireDataDir(t)
 
 	harness.Run(t, harness.Scenario{
@@ -49,7 +51,7 @@ func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
 // TestFewShot_BatchAutoProducesOutputFiles verifies that the batch-auto command
 // with few-shot wiring still produces classified.csv and review.csv correctly.
 func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
@@ -57,7 +59,7 @@ func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
 		Name:  "batch-auto with few-shot still produces classified and review CSV files",
 		Given: mixedExpensesReadyForDryRun(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then: classifiedAndReviewFilesProduced(),
+		Then:  classifiedAndReviewFilesProduced(),
 	})
 }
 
@@ -79,7 +81,7 @@ func requireDataDir(t *testing.T) {
 func classifierWithDataDir() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
-		ctx.DataDir = dataDir
+		domain.SetDataDir(ctx, dataDir)
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
@@ -99,7 +101,7 @@ func classifierWithKeywordsOnly() func(*harness.Context) {
 			ctx.T.Fatalf("classifierWithKeywordsOnly: copy feature dict: %v", err)
 		}
 		// Intentionally omit training_data_complete.json.
-		ctx.DataDir = tmpDir
+		domain.SetDataDir(ctx, tmpDir)
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
 	}
 }

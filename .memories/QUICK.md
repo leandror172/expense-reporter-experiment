@@ -12,8 +12,12 @@ data (649-replay, s52): confidence dead as gate; specificity+agreement is the ga
 5.R2 — hit@5 62–65% multilingual on the 160 misses; arctic-embed2 the practical pick.
 5.R2 BUILT + ADOPTED (s54): embed-on-miss cascade layer in `internal/classifier`
 (arctic-embed2, K=5, disk cache); replay A/B miss full-path 18.8%→52.5% no-think
-(+33.8pp). Reports `.claude/scratch/replay-649/`.** Next = T-32 gate wiring; then WS-D
-(retire bare-name fallback) → WS-E. History → KNOWLEDGE.md "Milestone Log".
+(+33.8pp). Reports `.claude/scratch/replay-649/`. T-32 agreement gate SHIPPED (s57).
+T2 harness extraction DONE (s58 module+career-search; s59 Session B): the acceptance
+engine is now the `github.com/leandror172/acceptance-harness` module — `test/harness/`
+is gone, domain split into `test/{expect,domain,extern}/`.** Next = WS-D (retire
+bare-name fallback, HELD: gate-to-review not silent insert) → WS-E; or T-20 dedup.
+History → KNOWLEDGE.md "Milestone Log".
 
 ## Repo Structure
 ```
