@@ -1,39 +1,38 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-13 — Session 57: "T-32 agreement gate — replace the dead confidence auto-insert gate (PR #46); verifier false-pass fix; runtime-ref cleanup"
-**Current Layer:** "Layer 5 — Expense Classifier (auto-insert gate: T-32 agreement gate SHIPPED; WS-D next)"
+**Current Session:** 2026-07-13 — Session 58: T2 harness extraction Session A — acceptance-harness module published (v0.1.1); career-search repointed (TC-EXT closed, PR #7)
+**Current Layer:** Layer 5 — Expense Classifier (T2 harness extraction Session A DONE — module published, career-search repointed; Session B = expenses migration next)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-13 - Session 57: "T-32 agreement gate — replace the dead confidence auto-insert gate (PR #46); verifier false-pass fix; runtime-ref cleanup"
+## 2026-07-13 - Session 58: T2 harness extraction Session A — acceptance-harness module published (v0.1.1); career-search repointed (TC-EXT closed, PR #7)
 
 ### Context
 
-Resumed with PR #45 (5.R2) merged to master. User picked T-32 (agreement gate — the WS-D unblock) from the three ready tracks.
+PR #46 (T-32) merged before session start. The session executed the T2 harness-extraction Session A plan end-to-end; all code landed in the acceptance-harness and career-search repos, so this repo has zero session commits (handoff-harvest empty by design).
 
 ### What Was Done
 
-- Shipped T-32: `IsAutoInsertable` now gates on keyword AGREEMENT (`matched ∧ ¬ambiguous ∧ top_score>=1.0 ∧ predicted==keyword_top1 ∧ ¬excluded`), confidence dropped. Signal surfaced as a pure `MatchStrength(item, keywords)` in `examples.go` (not a `Classify` return-shape change). Deterministic tiebreak; `--threshold` deprecated. Commit 9cf65d1, PR #46.
-- Replay-validated the shipped gate over the frozen 649 `model.jsonl` (`gate_validation_test.go`, no re-inference): shipped `top_score` == harness on all 649 rows, reproducing FINDINGS 34.2/86.9 band + 94.9% agreement subcat / 30.5% coverage.
-- Fixed a latent verifier false-pass (`FeedbackMatchesExpected` early-returned on the empty log batch-auto's `O_CREATE` preflight always creates) — the agreement gate exposed it on the installment tests.
-- Reconciled the acceptance suite: swapped gate-failing `Uber Centro` (spec 0.8, ambiguous) → `Posto Ipiranga` (spec 1.0 → Combustível) in the auto-append fixtures. 620 unit + full acceptance suite green.
-- Corrected every runtime ref describing the confidence gate (index.md `[ref:confidence-thresholds]` + its duplicate in `classification_algorithm.md`; 5 memory files). Wrote `.claude/t32-agreement-gate-report.md`.
+- Created + published `github.com/leandror172/acceptance-harness` (public, MIT): engine (Context/Scenario/Run, fixture plumbing incl. recursive tree copy, BuildBinary/FindModuleRoot) + generic verify split cli/json/file, seeded from career-search's de-domained copy (diff vs expenses master first: nothing to backport). Build tags stripped; retention flags → `HARNESS_KEEP_ARTIFACTS`/`HARNESS_KEEP_ON_FAILURE` env vars + opt-in sync.Once `RegisterFlags()`. Tags v0.1.0, then v0.1.1 (go directive 1.24→1.25).
+- Ported the methodology docs de-domained (`docs/PATTERNS.md`, `docs/ADOPTION.md`, `docs/LTG-PATH.md`) + README; added `.memories/{QUICK,KNOWLEDGE}.md` and `CLAUDE-DRAFT.md` (tentative CLAUDE.md under an alternate name — adoption undecided).
+- 30 lib unit tests, vet/gofmt clean, written via my-go-qcoder (7 calls: 4 accepted/improved, 1 rejected+rewritten, 1 cold-start retry). The tests exposed and fixed a latent `Run()` bug: `t.Name()` fed to `os.MkdirTemp` crashes under `t.Run` subtests ("pattern contains path separator") — present in BOTH consumers' copies.
+- Repointed career-search (TC-EXT closed; PR #7 open): local `test/harness/` + generic `verify/{cli,json}.go` deleted (−689 lines); domain verifiers moved to `test/tracker/` so the module keeps the `verify.*` namespace (146 generic call sites untouched; 44 domain renames in 3 files); `harness.RegisterFlags()` in TestMain preserves the `--keep-*` flags; go 1.24.2→1.25.5; full suite 65 tests green ~3s; `test/.memories` rewritten; migration report `.claude/plans/tracker-cli-report-tc-ext.md` (indexed).
 
 ### Decisions Made
 
-- Gate = AGREEMENT (not pure-specificity, not agreement-AND-confidence). Confidence is inert; ANDing it is strictly dominated (zero precision, random coverage loss, misleading knob).
-- Signal as a pure function, not a `Classify` return-shape change (advisor): model/pool-independent, and it avoids the embedding-fallback contamination case + 11-callsite churn.
-- Precision caveat carried into the commit/PR/docs: the ~95% is same-sample RELATIVE (shipped==measured); absolute production precision is unmeasured → WS-D stays HELD.
-- Collision caveat (5 cross-type leaves can be subcat-right/type-wrong) recorded in `decision.go`, not fixed.
+- Seed from career-search's copy, NOT the expenses original (plan §3 sequencing) — the second consumer's copy encodes two consumers' needs; the pre-seed diff proved the origin hadn't grown anything since.
+- Module go directive tracks the LOWEST consumer: shipped at 1.24 (career-search was 1.24.2), bumped to 1.25 in v0.1.1 only after career-search moved to 1.25.5.
+- T2 stays UNCHECKED — its own text requires "both repos depend on it"; the expenses migration (Session B, plan §5) is the remaining half.
+- No v1.0.0 until the expenses migration shakes the API; consumers pin exact v0.x versions, breaking changes preferred over compat shims.
 
 ### Next
 
-- WS-D (T-09): retire the bare-name fallback — now protected by the gate but HELD; design gate-to-review, not silent insert (absolute precision unmeasured).
-- Or: Harness extraction Session A (T2), or T-20 log dedup — both independent.
-- Merge PR #46.
+- Harness extraction Session B (plan §5): migrate expenses `test/` to the module — add dep, delete `test/harness/` EXCEPT `ollama.go`/`comparator.go` (→ domain layer, e.g. `test/extern/` + `test/verify/csv_compare.go`), Context workbook-field fallout via `Env`/wrapper, `FixtureConfig` domain fields via `Raw` decode. Gate: full `-tags=acceptance -timeout 30m` green AND `-tags=replay` still compiles.
+- Merge career-search PR #7 (user); decide CLAUDE-DRAFT.md adoption in acceptance-harness.
+- Alternatives: WS-D gate-to-review design (T-09), T-20 log dedup.
 
 ### Gotchas
 
-- `Uber Centro` FAILS the agreement gate (keyword `uber` spec 0.8, ambiguous across Viagens/Uber-Taxi). Use `Posto Ipiranga` / `Netflix` / `Diarista Letícia` for any test that must auto-append.
-- `FeedbackMatchesExpected` used to false-pass on an empty log (batch-auto's preflight `O_CREATE`s one) — fixed; watch for the same early-return-on-nil pattern elsewhere.
-- The interactive `auto` append-on-pass path has no running test (`TestAuto_FeedbackLoggedOnInsert` is workbook-gated → skips here).
+- A lib's go directive must stay ≤ every consumer's — a higher directive forces the consumer's own go line up on `go get`.
+- Pushing to GitHub from this environment needs `git -c credential.helper='!gh auth git-credential' push` (plain push has no credential terminal); `gh repo create --public` is permission-classifier-gated — the user runs it via `!`.
+- career-search PR #7 is based on a local master 9 commits ahead of origin — those commits appear in the PR until master is pushed (user manages).
