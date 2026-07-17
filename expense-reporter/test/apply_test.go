@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
@@ -119,7 +120,7 @@ func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Con
 		if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 			ctx.T.Fatalf("writing blocker file: %v", err)
 		}
-		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 			"classifications_path": filepath.Join(ctx.WorkDir, "classifications.jsonl"),
 			"expenses_log_path":    filepath.Join(blocker, "expenses_log.jsonl"),
 		}); err != nil {
@@ -145,7 +146,7 @@ func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(
 		if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 			ctx.T.Fatalf("writing blocker file: %v", err)
 		}
-		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 			"classifications_path": filepath.Join(blocker, "classifications.jsonl"),
 			"expenses_log_path":    filepath.Join(ctx.WorkDir, "expenses_log.jsonl"),
 		}); err != nil {

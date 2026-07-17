@@ -34,6 +34,8 @@ import (
 	"github.com/xuri/excelize/v2"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/extern"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
@@ -49,7 +51,7 @@ func typeRoutingFixtureDir() string {
 // ---------------------------------------------------------------------------
 
 func TestTypeRoutingCycle_1_BatchAutoEmitsType(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := typeRoutingFixtureDir()
 
@@ -150,7 +152,7 @@ func expensesAwaitingClassification(fixDir string) func(*harness.Context) {
 		// T-13: batch-auto requires a configured taxonomy. CopyFixtureToWorkDir already
 		// placed the fixture's taxonomy.json in WorkDir (the same one generate-workbook
 		// uses downstream); point the binary config at it.
-		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 			"classifications_path": filepath.Join(ctx.WorkDir, "classifications.jsonl"),
 			"expenses_log_path":    filepath.Join(ctx.WorkDir, "expenses_log.jsonl"),
 			"taxonomy_path":        filepath.Join(ctx.WorkDir, "taxonomy.json"),

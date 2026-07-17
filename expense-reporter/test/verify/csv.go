@@ -3,9 +3,13 @@
 package verify
 
 import (
+	"bufio"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -119,7 +123,7 @@ func AllClassificationScoresValid(artifactKey string) func(*harness.Context) {
 				"%q row %d: confidence %q is not a valid float", artifactKey, i, row[confidenceCol]) {
 				continue
 			}
-			assert.True(ctx.T, harness.ConfidenceInRange(v),
+			assert.True(ctx.T, confidenceInRange(v),
 				"%q row %d: confidence %.4f out of [0,1]", artifactKey, i, v)
 		}
 	}
@@ -180,7 +184,49 @@ func readArtifact(ctx *harness.Context, key string) [][]string {
 	if !assert.True(ctx.T, ok, "artifact %q not registered in ctx.Artifacts", key) {
 		return nil
 	}
-	return harness.ReadCSVFile(ctx.T, path)
+	return readCSVFile(ctx.T, path)
+}
+
+// readCSVFile reads a semicolon-delimited CSV, skipping lines starting with '#'.
+// Semicolon delimiting and '#' comments are this project's CSV conventions, which is
+// why this lives here rather than in the acceptance-harness module.
+func readCSVFile(t *testing.T, path string) [][]string {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("readCSVFile: open %q: %v", path, err)
+	}
+	defer f.Close()
+
+	// Pre-filter comment lines into a strings.Builder before CSV parsing.
+	var sb strings.Builder
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		sb.WriteString(line)
+		sb.WriteByte('\n')
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatalf("readCSVFile: scan %q: %v", path, err)
+	}
+
+	r := csv.NewReader(strings.NewReader(sb.String()))
+	r.Comma = ';'
+	r.TrimLeadingSpace = true
+
+	records, err := r.ReadAll()
+	if err != nil {
+		t.Fatalf("readCSVFile: parse %q: %v", path, err)
+	}
+	return records
+}
+
+// confidenceInRange reports whether v is a valid confidence score, i.e. within [0.0, 1.0].
+func confidenceInRange(v float64) bool {
+	return v >= 0.0 && v <= 1.0
 }
 
 func joinRow(row []string) string {

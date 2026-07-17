@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/extern"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
@@ -19,7 +20,7 @@ import (
 // embedding cache is populated in the data dir as a side effect.
 // Requires a live Ollama with the snowflake-arctic-embed2 model pulled.
 func TestEmbeddingFallback_KeywordMissRetrievesByEmbedding(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
 		Name:  "keyword-miss item gets embedding-retrieved few-shot examples + cache populated",

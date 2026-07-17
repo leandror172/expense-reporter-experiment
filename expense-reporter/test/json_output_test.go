@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/extern"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
@@ -15,7 +16,7 @@ import (
 // TestClassifyJSON_ReturnsValidJSONWithCandidates verifies that classify --json
 // produces valid JSON output with the expected top-level keys.
 func TestClassifyJSON_ReturnsValidJSONWithCandidates(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify --json returns valid JSON with candidates array",
@@ -31,7 +32,7 @@ func TestClassifyJSON_ReturnsValidJSONWithCandidates(t *testing.T) {
 // TestAutoJSON_ReturnsRecommendationWithoutInserting verifies that auto --json
 // returns a recommendation (action field) but never inserts into the workbook.
 func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto --json returns action recommendation without inserting",

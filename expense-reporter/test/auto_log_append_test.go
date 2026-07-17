@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/extern"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
@@ -20,7 +21,7 @@ import (
 //
 // "Uber Centro" → Uber/Taxi (Transporte) at 100% confidence is stable against my-classifier-q3.
 func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
 
@@ -50,7 +51,7 @@ func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 //
 // "Netflix" → Netflix (Lazer) is reliably classified at high confidence.
 func TestAuto_HighConfidenceInstallmentsExpandToNEntries(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
 

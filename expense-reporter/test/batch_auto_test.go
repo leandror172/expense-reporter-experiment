@@ -8,12 +8,14 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/extern"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
 
 func TestBatchAuto_Basic(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
@@ -26,7 +28,7 @@ func TestBatchAuto_Basic(t *testing.T) {
 }
 
 func TestBatchAuto_MixedConfidence(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
@@ -39,7 +41,7 @@ func TestBatchAuto_MixedConfidence(t *testing.T) {
 }
 
 func TestBatchAuto_ExcludedCategoriesGoToReview(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-exclusions")
 
@@ -52,7 +54,7 @@ func TestBatchAuto_ExcludedCategoriesGoToReview(t *testing.T) {
 }
 
 func TestBatchAuto_ClassificationAccuracy(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 	expectedPath := filepath.Join(fixDir, "expected-classified.csv")
@@ -67,7 +69,7 @@ func TestBatchAuto_ClassificationAccuracy(t *testing.T) {
 }
 
 func TestBatchAuto_OutputDirFlag(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
@@ -80,7 +82,7 @@ func TestBatchAuto_OutputDirFlag(t *testing.T) {
 }
 
 func TestBatchAuto_SameYearInstallmentsExpandedInLog(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixtureDir := filepath.Join(fixturesDir(), "batch-auto-installments")
 
@@ -93,7 +95,7 @@ func TestBatchAuto_SameYearInstallmentsExpandedInLog(t *testing.T) {
 }
 
 func TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixtureDir := filepath.Join(fixturesDir(), "batch-auto-rollover")
 
@@ -256,7 +258,7 @@ func batchSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Context) {
 		if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 			ctx.T.Fatalf("writing blocker file: %v", err)
 		}
-		if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 			"classifications_path": filepath.Join(ctx.WorkDir, "classifications.jsonl"),
 			"expenses_log_path":    filepath.Join(blocker, "expenses_log.jsonl"),
 			"taxonomy_path":        taxonomyDest,

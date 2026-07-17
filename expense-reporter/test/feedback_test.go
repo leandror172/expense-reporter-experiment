@@ -8,13 +8,15 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
+	"expense-reporter/test/domain"
+	"expense-reporter/test/extern"
 	"expense-reporter/test/harness"
 	"expense-reporter/test/verify"
 )
 
 func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
-	harness.RequireOllama(t, "")
-	harness.RequireWorkbook(t, testWorkbook)
+	extern.RequireOllama(t, "")
+	domain.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
@@ -31,7 +33,7 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 }
 
 func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-feedback")
 
@@ -48,7 +50,7 @@ func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
 }
 
 func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
-	harness.RequireOllama(t, "")
+	extern.RequireOllama(t, "")
 
 	// batch-auto-basic has --dry-run in extra_args — no workbook needed
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
@@ -86,7 +88,7 @@ func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.DataDir = dataDir
 		ctx.FixtureDir = fixDir
-		if err := harness.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
+		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
 			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
 		}
 		withFeedbackConfig(ctx)
@@ -129,7 +131,7 @@ func singleExpenseReadyForManualAdd(fixDir string) func(*harness.Context) {
 func withFeedbackConfig(ctx *harness.Context) {
 	classificationsPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
 	expensesLogPath := filepath.Join(ctx.WorkDir, "expenses_log.jsonl")
-	if err := harness.SetupBinaryConfig(ctx, map[string]interface{}{
+	if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
 		"classifications_path": classificationsPath,
 		"expenses_log_path":    expensesLogPath,
 	}); err != nil {

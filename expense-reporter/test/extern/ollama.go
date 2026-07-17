@@ -1,6 +1,11 @@
 //go:build acceptance
 
-package harness
+// Package extern holds liveness gates for external services the acceptance suite
+// depends on. It lives here rather than in the acceptance-harness module because
+// that module's core is deliberately LLM-free and network-free — a generic CLI-test
+// library must not assume an LLM. If a second LLM-backed consumer ever appears, this
+// is the shape that would be promoted into an optional extern/llm package there.
+package extern
 
 import (
 	"net/http"

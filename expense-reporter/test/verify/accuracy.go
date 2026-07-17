@@ -39,7 +39,7 @@ func ClassificationAccuracyAtLeast(artifactKey, expectedPath string, floor float
 		if actual == nil {
 			return
 		}
-		expected := harness.ReadCSVFile(ctx.T, expectedPath)
+		expected := readCSVFile(ctx.T, expectedPath)
 
 		// Skip header row in actual (classified.csv has a real CSV header).
 		// expected-classified.csv uses # comments (stripped by ReadCSVFile) — no header row.
