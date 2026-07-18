@@ -15,7 +15,6 @@ import (
 
 func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 	extern.RequireOllama(t, "")
-	domain.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
@@ -29,34 +28,26 @@ func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 
 func TestAuto_AmbiguousExpenseKeptForManualReview(t *testing.T) {
 	extern.RequireOllama(t, "")
-	domain.RequireWorkbook(t, testWorkbook)
+
+	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
 	harness.Run(t, harness.Scenario{
 		Name:  "vague expense description must not be auto-inserted",
-		Given: expenseClassifierAvailable(),
+		Given: expenseTaxonomyAvailable(fixDir),
 		When:  actions.RunAuto("Outros gastos aleatorios xyz", "10.00", "01/01"),
 		Then:  expenseKeptForManualReview(),
 	})
 }
 
+// expenseTaxonomyAvailable prepares auto for the log-append path (WS-B): binary +
+// data dir + fixture taxonomy and feedback log paths. No workbook — auto no longer
+// writes one.
 func expenseTaxonomyAvailable(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		ctx.FixtureDir = fixDir
 		domain.SetDataDir(ctx, dataDir)
-		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
-	}
-}
-
-func expenseClassifierAvailable() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
+		withFeedbackAndTaxonomyConfig(ctx, fixDir)
 	}
 }
 

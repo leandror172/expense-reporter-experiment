@@ -1,0 +1,17 @@
+{
+  "types": [
+    {
+      "name": "Variáveis",
+      "categories": [
+        { "name": "Transporte", "subcategories": ["Metrô", "Ônibus", "Uber/Taxi", "Combustível", "Pedágio"] }
+      ]
+    },
+    {
+      "name": "Extras",
+      "categories": [
+        { "name": "Diversos", "subcategories": ["Diversos"] }
+      ]
+    }
+  ],
+  "incomeCategories": []
+}

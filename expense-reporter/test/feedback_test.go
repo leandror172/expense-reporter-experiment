@@ -17,14 +17,13 @@ import (
 
 func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 	extern.RequireOllama(t, "")
-	domain.RequireWorkbook(t, testWorkbook)
 
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "auto command logs confirmed feedback entry on successful insert",
+		Name:  "auto command logs confirmed feedback entry on successful append",
 		Given: knownExpenseReadyForAutoInsert(fixDir),
-		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04"),
+		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
 		Then: slices.Concat(
 			autoAppendSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -89,10 +88,7 @@ func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
-		if err := domain.CopyWorkbookToWorkDir(ctx, testWorkbook); err != nil {
-			ctx.T.Fatalf("CopyWorkbookToWorkDir: %v", err)
-		}
-		withFeedbackConfig(ctx)
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: auto requires a configured taxonomy
 	}
 }
 

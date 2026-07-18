@@ -21,7 +21,9 @@ import (
 // Before: auto called workflow.InsertBatchExpenses (workbook write) + logExpense.
 // After: auto calls appender.ExpandAndAppend (log-append only); no workbook required.
 //
-// "Uber Centro" → Uber/Taxi (Transporte) at 100% confidence is stable against my-classifier-q3.
+// "Posto Ipiranga" → Combustível (Transporte) is the canonical gate-passing item
+// (keyword spec 1.0, unambiguous, model agrees — T-32). "Uber Centro" no longer works
+// here: spec 0.8 + ambiguous fails the agreement gate and routes to review.
 func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 	extern.RequireOllama(t, "")
 
@@ -30,16 +32,16 @@ func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "auto HIGH confidence appends typed expense log entry without workbook",
 		Given: autoLogAppendReady(fixDir),
-		When:  actions.RunAuto("Uber Centro", "35,50", "15/04/2026"),
+		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
 			expect.NoRolloverFileCreated(),
 			// classifications.jsonl: confirmed entry from the Ollama classification
 			expect.FeedbackContainsStatus("classifications.jsonl", "confirmed"),
-			expect.FeedbackContainsItem("classifications.jsonl", "Uber Centro"),
+			expect.FeedbackContainsItem("classifications.jsonl", "Posto Ipiranga"),
 			// expenses_log.jsonl: exactly one typed entry appended
 			expect.FeedbackEntryCount("expenses_log.jsonl", 1),
-			expect.FeedbackContainsItem("expenses_log.jsonl", "Uber Centro"),
+			expect.FeedbackContainsItem("expenses_log.jsonl", "Posto Ipiranga"),
 		},
 	})
 }
@@ -51,7 +53,8 @@ func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 // Before: auto did not support installment notation (ParseCurrency, no expansion).
 // After: ParseCurrencyWithInstallments + ExpandAndAppend emits N entries to the log.
 //
-// "Netflix" → Netflix (Lazer) is reliably classified at high confidence.
+// "Posto Ipiranga" passes the T-32 agreement gate; the installment notation in the
+// value string is what drives the expansion under test.
 func TestAuto_HighConfidenceInstallmentsExpandToNEntries(t *testing.T) {
 	extern.RequireOllama(t, "")
 
@@ -60,7 +63,7 @@ func TestAuto_HighConfidenceInstallmentsExpandToNEntries(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "auto with installment value notation appends N dated log entries",
 		Given: autoLogAppendReady(fixDir),
-		When:  actions.RunAuto("Uber Centro", "90,00/3", "15/04/2026"),
+		When:  actions.RunAuto("Posto Ipiranga", "90,00/3", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
 			expect.NoRolloverFileCreated(),
