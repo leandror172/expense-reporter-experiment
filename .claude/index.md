@@ -75,7 +75,8 @@
 | T-20 implementation report (`batch-auto --resume` + duplicate warning; [ref:batch-auto-resume] semantics block, session 60) | `.claude/t20-resume-implementation-report.md` |
 | batch-auto resume acceptance (A1–A5: seeded-skip, one-of-two-dups, warning; deterministic seeds via real append path) | `expense-reporter/test/batch_auto_resume_test.go` + `test/expect/resume.go` + `test/fixtures/batch-auto-resume-*`, `batch-auto-dup-warning` |
 | Join-id acceptance (T-35: both logs share one `GenerateID`) | `expense-reporter/test/apply_test.go` + `test/auto_log_append_test.go` (`*_JoinIDMatchesAcrossLogs`), `test/expect/feedback.go` (`JoinIDMatchesAcrossLogs`), fixture `test/fixtures/apply-join-id/` — fixtures use SHORT `DD/MM` on purpose; a full date hides the bug |
-| Date/year semantics across the system (T-35 survey) | `.claude/t35-date-year-semantics.md` |
+| Date/year semantics across the system (T-35 survey — six parsers, year sources, what NOT to "fix") | `.claude/t35-date-year-semantics.md` [ref:date-year-semantics] |
+| T-35 implementation report (join-id fix: scope correction, RED evidence, T-37/T-38 findings, session 61) | `.claude/t35-implementation-report.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
