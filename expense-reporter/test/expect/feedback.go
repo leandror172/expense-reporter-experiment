@@ -230,3 +230,68 @@ func readFeedbackLines(ctx *harness.Context, key string) []string {
 	}
 	return lines
 }
+
+// JoinIDMatchesAcrossLogs asserts that the `id` field in the single entry of
+// classifications.jsonl matches the `id` field in the single entry of expenses_log.jsonl.
+// The two logs carry no foreign key other than this hash id, so a divergence does not
+// fail loudly anywhere — it silently breaks every cross-file join (feedback → expense
+// history, and `correct`'s lookup of a prior classification). Asserting equality here is
+// the only place that contract is checked end-to-end.
+//
+// Deliberately asserts NO date or year: the id is a hash OF the date, so comparing the two
+// ids proves both writers normalized identically without pinning a literal date that would
+// rot at year rollover.
+func JoinIDMatchesAcrossLogs() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.T.Helper()
+
+		classLines := readFeedbackLines(ctx, "classifications.jsonl")
+		if classLines == nil {
+			return
+		}
+		expLines := readFeedbackLines(ctx, "expenses_log.jsonl")
+		if expLines == nil {
+			return
+		}
+
+		if !assert.Equal(ctx.T, 1, len(classLines), "classifications.jsonl should have exactly one entry, got %d", len(classLines)) {
+			return
+		}
+		if !assert.Equal(ctx.T, 1, len(expLines), "expenses_log.jsonl should have exactly one entry, got %d", len(expLines)) {
+			return
+		}
+
+		classID := readIDFromLine(ctx.T, classLines[0], "classifications.jsonl")
+		if classID == "" {
+			return
+		}
+		expID := readIDFromLine(ctx.T, expLines[0], "expenses_log.jsonl")
+		if expID == "" {
+			return
+		}
+
+		assert.Equal(ctx.T, classID, expID,
+			"join id mismatch: classifications.jsonl id=%q vs expenses_log.jsonl id=%q", classID, expID)
+	}
+}
+
+// readIDFromLine parses a JSON line and returns the value of its `id` field.
+// Returns empty string if parsing fails or `id` is missing/empty — an empty id would
+// trivially compare equal to another empty id, so it must fail rather than pass.
+func readIDFromLine(t interface {
+	Helper()
+	Errorf(string, ...interface{})
+}, line, filename string) string {
+	t.Helper()
+	var entry map[string]interface{}
+	if err := json.Unmarshal([]byte(line), &entry); err != nil {
+		t.Errorf("%s: failed to parse JSON line: %v", filename, err)
+		return ""
+	}
+	id, ok := entry["id"].(string)
+	if !ok || id == "" {
+		t.Errorf("%s: 'id' field missing or empty in parsed JSON", filename)
+		return ""
+	}
+	return id
+}
