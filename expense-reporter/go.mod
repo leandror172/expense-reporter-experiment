@@ -3,7 +3,7 @@ module expense-reporter
 go 1.25.5
 
 require (
-	github.com/leandror172/acceptance-harness v0.1.1
+	github.com/leandror172/acceptance-harness v1.0.0
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
