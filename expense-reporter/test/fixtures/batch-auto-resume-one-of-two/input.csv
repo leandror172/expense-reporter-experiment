@@ -1,0 +1,6 @@
+# Two identical legitimate rows; the log is seeded with exactly ONE copy (see Given).
+# --resume consumes the single seeded count to skip the first, and the second proceeds to
+# classification. "Uber Centro" is the gate-FAILING canonical item, so the non-skipped row
+# deterministically routes to review (never appends) — the test asserts skip-count 1.
+Uber Centro;15/04/2026;35,50
+Uber Centro;15/04/2026;35,50

@@ -1,0 +1,5 @@
+# All rows are pre-seeded into expenses_log.jsonl by the Given, so --resume must skip
+# every one before classifying. Explicit-year dates keep ids stable (no time.Now().Year()).
+# 90,00/3 -> 30,00 per installment (divides cleanly in float64 — avoids JSON drift).
+Netflix;10/03/2026;55,90
+Posto Ipiranga;01/04/2026;90,00/3

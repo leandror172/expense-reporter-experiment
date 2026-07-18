@@ -1,0 +1,4 @@
+# NO --resume. The row is already in the log (seeded by the Given). The append-only default
+# re-appends it, and the always-on duplicate warning fires exactly once on stderr.
+# "Posto Ipiranga" is gate-passing so it reaches the append path.
+Posto Ipiranga;15/04/2026;35,50

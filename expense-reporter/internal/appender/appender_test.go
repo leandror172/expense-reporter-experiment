@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"expense-reporter/internal/feedback"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -135,4 +137,74 @@ func TestFormatDate(t *testing.T) {
 	date := time.Date(2026, 3, 5, 10, 30, 45, 123456789, time.UTC)
 	result := formatDate(date)
 	assert.Equal(t, "05/03/2026", result)
+}
+
+// TestPredictEntryIDs_MatchesExpandAndAppend is the drift guard for --resume: the ids
+// PredictEntryIDs computes must equal, in order, the ids ExpandAndAppend actually writes
+// to the log for the same inputs. If the two ever diverge (e.g. a missing (i/N) suffix or
+// month increment in one path), resume would skip the wrong rows — this property fails loudly.
+func TestPredictEntryIDs_MatchesExpandAndAppend(t *testing.T) {
+	type testCase struct {
+		name          string
+		item          string
+		date          time.Time
+		value         float64
+		count         int
+		expectedCount int
+	}
+
+	tests := []testCase{
+		{
+			name:          "single installment",
+			item:          "Grocery",
+			date:          time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
+			value:         45.99,
+			count:         1,
+			expectedCount: 1,
+		},
+		{
+			name:          "three installments",
+			item:          "Netflix",
+			date:          time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC),
+			value:         30.0,
+			count:         3,
+			expectedCount: 3,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			logPath := filepath.Join(tempDir, "expenses_log.jsonl")
+
+			err := ExpandAndAppend(logPath, tc.item, tc.date, tc.value, tc.count, "expense", "Cat", "Sub")
+			require.NoError(t, err)
+
+			// Read IDs from the log file
+			file, err := os.Open(logPath)
+			require.NoError(t, err)
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+			var loggedIDs []string
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line == "" {
+					continue
+				}
+				var entry feedback.ExpenseEntry
+				err = json.Unmarshal([]byte(line), &entry)
+				require.NoError(t, err)
+				loggedIDs = append(loggedIDs, entry.ID)
+			}
+			require.NoError(t, scanner.Err())
+
+			// Get predicted IDs
+			predictedIDs := PredictEntryIDs(tc.item, tc.date, tc.value, tc.count)
+
+			// Assert they match in order and length
+			assert.Equal(t, loggedIDs, predictedIDs)
+			assert.Len(t, predictedIDs, tc.expectedCount)
+		})
+	}
 }

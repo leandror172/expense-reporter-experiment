@@ -104,8 +104,16 @@ predicted subcategory agrees with an unambiguous, maximum-specificity keyword ma
 
 Flags:
 - `--dry-run` — classify only, skip workbook insertion
+- `--resume` — idempotent re-run: skip rows whose expense-log entry ids are ALL already
+  present (printed as `SKIP … already logged`), before the model is called.
+  Partially-logged installment series route to `review.csv` for manual resolution
+  instead of being auto-completed. Bare `DD/MM` dates infer the current year, so a
+  resume crossing a year boundary may not match — use `DD/MM/YYYY` for December batches.
 - `--threshold` — **deprecated, ignored** (the gate no longer uses confidence)
 - `--model`, `--data-dir`, `--output-dir`, `--top`
+
+Independently of `--resume`, batch-auto always warns on stderr when an appended entry's
+id already exists in the log (a likely duplicate append).
 
 ### `review` — Generate an interactive HTML review page
 

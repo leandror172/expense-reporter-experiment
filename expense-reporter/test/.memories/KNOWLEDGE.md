@@ -243,3 +243,16 @@ via generate-workbook in the Given — dropped in slice 4.
   it; `go test ./...` stayed green. Session 42 repaired 13 tests; fixture taxonomy must cover
   the input CSV's expected leaves (accuracy tests compare subcategory only).
   [[feedback_rename_json_tag_acceptance]]
+
+## --resume / dedup acceptance (T-20, session 60)
+- **Seeds go through the REAL append path:** the Given calls `appender.ExpandAndAppend`
+  (never hand-written ids), so any prediction/append normalization drift fails loudly.
+  Fixtures seed nothing on disk; the Given seeds after `withFeedbackAndTaxonomyConfig`.
+- **Fully-seeded fixtures are Ollama-FREE** (`batch-auto-resume-all-seeded`, `-dryrun`):
+  every row skips before the model — deterministic resume tests exist because the skip
+  precedes classification.
+- One-of-two-dups uses gate-failing `Uber Centro` so the non-skipped row deterministically
+  hits review. New `expect` counters: `ResumeSkipCount` (counts "already logged" over
+  stdout+stderr), `DuplicateWarningCount` (counts "already in expense log" over stderr).
+  The batch-auto summary deliberately says `Skipped       :` (not "already logged") so the
+  summary line can't inflate `ResumeSkipCount`.
