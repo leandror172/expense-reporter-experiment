@@ -1,41 +1,41 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-17 — Session 59: T2 harness extraction Session B — expenses migrated onto the acceptance-harness module (PR #48); consumer report + doc fixes (module PR #1)
-**Current Layer:** Layer 5 — Expense Classifier (T2 harness extraction COMPLETE — expenses acceptance suite migrated onto acceptance-harness v0.1.1, PR #48; module PR #1 = consumer report + doc fixes. Next product: WS-D/T-09 or T-20)
+**Current Session:** 2026-07-17 — Session 60: T2 closeout (harness v1.0.0) + red-test repair (suite fully green) + T-20 `batch-auto --resume` (PR #49)
+**Current Layer:** Layer 5 — Expense Classifier (T-20 --resume shipped, PR #49 open; WS-D next)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-17 - Session 59: T2 harness extraction Session B — expenses migrated onto the acceptance-harness module (PR #48); consumer report + doc fixes (module PR #1)
+## 2026-07-17 - Session 60: T2 closeout (harness v1.0.0) + red-test repair (suite fully green) + T-20 `batch-auto --resume` (PR #49)
 
 ### Context
 
-Continued T2 (harness extraction). Session A (s58) published `acceptance-harness` v0.1.1 and repointed career-search; this session executed **Session B** — migrating expense-reporter's own acceptance suite onto the module so `test/harness/` no longer exists locally.
+Started right after the user merged expenses PR #48 (T2 Session B). Next-steps discussion locked a three-phase plan: T2 closeout → red-test repair → T-20 dedup, then full wrap-up (reports, docs, PR, handoff) on user instruction.
 
 ### What Was Done
 
-- Wrote the executable Session B plan (`.claude/plans/harness-extraction-session-b.md`) — the parent plan's §5 was six bullets. Measured every touch point first; advisor-reviewed D1/D2 before implementation.
-- **Phase 0** — captured a baseline acceptance roster (`.claude/scratch/phase0-roster.txt`): 44 pass / 5 fail / 0 skip, so migration breakage is distinguishable from pre-existing red under model nondeterminism.
-- **Phase 1** — carved expense-shaped helpers out of `test/harness/`: `RequireOllama`→`test/extern/`; workbook gate+copy, `SetupBinaryConfig`, fixture-config decode, Env accessors →`test/domain/`; folded the 2 live comparator funcs into `test/expect/` and deleted 2 dead ones (`CompareCSVExact/Fuzzy`, 0 sites).
-- **Phase 2+3** — deleted `test/harness/`; swapped the engine to `acceptance-harness` v0.1.1 (`setup_test.go` onto `FindModuleRoot`/`BuildBinary`/`RegisterFlags`). D1: local `verify`→`test/expect/`, 8 module-twin duplicates deleted (verified byte-identical first). D2: `Context.{DataDir,WorkbookPath}`→`ctx.Env`. `FixtureConfig` domain fields decode from the module's `Raw`.
-- **Phase 4 gate** — full acceptance roster **byte-identical pre/post** (same 44/5, same failure reasons 14×/7×, soft-accuracy above floor). Opened expenses **PR #48**.
-- **Phase 5** — repointed all acceptance docs/memories at the module; fixed the module's `ADOPTION.md` verify-collision + the `TestMain` temp-dir leak (in ADOPTION + README); added `docs/consumer/expense-reporter.md` (evidence-grounded consumer report). Module changes → **PR #1** (branch `docs/session-b-followups`).
+- chore(t2): bump acceptance-harness to v1.0.0 (master) — after verifying module PR #1 + career-search PR #7 were merged and tagging `acceptance-harness` v1.0.0 at `11beb2a` (checked first that the "unused surface" consumer-report signals are all used by career-search — not dead API; the `FileUnchanged` expressiveness gap is additive, so no 1.0 blocker)
+- fix(test): repair the 5 red acceptance tests (T-34 + T-12) (master) — Uber Centro→Posto Ipiranga CLI-arg swap; 3 dark tests de-workbooked + given taxonomy config + full-date expectations; full suite 49 pass / 0 fail (1311s), first fully-green roster since T-32
+- T-20 `batch-auto --resume` + always-on duplicate-append warning — designed (Option B locked with user), advisor-reviewed (Opus xhigh subagent; blocker + 2 cuts adopted), implemented by an `impl-opus-xhigh` subagent (TDD; my-go-qcoder 4×verdict-2, 2×verdict-1), orchestrator-verified (independent gates + full suite green, 779s). Branch `feat/t20-batch-auto-resume`, **PR #49 open**
+- Reports written + indexed: `.claude/t2-closeout-report.md`, `.claude/t34-t12-red-test-repair-report.md`, `.claude/t20-resume-implementation-report.md` (carries `ref:batch-auto-resume` semantics block), `.claude/advisor-t20-resume-dedup.md`
+- Docs/memories updated (on the PR branch): README batch-auto `--resume` section, repo+expense-reporter QUICK status, internal/feedback + test KNOWLEDGE sections, index.md registrations incl. a previously-missing `internal/appender` package row
+- New agent config `.claude/agents/impl-opus-xhigh.md` (Opus xhigh implementation subagent; advisor rule made availability-conditional); user reloaded plugins mid-session to activate it
 
 ### Decisions Made
 
-- **D1/A — module owns `verify.*`; domain verifiers → `test/expect/`** (over a zero-churn facade). Advisor tipped it: the domain carve-out already forces ~41 prefix renames, so A's 38 `verify.`→`expect.` edits are the same kind of edit, and A keeps ONE adoption pattern across both consumers (career-search chose `tracker`). Scenarios now import both `verify.*` (generic) and `expect.*` (domain).
-- **D2/A — `ctx.Env` carrier** for `DataDir`/`WorkbookPath`. They were flag-defaults, not scenario state (every read was in `actions/`); `runCommand` forwards `ctx.Env` to the subprocess, honoring Env's contract. A domain wrapper struct is structurally blocked — `harness.Run` hands `*harness.Context` to the callbacks.
-- **Left the 5 pre-existing reds untouched** — fixing them would conflate changes and destroy the like-for-like gate. Filed (T-34 + T-12 residue).
-- **`extern/llm` promotion** (RequireOllama + accuracy-floor + drift-tracking) spec'd in the consumer report from expenses' real API, but **gated on LTG** as a second LLM consumer — spec, not build-now.
+- T-20 design = Option B: explicit `--resume` + always-on stderr duplicate warning; the log NEVER dedups silently (identical (item,date,value) triples can be legitimate distinct expenses — two same-day bus fares). Count-consumption ledger, not an ID set.
+- Advisor adjustments adopted: `PredictEntryIDs` must share `expandEntries` with `ExpandAndAppend` (blocker — raw-string prediction would mismatch every DD/MM/installment id); entry-level partial-series auto-complete CUT (divergent re-classification would split a series across categories) → partial series route to review; single shared ledger invariant.
+- Branch scope split (user): test repairs committed to master; PR #49 is pure T-20.
+- Fable sessions have no `advisor()` — substitute is an Opus subagent at xhigh effort (memory updated); `impl-opus-xhigh` agent created for the same reason on the implementation side.
 
 ### Next
 
-- Merge expenses **PR #48** + module **PR #1**; then tag `acceptance-harness` **v1.0.0** (gated on #48 — expenses was the last boundary test).
-- Product step: **WS-D (T-09)** — HELD, design gate-to-review not silent insert; or **T-20** dedup (independent, deterministic).
-- Fix the 2 red tests: **T-34** (`Uber Centro` CLI-arg swap) and **T-12** (3 dark workbook-gated tests need taxonomy config in their Given).
+- Merge **PR #49** (T-20). Then product: **WS-D (T-09)** — still HELD, design gate-to-review not silent insert; or WS-E after.
+- Pending amend: new backlog candidates T-35 (auto's raw-vs-normalized date → divergent GenerateID join key across the two logs) and T-36 (cosmetic sweep: stale `HighConfidence*` test names, `auto-basic/input.csv` ghost reference, README stale `rollover.csv` line, `internal/batch` gofmt).
+- Standing queue: T-24 (--think default), T-25 (q35 grammar bug upstream), T-27/T-28, Apoia-se rename, promote all-years log.
 
 ### Gotchas
 
-- `RegisterFlags()` is **mandatory, not optional**: `run-acceptance.sh` forwards `-keep-artifacts`/`-keep-on-failure` to `go test`, and the module turned those into env vars — without it the script dies on an unknown flag.
-- The 3 dark T-12 tests fail with `taxonomy path not configured` — the **same signature** a broken `SetupBinaryConfig` temp-dir would produce post-migration. The Phase-0 baseline is the only thing that proves they're pre-existing, not this session's break.
-- Three `test/` files carried CRLF (blobs predate `.gitattributes` `eol=lf`); the stray CR silently defeated an anchored regex mid-refactor. `gofmt -l test/` reported 7 files on master → now clean.
-- Consumer-report finding: the module's `CopyTreeToWorkDir`, `DiscoverFixtures`, nested-JSON walker, and **all** of `verify/file.go` are unused by expenses (the only LLM consumer). `FileUnchanged` (byte + same-name) structurally can't express a non-deterministic, differently-seeded "nothing was written" check — a v1.0.0 shape signal.
+- `rtk git log`/`fetch` served stale cached output for the acceptance-harness repo — `rev-parse` (via `rtk proxy`) disagreed and was right. Verify with plumbing commands when rtk-filtered git output looks impossible.
+- Workflow-tool `args` arrive as a JSON STRING in the script (not an object) — `args.prompt` was undefined and the advisor subagent got an empty task. Embed prompts as consts in the script body.
+- Full-suite runtime jumped 813s→1311s because the 5 repaired tests now do real classification instead of failing fast (think-on q3); still inside run-acceptance.sh's 1800s timeout but T-08's timeout-flake class gets closer with every added Ollama test.
+- `go test ./...` caching hid nothing this time, but `gofmt -l` still flags 5 pre-existing `internal/batch/` files on master (same CRLF-era class session 59 cleaned in `test/`).
