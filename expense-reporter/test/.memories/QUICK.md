@@ -27,7 +27,12 @@ fixtures/   # Test data dirs; results/ gitignored
   run `-tags=acceptance -timeout 30m` explicitly (q3 ≈12 s/classify)
 - **Live Ollama required** (`extern.RequireOllama` skip gate); binary built once in TestMain
 - **Taxonomy config MANDATORY (T-13)** — every classify-family Given needs a taxonomy
-- **Non-dry-run fixtures need `DD/MM/YYYY` inputs**; check `extra_args` for `--dry-run`
+- **Non-dry-run fixtures need `DD/MM/YYYY` inputs**; check `extra_args` for `--dry-run`.
+  **Exception (T-35): join-id tests MUST use short `DD/MM`** — a full date makes the raw and
+  normalized strings identical, so it hides exactly the bug they guard. Safe only because
+  they assert id EQUALITY, never a literal date, so no year is pinned. Do NOT "fix" the
+  dates in `apply-join-id` or `TestAuto_JoinIDMatchesAcrossLogs` to a full year: that
+  silently disables the test rather than breaking it.
 - **Auto-append fixtures need a gate-PASSING item** (T-32) — `Posto Ipiranga`, not `Uber Centro`
 - `requireDataDir(t)` guards gitignored `data/classification` reads (at REPO root)
 
