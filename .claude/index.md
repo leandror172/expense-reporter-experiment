@@ -69,6 +69,11 @@
 | T-23 logprob-confidence probe (leaf-first; pre-mask logprobs, session 49) | `.claude/t23-logprob-confidence-probe.md` |
 | T-23 strategic implications (gate route → workbook plan + grand vision, session 50) | `.claude/t23-strategic-implications.md` |
 | T-32 agreement-gate report (work + findings: replay validation, verifier false-pass, fixture coupling, session 57) | `.claude/t32-agreement-gate-report.md` |
+| T2 closeout report (v1.0.0 tag rationale + shape decision, session 60) | `.claude/t2-closeout-report.md` |
+| T-34/T-12 red-test repair report (5 reds → 49/49 green; latent join-ID divergence finding, session 60) | `.claude/t34-t12-red-test-repair-report.md` |
+| Advisor review — T-20 `--resume`/dedup design (Opus xhigh; adopted contract, session 60) | `.claude/advisor-t20-resume-dedup.md` |
+| T-20 implementation report (`batch-auto --resume` + duplicate warning; [ref:batch-auto-resume] semantics block, session 60) | `.claude/t20-resume-implementation-report.md` |
+| batch-auto resume acceptance (A1–A5: seeded-skip, one-of-two-dups, warning; deterministic seeds via real append path) | `expense-reporter/test/batch_auto_resume_test.go` + `test/expect/resume.go` + `test/fixtures/batch-auto-resume-*`, `batch-auto-dup-warning` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
 | Session log archive (sessions 3–5) | `.claude/archive/session-log-2026-03-13-to-2026-03-02.md` |
 | Session log archive (session 6 — 2026-03-03) | `.claude/archive/session-log-2026-03-03-to-2026-03-03.md` |
@@ -112,11 +117,12 @@
 | `internal/classifier` | `expense-reporter/internal/classifier/` | Ollama classifier + `IsAutoInsertable` decision logic; `examples.go` (SelectExamples, KeywordIndex, tokenization); `loader.go` (LoadTrainingExamples, LoadFeedbackExamples, LoadKeywordIndex, MergeExamplePools) |
 | `internal/taxonomy` | `expense-reporter/internal/taxonomy/` | Pure-input taxonomy domain types + loader + full-path routing (`path.go`); `descriptions.go` (`LoadTypeDescriptions`, `ApplyDescriptions` — type-description sidecar overlay, T-22) |
 | `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` + `TaxonomyFilePath()` + `TypeDescriptionsFilePath()` |
-| `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`) |
+| `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`); `LoadExpenseIDCounts` (id-multiplicity ledger for `--resume`/dup warning — T-20) |
+| `internal/appender` | `expense-reporter/internal/appender/` | Log-append path (WS-B): `ExpandAndAppend` (installment expansion → `expenses_log.jsonl`), `PredictEntryIDs` (same `expandEntries` step — T-20 resume drift guard) |
 | `internal/review` | `expense-reporter/internal/review/` | Review command package: `ReadQueue` (7-field CSV reader), `BuildTaxonomy` (3-level tree from workbook mappings), `Render` (placeholder injection), `TemplateHTML` (go:embed); types in `types.go` |
 | `harness` (module) | `github.com/leandror172/acceptance-harness` v0.1.1 | **External dep since T2 Session B** — the acceptance engine (Context, Scenario, Run, fixtures, FindModuleRoot/BuildBinary) + generic `verify` Then-closures. `test/harness/` no longer exists. Engine changes = a PR upstream + a version bump here |
 | `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd; `runCommand` forwards `ctx.Env` |
-| `test/expect` | `expense-reporter/test/expect/` | **DOMAIN** Then-closures (was `test/verify/`, renamed so the module owns `verify.*`): FeedbackFile*, ExpenseLogMatches, ClassificationsMatch, OutputFileHas*, SoftAccuracy, HTML*, WorkbookStructureMatches |
+| `test/expect` | `expense-reporter/test/expect/` | **DOMAIN** Then-closures (was `test/verify/`, renamed so the module owns `verify.*`): FeedbackFile*, ExpenseLogMatches, ClassificationsMatch, OutputFileHas*, SoftAccuracy, HTML*, WorkbookStructureMatches; ResumeSkipCount, DuplicateWarningCount (T-20) |
 | `test/domain` | `expense-reporter/test/domain/` | Expense-specific test helpers the lean-core module excludes: RequireWorkbook + CopyWorkbookToWorkDir, SetupBinaryConfig, ExpenseFixtureConfig (`Raw` decode), ctx.Env accessors (DataDir/WorkbookPath) |
 | `test/extern` | `expense-reporter/test/extern/` | External-service gates: RequireOllama (module core is LLM-free/network-free by design) |
 | `test/fixtures` | `expense-reporter/test/fixtures/` | Fixture data per functional slice (classify-basic, batch-auto-basic, batch-auto-exclusions, batch-auto-feedback) |
@@ -431,6 +437,7 @@ Desktop-era planning documents — read for context, do not modify.
 |------|------|---------|
 | `sonnet-max-subagent.js` | `.claude/workflows/sonnet-max-subagent.js` | Workflow harness: run ONE Sonnet 5 subagent at max/xhigh effort (the effort knob the Agent tool lacks). `Workflow({name:'sonnet-max-subagent', args:'<prompt>'})` or `args:{prompt,effort}` |
 | `impl-opus-med` agent | `.claude/agents/impl-opus-med.md` | Opus medium-effort implementation subagent (TDD, directed reading, local-model delegation w/ per-session persona override; copied from latent-topic-graph, adapted session 54) |
+| `impl-opus-xhigh` agent | `.claude/agents/impl-opus-xhigh.md` | Opus xhigh-effort implementation subagent for the hardest TDD tasks (multi-file features, invariant-heavy/advisor-contracted designs); same contract as impl-opus-med, advisor rule made availability-conditional (session 60) |
 | `resume.sh` | `.claude/tools/resume.sh` | Session-start context summary |
 | `ref-lookup.sh` | `.claude/tools/ref-lookup.sh` | Resolve [ref:KEY] tags |
 | `rotate-session-log.sh` | `.claude/tools/rotate-session-log.sh` | Archive old session log entries |

@@ -15,8 +15,10 @@ data (649-replay, s52): confidence dead as gate; specificity+agreement is the ga
 (+33.8pp). Reports `.claude/scratch/replay-649/`. T-32 agreement gate SHIPPED (s57).
 T2 harness extraction DONE (s58 module+career-search; s59 Session B): the acceptance
 engine is now the `github.com/leandror172/acceptance-harness` module — `test/harness/`
-is gone, domain split into `test/{expect,domain,extern}/`.** Next = WS-D (retire
-bare-name fallback, HELD: gate-to-review not silent insert) → WS-E; or T-20 dedup.
+is gone, domain split into `test/{expect,domain,extern}/`; v1.0.0 tagged s60.
+T-20 DONE (s60): `batch-auto --resume` + always-on dup warning — id-count ledger,
+`PredictEntryIDs` pre-LLM skip, partial series → review.** Next = WS-D (retire
+bare-name fallback, HELD: gate-to-review not silent insert) → WS-E.
 History → KNOWLEDGE.md "Milestone Log".
 
 ## Repo Structure
