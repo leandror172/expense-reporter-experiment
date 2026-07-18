@@ -1,41 +1,46 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-17 — Session 60: T2 closeout (harness v1.0.0) + red-test repair (suite fully green) + T-20 `batch-auto --resume` (PR #49)
-**Current Layer:** Layer 5 — Expense Classifier (T-20 --resume shipped, PR #49 open; WS-D next)
+**Current Session:** 2026-07-18 — Session 61: T-35 join-id date divergence (PR #50) + T-36 staleness/gofmt sweep (PR #51)
+**Current Layer:** Layer 5 — Expense Classifier (T-20 merged; T-35 + T-36 shipped, PRs #50/#51 open; WS-D next)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-17 - Session 60: T2 closeout (harness v1.0.0) + red-test repair (suite fully green) + T-20 `batch-auto --resume` (PR #49)
+## 2026-07-18 - Session 61: T-35 join-id date divergence (PR #50) + T-36 staleness/gofmt sweep (PR #51)
 
 ### Context
 
-Started right after the user merged expenses PR #48 (T2 Session B). Next-steps discussion locked a three-phase plan: T2 closeout → red-test repair → T-20 dedup, then full wrap-up (reports, docs, PR, handoff) on user instruction.
+Started with PR #49 (T-20) merged and master clean, on a "let's discuss next steps" prompt. The next-steps discussion surveyed the backlog and the user picked T-35 + T-36, then chose two separate PRs (correcting my earlier misattribution — see gotchas). Advisor was called once, before implementation, per the project rule.
 
 ### What Was Done
 
-- chore(t2): bump acceptance-harness to v1.0.0 (master) — after verifying module PR #1 + career-search PR #7 were merged and tagging `acceptance-harness` v1.0.0 at `11beb2a` (checked first that the "unused surface" consumer-report signals are all used by career-search — not dead API; the `FileUnchanged` expressiveness gap is additive, so no 1.0 blocker)
-- fix(test): repair the 5 red acceptance tests (T-34 + T-12) (master) — Uber Centro→Posto Ipiranga CLI-arg swap; 3 dark tests de-workbooked + given taxonomy config + full-date expectations; full suite 49 pass / 0 fail (1311s), first fully-green roster since T-32
-- T-20 `batch-auto --resume` + always-on duplicate-append warning — designed (Option B locked with user), advisor-reviewed (Opus xhigh subagent; blocker + 2 cuts adopted), implemented by an `impl-opus-xhigh` subagent (TDD; my-go-qcoder 4×verdict-2, 2×verdict-1), orchestrator-verified (independent gates + full suite green, 779s). Branch `feat/t20-batch-auto-resume`, **PR #49 open**
-- Reports written + indexed: `.claude/t2-closeout-report.md`, `.claude/t34-t12-red-test-repair-report.md`, `.claude/t20-resume-implementation-report.md` (carries `ref:batch-auto-resume` semantics block), `.claude/advisor-t20-resume-dedup.md`
-- Docs/memories updated (on the PR branch): README batch-auto `--resume` section, repo+expense-reporter QUICK status, internal/feedback + test KNOWLEDGE sections, index.md registrations incl. a previously-missing `internal/appender` package row
-- New agent config `.claude/agents/impl-opus-xhigh.md` (Opus xhigh implementation subagent; advisor rule made availability-conditional); user reloaded plugins mid-session to activate it
+- **T-35 (PR #50, branch `feat/t35-join-id-normalization`)** — the two JSONL logs share only `GenerateID` = sha256(item|date|value)[:12], and three commands fed the two logs DIFFERENT date formats, so one expense landed under two ids and every cross-file join silently broke. 4 commits: `fix(apply)` canonicalize at the boundary, `fix(auto,batch-auto)`, `docs(t35)` date/year survey, `docs(t35)` implementation report.
+- **Scope grew beyond the ticket**: T-35 was filed against `auto` ("check add/batch-auto"). Actual result — `auto`, `batch-auto` AND **`apply`** buggy; `add`/`correct` already correct via `parseExpenseForFeedback`. The advisor caught `apply`, which I had evidence for and did not follow: `apply-basic/expected-feedback.jsonl` was the ONLY fixture in the repo pinning a raw `DD/MM` date — the bug was committed as expected output.
+- New `expect.JoinIDMatchesAcrossLogs()` domain assertion + `apply-join-id` fixture; 2 acceptance tests (one deterministic/no-Ollama on `apply`, one Ollama-gated on `auto`) + 4 unit tests pinning the year semantics.
+- **T-36 (PR #51, branch `chore/t36-cosmetic-sweep`)** — 2 commits: staleness (test renames off the dead confidence gate, ghost `auto-basic/input.csv` deleted, README rollover/confidence lines) and an isolated `gofmt` sweep (15 files, 15→0).
+- Wrote `.claude/t35-date-year-semantics.md` ([ref:date-year-semantics]) and `.claude/t35-implementation-report.md`; both registered in index.md. Corrected `expense-reporter/.memories/KNOWLEDGE.md`, which documented the join key as including subcategory — it does not.
 
 ### Decisions Made
 
-- T-20 design = Option B: explicit `--resume` + always-on stderr duplicate warning; the log NEVER dedups silently (identical (item,date,value) triples can be legitimate distinct expenses — two same-day bus fares). Count-consumption ledger, not an ID set.
-- Advisor adjustments adopted: `PredictEntryIDs` must share `expandEntries` with `ExpandAndAppend` (blocker — raw-string prediction would mismatch every DD/MM/installment id); entry-level partial-series auto-complete CUT (divergent re-classification would split a series across categories) → partial series route to review; single shared ledger invariant.
-- Branch scope split (user): test repairs committed to master; PR #49 is pure T-20.
-- Fable sessions have no `advisor()` — substitute is an Opus subagent at xhigh effort (memory updated); `impl-opus-xhigh` agent created for the same reason on the implementation side.
+- **Normalize the date ONCE at the boundary, not per-writer** (user chose option A). `apply` alone has three sites reading `entry.Date`; fixing each would have left the same drift latent. Forced a constraint discovery: `ParseDateWithYear` REJECTS `DD/MM/YYYY`, so `appendNewRows` had to move to `ParseDateFlexible` — safe precisely because dates now always carry a year, so it never falls back to `time.Now()`.
+- **Year rule pinned by test:** an explicit year in the string always wins; a supplied year is a fallback for its ABSENCE, never an override.
+- **Two PRs, not one** (user's call). T-35 is join-key semantics; T-36 is 15 files of comment realignment. Merge #50 first — T-36 renames tests in `auto_log_append_test.go`, the file #50 appends to.
+- **`apply` chosen over `correct` as the deterministic test vehicle** (advisor suggested `correct`): `apply` is one of the three actually-buggy commands, needs no Ollama, and takes its year from an explicit `--year`.
+- T-37/T-38 deliberately NOT bundled into T-35 — T-38 changes workbook data.
 
 ### Next
 
-- Merge **PR #49** (T-20). Then product: **WS-D (T-09)** — still HELD, design gate-to-review not silent insert; or WS-E after.
-- Pending amend: new backlog candidates T-35 (auto's raw-vs-normalized date → divergent GenerateID join key across the two logs) and T-36 (cosmetic sweep: stale `HighConfidence*` test names, `auto-basic/input.csv` ghost reference, README stale `rollover.csv` line, `internal/batch` gofmt).
+- **Merge PR #50 (T-35) first, then PR #51 (T-36)** — that order avoids a conflict in `auto_log_append_test.go`.
+- Then product: **WS-D (T-09)** — still HELD, design gate-to-review not silent insert; or WS-E after.
+- **T-39 is arguably urgent**: the acceptance suite (1989s) now exceeds `run-acceptance.sh`'s own `-timeout 1800s`, so the sanctioned invocation would time out. Decide: raise the ceiling, or split the Ollama-gated tests into their own group.
 - Standing queue: T-24 (--think default), T-25 (q35 grammar bug upstream), T-27/T-28, Apoia-se rename, promote all-years log.
 
 ### Gotchas
 
-- `rtk git log`/`fetch` served stale cached output for the acceptance-harness repo — `rev-parse` (via `rtk proxy`) disagreed and was right. Verify with plumbing commands when rtk-filtered git output looks impossible.
-- Workflow-tool `args` arrive as a JSON STRING in the script (not an object) — `args.prompt` was undefined and the advisor subagent got an empty task. Embed prompts as consts in the script body.
-- Full-suite runtime jumped 813s→1311s because the 5 repaired tests now do real classification instead of failing fast (think-on q3); still inside run-acceptance.sh's 1800s timeout but T-08's timeout-flake class gets closer with every added Ollama test.
-- `go test ./...` caching hid nothing this time, but `gofmt -l` still flags 5 pre-existing `internal/batch/` files on master (same CRLF-era class session 59 cleaned in `test/`).
+- **A fixture can encode a bug as "expected output."** `apply-basic/expected-feedback.jsonl` pinned raw `DD/MM` dates, so the divergence had a passing test asserting it. Grepping fixtures for the *wrong* shape found the bug the test suite was actively protecting.
+- **A full `DD/MM/YYYY` fixture date makes this bug class INVISIBLE** (raw == normalized). The new join-id fixtures therefore use short `DD/MM` — the opposite of the standing explicit-year fixture rule. Recorded in `test/.memories/QUICK.md`: "fixing" them to a full year silently DISABLES the tests rather than breaking them.
+- **Verify RED before claiming a fix works.** I disabled the `auto` fix and re-ran to confirm the test failed (ids `88d8db338c3b` vs `98d8e31dbaf9`), then restored. The `apply` RED pair (`f0c3bf1293f3` vs `8c434a0b64c0`) turned out to be the exact hashes T-18 derived in another session — independent corroboration.
+- **`go vet` caught a unit-test call site** (`apply_test.go:45,77`) that acceptance-only runs would have missed after a signature change. Run vet under all three tag combos (plain / replay / acceptance).
+- **"gofmt is just whitespace" is not quite true.** A token-level diff check flagged an added `//` — Go 1.19+ doc-comment normalization converting an indented example into a godoc code block. Benign, but a real structural change.
+- **Suite runtime varies 840s → 1989s on the same machine** (2.4×), consistent with Ollama model-load/contention rather than the tests.
+- **I misattributed a decision to the user** — claimed they said "one small PR" when it was my own phrasing echoed back by the advisor. The user checked and corrected it. Do not let an advisor's paraphrase become an attributed user constraint.
+- `rtk git log`/`status` served stale output again (showed the wrong HEAD post-merge); `rtk proxy git rev-parse` disagreed and was right. Same class as session 60.
