@@ -91,12 +91,11 @@ expense-reporter batch-auto expenses.csv --dry-run --output-dir /tmp/out
 ```
 
 Reads a 3-field CSV (`item;DD/MM;value`), classifies each row via Ollama,
-and auto-inserts rows exceeding the confidence threshold.
+and auto-appends rows that pass the agreement gate.
 
 Output files:
 - `classified.csv` — all rows with classification results
 - `review.csv` — rows not auto-inserted (agreement gate not met or excluded)
-- `rollover.csv` — installment rows crossing into next year
 
 Auto-insert uses the **agreement gate**: a row is auto-inserted only when the model's
 predicted subcategory agrees with an unambiguous, maximum-specificity keyword match
@@ -296,7 +295,9 @@ Compra parcelada (2/3) — Mar 20 — 100,00
 Compra parcelada (3/3) — Apr 20 — 100,00
 ```
 
-Installments crossing into the next year are written to a separate rollover file.
+Installments crossing into the next year simply carry their real next-year date. The
+separate `rollover.csv` was retired in the WS-B log-append pivot — `generate-workbook`
+selects entries by year, so a next-year row needs no special handling.
 
 ## Project Structure
 

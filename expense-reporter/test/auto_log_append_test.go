@@ -14,9 +14,9 @@ import (
 	"github.com/leandror172/acceptance-harness/verify"
 )
 
-// TestAuto_HighConfidenceAppendsToLog asserts that auto, when the classifier returns
-// HIGH confidence (≥85%), appends a confirmed expense entry to expenses_log.jsonl
-// and a confirmed classification entry to classifications.jsonl — without touching a workbook.
+// TestAuto_KeywordAgreementAppendsToLog asserts that auto, when the prediction passes the
+// agreement gate, appends a confirmed expense entry to expenses_log.jsonl and a confirmed
+// classification entry to classifications.jsonl — without touching a workbook.
 //
 // Before: auto called workflow.InsertBatchExpenses (workbook write) + logExpense.
 // After: auto calls appender.ExpandAndAppend (log-append only); no workbook required.
@@ -24,7 +24,11 @@ import (
 // "Posto Ipiranga" → Combustível (Transporte) is the canonical gate-passing item
 // (keyword spec 1.0, unambiguous, model agrees — T-32). "Uber Centro" no longer works
 // here: spec 0.8 + ambiguous fails the agreement gate and routes to review.
-func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
+//
+// Named for the AGREEMENT gate, not confidence: T-32 removed confidence from the
+// auto-insert decision entirely (the 649-replay measured it uninformative), so the old
+// "HighConfidence" name described a gate that no longer exists.
+func TestAuto_KeywordAgreementAppendsToLog(t *testing.T) {
 	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
@@ -46,7 +50,7 @@ func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 	})
 }
 
-// TestAuto_HighConfidenceInstallmentsExpandToNEntries asserts that auto with installment
+// TestAuto_InstallmentsExpandToNEntries asserts that auto with installment
 // notation in the value (e.g. "90,00/3") expands into N dated log entries — same as add.
 // Each entry carries the "(i/N)" suffix in the item name.
 //
@@ -55,7 +59,7 @@ func TestAuto_HighConfidenceAppendsToLog(t *testing.T) {
 //
 // "Posto Ipiranga" passes the T-32 agreement gate; the installment notation in the
 // value string is what drives the expansion under test.
-func TestAuto_HighConfidenceInstallmentsExpandToNEntries(t *testing.T) {
+func TestAuto_InstallmentsExpandToNEntries(t *testing.T) {
 	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
