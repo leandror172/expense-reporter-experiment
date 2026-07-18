@@ -62,12 +62,12 @@ func LoadReferenceSheet(workbookPath string) (map[string][]resolver.SubcategoryM
 			continue // Skip incomplete rows
 		}
 
-		mainType := strings.TrimSpace(row[0])     // Column A: Tipo Principal
+		mainType := strings.TrimSpace(row[0]) // Column A: Tipo Principal
 		category := ""
 		if len(row) > 1 {
-			category = strings.TrimSpace(row[1])  // Column B: Categoria
+			category = strings.TrimSpace(row[1]) // Column B: Categoria
 		}
-		subcategory := strings.TrimSpace(row[2])  // Column C: Sub-categoria
+		subcategory := strings.TrimSpace(row[2]) // Column C: Sub-categoria
 
 		if mainType == "" || subcategory == "" {
 			continue // Skip rows with missing critical data
@@ -223,7 +223,7 @@ func FindSubcategoryRowBatch(workbookPath string, requests []SubcategoryLookupRe
 				cellValue := strings.TrimSpace(row[1]) // Column B
 				if needed[cellValue] {
 					sheetResults[cellValue] = i + 1 // Excel rows are 1-indexed
-					delete(needed, cellValue)        // first match wins
+					delete(needed, cellValue)       // first match wins
 					logger.Debug("FindSubcategoryRowBatch: found", "subcategory", cellValue, "sheet", sheetName, "row", i+1)
 				}
 			}

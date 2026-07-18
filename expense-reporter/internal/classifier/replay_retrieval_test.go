@@ -10,7 +10,7 @@
 //   - 5.R1 TF-IDF trigger:   keyword miss rate (n_examples==0) + miss-reason breakdown
 //   - E1 recurrence-strength: per-item top specificity AND matched-keyword frequency/idf
 //     (specificity alone is misleading — a singleton token scores 1.0 but is NOVEL; the
-//      recurrence axis is FREQUENCY, so both are emitted — advisor session 52)
+//     recurrence axis is FREQUENCY, so both are emitted — advisor session 52)
 //   - candidate/few-shot quality: retrieval_hit (did we surface a right-subcat example?)
 //
 // This is the CHEAP half. The model-accuracy half (join model output to top_score for the
@@ -173,9 +173,9 @@ func TestReplayRetrieval649(t *testing.T) {
 
 	const topK = 5 // matches classifier.go:106
 	var (
-		nMiss, nRetHit, nTop1, nSelf   int
-		nNoKW, nNoBucket               int
-		nRecurrentToks                 int // driver freq >= 2 (has recurrence evidence)
+		nMiss, nRetHit, nTop1, nSelf int
+		nNoKW, nNoBucket             int
+		nRecurrentToks               int // driver freq >= 2 (has recurrence evidence)
 	)
 
 	for _, r := range rows {

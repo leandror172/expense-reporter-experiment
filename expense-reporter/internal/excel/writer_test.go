@@ -31,7 +31,7 @@ func TestWriteExpense(t *testing.T) {
 		SheetName:   "Variáveis",
 		Category:    "Transporte",
 		SubcatRow:   97,
-		TargetRow:   98, // Next available row
+		TargetRow:   98,  // Next available row
 		MonthColumn: "M", // April
 	}
 

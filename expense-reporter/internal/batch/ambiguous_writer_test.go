@@ -10,10 +10,10 @@ import (
 // TDD RED: Test ambiguous expense CSV writing
 func TestAmbiguousWriter_Write(t *testing.T) {
 	tests := []struct {
-		name               string
-		entries            []AmbiguousEntry
-		wantLines          []string
-		wantFileCreated    bool
+		name            string
+		entries         []AmbiguousEntry
+		wantLines       []string
+		wantFileCreated bool
 	}{
 		{
 			name: "single ambiguous entry with two sheets",

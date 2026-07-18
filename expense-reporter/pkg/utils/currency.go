@@ -35,10 +35,11 @@ func ParseCurrency(valueStr string) (float64, error) {
 
 // ParseCurrencyWithInstallments parses PT-BR currency with optional installment syntax
 // Examples:
-//   "100,00"    → (100.00, 1, nil)       // Regular value
-//   "300,00/3"  → (100.00, 3, nil)       // 3 installments of 100 each
-//   "300,00/0"  → (0, 0, error)          // Invalid: zero divisor
-//   "300,00/abc"→ (0, 0, error)          // Invalid: non-numeric divisor
+//
+//	"100,00"    → (100.00, 1, nil)       // Regular value
+//	"300,00/3"  → (100.00, 3, nil)       // 3 installments of 100 each
+//	"300,00/0"  → (0, 0, error)          // Invalid: zero divisor
+//	"300,00/abc"→ (0, 0, error)          // Invalid: non-numeric divisor
 func ParseCurrencyWithInstallments(s string) (perInstallment float64, count int, err error) {
 	// Trim whitespace
 	s = strings.TrimSpace(s)
