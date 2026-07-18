@@ -42,7 +42,7 @@ func TestAppendNewRows_DowngradesRowOnAppendFailure(t *testing.T) {
 
 	confirmed, corrected, failed, err := appendNewRows(
 		[]apply.ReviewedEntry{newConfirmedRow("Uber Centro")},
-		classifPath, expensesLogPath, 2026, false,
+		classifPath, expensesLogPath, false,
 	)
 
 	require.Error(t, err, "an unpersisted row must surface a non-zero exit")
@@ -74,7 +74,7 @@ func TestAppendNewRows_MalformedReviewedRoutedToFailed(t *testing.T) {
 
 	confirmed, corrected, failed, err := appendNewRows(
 		[]apply.ReviewedEntry{malformed},
-		classifPath, expensesLogPath, 2026, false,
+		classifPath, expensesLogPath, false,
 	)
 
 	require.Error(t, err)

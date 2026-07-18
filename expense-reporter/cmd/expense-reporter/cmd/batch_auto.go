@@ -377,6 +377,16 @@ func logConfirmedFeedbackForRow(appCfg *config.Config, r classifiedRow, model st
 	if err != nil {
 		return
 	}
+	// Canonicalize the date to match what appendOneRow wrote to the expense log (T-35):
+	// both logs are joined on a hash of it, and a bare DD/MM row from the input CSV
+	// otherwise logs DD/MM here and DD/MM/YYYY there. A row whose date does not parse
+	// never reaches this function — appendOneRow fails it first — so a parse error here
+	// means the row was already downgraded; leave the raw string alone.
+	parsedDate, derr := utils.ParseDateFlexible(r.Date)
+	if derr != nil {
+		return
+	}
+	r.Date = utils.FormatDate(parsedDate)
 	predicted := classifier.Result{
 		Type:        r.Type,
 		Category:    r.Category,
