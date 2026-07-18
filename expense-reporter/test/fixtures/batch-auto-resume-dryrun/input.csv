@@ -1,0 +1,4 @@
+# Same pre-seeded rows as the all-seeded fixture, but with --dry-run added: the skip decisions
+# are still shown, and nothing is written to the log (dry-run semantics unchanged).
+Netflix;10/03/2026;55,90
+Posto Ipiranga;01/04/2026;90,00/3

@@ -8,8 +8,13 @@ generate-workbook. 220+ unit tests; JSON output mode; few-shot + MCP feedback do
 **JSONL logs are the source of truth; `generate-workbook` is the ONLY workbook writer.**
 WS-B complete: batch-auto and apply append to `expenses_log.jsonl` via
 `appender.ExpandAndAppend`. Classifier predicts the full path (T-13); default model
-`my-classifier-q3`. Next: WS-D (retire bare-name fallback) → WS-E (delete dead insert
-code). History → KNOWLEDGE.md "Milestone Log".
+`my-classifier-q3`. `batch-auto --resume` (T-20): predicts each row's log-entry ids
+up front, skips fully-logged rows BEFORE the LLM; partially-logged series → review
+(never auto-completed); always-on stderr duplicate-append warning. Ledger = one
+`map[id]int` (`feedback.LoadExpenseIDCounts`), consumed classify-skips-first;
+`appender.PredictEntryIDs` shares `expandEntries` with `ExpandAndAppend` (drift
+guard). Next: WS-D (retire bare-name fallback) → WS-E (delete dead insert code).
+History → KNOWLEDGE.md "Milestone Log".
 
 ## Structure
 ```

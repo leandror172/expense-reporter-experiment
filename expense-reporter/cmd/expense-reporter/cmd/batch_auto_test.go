@@ -34,7 +34,7 @@ func TestAppendClassified_DowngradesRowOnAppendFailure(t *testing.T) {
 	// the (secondary) confirmed-feedback write is skipped.
 	cfg := &config.Config{ExpensesLogPath: "/expense-reporter-nonexistent-dir/expenses_log.jsonl"}
 
-	err := appendClassified(results, cfg, "my-classifier-q3")
+	err := appendClassified(results, cfg, "my-classifier-q3", map[string]int{})
 
 	require.Error(t, err, "appendClassified should return an error when a row fails to append")
 	require.False(t, results[0].AutoInserted, "the failed row must be downgraded to AutoInserted=false")
@@ -81,7 +81,7 @@ func TestParse3FieldLine(t *testing.T) {
 }
 
 func TestBatchAutoCommand_Flags(t *testing.T) {
-	for _, flag := range []string{"model", "data-dir", "ollama-url", "threshold", "top", "dry-run", "output-dir"} {
+	for _, flag := range []string{"model", "data-dir", "ollama-url", "threshold", "top", "dry-run", "output-dir", "resume"} {
 		if batchAutoCmd.Flags().Lookup(flag) == nil {
 			t.Errorf("flag %q not registered on batch-auto command", flag)
 		}

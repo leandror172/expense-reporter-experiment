@@ -38,3 +38,12 @@ constraint and the pending "year adaptation".
 filters by target year, so one merged multi-year log suffices; the append path (WS-B)
 writes explicit `DD/MM/YYYY`. The per-year split is retire-capable — promoting the merged
 log to canonical is still the user's call.
+
+**ID as ledger key (T-20, session 60).** `LoadExpenseIDCounts(path)` (`id_counts.go`)
+returns per-`id` multiplicity from `expenses_log.jsonl`; it is the source-of-truth ledger
+for `batch-auto --resume` (skip already-logged rows) and the always-on duplicate-append
+warning. Missing file → empty ledger; a malformed line is an ERROR, not skipped (the log
+is authoritative, corruption must surface). `appender.PredictEntryIDs` computes the same
+ids `ExpandAndAppend` writes (shared `expandEntries`), so resume matches installment
+series `(i/N)` + per-month dates exactly. Counts (not a set) because identical
+(item,date,value) triples can be legitimate distinct expenses.
