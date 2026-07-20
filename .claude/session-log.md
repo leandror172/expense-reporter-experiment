@@ -1,46 +1,45 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-18 — Session 61: T-35 join-id date divergence (PR #50) + T-36 staleness/gofmt sweep (PR #51)
-**Current Layer:** Layer 5 — Expense Classifier (T-20 merged; T-35 + T-36 shipped, PRs #50/#51 open; WS-D next)
+**Current Session:** 2026-07-20 — Session 62: T-39 suite split + T-24 think-off default (PR #52); vision reframe → parse-boundary plan (T-41)
+**Current Layer:** Layer 5 — Expense Classifier (T-39/T-24 shipped, PR #52 open; next: parse boundary T-41 → monthly close T-42)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-18 - Session 61: T-35 join-id date divergence (PR #50) + T-36 staleness/gofmt sweep (PR #51)
+## 2026-07-20 - Session 62: T-39 suite split + T-24 think-off default (PR #52); vision reframe → parse-boundary plan (T-41)
 
 ### Context
 
-Started with PR #49 (T-20) merged and master clean, on a "let's discuss next steps" prompt. The next-steps discussion surveyed the backlog and the user picked T-35 + T-36, then chose two separate PRs (correcting my earlier misattribution — see gotchas). Advisor was called once, before implementation, per the project rule.
+Session started with PRs #50/#51 (T-35/T-36) freshly merged to master. Backlog discussion picked Track A (suite health); mid-session the user redirected to the grand vision, which reframed the roadmap and produced the parse-boundary plan. All code work on branch `feat/t39-suite-split-t24-think-default` (PR #52) — master has no session-62 commits.
 
 ### What Was Done
 
-- **T-35 (PR #50, branch `feat/t35-join-id-normalization`)** — the two JSONL logs share only `GenerateID` = sha256(item|date|value)[:12], and three commands fed the two logs DIFFERENT date formats, so one expense landed under two ids and every cross-file join silently broke. 4 commits: `fix(apply)` canonicalize at the boundary, `fix(auto,batch-auto)`, `docs(t35)` date/year survey, `docs(t35)` implementation report.
-- **Scope grew beyond the ticket**: T-35 was filed against `auto` ("check add/batch-auto"). Actual result — `auto`, `batch-auto` AND **`apply`** buggy; `add`/`correct` already correct via `parseExpenseForFeedback`. The advisor caught `apply`, which I had evidence for and did not follow: `apply-basic/expected-feedback.jsonl` was the ONLY fixture in the repo pinning a raw `DD/MM` date — the bug was committed as expected output.
-- New `expect.JoinIDMatchesAcrossLogs()` domain assertion + `apply-join-id` fixture; 2 acceptance tests (one deterministic/no-Ollama on `apply`, one Ollama-gated on `auto`) + 4 unit tests pinning the year semantics.
-- **T-36 (PR #51, branch `chore/t36-cosmetic-sweep`)** — 2 commits: staleness (test renames off the dead confidence gate, ghost `auto-basic/input.csv` deleted, README rollover/confidence lines) and an isolated `gofmt` sweep (15 files, 15→0).
-- Wrote `.claude/t35-date-year-semantics.md` ([ref:date-year-semantics]) and `.claude/t35-implementation-report.md`; both registered in index.md. Corrected `expense-reporter/.memories/KNOWLEDGE.md`, which documented the join key as including subcategory — it does not.
+- T-39: acceptance suite split — `testing.Short()` skip added to `extern.RequireOllama` (per-test seam, not per-file); `run-acceptance.sh` now two modes: deterministic default (`-short`, ~8s, 30 pass/26 skip, no Ollama pre-flight, 600s) and `-full` (whole suite, 3600s ceiling)
+- T-24: `--think=false` made the default on `classify`/`auto`/`batch-auto`; full suite verified 56/56 green in 128s under the new default (was 840–1989s think-on, ~7–15× faster)
+- PR #52 opened with the code + runner docs (READMEs, `ref:acceptance-run` block, CLAUDE.md, index.md)
+- Vision re-read (`docs/expense-classifier-vision.md` + `.claude/t23-strategic-implications.md`) → project reframed as PRE-FIRST-USE; organizing milestone = first real monthly close on 2026 data (T-42)
+- Parse-boundary plan drafted + indexed (`.claude/plans/parse-boundary.md`): structured input, parse-once; the single-string input format identified as the common ancestor of the date/data debt (T-35 class, T-18, T-21, six parsers, GenerateID format-sensitivity)
+- Memories/README staleness sweep (committed to PR #52): dead-`date_year` false documentation corrected in app KNOWLEDGE + README; test/classifier memories updated for the suite split + think default; root QUICK compressed under its line budget with Milestone Log entries for sessions 60–62
 
 ### Decisions Made
 
-- **Normalize the date ONCE at the boundary, not per-writer** (user chose option A). `apply` alone has three sites reading `entry.Date`; fixing each would have left the same drift latent. Forced a constraint discovery: `ParseDateWithYear` REJECTS `DD/MM/YYYY`, so `appendNewRows` had to move to `ParseDateFlexible` — safe precisely because dates now always carry a year, so it never falls back to `time.Now()`.
-- **Year rule pinned by test:** an explicit year in the string always wins; a supplied year is a fallback for its ABSENCE, never an override.
-- **Two PRs, not one** (user's call). T-35 is join-key semantics; T-36 is 15 files of comment realignment. Merge #50 first — T-36 renames tests in `auto_log_append_test.go`, the file #50 appends to.
-- **`apply` chosen over `correct` as the deterministic test vehicle** (advisor suggested `correct`): `apply` is one of the three actually-buggy commands, needs no Ollama, and takes its year from an explicit `--year`.
-- T-37/T-38 deliberately NOT bundled into T-35 — T-38 changes workbook data.
+- T-39 fixed by SPLIT (not a ceiling raise); script default = deterministic-fast, `-full` deliberate
+- T-24: think-off uniform across all three commands — gate band −2.3pp WITH think, 5.R2 miss path +2.5pp at 5.5× latency, sentinel loss covered by the T-32 agreement gate (T-16 defaults-parity lesson applied)
+- Chat-era input architecture (user): one parse tool converts input to structured fields; downstream tools take fields, not strings — parse boundary built BEFORE T-21, which becomes its first consumer
+- Year precedence locked: explicit year in string > `--year` arg > config `date_year` > most-recent-non-future occurrence (grace window ~days TBD in design session)
+- T-21 UX locked: 1 row + ×N badge in the review UI; `apply` expands to N log entries
+- `--year` flags to be added uniformly to `auto`/`batch-auto`/`add`
+- T-38 RESOLVED by decision: plain `batch` is a pre-pivot artifact (writes the workbook directly; no vision path uses it) — delete `utils.ParseDate` with its caller under WS-E, do NOT repair. Widens WS-E's previously-narrow scope.
 
 ### Next
 
-- **Merge PR #50 (T-35) first, then PR #51 (T-36)** — that order avoids a conflict in `auto_log_append_test.go`.
-- Then product: **WS-D (T-09)** — still HELD, design gate-to-review not silent insert; or WS-E after.
-- **T-39 is arguably urgent**: the acceptance suite (1989s) now exceeds `run-acceptance.sh`'s own `-timeout 1800s`, so the sanctioned invocation would time out. Decide: raise the ceiling, or split the Ollama-gated tests into their own group.
-- Standing queue: T-24 (--think default), T-25 (q35 grammar bug upstream), T-27/T-28, Apoia-se rename, promote all-years log.
+- Merge PR #52 (T-39 + T-24 + doc sync)
+- T-41 parse-boundary design session — plan §10 open questions: package home/struct shape, migration order (candidate: add/correct → auto → batch-auto → apply), currency-normalization ownership, MCP `parse_expense` timing
+- Then T-21 threading (first consumer slice), then T-42 (first real monthly close on 2026 data)
+- Standing queue: T-25, T-27, T-28, T-29, Apoia-se rename, promote all-years log
 
 ### Gotchas
 
-- **A fixture can encode a bug as "expected output."** `apply-basic/expected-feedback.jsonl` pinned raw `DD/MM` dates, so the divergence had a passing test asserting it. Grepping fixtures for the *wrong* shape found the bug the test suite was actively protecting.
-- **A full `DD/MM/YYYY` fixture date makes this bug class INVISIBLE** (raw == normalized). The new join-id fixtures therefore use short `DD/MM` — the opposite of the standing explicit-year fixture rule. Recorded in `test/.memories/QUICK.md`: "fixing" them to a full year silently DISABLES the tests rather than breaking them.
-- **Verify RED before claiming a fix works.** I disabled the `auto` fix and re-ran to confirm the test failed (ids `88d8db338c3b` vs `98d8e31dbaf9`), then restored. The `apply` RED pair (`f0c3bf1293f3` vs `8c434a0b64c0`) turned out to be the exact hashes T-18 derived in another session — independent corroboration.
-- **`go vet` caught a unit-test call site** (`apply_test.go:45,77`) that acceptance-only runs would have missed after a signature change. Run vet under all three tag combos (plain / replay / acceptance).
-- **"gofmt is just whitespace" is not quite true.** A token-level diff check flagged an added `//` — Go 1.19+ doc-comment normalization converting an indented example into a godoc code block. Benign, but a real structural change.
-- **Suite runtime varies 840s → 1989s on the same machine** (2.4×), consistent with Ollama model-load/contention rather than the tests.
-- **I misattributed a decision to the user** — claimed they said "one small PR" when it was my own phrasing echoed back by the advisor. The user checked and corrected it. Do not let an advisor's paraphrase become an attributed user constraint.
-- `rtk git log`/`status` served stale output again (showed the wrong HEAD post-merge); `rtk proxy git rev-parse` disagreed and was right. Same class as session 60.
+- Piping a background full-suite run through `tail -80` truncated the captured log — the roster was unverifiable from it. Capture full output to a file; the re-run was free because `go test` served cached results.
+- `go test` result caching replays the recorded output of an unchanged run (`ok ... (cached)`) — legitimate for roster verification, but TIMING numbers must come from uncached runs.
+- GPU contention invalidates suite timing — the first `-full` run was stopped because the GPU was in use; verify the GPU is idle before any benchmark/timing run.
+- Latency claims rot fast: the think-off default made "q3 ≈12s/classify, suite needs 30m" stale in several memories/READMEs within one session — swept, but future latency claims should name their think mode.
