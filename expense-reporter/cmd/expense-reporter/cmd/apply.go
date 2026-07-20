@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -58,6 +59,14 @@ func runApply(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("reading reviewed file: %w", err)
 	}
 
+	// Canonicalize dates ONCE, before any consumer reads them (T-35). apply writes
+	// both logs, and their only shared key is a hash of (item, date, value) — so the
+	// two writers must see the same date bytes. They previously did not: the expense
+	// log got a normalized date and the feedback log the raw review-queue string,
+	// silently splitting one expense across two ids. Normalizing at the boundary
+	// makes that class of drift structurally impossible rather than fixed per-writer.
+	rf.Entries = entriesWithCanonicalDates(rf.Entries, applyYear)
+
 	// Pre-flight the classifications log BEFORE processing: processEntries reads it
 	// (the dedup index) and the corrected branch writes to it. Skipped under
 	// --dry-run, which writes nothing.
@@ -84,7 +93,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	appendedConfirmed, appendedCorrected, failed, appendErr := appendNewRows(newRows, classifPath, expensesLogPath, applyYear, applyDryRun)
+	appendedConfirmed, appendedCorrected, failed, appendErr := appendNewRows(newRows, classifPath, expensesLogPath, applyDryRun)
 
 	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pendingEntries, skippedEntries, appendedConfirmed, appendedCorrected, corrections, failed, applyDryRun)
 	if appendErr != nil {
@@ -168,14 +177,17 @@ func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, dryRun boo
 	return nil
 }
 
-func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath string, year int, dryRun bool) (appendedConfirmed, appendedCorrected int, failed []apply.ReviewedEntry, err error) {
+// appendNewRows takes no year: dates arrive already canonicalized to DD/MM/YYYY by
+// entriesWithCanonicalDates, so ParseDateFlexible reads the year off the string itself
+// and never falls back to time.Now().
+func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath string, dryRun bool) (appendedConfirmed, appendedCorrected int, failed []apply.ReviewedEntry, err error) {
 	for _, entry := range newRows {
 		if entry.Reviewed == nil {
 			failed = append(failed, entry)
 			continue
 		}
 
-		parsedDate, err := utils.ParseDateWithYear(entry.Date, year)
+		parsedDate, err := utils.ParseDateFlexible(entry.Date)
 		if err != nil {
 			failed = append(failed, entry)
 			continue
@@ -213,6 +225,38 @@ func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath s
 	}
 
 	return appendedConfirmed, appendedCorrected, failed, err
+}
+
+// entriesWithCanonicalDates returns the entries with every Date rewritten to the
+// canonical DD/MM/YYYY form, so every downstream consumer hashes the same bytes.
+// Entries whose date cannot be parsed are returned untouched: appendNewRows already
+// validates dates and reports the failure, and this helper must not change which
+// entries survive.
+func entriesWithCanonicalDates(entries []apply.ReviewedEntry, year int) []apply.ReviewedEntry {
+	normalized := make([]apply.ReviewedEntry, len(entries))
+	for i, entry := range entries {
+		normalized[i] = entry
+		if canonical, ok := canonicalDate(entry.Date, year); ok {
+			normalized[i].Date = canonical
+		}
+	}
+	return normalized
+}
+
+// canonicalDate renders a DD/MM or DD/MM/YYYY date as DD/MM/YYYY, reporting whether
+// it parsed. A date that already carries a year keeps it; only the short form takes
+// the supplied year — never time.Now(), which would make the resulting hash id depend
+// on when the command ran.
+func canonicalDate(dateStr string, year int) (string, bool) {
+	parse := utils.ParseDateFlexible
+	if len(strings.Split(dateStr, "/")) == 2 {
+		parse = func(s string) (time.Time, error) { return utils.ParseDateWithYear(s, year) }
+	}
+	parsed, err := parse(dateStr)
+	if err != nil {
+		return "", false
+	}
+	return utils.FormatDate(parsed), true
 }
 
 func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {

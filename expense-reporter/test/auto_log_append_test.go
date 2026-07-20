@@ -4,6 +4,7 @@ package acceptance_test
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"expense-reporter/test/actions"
@@ -81,5 +82,45 @@ func autoLogAppendReady(fixDir string) func(*harness.Context) {
 		domain.SetDataDir(ctx, dataDir)
 		ctx.FixtureDir = fixDir
 		withFeedbackAndTaxonomyConfig(ctx, fixDir)
+	}
+}
+
+// TestAuto_JoinIDMatchesAcrossLogs guards the T-35 join-key divergence on the auto path.
+// auto writes BOTH logs, and they share no key other than GenerateID — a hash of
+// (item, date, value). auto passed the RAW date argument to the feedback log but the
+// PARSED date to the expense log, so the same expense landed under two different ids and
+// every cross-file join silently broke (including `correct`, which looks up the prior
+// classification by the normalized-date id and therefore missed every auto-logged row).
+//
+// The short "15/04" input is what exposes it: with a full "15/04/2026" the raw and
+// normalized strings are byte-identical, the hashes agree by accident, and the bug hides —
+// which is precisely why the two neighbouring tests above, which pass full dates, never
+// caught it.
+//
+// Single non-installment expense on purpose: installments rewrite the item to "X (i/N)"
+// and shift each date by a month, so their ids legitimately differ between the two files
+// and the join is only meaningful at count == 1.
+func TestAuto_JoinIDMatchesAcrossLogs(t *testing.T) {
+	extern.RequireOllama(t, "")
+
+	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "auto given a short DD/MM date logs one row to each log under the same join id",
+		Given: autoLogAppendReady(fixDir),
+		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04"),
+		Then: slices.Concat(
+			commandSucceeded(),
+			shortDateExpenseJoinableAcrossBothLogs(),
+		),
+	})
+}
+
+// shortDateExpenseJoinableAcrossBothLogs asserts the auto-appended row carries the same
+// join id in classifications.jsonl and expenses_log.jsonl — i.e. both writers normalized
+// the short date identically.
+func shortDateExpenseJoinableAcrossBothLogs() []func(*harness.Context) {
+	return []func(*harness.Context){
+		expect.JoinIDMatchesAcrossLogs(),
 	}
 }

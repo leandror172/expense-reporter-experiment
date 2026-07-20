@@ -184,3 +184,47 @@ func summaryMentionsCorrections() []func(*harness.Context) {
 		verify.OutputContains("no expense-log change"),
 	}
 }
+
+// TestApply_JoinIDMatchesAcrossLogs guards the T-35 join-key divergence: apply writes
+// BOTH logs, and they share no foreign key other than the sha256[:12] id built from
+// (item, date, value). apply normalized the date to DD/MM/YYYY for expenses_log.jsonl
+// (via ParseDateWithYear) but handed the RAW review-queue string to the feedback entry,
+// so the same expense landed under two different ids and every cross-file join silently
+// broke — nothing errored, the rows just stopped corresponding.
+//
+// The fixture's short "15/04" date is what exposes it: with a full "15/04/2026" the raw
+// and normalized strings are byte-identical, the hashes agree by accident, and the bug
+// hides. The assertion compares only the two ids — never a literal date — so it cannot
+// rot at year rollover.
+func TestApply_JoinIDMatchesAcrossLogs(t *testing.T) {
+	fixDir := filepath.Join(fixturesDir(), "apply-join-id")
+
+	harness.Run(t, harness.Scenario{
+		Name:  "apply writes one row to each log under the same join id",
+		Given: reviewQueueSubmittedWithNoPriorClassifications(fixDir),
+		When:  actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Then: slices.Concat(
+			commandSucceeded(),
+			newRowJoinableAcrossBothLogs(),
+		),
+	})
+}
+
+// reviewQueueSubmittedWithNoPriorClassifications seeds nothing: the row must be NEW so
+// it takes the append path and lands exactly once in each log, making the join unambiguous.
+func reviewQueueSubmittedWithNoPriorClassifications(fixDir string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		ctx.BinaryPath = binaryPath
+		domain.SetDataDir(ctx, dataDir)
+		ctx.FixtureDir = fixDir
+		withFeedbackConfig(ctx)
+	}
+}
+
+// newRowJoinableAcrossBothLogs asserts the applied row carries the same join id in
+// classifications.jsonl and expenses_log.jsonl — i.e. the two logs still correspond.
+func newRowJoinableAcrossBothLogs() []func(*harness.Context) {
+	return []func(*harness.Context){
+		expect.JoinIDMatchesAcrossLogs(),
+	}
+}

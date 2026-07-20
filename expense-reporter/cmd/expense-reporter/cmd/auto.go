@@ -60,6 +60,14 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid date %q: expected DD/MM or DD/MM/YYYY", date)
 	}
 
+	// Canonicalize once, before any consumer reads it (T-35). `date` still feeds the
+	// feedback log, the JSON classification_id and the classifier prompt, while
+	// parsedDate feeds the expense log — and both logs are joined on a hash OF this
+	// date. Re-deriving the string from parsedDate keeps the two writers byte-identical;
+	// previously a `15/04` argument logged `15/04` in one file and `15/04/2026` in the
+	// other, splitting one expense across two ids.
+	date = utils.FormatDate(parsedDate)
+
 	appCfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)

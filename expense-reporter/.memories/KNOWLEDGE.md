@@ -104,7 +104,16 @@ Two append-only JSONL files:
   predicted vs actual subcategory. Source for few-shot feedback examples.
 - `expenses_log.jsonl` — slim: item, date, value, subcategory, category, timestamp.
   Source for expense history queries.
-Shared ID: `sha256(item+date+value+subcategory)[:12]` — correlates entries across files.
+Shared ID: `GenerateID` = `sha256(lower(trim(item)) + "|" + date + "|" + %.2f(value))[:12]` —
+correlates entries across files. **Subcategory is NOT in the hash** (this doc claimed it was
+until T-35; `feedback.go:44` is authoritative). That matters: the id is stable across a
+re-categorization, and `date` is the only free-form string in it — so the two writers must
+agree on the date's FORMAT byte-for-byte or the join breaks silently.
+**T-35 (2026-07-18):** `auto`, `batch-auto` and `apply` each fed one log a raw `DD/MM` date
+and the other a normalized `DD/MM/YYYY`, splitting one expense across two ids. All three now
+canonicalize to `DD/MM/YYYY` before any writer sees the value. Guard: `expect.JoinIDMatchesAcrossLogs`
+(fixtures MUST use a short `DD/MM` input — a full date makes raw and normalized identical
+and hides the bug).
 **Rationale:** Separate concerns — classification feedback (ML improvement) vs expense
 history (data queries). The shared hash enables joins without a database.
 **Implication:** Both files grow monotonically. No update/delete operations.
