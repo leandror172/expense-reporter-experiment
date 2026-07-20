@@ -121,7 +121,10 @@ Full report: `.claude/t14-benchmark-report.md`; harness `.claude/scratch/t14-ben
 - **`--think` flag (Config.NoThink → request `"think":false`, omitted by default):**
   q3 no-think = 59.7% at **1.5 s/item (10×)**, grammar intact, zero parse failures —
   but OOD sentinel-decline drops 2/20 → 0/20 with maximally absurd confident picks.
-  Default stays think-on; batch runs can opt into speed.
+  Default stays think-on; batch runs can opt into speed. **[SUPERSEDED s62/T-24:
+  default is now `--think=false` on classify/auto/batch-auto — gate band measured
+  −2.3pp WITH think, 5.R2 miss path +2.5pp at 5.5× latency, sentinel covered by the
+  T-32 agreement gate. `--think` opts thinking back on.]**
 - **qwen3.5 + think:false SILENTLY DROPS the `format` grammar (Ollama 0.17.5)** —
   structured output broken (verified at API level); `/no_think` soft switch also
   ignored by qwen3.5. With thinking on, q35 runs 70–240 s/item (unbounded thinking).

@@ -10,7 +10,8 @@ DELETED — feature dict is keyword-only. **Default model `my-classifier-q3`** (
 validity is grammar-enforced, not model-dependent — KNOWLEDGE.md). **T-14 benchmarked
 (s46): 63% full-path, confidence UNINFORMATIVE (91% of errors ≥0.85 — the auto-insert
 gate does not protect); `--think=false` = 10× faster at −3.3 pp but kills the T-19
-sentinel; q35 disqualified (think:false drops the grammar). WS-D gate NOT passed.**
+sentinel — **now the DEFAULT on all 3 commands (T-24, s62; sentinel loss covered by
+the T-32 agreement gate routing disagreements to review)**; q35 disqualified (think:false drops the grammar). WS-D gate NOT passed.**
 **T-22 (s47): English type-level descriptions adopted via tracked sidecar
 `config/type-descriptions.json` — +6pp TYPE accuracy, calibration unchanged; think-on
 confirm deferred.** **T-23 GATE + RETRIEVAL MEASURED on real data (649-replay, session 52).** Report

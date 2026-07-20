@@ -342,6 +342,10 @@ test/                      # Acceptance test suite (BDD harness, live Ollama)
 
 Workbook path resolution: `--workbook` flag → `EXPENSE_WORKBOOK_PATH` env → config default.
 
+Note: `date_year` is currently not read by any code path — bare `DD/MM` dates fall back
+to the current year (classifier-era commands). Wiring it as the configured fallback year
+is planned (parse boundary).
+
 ## Testing
 
 ### Unit tests

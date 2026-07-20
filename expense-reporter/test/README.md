@@ -52,7 +52,8 @@ accessors, and `runCommand` forwards `Env` to the command.
 - `Then []func(*Context)` — assertions: composable, order-independent checks
 
 **Run(t, Scenario)** executes the scenario **directly on `t`, not as a subtest** — so `t.Log`
-output flushes in real time under `-v`, which matters when a step is waiting ~12s on Ollama.
+output flushes in real time under `-v`, which matters when a step is waiting seconds on
+an Ollama call (~1.5s/classify at the think-off default; ~12s with `--think`).
 It creates a fresh temp `WorkDir` per scenario and removes it on cleanup unless retention is
 requested (see § Running).
 <!-- /ref:acceptance-harness -->
