@@ -9,14 +9,14 @@ import (
 // TDD RED: Write tests first, they will fail
 func TestParseExpenseString(t *testing.T) {
 	tests := []struct {
-		name         string
-		input        string
-		wantItem     string
-		wantDate     time.Time
-		wantValue    float64
-		wantSubcat   string
-		wantErr      bool
-		errContains  string
+		name        string
+		input       string
+		wantItem    string
+		wantDate    time.Time
+		wantValue   float64
+		wantSubcat  string
+		wantErr     bool
+		errContains string
 	}{
 		{
 			name:       "valid expense - Uber",

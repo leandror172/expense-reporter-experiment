@@ -67,5 +67,3 @@ func writeSubcatBlock(f *excelize.File, st *styleSet, lbl Labels, name string, s
 	f.SetCellValue(name, cell("B", firstData), sub.Name)
 	f.SetCellStyle(name, cell("B", firstData), cell("B", totalRow), st.SubcatLabel)
 }
-
-

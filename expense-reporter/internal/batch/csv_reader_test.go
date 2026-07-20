@@ -9,10 +9,10 @@ import (
 // TDD RED: Test CSV reading functionality
 func TestCSVReader_Read(t *testing.T) {
 	tests := []struct {
-		name        string
-		csvContent  string
-		wantLines   []string
-		wantErr     bool
+		name       string
+		csvContent string
+		wantLines  []string
+		wantErr    bool
 	}{
 		{
 			name: "valid CSV with multiple lines",
@@ -81,10 +81,10 @@ Pão;22/12;8,50;Padaria`,
 			wantErr: false,
 		},
 		{
-			name:        "empty CSV file - should return empty slice",
-			csvContent:  "",
-			wantLines:   []string{},
-			wantErr:     false,
+			name:       "empty CSV file - should return empty slice",
+			csvContent: "",
+			wantLines:  []string{},
+			wantErr:    false,
 		},
 		{
 			name: "CSV with only comments - should return empty slice",
@@ -104,7 +104,7 @@ Pão;22/12;8,50;Padaria`,
 			wantErr:   false,
 		},
 		{
-			name: "single line CSV",
+			name:       "single line CSV",
 			csvContent: `Uber Centro;15/04;35,50;Uber/Taxi`,
 			wantLines: []string{
 				"Uber Centro;15/04;35,50;Uber/Taxi",

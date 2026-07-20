@@ -64,7 +64,7 @@ func expenseValorCol(k int) string {
 
 // revenueMonthCols / revenueAmountCol — v2 unifies Receitas with the data-sheet column model.
 func revenueMonthCols(k int) (item, data, valor string) { return expenseMonthCols(k) }
-func revenueAmountCol(k int) string                      { return expenseValorCol(k) }
+func revenueAmountCol(k int) string                     { return expenseValorCol(k) }
 
 // summaryMonthCol returns the column letter for a month in a listas sheet (v2: months D..O).
 func summaryMonthCol(k int) string {

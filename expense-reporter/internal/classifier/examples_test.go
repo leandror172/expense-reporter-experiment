@@ -91,13 +91,13 @@ func TestSelectExamples(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		item        string
-		topK        int
-		wantNil     bool
-		wantLen     int
-		wantFirst   ExampleSource // source of result[0], ignored if wantLen==0
-		checkFirst  bool
+		name       string
+		item       string
+		topK       int
+		wantNil    bool
+		wantLen    int
+		wantFirst  ExampleSource // source of result[0], ignored if wantLen==0
+		checkFirst bool
 	}{
 		{
 			name:       "high specificity - all 3 Uber examples returned, Corrected first",
@@ -116,9 +116,9 @@ func TestSelectExamples(t *testing.T) {
 			checkFirst: true,
 		},
 		{
-			name:    "ambiguous match - interleaved from Supermercado and Farmácia",
-			item:    "produto mercado",
-			topK:    5,
+			name: "ambiguous match - interleaved from Supermercado and Farmácia",
+			item: "produto mercado",
+			topK: 5,
 			// pool has 2 Supermercado + 1 Farmácia → interleaved: [S0, F0, S1] = 3
 			wantLen: 3,
 		},

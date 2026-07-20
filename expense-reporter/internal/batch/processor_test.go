@@ -158,10 +158,10 @@ func TestProcessor_Process(t *testing.T) {
 		{
 			name: "mixed success, error, and ambiguous",
 			expenseStrings: []string{
-				"Uber Centro;15/04;35,50;Uber/Taxi",       // Success
-				"Invalid",                                  // Error
-				"Consulta;15/04;100,00;Dentista",          // Ambiguous
-				"Compras;03/01;150,00;Supermercado",       // Success
+				"Uber Centro;15/04;35,50;Uber/Taxi", // Success
+				"Invalid",                           // Error
+				"Consulta;15/04;100,00;Dentista",    // Ambiguous
+				"Compras;03/01;150,00;Supermercado", // Success
 			},
 			workbookPath:       "test.xlsx",
 			insertShouldFail:   false,

@@ -51,9 +51,9 @@ func TestReadQueue(t *testing.T) {
 			},
 		},
 		{
-			name:      "blank lines skipped",
+			name:       "blank lines skipped",
 			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\n\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;1;\n\nUber Centro 2;16/05;40,00;Taxi;Transporte;0.90;0;\n\nUber Centro 3;17/05;45,00;Taxi;Transporte;0.85;1;",
-			wantCount: 3,
+			wantCount:  3,
 		},
 		{
 			name:       "installment value parsed",

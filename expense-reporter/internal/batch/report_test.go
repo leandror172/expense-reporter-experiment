@@ -23,9 +23,9 @@ func TestReportWriter_Write(t *testing.T) {
 		{
 			name: "successful batch - all insertions succeeded",
 			summary: &BatchSummary{
-				TotalLines:   3,
-				SuccessCount: 3,
-				ErrorCount:   0,
+				TotalLines:     3,
+				SuccessCount:   3,
+				ErrorCount:     0,
 				AmbiguousCount: 0,
 				Results: []BatchResult{
 					{LineNumber: 1, ExpenseString: "Uber Centro;15/04;35,50;Uber/Taxi", Success: true},
@@ -54,9 +54,9 @@ func TestReportWriter_Write(t *testing.T) {
 		{
 			name: "batch with errors",
 			summary: &BatchSummary{
-				TotalLines:   3,
-				SuccessCount: 1,
-				ErrorCount:   2,
+				TotalLines:     3,
+				SuccessCount:   1,
+				ErrorCount:     2,
 				AmbiguousCount: 0,
 				Results: []BatchResult{
 					{LineNumber: 1, ExpenseString: "Uber Centro;15/04;35,50;Uber/Taxi", Success: true},
@@ -79,9 +79,9 @@ func TestReportWriter_Write(t *testing.T) {
 		{
 			name: "batch with ambiguous entries",
 			summary: &BatchSummary{
-				TotalLines:   2,
-				SuccessCount: 1,
-				ErrorCount:   0,
+				TotalLines:     2,
+				SuccessCount:   1,
+				ErrorCount:     0,
 				AmbiguousCount: 1,
 				Results: []BatchResult{
 					{LineNumber: 1, ExpenseString: "Uber Centro;15/04;35,50;Uber/Taxi", Success: true},
@@ -107,9 +107,9 @@ func TestReportWriter_Write(t *testing.T) {
 		{
 			name: "mixed success, errors, and ambiguous",
 			summary: &BatchSummary{
-				TotalLines:   5,
-				SuccessCount: 2,
-				ErrorCount:   2,
+				TotalLines:     5,
+				SuccessCount:   2,
+				ErrorCount:     2,
 				AmbiguousCount: 1,
 				Results: []BatchResult{
 					{LineNumber: 1, ExpenseString: "Uber Centro;15/04;35,50;Uber/Taxi", Success: true},
@@ -141,11 +141,11 @@ func TestReportWriter_Write(t *testing.T) {
 		{
 			name: "empty batch - no results",
 			summary: &BatchSummary{
-				TotalLines:   0,
-				SuccessCount: 0,
-				ErrorCount:   0,
+				TotalLines:     0,
+				SuccessCount:   0,
+				ErrorCount:     0,
 				AmbiguousCount: 0,
-				Results:      []BatchResult{},
+				Results:        []BatchResult{},
 			},
 			sourcePath: "empty.csv",
 			wantSections: []string{
