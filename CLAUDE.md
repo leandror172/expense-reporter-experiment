@@ -185,7 +185,9 @@ When creating or modifying files:
 ## Acceptance Testing
 
 File-driven BDD harness in `expense-reporter/test/`. Build tag: `//go:build acceptance`.
-Run: `./run-acceptance.sh` or `go test -tags=acceptance ./test/...`.
+Run: `./run-acceptance.sh` (deterministic group, no Ollama) or `./run-acceptance.sh -full`
+(whole suite, requires Ollama); directly: `go test -tags=acceptance ./test/...` (add `-short`
+for the deterministic group, `-timeout 3600s` for the full suite).
 Whenever creating/updating acceptance test (or any test, including unit tests), give a complete rundown of the behavior of the tests in question
 When updating, describe the previous behavior, and the new one, and the reason for the change
 

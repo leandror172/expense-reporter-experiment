@@ -15,8 +15,13 @@ import (
 
 // RequireOllama checks that Ollama is reachable at the given URL.
 // Calls t.Skipf if not reachable (3s timeout GET /api/tags returns non-200).
+// Under `go test -short` it skips unconditionally, partitioning the suite into
+// a deterministic group (runs everywhere, no Ollama) and an Ollama-gated group.
 func RequireOllama(t *testing.T, url string) {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("Ollama-gated test skipped in -short mode")
+	}
 	if url == "" {
 		url = "http://localhost:11434"
 	}

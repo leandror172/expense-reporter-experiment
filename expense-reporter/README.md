@@ -356,10 +356,12 @@ Table-driven tests using [testify](https://github.com/stretchr/testify) (`assert
 ### Acceptance tests
 
 File-driven BDD harness in `test/` with build tag `//go:build acceptance`.
-Requires a live Ollama instance.
+The default run is the deterministic group (no Ollama needed); `-full` runs the
+whole suite and requires a live Ollama instance.
 
 ```bash
-cd expense-reporter && ./run-acceptance.sh
+cd expense-reporter && ./run-acceptance.sh        # deterministic group
+cd expense-reporter && ./run-acceptance.sh -full  # whole suite (requires Ollama)
 ```
 
 11 fixture directories: classify-basic, auto-basic, batch-auto-basic, batch-auto-exclusions,

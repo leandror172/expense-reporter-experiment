@@ -144,19 +144,26 @@ Full list in the module's godoc; the ones this suite leans on:
 
 **Via script (recommended):**
 ```bash
-cd expense-reporter && ./run-acceptance.sh              # whole suite
-cd expense-reporter && ./run-acceptance.sh 'TestAdd_'   # filter by regex
+cd expense-reporter && ./run-acceptance.sh              # deterministic group (no Ollama needed)
+cd expense-reporter && ./run-acceptance.sh -full        # whole suite (requires Ollama)
+cd expense-reporter && ./run-acceptance.sh 'TestAdd_'   # filter by regex (composes with -full)
 ```
-Pre-flight: checks Ollama reachability, verifies `go build`, then runs tests with a 1800s
-timeout. It also derives `EXPENSE_WORKBOOK_PATH` from the repo-root workbook when unset —
-so workbook-gated tests run rather than skip if that file is present.
+The default is the deterministic group: it passes `-short`, under which
+`extern.RequireOllama` skips every Ollama-gated test, so it runs on any machine
+with a 600s timeout and no Ollama pre-flight. `-full` runs everything: Ollama
+pre-flight + a 3600s timeout (a full run measured 1989s with ~2.4x machine
+variance from Ollama model-load contention). Both modes derive
+`EXPENSE_WORKBOOK_PATH` from the repo-root workbook when unset — so
+workbook-gated tests run rather than skip if that file is present.
 
 **Directly:**
 ```bash
-cd expense-reporter && go test -tags=acceptance -v -timeout 30m ./test/...
+cd expense-reporter && go test -tags=acceptance -short -v ./test/...          # deterministic group
+cd expense-reporter && go test -tags=acceptance -v -timeout 60m ./test/...    # whole suite
 ```
-The whole suite takes ~14 min (q3 ≈12 s/classify), so the default 600s timeout is not enough.
-If Ollama is not running, gated tests skip via `extern.RequireOllama`.
+The whole suite takes ~15–35 min depending on Ollama contention, so the default
+600s timeout is not enough without `-short`. If Ollama is not running, gated
+tests skip via `extern.RequireOllama`; under `-short` they skip unconditionally.
 
 **Keeping the work dir for inspection:**
 ```bash

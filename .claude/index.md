@@ -83,7 +83,7 @@
 | Session log archive (session 7 — 2026-03-11) | `.claude/archive/session-log-2026-03-11-to-2026-03-11.md` |
 | Session log archive (session 17 — 2026-04-23) | `.claude/archive/session-log-2026-04-23-to-2026-04-23.md` |
 | Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
-| Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
+| Run acceptance tests | `expense-reporter/run-acceptance.sh` — deterministic group by default (`-short`, no Ollama); `-full` = whole suite, 3600s ceiling |
 | Generate-workbook acceptance fixture (G3, oracle-frozen dumps) | `expense-reporter/test/fixtures/generate-basic/` + `test/expect/workbook_structure.go` |
 | Full type-routing cycle acceptance (batch-auto→review→apply→generate-workbook, incremental) | `expense-reporter/test/type_routing_cycle_test.go` + `test/fixtures/type-routing-cycle/` |
 | Advisor review — G3 acceptance design | `.claude/advisor-G3-acceptance-design.md` |
