@@ -33,11 +33,17 @@ Algorithm documentation and research notes. Training JSONs are gitignored
 ## How Classification Works
 
 1. Expense description is tokenized and matched against a feature dictionary
-2. Keyword matches select few-shot training examples (up to 5)
-3. System prompt with full taxonomy + few-shot pairs sent to local Ollama model
+2. Keyword matches select few-shot training examples (up to 5). On a keyword **miss**, an
+   embedding retriever fills in instead — cosine top-5 over the training corpus
+3. System prompt with full taxonomy + few-shot pairs sent to local Ollama model, with the
+   response schema constraining every candidate to a valid taxonomy path
 4. Model returns ranked subcategory candidates with confidence scores
-5. High confidence (≥ 85%) → auto-insert; low confidence → manual review
-6. Results logged to JSONL feedback files, feeding back into future classifications
+5. **Agreement gate** decides auto-append: the model's predicted subcategory must agree with an
+   unambiguous, maximum-specificity keyword match, and not be on the exclusion list. Everything
+   else goes to manual review. (Confidence is reported but does not gate — it was measured
+   uninformative on 649 real labels and dropped in T-32.)
+6. Results logged to JSONL feedback files, feeding back into future classifications —
+   corrections outrank training data in few-shot selection
 
 ## Requirements
 
@@ -70,7 +76,7 @@ See [expense-reporter/README.md](expense-reporter/README.md) for full documentat
 ## Testing
 
 ```bash
-cd expense-reporter && go test ./...              # 190+ unit tests
+cd expense-reporter && go test ./...              # 263 test funcs / 647 with subtests
 cd expense-reporter && ./run-acceptance.sh        # deterministic acceptance tests (no Ollama)
 cd expense-reporter && ./run-acceptance.sh -full  # full acceptance suite (requires Ollama)
 ```

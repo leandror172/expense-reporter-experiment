@@ -19,6 +19,16 @@
 <!-- ref:classification-overview -->
 ## Executive Summary
 
+**SUPERSEDED — this is the desktop-era analysis record (694-era corpus, pre-5.R4).** Current
+figures: 1,788 labeled expenses, 15 categories, 81 subcategories. Auto-insert is no longer
+decided by a confidence band — since T-32 it is a keyword-agreement gate. The canonical current
+descriptions are `[ref:classification-overview]` and `[ref:confidence-thresholds]` in
+`.claude/index.md`. Numbers below are accurate **for the analysis that produced them** and are
+intentionally frozen.
+
+**NOTE — duplicate ref key.** This block and the `.claude/index.md` one share the key
+`classification-overview`; `ref-lookup.sh` returns whichever it finds first, without warning.
+
 This package contains a complete expense auto-categorization system with comprehensive documentation for reproduction, research, and development.
 
 **Classification Results:**

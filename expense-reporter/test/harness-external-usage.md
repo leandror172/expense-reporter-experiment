@@ -2,7 +2,7 @@
 
 > **SUPERSEDED / EXECUTED (2026-07-17, T2 Session B).** The extraction this report argued
 > for has happened. The engine is now the public `github.com/leandror172/acceptance-harness`
-> module (v0.1.1) and this repo consumes it; `test/harness/` no longer exists. Every leak
+> module (v1.0.0) and this repo consumes it; `test/harness/` no longer exists. Every leak
 > catalogued below was resolved — `RequireOllama` → `test/extern/`, the CSV comparator →
 > `test/expect/` (two of its four functions turned out to be dead and were deleted),
 > `Context.{DataDir,WorkbookPath}` → `ctx.Env` accessors in `test/domain/` (`WorkbookDir`

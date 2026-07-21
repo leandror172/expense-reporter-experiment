@@ -90,7 +90,7 @@ docs/archive/              ← Desktop-era planning docs (read-only history)
 
 ```bash
 cd expense-reporter && go build ./...        # Build all packages
-cd expense-reporter && go test ./...         # Run all tests (190+ tests)
+cd expense-reporter && go test ./...         # Run all tests (263 test funcs / 647 with subtests)
 cd expense-reporter && go vet ./...          # Lint
 ```
 

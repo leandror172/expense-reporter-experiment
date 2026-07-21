@@ -56,6 +56,15 @@ graph TD
 <!-- ref:training-data-schema -->
 ## 2.1 Input Data Schema
 
+**SUPERSEDED — the counts below are the 694-era corpus (pre-5.R4, before 2026-06-20).** The
+corpus is now **1,788** expenses / 15 categories / 81 subcategories, with `by_year` and
+`provenance` metadata fields this schema predates. The canonical current description is
+`[ref:training-data-schema]` in `.claude/index.md`. Retained here as the design record of the
+schema the desktop-era analysis ran against.
+
+**NOTE — duplicate ref key.** This block and the `.claude/index.md` one share the key
+`training-data-schema`; `ref-lookup.sh` returns whichever it finds first, without warning.
+
 **`training_data_complete.json`** — labeled historical expenses used as the knowledge base:
 
 ```json

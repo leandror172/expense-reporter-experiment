@@ -45,7 +45,10 @@ Each line in `classifications.jsonl` is a JSON entry with:
 ### Command: `auto` (Single Classification + Insert)
 - User classifies one expense: `auto "Dmae" "15/06" "157,30"`
 - Model predicts category + confidence
-- If confidence > threshold (default 85%): auto-inserts + logs
+- If the row passes the **agreement gate** (`IsAutoInsertable` — keyword matched, unambiguous,
+  `top_score >= 1.0`, model prediction == keyword top-1, subcategory not excluded): appends + logs.
+  **Confidence does NOT gate** — dropped in T-32 after the 649-replay measured it uninformative;
+  `--threshold` is deprecated and ignored. See `[ref:confidence-thresholds]`.
 - Creates: `status="confirmed"` entry with `predicted == actual`
 - Code: `cmd/auto.go:logConfirmedFeedback()`
 
@@ -54,8 +57,8 @@ Each line in `classifications.jsonl` is a JSON entry with:
 - For each row where `AutoInserted=true`:
   - Model predictions accepted
   - Creates: `status="confirmed"` entry
-- For rows below threshold: no entry (goes to `review.csv` instead)
-- Code: `cmd/batch_auto.go:logBatchFeedback()`
+- For rows that do NOT pass the agreement gate: no entry (goes to `review.csv` instead)
+- Code: `cmd/batch_auto.go:logConfirmedFeedbackForRow()`
 
 ### Command: `correct` (Override Prior Auto-Classification)
 - User overrides a wrong auto-insert: `correct "Uber Centro;15/04;35,50;Combustível"`

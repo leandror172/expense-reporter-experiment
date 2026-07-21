@@ -12,7 +12,7 @@ Classification runs entirely on local Ollama models — no cloud API calls, keep
 financial data private.
 
 **Current version:** 2.1.0  
-**Tests:** 220+ unit tests, 9 acceptance test fixtures  
+**Tests:** 263 unit test functions (647 with subtests), 56 acceptance tests across 31 fixtures  
 **Go version:** 1.25.5
 
 ## Commands
@@ -50,17 +50,31 @@ Flags:
 - `--data-dir` — path to classification data directory
 - `--json` — structured JSON output
 
-### `auto` — Classify and auto-insert if confident
+### `auto` — Classify and auto-append if the agreement gate passes
 
 ```bash
+# gate passes — "posto"/"ipiranga" have specificity 1.0 → Combustível, and the model agrees
+expense-reporter auto "Posto Ipiranga" 180,00 15/04
+# ✓ Appended: Posto Ipiranga → Combustível (Variáveis) — 95% confidence
+
+# gate fails — "uber" has specificity 0.80 (splits Viagens / Uber-Taxi), so despite a
+# confident-looking prediction the row is held back for review
 expense-reporter auto "Uber Centro" 35,50 15/04
-# ✓ Inserted: Uber Centro → Uber/Taxi (Transporte) — 95% confidence
+# ⚠  Not appended — keyword specificity 0.80 is below the maximum required for auto-insert
 ```
 
-Classifies the expense, then:
-- **Confidence ≥ 85%** and subcategory not excluded → auto-inserts into workbook
-- **Confidence < 85%** → prints candidates for manual review, does not insert
-- **Excluded subcategory** (e.g., "Diversos") → prints warning, does not insert
+Classifies the expense, then applies the **agreement gate** (`IsAutoInsertable`):
+- **Gate passes** — a keyword matched, the match is unambiguous, its specificity is maximal
+  (`top_score >= 1.0`), the model's predicted subcategory equals the keyword's top-1, and the
+  subcategory is not excluded → appends to `expenses_log.jsonl`
+- **Gate fails** (keyword miss, ambiguous match, sub-maximal specificity, or model/keyword
+  disagreement) → prints candidates for manual review, appends nothing
+- **Excluded subcategory** (e.g., "Diversos") → prints warning, appends nothing
+
+Confidence is still reported per candidate but does **not** gate — it was measured
+uninformative on 649 real labels and dropped in T-32. Like `batch-auto` and `apply`, `auto`
+appends to the log rather than writing the workbook (WS-B pivot); run `generate-workbook`
+to materialize the spreadsheet.
 
 Flags:
 - `--confirm` — always ask for confirmation before inserting
@@ -220,8 +234,10 @@ for few-shot example selection:
 2. Select up to 5 few-shot examples via keyword matching
 3. Build prompt: system instruction + taxonomy + few-shot pairs + user query
 4. Send to Ollama with structured output (JSON schema in `format` param)
-5. Parse response, apply confidence threshold and exclusion list
-6. Insert or present for review
+5. Parse response, apply the **agreement gate** (`IsAutoInsertable`: keyword matched ∧
+   unambiguous ∧ `top_score >= 1.0` ∧ model prediction == keyword top-1) and the exclusion list.
+   Confidence is emitted but does not gate (T-32).
+6. Append to the log or route to review
 
 ### Feedback loop
 
@@ -351,7 +367,7 @@ is planned (parse boundary).
 ### Unit tests
 
 ```bash
-cd expense-reporter && go test ./...    # 190+ tests, ~50s
+cd expense-reporter && go test ./...    # 263 test funcs / 647 with subtests, ~60s
 cd expense-reporter && go vet ./...     # lint
 ```
 
@@ -396,13 +412,22 @@ require (
 **Phase 10:** Installment payments — expansion, rollover, partial failure handling  
 **Phase 11:** Hierarchical subcategory paths — disambiguation for multi-sheet subcategories  
 **Layer 5.2:** LLM classifier — Ollama integration, structured output, confidence scoring  
-**Layer 5.3:** Decision logic — threshold + exclusion list for auto-insert  
+**Layer 5.3:** Decision logic — confidence threshold + exclusion list for auto-insert *(the
+threshold half was later removed — see T-32 below; the exclusion list survives)*  
 **Layer 5.4–5.5:** Auto/batch-auto commands — single and batch classification workflows  
 **Layer 5.6:** Feedback persistence — classifications.jsonl + expenses_log.jsonl  
 **Layer 5.7:** Few-shot injection — keyword-based example selection from training + feedback data  
 **Layer 5.8:** JSON output + MCP server — machine-readable output, Python MCP wrapper
 **Layer 5.9:** Correction workflow — `correct` command closes the feedback loop by writing `status="corrected"` entries that take priority in few-shot retrieval  
-**RUI-1:** Review command — `review` bakes `classified.csv` + workbook taxonomy into a self-contained `review.html`; browser UI with cascading pickers, localStorage persistence, and `reviewed.json` export
+**RUI-1:** Review command — `review` bakes `classified.csv` + workbook taxonomy into a self-contained `review.html`; browser UI with cascading pickers, localStorage persistence, and `reviewed.json` export  
+**Workbook generator + pivot:** `generate-workbook` builds the workbook from the JSONL logs; the logs become the single source of truth and generation the only writer (direct workbook insertion retired)  
+**T-13:** Classifier predicts the full `Type/Category/Subcategory` path via a grammar-enforced 112-member enum, plus a sentinel path so the model can decline  
+**5.R2:** Embed-on-miss retrieval — on a keyword miss, embed the item and inject cosine top-5 few-shot examples; degrades to nil if the embedder is unavailable  
+**T-32:** Agreement gate — `IsAutoInsertable` drops confidence (measured uninformative on 649 real labels) and gates on keyword agreement instead; `--threshold` deprecated  
+**T2:** Acceptance harness extracted to the standalone public module `github.com/leandror172/acceptance-harness` (v1.0.0, MIT)  
+**T-20:** `batch-auto --resume` + always-on duplicate-append warning  
+**T-35:** Join-id fix — dates canonicalized once per boundary so both JSONL logs share one `GenerateID`  
+**T-39 / T-24:** Acceptance suite split into a deterministic (no-Ollama) group and a full group; `--think=false` becomes the default on all three model-facing commands
 
 ## License
 
