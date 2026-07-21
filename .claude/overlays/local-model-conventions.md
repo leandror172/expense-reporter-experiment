@@ -136,7 +136,7 @@ before editing. It's for the specific case of editing freshly generated output.
 
 ## After you call
 
-### Step 1: Record a verdict for every local model call
+### Step 1: Record a verdict for every judgeable local model call
 
 After receiving output from `generate_code` or `ask_ollama`, record one of:
 
@@ -146,8 +146,29 @@ Verdict scale: 2 = accepted · 1 = improved · 0 = rejected
 - **1** — used with modifications. Note what changed and why.
 - **0** — not usable. Note the failure reason (logic error / wrong API / off-task).
 
-On verdicts 2 or 1, add a rough token estimate:
-`2 — ~300 est. Claude tokens saved` (formula: `(prompt chars + response chars) / 4`)
+**Write the verdict as this exact block. It is machine-captured; nothing else is stored.**
+A `PostToolUse` hook injects the template pre-filled with the call's `call_id` — fill the
+three placeholder lines and leave the rest alone:
+
+```
+[VERDICT call_id=<the id the hook gave you>]
+verdict: 2
+reason: <one line>
+est_claude_tokens: <number>
+[/VERDICT]
+```
+
+A `Stop` hook scans the turn for filled blocks and appends them to `calls.jsonl`.
+
+**Prose verdicts are NOT captured.** Writing `2 — ~300 est. Claude tokens saved` instead of
+the block means the judgment is thrown away. Between 2026-03 and 2026-07 this repo's docs
+taught the prose form while the hook only ever accepted the block, and ~90% of all verdicts
+were lost. Estimate tokens mentally: `(prompt chars + response chars) / 4`.
+
+If no template was injected, the call was not judgeable (or could not be identified) — write
+nothing. Not judged: `summarize` / `translate` / `classify_text`, and cold-start timeouts
+(retry instead). oficina runs are judged **per-run on the finished deliverable**, not per
+internal iteration.
 
 ### Step 2: If output is imperfect, classify the defect
 

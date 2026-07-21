@@ -152,7 +152,7 @@ architectural reasoning across 3+ files simultaneously.
 - Second model in tier also returned 0 (rejected)
 - The task requires reasoning across 4+ files simultaneously
 
-<!-- overlay:ollama-scaffolding v2 -->
+<!-- overlay:ollama-scaffolding v3 -->
 ## Local Model Usage Policy
 
 **You MUST read `.claude/overlays/local-model-conventions.md` before calling or
@@ -167,7 +167,11 @@ Key rules (detail in the reference file):
   past `0` verdict is not a reason to skip; pass better context instead
 - Serialize codegen calls — 3+ concurrent requests exceed the VRAM budget, and
   different-model parallel is worse than same-model parallel
-- Evaluate every local model response with an explicit verdict
+- Record a verdict for every `generate_code` / `ask_ollama` response, and write it as the
+  `[VERDICT call_id=…]` block the `PostToolUse` hook injects — **prose verdicts are not
+  captured and are silently discarded** (this mismatch cost ~90% of the corpus over five
+  months). Judged: `generate_code`, `ask_ollama`, and oficina **per-run**; not
+  `summarize` / `translate` / `classify_text`
 - Classify imperfect output by defect type, fix scope, and prompt cost — not line count
 - First-call timeouts are `TIMEOUT_COLD_START`, not 0 (rejected) — retry immediately
 <!-- /overlay:ollama-scaffolding -->
