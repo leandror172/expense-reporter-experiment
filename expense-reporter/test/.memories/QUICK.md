@@ -24,8 +24,10 @@ fixtures/   # Test data dirs; results/ gitignored
   Never re-add a `verify`-named local package.
 - **`then*` helper bodies call `verify.*`/`expect.*`** — never raw in a `Then:` block
 - **Build tag `acceptance`** — hidden from `go test ./...`; after config-contract changes
-  run `-tags=acceptance -timeout 30m` explicitly (q3 ≈12 s/classify)
-- **Live Ollama required** (`extern.RequireOllama` skip gate); binary built once in TestMain
+  run explicitly: `./run-acceptance.sh` = deterministic group (`-short`, ~8s, no Ollama);
+  `-full` = whole suite (~2 min at the think-off default, 3600s ceiling) — T-39 split
+- **Live Ollama required only for `-full`** (`extern.RequireOllama` skips when down AND
+  unconditionally under `-short`); binary built once in TestMain
 - **Taxonomy config MANDATORY (T-13)** — every classify-family Given needs a taxonomy
 - **Non-dry-run fixtures need `DD/MM/YYYY` inputs**; check `extra_args` for `--dry-run`.
   **Exception (T-35): join-id tests MUST use short `DD/MM`** — a full date makes the raw and

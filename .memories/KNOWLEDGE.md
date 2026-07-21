@@ -131,3 +131,21 @@ LLM repo; this repo only references model names.
   had been sitting in both copies.
   **Implication:** engine changes are now a PR upstream + a version bump here, which is the
   point: the boundary can no longer erode quietly.
+- **Sessions 60–61 — T-20, T-35/T-36.** T-20: `batch-auto --resume` + always-on duplicate
+  warning (id-count ledger `LoadExpenseIDCounts`, `PredictEntryIDs` pre-LLM skip, partially
+  logged installment series route to review, never auto-completed). T-35: the two JSONL logs
+  joined only on `GenerateID` (sha256 of raw bytes incl. the date string); `auto`/`batch-auto`/
+  `apply` fed one log raw `DD/MM` and the other normalized `DD/MM/YYYY` → two ids per expense.
+  Fix: canonicalize once per boundary; join-id guard tests MUST use short `DD/MM` fixtures
+  (full dates hide the bug class). T-36 staleness sweep. Survey `.claude/t35-date-year-semantics.md`
+  [ref:date-year-semantics] mapped six parsers/six year rules → T-37..T-40 filed.
+- **Session 62 — T-39/T-24 (PR #52) + strategic reframe + parse-boundary plan.** Suite split:
+  `testing.Short()` skip in `extern.RequireOllama`; `run-acceptance.sh` defaults to the
+  deterministic group (~8s, no Ollama), `-full` = whole suite (3600s ceiling; measured 128s at
+  think-off — was 840–1989s). `--think=false` now default on classify/auto/batch-auto (gate band
+  −2.3pp WITH think; 5.R2 miss +2.5pp at 5.5× latency; sentinel covered by the agreement gate).
+  Vision re-read → project reframed as **pre-first-use**; organizing milestone = first real
+  monthly close on 2026 data. Parse-boundary plan drafted (`.claude/plans/parse-boundary.md`):
+  structured input, parse-once; year precedence string > `--year` > config `date_year` >
+  most-recent-non-future (grace window TBD); T-21 UX = 1 row + ×N badge; `--year` uniform;
+  T-38 resolved = delete `utils.ParseDate` with plain `batch` under WS-E, don't repair.

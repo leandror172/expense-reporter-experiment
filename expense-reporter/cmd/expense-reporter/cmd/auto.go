@@ -42,7 +42,7 @@ func init() {
 	autoCmd.Flags().StringVar(&autoModel, "model", "my-classifier-q3", "Ollama model to use")
 	autoCmd.Flags().StringVar(&autoDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	autoCmd.Flags().BoolVar(&autoConfirm, "confirm", false, "Always ask for confirmation before inserting")
-	autoCmd.Flags().BoolVar(&autoThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
+	autoCmd.Flags().BoolVar(&autoThink, "think", false, "Allow the model to emit thinking tokens (~10x slower for a marginal accuracy gain)")
 }
 
 func runAuto(cmd *cobra.Command, args []string) error {

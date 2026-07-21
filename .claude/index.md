@@ -59,6 +59,7 @@
 | Harness extraction plan (T2 — standalone `acceptance-harness` repo, career-search repoint, expenses migration, LTG path; session 56) | `.claude/plans/harness-extraction-plan.md` |
 | acceptance-test vs harness comparison (companion: old-job pipeline framework — adopt/adapt/discard analysis; session 56) | `.claude/plans/harness-extraction-acceptance-test-comparison.md` |
 | Harness extraction Session B — executable migration plan (expenses `test/` → module; measured inventory, D1 verify-namespace + D2 Context-carrier open; session 59) | `.claude/plans/harness-extraction-session-b.md` |
+| Parse boundary — structured input, parse-once (year precedence, installments field, T-37/T-38/T-40/T-21 resolutions; DRAFT, session 62) | `.claude/plans/parse-boundary.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
@@ -83,7 +84,7 @@
 | Session log archive (session 7 — 2026-03-11) | `.claude/archive/session-log-2026-03-11-to-2026-03-11.md` |
 | Session log archive (session 17 — 2026-04-23) | `.claude/archive/session-log-2026-04-23-to-2026-04-23.md` |
 | Session log archive (session 18 — 2026-04-24) | `.claude/archive/session-log-2026-04-24-to-2026-04-24.md` |
-| Run acceptance tests | `expense-reporter/run-acceptance.sh` — pre-flight + `go test -tags=acceptance ./test/...` |
+| Run acceptance tests | `expense-reporter/run-acceptance.sh` — deterministic group by default (`-short`, no Ollama); `-full` = whole suite, 3600s ceiling |
 | Generate-workbook acceptance fixture (G3, oracle-frozen dumps) | `expense-reporter/test/fixtures/generate-basic/` + `test/expect/workbook_structure.go` |
 | Full type-routing cycle acceptance (batch-auto→review→apply→generate-workbook, incremental) | `expense-reporter/test/type_routing_cycle_test.go` + `test/fixtures/type-routing-cycle/` |
 | Advisor review — G3 acceptance design | `.claude/advisor-G3-acceptance-design.md` |

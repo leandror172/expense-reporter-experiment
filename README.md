@@ -71,7 +71,8 @@ See [expense-reporter/README.md](expense-reporter/README.md) for full documentat
 
 ```bash
 cd expense-reporter && go test ./...              # 190+ unit tests
-cd expense-reporter && ./run-acceptance.sh        # acceptance tests (requires Ollama)
+cd expense-reporter && ./run-acceptance.sh        # deterministic acceptance tests (no Ollama)
+cd expense-reporter && ./run-acceptance.sh -full  # full acceptance suite (requires Ollama)
 ```
 
 ## License

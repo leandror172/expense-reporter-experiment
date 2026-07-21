@@ -71,7 +71,7 @@ func init() {
 	batchAutoCmd.Flags().IntVar(&batchAutoTopN, "top", 3, "Number of classification candidates")
 	batchAutoCmd.Flags().BoolVar(&batchAutoDryRun, "dry-run", false, "Classify and write CSVs without inserting into workbook")
 	batchAutoCmd.Flags().StringVar(&batchAutoOutputDir, "output-dir", "", "Directory for output CSV files (default: same as input file)")
-	batchAutoCmd.Flags().BoolVar(&batchAutoThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
+	batchAutoCmd.Flags().BoolVar(&batchAutoThink, "think", false, "Allow the model to emit thinking tokens (~10x slower for a marginal accuracy gain)")
 	batchAutoCmd.Flags().BoolVar(&batchAutoResume, "resume", false, "Skip rows already present in the expense log (idempotent re-run after a partial failure). Note: bare DD/MM dates infer the current year, so a resume crossing a year boundary may not match — use DD/MM/YYYY inputs for December batches.")
 	// T-32: the agreement gate replaced the confidence threshold; keep the flag
 	// accepted (so existing scripts/fixtures don't error) but mark it deprecated.

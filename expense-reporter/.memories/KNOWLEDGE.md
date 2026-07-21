@@ -120,13 +120,18 @@ history (data queries). The shared hash enables joins without a database.
 
 ## Config Design (2026-02)
 `config/config.json` with `internal/config` loader. Key fields:
-- `date_year` (2025) — applied to DD/MM dates during parsing
+- `date_year` (2025) — **DEAD as of the T-35 survey (T-37): declared in the struct,
+  read by NOTHING.** Bare DD/MM dates actually get `time.Now().Year()` (classifier-era
+  commands via `ParseDateFlexible`) or hardcoded 2025 (plain `batch` via
+  `utils.ParseDate`, T-38). The parse-boundary plan (`.claude/plans/parse-boundary.md`)
+  wires it as precedence rung 3: string year > `--year` arg > `date_year` > most-recent-non-future.
 - `auto_insert_excluded` (["Diversos"]) — subcategories blocked from auto-insert
 - `classifications_path`, `expenses_log_path` — JSONL output locations
 **Rationale:** Runtime behavior that changes between years or users belongs in config,
 not code. The exclusion list was added after discovering "Diversos" false positives.
-**Implication:** Year rollover requires updating `date_year` in config (and likely the
-workbook path). No code changes needed.
+**Implication:** Year rollover via `date_year` is the *intended* design but has never
+worked (the field is unread — T-37). Until the parse boundary wires it, rollover
+correctness depends on entering explicit `DD/MM/YYYY` dates.
 
 ## Workbook Generator Design (2026-06, sessions 26–27)
 Spec v2 at `.claude/plans/workbook-generator-spec.md` is the single design authority; it is a

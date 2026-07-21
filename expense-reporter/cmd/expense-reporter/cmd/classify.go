@@ -35,7 +35,7 @@ func init() {
 	classifyCmd.Flags().StringVar(&classifyModel, "model", "my-classifier-q3", "Ollama model to use")
 	classifyCmd.Flags().IntVar(&classifyTopN, "top", 3, "Number of candidates to return")
 	classifyCmd.Flags().StringVar(&classifyDataDir, "data-dir", "data/classification", "Path to classification data directory")
-	classifyCmd.Flags().BoolVar(&classifyThink, "think", true, "Allow the model to emit thinking tokens (false = faster, sends think:false)")
+	classifyCmd.Flags().BoolVar(&classifyThink, "think", false, "Allow the model to emit thinking tokens (~10x slower for a marginal accuracy gain)")
 }
 
 var classifyThink bool
