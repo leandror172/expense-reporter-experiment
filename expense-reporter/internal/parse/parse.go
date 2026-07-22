@@ -33,9 +33,11 @@ func (pe ParsedExpense) DateString() string {
 	return utils.FormatDate(pe.Date)
 }
 
-// Fields parses item, date, and value strings into a ParsedExpense.
-// It trims all inputs first. Empty item or empty dateStr → error.
-// Value parsing uses utils.ParseCurrencyWithInstallments.
+// Fields parses the three field-wise inputs into a ParsedExpense. Inputs are
+// trimmed; an empty item or date is an error. The value token accepts BR
+// formats including thousands separators ("1.234,56") and installment
+// notation ("total/N", yielding the per-installment value); the date resolves
+// under the year-precedence ladder in Options.
 func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error) {
 	item = strings.TrimSpace(item)
 	dateStr = strings.TrimSpace(dateStr)
@@ -67,27 +69,22 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 	}, nil
 }
 
-// ExpenseString parses a semicolon-separated string into a ParsedExpense and subcategory.
-// The format is "item;DD/MM[/YYYY];value[/N];subcategory".
+// ExpenseString parses the 4-field semicolon CLI form
+// "item;DD/MM[/YYYY];value[/N];subcategory", returning the subcategory
+// alongside the parsed expense (classification is not parsing). It owns the
+// split and the subcategory; field validation is Fields' job.
 func ExpenseString(s string, opts Options) (ParsedExpense, string, error) {
 	parts := strings.SplitN(s, ";", 4)
 	if len(parts) != 4 {
 		return ParsedExpense{}, "", errors.New("expense string must have exactly 4 semicolon-separated parts")
 	}
 
-	item := strings.TrimSpace(parts[0])
-	dateStr := strings.TrimSpace(parts[1])
-	valueStr := strings.TrimSpace(parts[2])
 	subcategory := strings.TrimSpace(parts[3])
-
-	if item == "" {
-		return ParsedExpense{}, "", errors.New("item cannot be empty")
-	}
 	if subcategory == "" {
 		return ParsedExpense{}, "", errors.New("subcategory cannot be empty")
 	}
 
-	expense, err := Fields(item, dateStr, valueStr, opts)
+	expense, err := Fields(parts[0], parts[1], parts[2], opts)
 	if err != nil {
 		return ParsedExpense{}, "", err
 	}

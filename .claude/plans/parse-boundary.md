@@ -152,7 +152,12 @@ Per-slice mechanics (call-site survey, session 63):
    §4 goes live here (rungs 2–4 are new behavior — test-pin both sides).
 2. **`auto`** — replace the two separate parse calls (auto.go:51, :58) with the
    field-wise core. Net: existing `expect.JoinIDMatchesAcrossLogs` + short-`DD/MM`
-   fixtures.
+   fixtures. **Also extract here (deferred from slice 1 per the
+   extract-keep-divergence rule — no seam below 3 callers):** a cmd-level
+   `parseOptions(yearFlag int, cfg *config.Config) parse.Options` helper — `add`
+   and `correct` hand-build identical `parse.Options{...}` literals today, and
+   `auto` is the third copy. Cmd-level, NOT in `parse` (the boundary package must
+   not import `config`).
 3. **`batch-auto`** — the real dedup win: SIX re-parse sites (batch_auto.go:360/364,
    376/385, 448; batch_auto_resume.go:87/92) collapse into **parse-once-per-CSV-row
    at read time**; the row struct carries `ParsedExpense`, downstream consumes
