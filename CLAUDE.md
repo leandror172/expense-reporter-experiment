@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code when working in this repository.
 
-<!-- overlay:ref-indexing v1 -->
+<!-- overlay:ref-indexing v4 -->
 ## Reference Indexing Convention
 
 Rules in this file may include `[ref:KEY]` tags pointing to detailed reference material
