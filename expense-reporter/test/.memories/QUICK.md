@@ -30,6 +30,10 @@ fixtures/   # Test data dirs; results/ gitignored
   unconditionally under `-short`); binary built once in TestMain
 - **Taxonomy config MANDATORY (T-13)** — every classify-family Given needs a taxonomy
 - **Non-dry-run fixtures need `DD/MM/YYYY` inputs**; check `extra_args` for `--dry-run`.
+  **T-41 sharpens this for add/correct:** a bare date strictly in the future now resolves
+  to LAST year (rung 4, grace 0) — a late-December bare date in a fixture flips years
+  depending on the run date. Year-precedence tests: `add_year_test.go` (deterministic;
+  local Given `binaryWithDateYearConfig` writes `date_year`; `expect.OutputJSONHasDate`).
   **Exception (T-35): join-id tests MUST use short `DD/MM`** — a full date makes the raw and
   normalized strings identical, so it hides exactly the bug they guard. Safe only because
   they assert id EQUALITY, never a literal date, so no year is pinned. Do NOT "fix" the

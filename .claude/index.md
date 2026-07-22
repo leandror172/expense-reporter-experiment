@@ -444,6 +444,7 @@ Desktop-era planning documents — read for context, do not modify.
 | `expense-reporter/internal/apply/.memories/` | QUICK.md | Review UI ingestion, workbook row insertion, feedback + expense log output; entry type drop point (Plan A) |
 | `expense-reporter/internal/classifier/.memories/` | QUICK.md, KNOWLEDGE.md | Few-shot algorithm, prompt architecture, empirical findings |
 | `expense-reporter/internal/feedback/.memories/` | QUICK.md, KNOWLEDGE.md | Two-file JSONL structure (classifications.jsonl + expenses_log.jsonl), GenerateID join key, type persistence gap (Plan A) |
+| `expense-reporter/internal/parse/.memories/` | QUICK.md | T-41 parse boundary: contract (single time.Time + DateString identity bytes), year ladder + grace 0, BR thousands rule, migration status |
 | `expense-reporter/internal/review/.memories/` | QUICK.md | HTML review page builder, taxonomy re-derivation from CSV, localStorage state, type-aware UI already in place |
 | `expense-reporter/internal/taxonomy/.memories/` | QUICK.md, KNOWLEDGE.md | Full-path identity, bare-name routing + ambiguous fallback, classifier/generator taxonomy disconnect (Plan B two-tier routing) |
 | `expense-reporter/test/.memories/` | QUICK.md, KNOWLEDGE.md | BDD harness design, fixture format, soft/hard assertions |
