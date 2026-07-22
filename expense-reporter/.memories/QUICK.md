@@ -4,7 +4,7 @@
 
 ## Status
 Full CLI: add, batch, classify, auto, batch-auto, correct, review, apply,
-generate-workbook. 220+ unit tests; JSON output mode; few-shot + MCP feedback done.
+generate-workbook. 263 unit test funcs (647 w/ subtests); JSON output mode; few-shot + MCP feedback done.
 **JSONL logs are the source of truth; `generate-workbook` is the ONLY workbook writer.**
 WS-B complete: batch-auto and apply append to `expenses_log.jsonl` via
 `appender.ExpandAndAppend`. Classifier predicts the full path (T-13); default model

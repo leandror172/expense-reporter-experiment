@@ -16,8 +16,15 @@ The expense processing pipeline has distinct stages, each handled by a Go packag
 2. **Resolve** (`internal/resolver`) — fuzzy-match subcategory against reference sheet
 3. **Classify** (`internal/classifier`) — LLM-based categorization with confidence scores
 4. **Decide** (`internal/classifier/decision.go`) — keyword-agreement gate + exclusion list → auto-insert or review (T-32; replaced the confidence threshold)
-5. **Insert** (`internal/workflow` + `internal/excel`) — write to Excel workbook with backup
+5. **Append** (`internal/appender`) — installment expansion → append to `expenses_log.jsonl`
 6. **Log** (`internal/feedback`) — append to `classifications.jsonl` and `expenses_log.jsonl`
+7. **Generate** (`internal/generate`) — build the Excel workbook FROM the logs (`generate-workbook`)
+
+**Post-pivot note (session 36):** the JSONL logs are the single source of truth and
+`generate-workbook` is the **only** workbook writer. The old direct-insert path
+(`internal/workflow` + the `internal/excel` write side, reached via plain `batch`) is retired
+but not yet deleted — removal is WS-E, which also takes `utils.ParseDate` with it. Do not treat
+that path as the live pipeline.
 **Rationale:** Each stage is independently testable. The pipeline can stop at any stage
 (e.g., `classify` stops at step 3; `auto` goes through step 6; `batch-auto` adds CSV I/O).
 **Implication:** New features (like TF-IDF retrieval) slot into the pipeline at a specific
@@ -35,8 +42,13 @@ individual monthly entries.
    subcategory by specificity score. Implemented in `classifier/examples.go`.
 2. **Layer 2 (TF-IDF):** RULED OUT (5.R1, session 52) — the 649-replay showed all retrieval
    misses are zero-lexical-overlap; TF-IDF cannot bridge them.
-3. **Layer 3 (embedding):** GO (5.R2; T-31 precondition passed session 53 — NN hit@5 62–65%
-   on the miss pool, multilingual models only; arctic-embed2 the practical pick).
+3. **Layer 3 (embedding):** **BUILT + ADOPTED, default-on** (5.R2, session 54; PR #45 merged
+   session 57). On a keyword miss: embed the item (arctic-embed2) → cosine top-5 → inject as
+   few-shot. Per-model JSONL disk cache; degrades to nil on any failure. Implemented in
+   `internal/classifier/embedding{,_retriever,_fallback}.go`; `Config.EmbedModel` /
+   `Config.NoEmbedRetrieval`, zero values = ON. Measured A/B on the miss stratum (n=80 unique):
+   full-path 18.8% → 52.5% no-think. T-31 precondition (session 53) had shown NN hit@5 62–65%,
+   multilingual models only.
 Each layer feeds few-shot examples to the LLM prompt, improving classification accuracy.
 **Rationale:** Empirical finding — LLM resolves multi-word context ("VA compras") better
 than keyword specificity alone, but keywords select which few-shot examples to inject.
@@ -118,7 +130,8 @@ LLM repo; this repo only references model names.
   log-append via `appender.ExpandAndAppend`; rollover.csv retired; pre-flights + failure
   honesty. Next: WS-D (retire fallback, T-09), WS-E (delete dead insert code).
 - **Sessions 58–59 — T2 harness extraction done.** The acceptance engine left this repo:
-  `github.com/leandror172/acceptance-harness` (public, MIT, v0.1.1) now provides
+  `github.com/leandror172/acceptance-harness` (public, MIT; v0.1.1 at migration time,
+  **v1.0.0 tagged session 60** — that is the version `go.mod` pins today) now provides
   Context/Scenario/Run, fixture plumbing, BuildBinary, and the generic `verify.*` Then
   assertions to both this repo and career-search's `roles` CLI. Session B (59) migrated
   expenses: `test/harness/` deleted; local `verify` → `test/expect/` (the module owns the

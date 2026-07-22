@@ -83,7 +83,9 @@ Two pools, used together:
 
 ### 1. `training_data_complete.json` — Static Training Set
 
-- 694 labeled expenses (304 from 2024, 303 from 2025, 87 user corrections)
+- **1,788** labeled expenses spanning 2022–2025 (2022:127 / 2023:853 / 2024:349 / 2025:459),
+  15 categories / 81 subcategories — expanded from the original 694 by the 5.R4 historical
+  workbook extraction (2026-06-20)
 - Always available — no cold-start problem
 - Schema: `{id, item, date, value, subcategory, category, source, year}`
 - [ref:training-data-schema] for full schema

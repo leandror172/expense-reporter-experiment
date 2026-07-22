@@ -78,7 +78,7 @@ fixtures/<name>/
 |-------|------|---------|-------------|
 | `command` | string | — | `"classify"`, `"auto"`, or `"batch-auto"` |
 | `model` | string | — | Ollama model name (e.g. `"my-classifier-q3"`) |
-| `threshold` | float | 0.85 | Confidence threshold for auto-insert |
+| `threshold` | float | 0.85 | **INERT since T-32.** Still parsed and still passed to the binary as `--threshold`, but the flag is deprecated and ignored — auto-insert is decided by the agreement gate. Kept so existing fixtures keep parsing; do not add it to new ones. See `test/domain/fixture.go` |
 | `assertion_type` | string | `"hard"` | `"hard"` (fail on mismatch) or `"soft"` (warn above floor) |
 | `accuracy_floor` | float | 0.0 | Minimum accuracy for soft assertions |
 | `top_n` | int | 3 | Classification candidates |

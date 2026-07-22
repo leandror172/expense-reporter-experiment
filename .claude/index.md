@@ -124,7 +124,7 @@
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`); `LoadExpenseIDCounts` (id-multiplicity ledger for `--resume`/dup warning — T-20) |
 | `internal/appender` | `expense-reporter/internal/appender/` | Log-append path (WS-B): `ExpandAndAppend` (installment expansion → `expenses_log.jsonl`), `PredictEntryIDs` (same `expandEntries` step — T-20 resume drift guard) |
 | `internal/review` | `expense-reporter/internal/review/` | Review command package: `ReadQueue` (7-field CSV reader), `BuildTaxonomy` (3-level tree from workbook mappings), `Render` (placeholder injection), `TemplateHTML` (go:embed); types in `types.go` |
-| `harness` (module) | `github.com/leandror172/acceptance-harness` v0.1.1 | **External dep since T2 Session B** — the acceptance engine (Context, Scenario, Run, fixtures, FindModuleRoot/BuildBinary) + generic `verify` Then-closures. `test/harness/` no longer exists. Engine changes = a PR upstream + a version bump here |
+| `harness` (module) | `github.com/leandror172/acceptance-harness` v1.0.0 | **External dep since T2 Session B** — the acceptance engine (Context, Scenario, Run, fixtures, FindModuleRoot/BuildBinary) + generic `verify` Then-closures. `test/harness/` no longer exists. Engine changes = a PR upstream + a version bump here |
 | `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd; `runCommand` forwards `ctx.Env` |
 | `test/expect` | `expense-reporter/test/expect/` | **DOMAIN** Then-closures (was `test/verify/`, renamed so the module owns `verify.*`): FeedbackFile*, ExpenseLogMatches, ClassificationsMatch, OutputFileHas*, SoftAccuracy, HTML*, WorkbookStructureMatches; ResumeSkipCount, DuplicateWarningCount (T-20) |
 | `test/domain` | `expense-reporter/test/domain/` | Expense-specific test helpers the lean-core module excludes: RequireWorkbook + CopyWorkbookToWorkDir, SetupBinaryConfig, ExpenseFixtureConfig (`Raw` decode), ctx.Env accessors (DataDir/WorkbookPath) |
@@ -140,7 +140,8 @@
 - **Test runner:** `cd expense-reporter && go test ./...`
 - **Framework:** `testing` package (stdlib) + testify (`assert`/`require`) — both in use
 - **Unit test style:** testify preferred for new tests; existing stdlib tests left as-is
-- **Coverage:** 220+ tests across all packages
+- **Coverage:** 263 top-level test functions / 647 including table-driven subtests, all green
+  (counted 2026-07-21 via `go test ./... -v | grep -c '^=== RUN'`)
 - **Pattern:** Each `internal/X/` has `X_test.go` with table-driven cases
 - **Test data:** `expense-reporter/expenses.example.csv` — safe, no personal data
 - **TDD approach:** Write failing test first, implement to pass (established pattern from Phases 1-4)
@@ -159,8 +160,17 @@ See `data/classification/classification_algorithm.md` for the full algorithm des
 See `data/classification/reproducibility_guide.md` for how to reproduce results.
 
 **Algorithm summary:** Hybrid rule-based + statistical scoring. Priority: precision over recall.
-**Training data:** 694 labeled expenses (304 from 2024, 303 from 2025, 87 user corrections).
-**Coverage:** 16 categories, 68 subcategories, 229 keywords.
+**Training corpus** (`training_data_complete.json`): **1,788** labeled expenses — 15 categories,
+81 subcategories. By year: 2022:127 / 2023:853 / 2024:349 / 2025:459. Built 2026-06-20 by the
+5.R4 historical extraction (2022–2025 workbooks deduped + merged into the original 694 corpus).
+**Keyword dictionary** (`feature_dictionary_enhanced.json`): 229 keywords, 68 subcategories,
+71 user-correction override rules.
+
+⚠️ **The two artifacts are OUT OF SYNC.** The dictionary was never regenerated after 5.R4, so it
+still describes the 694-era taxonomy: **13 of the corpus's 81 subcategories have no keyword entry
+at all** and can never produce a keyword match. Do not quote a single "coverage" number for both —
+they are different files with different scopes. This gap feeds the keyword-miss stratum that 5.R2
+embedding retrieval targets ([ref:embedding-retrieval]).
 **Layer 5 strategy:** Feature dictionary as system context + top-K few-shot examples per request.
 
 **Key ref blocks for Layer 5 agents:**
@@ -174,15 +184,17 @@ See `data/classification/reproducibility_guide.md` for how to reproduce results.
 <!-- ref:training-data-schema -->
 ## Training Data Schema
 
-### `training_data_complete.json` (694 labeled expenses — gitignored)
+### `training_data_complete.json` (1,788 labeled expenses — gitignored)
 
 ```
 {
   "metadata": {
-    "total_expenses": 694,        // 304 from 2024 + 303 from 2025 + 87 user corrections
-    "unique_categories": 16,
-    "unique_subcategories": 68,
-    "extraction_date": "ISO 8601"
+    "total_expenses": 1788,       // post-5.R4; was 694 pre-2026-06-20
+    "unique_categories": 15,
+    "unique_subcategories": 81,
+    "by_year": {"2022": 127, "2023": 853, "2024": 349, "2025": 459},
+    "extraction_date": "ISO 8601",
+    "provenance": "free text — how this corpus was assembled"
   },
   "expenses": [
     {
@@ -199,7 +211,12 @@ See `data/classification/reproducibility_guide.md` for how to reproduce results.
 }
 ```
 
-### `feature_dictionary_enhanced.json` (229 keywords — gitignored)
+### `feature_dictionary_enhanced.json` (229 keywords, 68 subcategories — gitignored)
+
+⚠️ Built from the **694-era** corpus and never regenerated after 5.R4. 13 of the training
+corpus's 81 subcategories are absent from `category_mapping` entirely — those leaves cannot
+produce a keyword match, and therefore cannot pass the T-32 agreement gate
+([ref:confidence-thresholds]).
 
 ```
 {
@@ -245,7 +262,7 @@ Three fields passed to the classifier:
 |------|----------------------|
 | `training_data_complete.json` | Source of few-shot examples (top-K by keyword similarity, injected into prompt) |
 | `feature_dictionary_enhanced.json` | Fast pre-filter: keyword lookup → candidate subcategory before calling Ollama; also value range plausibility check |
-| `algorithm_parameters.json` | Threshold values (tracked) — HIGH ≥ 0.85, MEDIUM ≥ 0.50, LOW < 0.50 |
+| `algorithm_parameters.json` | Threshold values (tracked) — HIGH ≥ 0.85, MEDIUM ≥ 0.50, LOW < 0.50. **These no longer gate anything** — they are the desktop-era scoring bands, retained as the design record. Auto-insert is decided by the agreement gate ([ref:confidence-thresholds]) |
 <!-- /ref:training-data-schema -->
 
 ---
@@ -286,10 +303,16 @@ value_proximity 0.20.
 <!-- ref:classification-overview -->
 ## Classification Overview
 
-**Dataset:** 694 labeled expenses, 2024–2025, Brazilian Portuguese descriptions, BRL values.
-**Taxonomy:** 16 categories → 68 subcategories.
-**Keyword dictionary:** 229 terms (lowercase, with IDF and specificity scores).
+**Dataset:** 1,788 labeled expenses, 2022–2025, Brazilian Portuguese descriptions, BRL values.
+**Taxonomy (corpus):** 15 categories → 81 subcategories.
+**Keyword dictionary:** 229 terms (lowercase, with IDF and specificity scores) covering only
+68 subcategories — 694-era, not regenerated after 5.R4. See the warning in
+[ref:training-data-schema].
 **User corrections:** 71 override rules (exact normalized item → forced subcategory).
+
+⚠️ The algorithm description below is the **desktop-era hybrid scorer**, retained as the design
+record. It is NOT the shipped auto-insert path: since T-32 the gate is keyword agreement, not a
+confidence band — see [ref:confidence-thresholds].
 
 **Algorithm (hybrid, priority order):**
 1. User correction lookup (exact match on normalized item string) → confidence 1.0
@@ -327,8 +350,13 @@ The feedback system logs classification decisions to `classifications.jsonl` for
 
 **Quick summary:**
 - `add` command → `status="manual"` (user entered, no model)
-- `auto`/`batch-auto` commands → `status="confirmed"` (model accepted automatically)
-- No way to create → `status="corrected"` (model was wrong; user corrected it) — **feature gap**
+- `auto`/`batch-auto` commands → `status="confirmed"` (model auto-appended past the agreement gate)
+- `correct` command (`cmd/correct.go`) → `status="corrected"` — requires a prior entry to override
+- `apply` (review-UI ingestion) → `status="confirmed"` or `"corrected"` per the reviewer's action;
+  entries it writes carry `model: "review"`
+
+**Closed in Layer 5.9** — the old "no way to create `corrected`" feature gap no longer exists.
+In the live log, `apply` is in fact the dominant producer of both statuses.
 
 <!-- /ref:feedback-system -->
 

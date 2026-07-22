@@ -3,7 +3,7 @@
 *Working memory for the acceptance test harness. Injected into agents. Keep under 30 lines.*
 
 ## Status
-**Engine is now the `github.com/leandror172/acceptance-harness` module (v0.1.1, T2
+**Engine is now the `github.com/leandror172/acceptance-harness` module (v1.0.0, T2
 Session B).** `test/harness/` is gone: Context/Scenario/Run, fixture plumbing and
 BuildBinary come from the module; everything expense-shaped stayed here. 15+ fixture
 dirs cover all commands incl. apply, review, generate-workbook. Details → KNOWLEDGE.md.

@@ -4,7 +4,7 @@
 
 ## Harness Design — Engine Extracted to a Module (2026-03 → T2 Session B, 2026-07-17)
 The engine that used to live in `test/harness/` is now the public
-`github.com/leandror172/acceptance-harness` module (pinned v0.1.1). It was always written
+`github.com/leandror172/acceptance-harness` module (pinned v1.0.0). It was always written
 to contain zero expense knowledge, and the extraction proved that: `Context`, `Scenario`,
 `Run`, fixture plumbing, `FindModuleRoot`/`BuildBinary` all lifted unchanged.
 **Rationale:** a second consumer (career-search's `roles` CLI — Go, deterministic, non-LLM)

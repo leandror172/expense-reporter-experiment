@@ -71,6 +71,9 @@ constrains the sampler, so **any** model is forced to emit valid enum members �
   expenses are forced into a leaf, sometimes at high confidence, which can defeat the 0.85 auto-insert
   threshold. The pre-T-13 algorithm had an explicit `Diversos`/`require_manual_review` escape. Consider a
   sentinel path.
+  **RESOLVED —** the sentinel path shipped (T-19; `SentinelPath` appended to the enum). The
+  "defeats the 0.85 threshold" half is moot: that threshold no longer exists (T-32 replaced it
+  with the agreement gate, which routes any model/keyword disagreement to review).
 
 ## Empirical Findings (2026-03)
 - **Multi-word context beats keyword specificity:** "VA compras" classifies correctly
@@ -118,6 +121,10 @@ Full report: `.claude/t14-benchmark-report.md`; harness `.claude/scratch/t14-ben
   confidence ≥0.85 in BOTH think modes → the 0.85 auto-insert threshold filters
   almost nothing. WS-D (retire bare-name fallback) gated on fixing this, not on
   raw accuracy.
+  **SUPERSEDED (T-32) —** calibration was not fixed; the confidence gate was *deleted*. The
+  649-replay confirmed the finding on real data (52.5% → 56.3% across the whole confidence
+  range) and the gate switched to keyword agreement. WS-D remains held, but now on
+  representativeness (the 649 is a confidence-selected subset), not on calibration.
 - **`--think` flag (Config.NoThink → request `"think":false`, omitted by default):**
   q3 no-think = 59.7% at **1.5 s/item (10×)**, grammar intact, zero parse failures —
   but OOD sentinel-decline drops 2/20 → 0/20 with maximally absurd confident picks.

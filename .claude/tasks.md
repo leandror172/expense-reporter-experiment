@@ -88,6 +88,28 @@ layer — see `data/classification/retrieval-strategy.md` for the full pipeline 
   enough corrected entries, prioritize them as few-shot examples over confirmed/training
   entries. Simple sort order initially (corrected > training > confirmed). Refine to
   weighted scoring if correction volume warrants it.
+- [ ] **5.R6** Regenerate `feature_dictionary_enhanced.json` from the post-5.R4 corpus.
+  **Found session 63 during a doc-staleness audit — this is a live behavioral gap, not a
+  doc bug.** The dictionary was built from the 694-era corpus and never rebuilt after 5.R4
+  expanded it to 1,788. It still covers **68 subcategories against the corpus's 81**, so
+  **13 leaves have no keyword entry at all**. Consequences: (a) no keyword's dominant
+  subcategory is ever one of those 13, so `signal.TopSubcategory` can never equal them — a
+  model prediction of one of the 13 therefore always fails the
+  `result.Subcategory == signal.TopSubcategory` check and can **never pass the T-32 agreement
+  gate**, regardless of model correctness. (Whether `Matched` is true or false depends on
+  whether some *other* keyword in the item matched; either way the gate refuses.) Those leaves
+  are structurally condemned to manual review; (b) 5.R4's stated benefit ("more examples = better keyword coverage")
+  was only ever half-realized — the corpus grew, the retrieval index didn't; (c) IDF and
+  specificity scores are computed over a 694-row denominator while the pool is 1,788, so
+  every `top_score` the gate reads is drawn from a stale distribution.
+  **Before prioritizing:** measure how many of the 649 reviewed rows land on those 13 leaves
+  (and how many rows in the keyword-miss stratum 5.R2 handles would become keyword-hits after
+  a rebuild) — that quantifies the coverage/precision upside and tells you whether this
+  overlaps or competes with 5.R2's territory.
+  **Note:** the generator is desktop-era Python; regeneration must preserve the schema in
+  `[ref:training-data-schema]` and keep the file gitignored (real expense descriptions).
+  Re-running the T-32 gate replay afterwards is the validation gate — `top_score` is an input
+  to the shipped predicate, so a rebuild changes production auto-insert behavior.
 
 ### Deferred Tooling Improvements
 
