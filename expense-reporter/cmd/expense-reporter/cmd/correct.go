@@ -4,6 +4,7 @@ import (
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	"expense-reporter/internal/parse"
 	taxonomy "expense-reporter/internal/taxonomy"
 	"fmt"
 
@@ -11,6 +12,7 @@ import (
 )
 
 var correctDataDir string
+var correctYear int
 
 var correctCmd = &cobra.Command{
 	Use:   "correct \"<item>;<DD/MM>;<##,##>;<corrected_subcat>\"",
@@ -32,19 +34,24 @@ Note: This command does NOT modify the workbook — it only writes to the feedba
 
 func init() {
 	correctCmd.Flags().StringVar(&correctDataDir, "data-dir", "data/classification", "(deprecated, no longer used: category resolves via config/taxonomy.json since T-13)")
+	correctCmd.Flags().IntVar(&correctYear, "year", 0, "Fallback year for bare DD/MM dates (outranks config date_year; an explicit year in the date always wins)")
 	rootCmd.AddCommand(correctCmd)
 }
 
 func runCorrect(cmd *cobra.Command, args []string) error {
-	item, date, _, value, _, actualSubcategory, ok := parseExpenseForFeedback(args[0])
-	if !ok {
-		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\"")
-	}
-
 	appCfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
+
+	// T-41: parse at the boundary; config loads first so date_year feeds the
+	// year ladder. The canonical DateString keeps GenerateID's lookup bytes
+	// aligned with what add/auto wrote.
+	pe, actualSubcategory, err := parse.ExpenseString(args[0], parse.Options{Year: correctYear, ConfigYear: appCfg.DateYear})
+	if err != nil {
+		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\": %w", err)
+	}
+	item, date, value := pe.Item, pe.DateString(), pe.Value
 
 	path := appCfg.ClassificationsFilePath()
 	if path == "" {

@@ -21,3 +21,9 @@ func OutputJSONHasType(typ string) func(*harness.Context) {
 func OutputJSONHasAction(action string) func(*harness.Context) {
 	return verify.OutputJSONHasValue("action", action)
 }
+
+// OutputJSONHasDate asserts that the JSON output has the given canonical
+// DD/MM/YYYY date value.
+func OutputJSONHasDate(date string) func(*harness.Context) {
+	return verify.OutputJSONHasValue("date", date)
+}

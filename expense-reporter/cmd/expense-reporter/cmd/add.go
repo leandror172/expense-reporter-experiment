@@ -7,13 +7,12 @@ import (
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	"expense-reporter/internal/parse"
 	taxonomy "expense-reporter/internal/taxonomy"
-	"expense-reporter/pkg/utils"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -21,6 +20,7 @@ import (
 var addDryRun bool
 var addDataDir string
 var addType string
+var addYear int
 
 var addPredictedSubcategory string
 var addPredictedCategory string
@@ -55,6 +55,7 @@ func init() {
 	addCmd.Flags().BoolVar(&addDryRun, "dry-run", false, "Validate and parse without inserting into log")
 	addCmd.Flags().StringVar(&addDataDir, "data-dir", "data/classification", "(deprecated, no longer used: add resolves via config/taxonomy.json since T-13)")
 	addCmd.Flags().StringVar(&addType, "type", "", "Expense type (Fixas/Variáveis/Extras/Adicionais) — required only for subcategories that exist under more than one type")
+	addCmd.Flags().IntVar(&addYear, "year", 0, "Fallback year for bare DD/MM dates (outranks config date_year; an explicit year in the date always wins)")
 	addCmd.Flags().StringVar(&addPredictedSubcategory, "predicted-subcategory", "", "Model's top prediction for subcategory")
 	addCmd.Flags().StringVar(&addPredictedCategory, "predicted-category", "", "Model's predicted category")
 	addCmd.Flags().StringVar(&addClassificationID, "classification-id", "", "ID from the prior classify call (for cross-reference)")
@@ -64,16 +65,16 @@ func init() {
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
-	expenseString := args[0]
-
-	item, dateStr, parsedDate, value, installmentCount, subcategory, ok := parseExpenseForFeedback(expenseString)
-	if !ok {
-		return fmt.Errorf("invalid expense format: expected \"item;DD/MM[/YYYY];value[/N];subcategory\"")
-	}
-
 	appCfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// T-41: the parse boundary owns all input normalization; the config is
+	// loaded first because date_year feeds the year-precedence ladder.
+	pe, subcategory, err := parse.ExpenseString(args[0], parse.Options{Year: addYear, ConfigYear: appCfg.DateYear})
+	if err != nil {
+		return fmt.Errorf("invalid expense format: expected \"item;DD/MM[/YYYY];value[/N];subcategory\": %w", err)
 	}
 
 	sheets, err := loadTaxonomyTree(appCfg)
@@ -90,21 +91,21 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if addDryRun {
-		return runAddDryRun(cmd, item, dateStr, value, typ, subcategory, category)
+		return runAddDryRun(cmd, pe.Item, pe.DateString(), pe.Value, typ, subcategory, category)
 	}
 
 	if logPath := appCfg.ExpensesLogFilePath(); logPath != "" {
-		if err := appender.ExpandAndAppend(logPath, item, parsedDate, value, installmentCount, typ, category, subcategory); err != nil {
+		if err := appender.ExpandAndAppend(logPath, pe.Item, pe.Date, pe.Value, pe.Installments, typ, category, subcategory); err != nil {
 			fmt.Fprintf(os.Stderr, "⚠  expense log: %v\n", err)
 		}
 	}
 
 	if addPredictedSubcategory != "" {
-		logPredictedFeedback(appCfg, item, dateStr, value, subcategory, category,
+		logPredictedFeedback(appCfg, pe.Item, pe.DateString(), pe.Value, subcategory, category,
 			addPredictedSubcategory, addPredictedCategory, addClassificationID,
 			addConfidence, addModel)
 	} else {
-		logManualFeedback(appCfg, item, dateStr, value, subcategory, category)
+		logManualFeedback(appCfg, pe.Item, pe.DateString(), pe.Value, subcategory, category)
 	}
 
 	fmt.Println("✓ Expense added successfully!")
@@ -161,36 +162,6 @@ func logParsedManualFeedback(item, date string, value float64, subcategory, cate
 		return
 	}
 	logManualFeedback(appCfg, item, date, value, subcategory, category)
-}
-
-// parseExpenseForFeedback splits "item;DD/MM[/YYYY];value[/N];subcategory" and parses date + value.
-// Returns the formatted dateStr (DD/MM/YYYY), parsed time.Time, per-installment value, and installment count.
-func parseExpenseForFeedback(expenseString string) (item, dateStr string, parsedDate time.Time, value float64, installmentCount int, subcategory string, ok bool) {
-	parts := strings.SplitN(expenseString, ";", 4)
-	if len(parts) != 4 {
-		return
-	}
-	item = strings.TrimSpace(parts[0])
-	rawDate := strings.TrimSpace(parts[1])
-	valueStr := strings.TrimSpace(parts[2])
-	subcategory = strings.TrimSpace(parts[3])
-	if item == "" || rawDate == "" || subcategory == "" {
-		return
-	}
-	t, err := utils.ParseDateFlexible(rawDate)
-	if err != nil {
-		return
-	}
-	parsedDate = t
-	dateStr = utils.FormatDate(t)
-	v, count, err := utils.ParseCurrencyWithInstallments(valueStr)
-	if err != nil {
-		return
-	}
-	value = v
-	installmentCount = count
-	ok = true
-	return
 }
 
 // resolveFullPath resolves a bare subcategory to its (type, category) via the
