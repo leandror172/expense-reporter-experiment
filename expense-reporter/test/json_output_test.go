@@ -95,6 +95,22 @@ func TestAddDryRunJSON_SurfacesResolvedType(t *testing.T) {
 	})
 }
 
+// TestAddDryRunJSON_ParsesThousandsSeparatorValue pins the documented BR value
+// format at the CLI contract: "1.234,56" (dot thousands + comma decimal) parses
+// to 1234.56. Unsupported anywhere before the T-41 boundary — the old parser's
+// naive comma→dot swap produced "1.234.56" and errored.
+func TestAddDryRunJSON_ParsesThousandsSeparatorValue(t *testing.T) {
+	harness.Run(t, harness.Scenario{
+		Name:  "add --dry-run --json parses BR thousands-separator value",
+		Given: classifierForJSON(),
+		When:  actions.RunAddDryRun("Passagem Aérea;15/04/2026;1.234,56;Uber/Taxi", "--json"),
+		Then: slices.Concat(
+			thenJSONSucceeded(),
+			thenJSONValueIs(1234.56),
+		),
+	})
+}
+
 // binaryOnly sets up context with the binary path and a taxonomy config — no
 // Ollama, no workbook, no data dir. Since T-13, add resolves its full path from
 // config/taxonomy.json even on the dry-run path, so a taxonomy must be configured.
@@ -172,6 +188,13 @@ func thenJSONCategoryIs(category string) []func(*harness.Context) {
 func thenJSONTypeIs(typ string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		expect.OutputJSONHasType(typ),
+	}
+}
+
+// thenJSONValueIs checks that the parsed value field has the expected amount.
+func thenJSONValueIs(value float64) []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputJSONHasValue("value", value),
 	}
 }
 

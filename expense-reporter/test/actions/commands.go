@@ -59,12 +59,14 @@ func RunAdd(expenseString string, extraFlags ...string) func(*harness.Context) {
 
 // RunCorrect returns a When closure that runs the correct command.
 // Passes --data-dir from ctx when set. Does NOT pass --workbook (correct is feedback-only).
-func RunCorrect(expenseString string) func(*harness.Context) {
+// extraFlags are appended after the expense string (e.g. "--year", "2024").
+func RunCorrect(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"correct", expenseString}
 		if domain.DataDir(ctx) != "" {
 			args = append(args, "--data-dir", domain.DataDir(ctx))
 		}
+		args = append(args, extraFlags...)
 		runCommand(ctx, args...)
 	}
 }
