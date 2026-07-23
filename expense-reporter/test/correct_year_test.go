@@ -11,19 +11,6 @@ import (
 	"github.com/leandror172/acceptance-harness/harness"
 )
 
-// expenseAutoConfirmedInAPriorYear returns the same auto-confirmed event as
-// expenseAutoConfirmed, distinguished because the seed is dated in a PRIOR year (2024)
-// while the correction arrives with a bare date.
-func expenseAutoConfirmedInAPriorYear(fixDir string) func(*harness.Context) {
-	return expenseAutoConfirmed(fixDir)
-}
-
-// correctionJoinedThePriorYearEntry asserts the corrected entry was appended with
-// the 2024 canonical date, proving the id join hit the seeded prior-year entry.
-func correctionJoinedThePriorYearEntry(fixDir string) []func(*harness.Context) {
-	return classificationsMatchExpected(fixDir)
-}
-
 // TestCorrect_YearFlagResolvesBareDateToPriorEntry pins the join property behind
 // --year: correct looks up the prior entry by GenerateID(item, date, value), so a
 // bare 15/04 with --year 2024 must canonicalize to 15/04/2024 and hash to the very
@@ -41,4 +28,17 @@ func TestCorrect_YearFlagResolvesBareDateToPriorEntry(t *testing.T) {
 			correctionJoinedThePriorYearEntry(fixDir),
 		),
 	})
+}
+
+// expenseAutoConfirmedInAPriorYear returns the same auto-confirmed event as
+// expenseAutoConfirmed, distinguished because the seed is dated in a PRIOR year (2024)
+// while the correction arrives with a bare date.
+func expenseAutoConfirmedInAPriorYear(fixDir string) func(*harness.Context) {
+	return expenseAutoConfirmed(fixDir)
+}
+
+// correctionJoinedThePriorYearEntry asserts the corrected entry was appended with
+// the 2024 canonical date, proving the id join hit the seeded prior-year entry.
+func correctionJoinedThePriorYearEntry(fixDir string) []func(*harness.Context) {
+	return classificationsMatchExpected(fixDir)
 }

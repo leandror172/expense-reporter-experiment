@@ -56,6 +56,14 @@ alone without opening the helper or the fixture.
 
 See `add_log_append_test.go` for the worked example.
 
+**Call site reads as an English phrase (Given and Then alike):** the name plus its
+argument should form one grammatical sentence — slot the argument into the grammar
+instead of letting it dangle after a complete phrase. End the name with the word that
+receives the argument (`As`, `To`, …): `defaultYearConfiguredAs(2024)`,
+`flagYearResolvedBareDateTo("15/04/2024")`, `thousandsAmountReadAs(1234.56)` — not
+`defaultYearConfigured(2024)` or `bareDateResolvedToFlagYear("15/04/2024")`, where the
+argument sits outside the sentence.
+
 ## Given Naming Pattern
 
 Given helpers use **Event Modeling** style: past-tense events that happened in the system,
