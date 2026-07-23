@@ -130,7 +130,7 @@ func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "generate-workbook routes the ambiguous-leaf entry to its typed sheet",
-		Given: cycleCompletedThroughApply(fixDir),
+		Given: typedExpenseLogRecordedThroughApply(fixDir),
 		When:  actions.RunGenerateWorkbook(taxonomyPath, entriesPath),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -171,20 +171,26 @@ func expensesClassifiedWithTypes(fixDir string) func(*harness.Context) {
 	}
 }
 
+// expenseTypedDuringBrowserReview: the reviewer picked a type in the browser and
+// exported it (step 4, folded into the reviewed.json fixture the When reads). Only the
+// two logs apply writes into need a home; the export itself is fixture data.
 func expenseTypedDuringBrowserReview(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		withFeedbackConfig(ctx) // classifications.jsonl + expenses_log.jsonl in WorkDir
-	}
+	return given(
+		binaryBuilt(),
+		fixtureAvailable(fixDir),
+		feedbackLogsConfigured(),
+	)
 }
 
-func cycleCompletedThroughApply(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		// The typed log is supplied directly to the When via the entries flag; nothing
-		// else is needed — this models the cumulative state after apply.
-		ctx.FixtureDir = fixDir
-	}
+// typedExpenseLogRecordedThroughApply: the typed expense log exists, as it would after
+// batch-auto → review → apply had run. Those steps are NOT replayed here — the log is
+// fixture data (typed-expenses_log.jsonl) handed to the When, which is why this names
+// the resulting record rather than claiming a cycle was executed.
+func typedExpenseLogRecordedThroughApply(fixDir string) func(*harness.Context) {
+	return given(
+		binaryBuilt(),
+		fixtureAvailable(fixDir),
+	)
 }
 
 // createAmbiguousReferenceWorkbook builds a reference-sheet-only workbook where

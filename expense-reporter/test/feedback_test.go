@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/domain"
 	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
 	"github.com/leandror172/acceptance-harness/harness"
@@ -94,20 +93,6 @@ func knownExpenseNotYetLogged(fixDir string) func(*harness.Context) {
 // appended — the precondition for asserting feedback was logged for them.
 func knownExpenseBatchSubmittedForClassification(fixDir string) func(*harness.Context) {
 	return expenseBatchSubmittedForClassification(fixDir)
-}
-
-// withFeedbackConfig writes binary config with classifications_path + expenses_log_path and registers both artifacts.
-func withFeedbackConfig(ctx *harness.Context) {
-	classificationsPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
-	expensesLogPath := filepath.Join(ctx.WorkDir, "expenses_log.jsonl")
-	if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
-		"classifications_path": classificationsPath,
-		"expenses_log_path":    expensesLogPath,
-	}); err != nil {
-		ctx.T.Fatalf("SetupBinaryConfig: %v", err)
-	}
-	ctx.Artifacts["classifications.jsonl"] = classificationsPath
-	ctx.Artifacts["expenses_log.jsonl"] = expensesLogPath
 }
 
 // --- Then helpers (composable) ---

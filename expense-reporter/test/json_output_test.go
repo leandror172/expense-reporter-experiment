@@ -3,12 +3,10 @@
 package acceptance_test
 
 import (
-	"path/filepath"
 	"slices"
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/domain"
 	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
 	"github.com/leandror172/acceptance-harness/harness"
@@ -109,40 +107,6 @@ func TestAdd_ReadsBrazilianThousandsAmount(t *testing.T) {
 			thousandsAmountReadAs(1234.56),
 		),
 	})
-}
-
-// jsonOutputFixture is the taxonomy-only fixture used by scenarios that author no
-// fixture data of their own — they need a configured taxonomy and nothing else.
-func jsonOutputFixture() string {
-	return filepath.Join(fixturesDir(), "json-output")
-}
-
-// taxonomyAuthoredWithoutTrainingData: a taxonomy exists but no training corpus was
-// ever recorded — no data dir, and therefore no few-shot examples or keyword index.
-// The honest Given for commands that never classify (add), and for dry-run paths that
-// resolve a full path from config/taxonomy.json but call no model (T-13).
-// No Ollama, no workbook.
-func taxonomyAuthoredWithoutTrainingData(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
-}
-
-// taxonomyAuthoredWithTrainingData: a taxonomy exists and the real training corpus
-// (+ keyword index) was recorded — the ordinary state of a working install, and the
-// most common Given in the suite. The fixture supplies the taxonomy; the corpus is the
-// repo's real data dir. Read-only: the fixture is NOT copied to the WorkDir, so
-// scenarios whose command writes beside its input want
-// expenseBatchSubmittedForClassification instead.
-func taxonomyAuthoredWithTrainingData(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
 }
 
 // --- Then helpers ---

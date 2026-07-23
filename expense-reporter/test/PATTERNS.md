@@ -100,6 +100,28 @@ Name it pragmatically — e.g. `noClassificationsRecorded()`.
 Given names align with how the system actually evolves over time (a sequence of recorded
 events) and keep the test description domain-focused.
 
+### Composing a Given from events
+
+`Scenario.Given` holds ONE function while `Scenario.Then` holds a slice. That asymmetry is
+why Given helpers duplicated for so long: a scenario needing three facts had no way to say
+so except to write a new body containing all three, so every combination grew its own copy.
+
+`given(...)` (in `givens_test.go`) restores the missing composition — it folds a list of
+events into the single function the harness expects:
+
+```go
+Given: given(binaryBuilt(), fixtureAvailable(fixDir), trainingCorpusRecorded()),
+```
+
+Atomic events each carry ONE fact and compose in any combination: `binaryBuilt`,
+`fixtureAvailable`, `trainingCorpusRecorded`, `taxonomyPublished`, `feedbackLogsConfigured`,
+`inputBatchStaged`.
+
+**This works only because `domain.SetupBinaryConfig` MERGES keys** across calls within a
+scenario (it accumulates per `*harness.Context`). Before that, two events each writing part
+of config.json would silently erase each other — the second `os.WriteFile` won. Any new
+event that writes config must go through `SetupBinaryConfig`, never write config.json itself.
+
 ### Canonical Givens — reuse, don't re-copy
 
 Three implementations cover nearly every scenario. A new Given should be a one-line

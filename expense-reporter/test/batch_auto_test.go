@@ -134,23 +134,6 @@ func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Cont
 	}
 }
 
-// expenseBatchSubmittedForClassification: a CSV of expenses was submitted for
-// classification — staged in the WorkDir because batch-auto writes its output files
-// beside the input. Shared by every batch scenario; the per-scenario wrappers
-// elsewhere name what their own fixture's batch contains. No workbook: these
-// scenarios assert against expenses_log.jsonl, not workbook rows.
-func expenseBatchSubmittedForClassification(fixtureDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixtureDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixtureDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixtureDir)
-	}
-}
-
 func classifiedAndReviewFilesProduced() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.CommandSucceeded(),
