@@ -24,7 +24,7 @@ func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify with training data logs few-shot injection under --verbose",
-		Given: classifierWithDataDir(),
+		Given: taxonomyAuthoredWithTrainingData(),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
 		Then:  thenFewShotLineVisible(),
 	})
@@ -39,7 +39,7 @@ func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify without training data degrades gracefully — no error, few-shot count 0",
-		Given: classifierWithKeywordsOnly(),
+		Given: taxonomyAuthoredWithKeywordsOnly(),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenFewShotLineVisible(),
@@ -76,20 +76,10 @@ func requireDataDir(t *testing.T) {
 	}
 }
 
-// classifierWithDataDir sets up the real data directory (training data + keyword index)
-// plus a taxonomy config (T-13: classify requires a configured taxonomy).
-func classifierWithDataDir() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
-	}
-}
-
-// classifierWithKeywordsOnly creates a stripped data dir containing only
+// taxonomyAuthoredWithKeywordsOnly creates a stripped data dir containing only
 // feature_dictionary_enhanced.json (no training_data_complete.json).
 // This simulates a cold-start environment where training data is absent.
-func classifierWithKeywordsOnly() func(*harness.Context) {
+func taxonomyAuthoredWithKeywordsOnly() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 
@@ -98,7 +88,7 @@ func classifierWithKeywordsOnly() func(*harness.Context) {
 		src := filepath.Join(dataDir, "feature_dictionary_enhanced.json")
 		dst := filepath.Join(tmpDir, "feature_dictionary_enhanced.json")
 		if err := copyFile(src, dst); err != nil {
-			ctx.T.Fatalf("classifierWithKeywordsOnly: copy feature dict: %v", err)
+			ctx.T.Fatalf("taxonomyAuthoredWithKeywordsOnly: copy feature dict: %v", err)
 		}
 		// Intentionally omit training_data_complete.json.
 		domain.SetDataDir(ctx, tmpDir)

@@ -89,7 +89,7 @@ func TestBatchAuto_SameYearInstallmentsExpandedInLog(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "same-year installments expand into one dated log line each",
-		Given: batchReadyForLogAppend(fixtureDir),
+		Given: expenseBatchSubmittedForClassification(fixtureDir),
 		When:  actions.RunBatchAutoWithInput(fixtureDir, "midyear-input.csv"),
 		Then:  installmentsExpandedInLog(fixtureDir),
 	})
@@ -102,7 +102,7 @@ func TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "cross-year installments are logged with their real next-year date — no rollover.csv",
-		Given: batchReadyForLogAppend(fixtureDir),
+		Given: expenseBatchSubmittedForClassification(fixtureDir),
 		When:  actions.RunBatchAutoWithFixture(fixtureDir),
 		Then:  crossYearInstallmentsLoggedNotRolledOver(fixtureDir),
 	})
@@ -149,10 +149,12 @@ func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Cont
 	}
 }
 
-// batchReadyForLogAppend sets up a batch-auto run for the log-append world: fixture +
-// taxonomy config, no workbook. Used by the installment and cross-year scenarios, which
-// now assert against expenses_log.jsonl rather than workbook rows.
-func batchReadyForLogAppend(fixtureDir string) func(*harness.Context) {
+// expenseBatchSubmittedForClassification: a CSV of expenses was submitted for
+// classification — staged in the WorkDir because batch-auto writes its output files
+// beside the input. Shared by every batch scenario; the per-scenario wrappers
+// elsewhere name what their own fixture's batch contains. No workbook: these
+// scenarios assert against expenses_log.jsonl, not workbook rows.
+func expenseBatchSubmittedForClassification(fixtureDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)

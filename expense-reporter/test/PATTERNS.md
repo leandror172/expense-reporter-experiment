@@ -79,6 +79,19 @@ not technical setup descriptions or state predicates.
 - `previouslyConfirmedExpenseExists(fixDir)` — state predicate, not event
 - `withFeedbackConfig` — internal plumbing, not a domain event (OK as a private
   helper called by Given functions; not OK as the Given itself)
+- `classifierForJSON()` — the archetype: names a mechanism (*a classifier*) plus an
+  output format (*for JSON*), neither of which is a domain fact. Renamed to
+  `taxonomyAuthoredWithTrainingData()`, which states what is true in the domain.
+- `batchReadyForLogAppend(fixDir)` — "ready for &lt;internal step&gt;" is a state predicate
+  named after machinery. Renamed to `expenseBatchSubmittedForClassification(fixDir)`.
+
+**Duplicate bodies are the tell.** Mechanism names describe *how the context was
+assembled*, so two different assembly stories can hide one identical fact and nobody
+notices: `classifierForJSON`/`classifierWithDataDir` and three separate
+`*ReadyForLogAppend` helpers each turned out to be byte-identical. Event names collide
+loudly when they mean the same thing. When a scenario genuinely needs its own name,
+make it a one-line wrapper over the shared Given (e.g.
+`knownExpenseBatchSubmittedForClassification`), never a second copy of the body.
 
 **Exception:** absence of any event (an empty event stream) is a state, not an event.
 Name it pragmatically — e.g. `noClassificationsRecorded()`.

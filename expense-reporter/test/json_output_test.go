@@ -22,7 +22,7 @@ func TestClassifyJSON_ReturnsValidJSONWithCandidates(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify --json returns valid JSON with candidates array",
-		Given: classifierForJSON(),
+		Given: taxonomyAuthoredWithTrainingData(),
 		When:  actions.RunClassify("--json", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -38,7 +38,7 @@ func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto --json returns action recommendation without inserting",
-		Given: classifierForJSON(),
+		Given: taxonomyAuthoredWithTrainingData(),
 		When:  actions.RunAuto("--json", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -54,7 +54,7 @@ func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
 func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json returns valid JSON with would_insert action",
-		Given: binaryOnly(),
+		Given: taxonomyAuthoredWithoutTrainingData(),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -70,7 +70,7 @@ func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
 func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json resolves category from taxonomy",
-		Given: classifierForJSON(),
+		Given: taxonomyAuthoredWithTrainingData(),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -86,7 +86,7 @@ func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
 func TestAddDryRunJSON_SurfacesResolvedType(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json surfaces the type resolved from taxonomy",
-		Given: classifierForJSON(),
+		Given: taxonomyAuthoredWithTrainingData(),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -102,7 +102,7 @@ func TestAddDryRunJSON_SurfacesResolvedType(t *testing.T) {
 func TestAdd_ReadsBrazilianThousandsAmount(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json parses BR thousands-separator value",
-		Given: classifierForJSON(),
+		Given: taxonomyAuthoredWithTrainingData(),
 		When:  actions.RunAddDryRun("Passagem Aérea;15/04/2026;1.234,56;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -111,20 +111,23 @@ func TestAdd_ReadsBrazilianThousandsAmount(t *testing.T) {
 	})
 }
 
-// binaryOnly sets up context with the binary path and a taxonomy config — no
-// Ollama, no workbook, no data dir. Since T-13, add resolves its full path from
-// config/taxonomy.json even on the dry-run path, so a taxonomy must be configured.
-func binaryOnly() func(*harness.Context) {
+// taxonomyAuthoredWithoutTrainingData: a taxonomy exists but no training corpus was
+// ever recorded — no data dir, and therefore no few-shot examples or keyword index.
+// Since T-13, add resolves its full path from config/taxonomy.json even on the
+// dry-run path, so a taxonomy must be configured. No Ollama, no workbook.
+func taxonomyAuthoredWithoutTrainingData() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
 	}
 }
 
-// classifierForJSON sets up the context for JSON output tests.
-// No workbook needed since --json mode is read-only. T-13: classify/auto/add all
-// resolve against config/taxonomy.json, so the taxonomy is configured here too.
-func classifierForJSON() func(*harness.Context) {
+// taxonomyAuthoredWithTrainingData: a taxonomy exists and the real training corpus
+// (+ keyword index) was recorded — the ordinary state of a working install, and the
+// default Given for read-only scenarios here and in fewshot_test.go. No workbook is
+// needed since --json mode is read-only. T-13: classify/auto/add all resolve against
+// config/taxonomy.json, so the taxonomy is configured here too.
+func taxonomyAuthoredWithTrainingData() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)

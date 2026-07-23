@@ -36,7 +36,7 @@ func TestAuto_KeywordAgreementAppendsToLog(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto HIGH confidence appends typed expense log entry without workbook",
-		Given: autoLogAppendReady(fixDir),
+		Given: noExpensesLoggedYet(fixDir),
 		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
@@ -67,7 +67,7 @@ func TestAuto_InstallmentsExpandToNEntries(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto with installment value notation appends N dated log entries",
-		Given: autoLogAppendReady(fixDir),
+		Given: noExpensesLoggedYet(fixDir),
 		When:  actions.RunAuto("Posto Ipiranga", "90,00/3", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
@@ -80,7 +80,10 @@ func TestAuto_InstallmentsExpandToNEntries(t *testing.T) {
 
 // --- Given helpers ---
 
-func autoLogAppendReady(fixDir string) func(*harness.Context) {
+// noExpensesLoggedYet: nothing has been logged — a fresh WorkDir with the taxonomy
+// authored and the training corpus recorded. The empty log is the salient fact: every
+// scenario here asserts on exactly what the auto run appended to it.
+func noExpensesLoggedYet(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
@@ -111,7 +114,7 @@ func TestAuto_JoinIDMatchesAcrossLogs(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto given a short DD/MM date logs one row to each log under the same join id",
-		Given: autoLogAppendReady(fixDir),
+		Given: noExpensesLoggedYet(fixDir),
 		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04"),
 		Then: slices.Concat(
 			commandSucceeded(),

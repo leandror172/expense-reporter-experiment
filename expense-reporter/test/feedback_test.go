@@ -39,7 +39,7 @@ func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto logs confirmed feedback for all auto-appended rows",
-		Given: knownExpenseBatchReadyForLogAppend(fixDir),
+		Given: knownExpenseBatchSubmittedForClassification(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -92,16 +92,11 @@ func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 	}
 }
 
-func knownExpenseBatchReadyForLogAppend(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
+// knownExpenseBatchSubmittedForClassification submits a batch whose expenses the
+// keyword dictionary already knows, so the agreement gate passes and rows are
+// appended — the precondition for asserting feedback was logged for them.
+func knownExpenseBatchSubmittedForClassification(fixDir string) func(*harness.Context) {
+	return expenseBatchSubmittedForClassification(fixDir)
 }
 
 func mixedExpensesReadyForDryRun(fixDir string) func(*harness.Context) {
