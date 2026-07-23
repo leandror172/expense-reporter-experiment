@@ -8,11 +8,12 @@ single source of truth; `generate-workbook` the only writer.** Landed: T-13 full
 classification, WS-A/B/C, 5.R2 embed-on-miss (s54), T-32 agreement gate (s57 —
 confidence measured dead; keyword agreement gates), T2 harness module v1.0.0,
 T-20 resume+dup warning (s60), T-35 join-id canonicalization (s61), T-39 suite split
-+ T-24 think-off default (s62, PR #52). **Next = PARSE BOUNDARY
-(`.claude/plans/parse-boundary.md`): structured input, parse-once; year precedence
-string > `--year` > config `date_year` > most-recent-non-future; absorbs T-37/T-40,
-T-21 first consumer, T-38 dies with plain `batch` (WS-E). Organizing milestone:
-first real monthly close on 2026 data.** WS-D (HELD: gate-to-review) → WS-E after.
++ T-24 think-off default (s62, PR #52). **PARSE BOUNDARY (T-41) UNDERWAY (s63,
+branch `feat/t41-parse-boundary`): plan FINAL (all §10 locked — `internal/parse`,
+single `time.Time` + `DateString()`, grace 0, internal-first). Slice 1 DONE:
+add/correct migrated, `--year` flags, `date_year` live (rung 3), BR thousands
+parse. Slices 2–4: auto → batch-auto (T-40 lands there) → apply, then T-21 →
+T-42 monthly close.** WS-D (HELD: gate-to-review) → WS-E after.
 History + measurement detail → KNOWLEDGE.md "Milestone Log".
 
 ## Repo Structure

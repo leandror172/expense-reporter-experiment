@@ -1,45 +1,45 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-20 — Session 62: T-39 suite split + T-24 think-off default (PR #52); vision reframe → parse-boundary plan (T-41)
-**Current Layer:** Layer 5 — Expense Classifier (T-39/T-24 shipped, PR #52 open; next: parse boundary T-41 → monthly close T-42)
+**Current Session:** 2026-07-22 — Session 63: T-41 parse boundary — design locks + slice 1 (internal/parse, add/correct; PR #54); Fable verdict transcript gap
+**Current Layer:** Parse Boundary (T-41) — slice 1 of 4 shipped, slices 2–4 pending
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-20 - Session 62: T-39 suite split + T-24 think-off default (PR #52); vision reframe → parse-boundary plan (T-41)
+## 2026-07-22 - Session 63: T-41 parse boundary — design locks + slice 1 (internal/parse, add/correct; PR #54); Fable verdict transcript gap
 
 ### Context
 
-Session started with PRs #50/#51 (T-35/T-36) freshly merged to master. Backlog discussion picked Track A (suite health); mid-session the user redirected to the grand vision, which reframed the roadmap and produced the parse-boundary plan. All code work on branch `feat/t39-suite-split-t24-think-default` (PR #52) — master has no session-62 commits.
+Session started from resume with all prior PRs merged and local master updated; user asked for a next-steps discussion, chose the T-41 design session, locked all four §10 questions interactively, then green-lit implementation of slice 1.
 
 ### What Was Done
 
-- T-39: acceptance suite split — `testing.Short()` skip added to `extern.RequireOllama` (per-test seam, not per-file); `run-acceptance.sh` now two modes: deterministic default (`-short`, ~8s, 30 pass/26 skip, no Ollama pre-flight, 600s) and `-full` (whole suite, 3600s ceiling)
-- T-24: `--think=false` made the default on `classify`/`auto`/`batch-auto`; full suite verified 56/56 green in 128s under the new default (was 840–1989s think-on, ~7–15× faster)
-- PR #52 opened with the code + runner docs (READMEs, `ref:acceptance-run` block, CLAUDE.md, index.md)
-- Vision re-read (`docs/expense-classifier-vision.md` + `.claude/t23-strategic-implications.md`) → project reframed as PRE-FIRST-USE; organizing milestone = first real monthly close on 2026 data (T-42)
-- Parse-boundary plan drafted + indexed (`.claude/plans/parse-boundary.md`): structured input, parse-once; the single-string input format identified as the common ancestor of the date/data debt (T-35 class, T-18, T-21, six parsers, GenerateID format-sensitivity)
-- Memories/README staleness sweep (committed to PR #52): dead-`date_year` false documentation corrected in app KNOWLEDGE + README; test/classifier memories updated for the suite split + think default; root QUICK compressed under its line budget with Milestone Log entries for sessions 60–62
+- T-41 design session: all §10 opens locked; `.claude/plans/parse-boundary.md` DRAFT → FINAL (commit `784eb03`)
+- `internal/parse` boundary package built TDD via my-go-qcoder: `ParsedExpense` (single `time.Time` + `DateString()`), year ladder, BR thousands normalization (`358c4fd`)
+- `add`/`correct` repointed to the boundary; `parseExpenseForFeedback` deleted; `--year` on both; `date_year` live as rung 3 (`6b54428`)
+- Acceptance: 4 year-precedence tests (`add_year_test.go` + `expect.OutputJSONHasDate`); `correct --year` join test (fixture `correct-year-flag`, seed id `26138364fcc9`); BR thousands CLI pin; `RunCorrect` gained variadic flags (`5021e0b`)
+- Index + memories synced: new `internal/parse` QUICK, root/app/test QUICK + app KNOWLEDGE updates (`0f787b2`, `3481274`)
+- Pattern-conformance pass vs llm-repo code-design/refactoring conventions: single-home field validation, contract-not-mechanism doc comments (`2b30dc3`)
+- Pushed master (fast-forward) + branch; opened PR #54
+- Verdict pipeline investigation: Fable transcripts carry NO assistant text → Stop-hook capture inert; 4 verdicts (2/1/1/1) appended directly to `calls.jsonl` (`source: manual-append-2026-07-22-transcript-gap`); memory `feedback_verdict_transcript_gap` written; llm-repo T-109 note added (uncommitted there)
+- Verification: unit suite green, deterministic acceptance 36 pass, `-full` 114s green, gofmt/vet clean
 
 ### Decisions Made
 
-- T-39 fixed by SPLIT (not a ceiling raise); script default = deterministic-fast, `-full` deliberate
-- T-24: think-off uniform across all three commands — gate band −2.3pp WITH think, 5.R2 miss path +2.5pp at 5.5× latency, sentinel loss covered by the T-32 agreement gate (T-16 defaults-parity lesson applied)
-- Chat-era input architecture (user): one parse tool converts input to structured fields; downstream tools take fields, not strings — parse boundary built BEFORE T-21, which becomes its first consumer
-- Year precedence locked: explicit year in string > `--year` arg > config `date_year` > most-recent-non-future occurrence (grace window ~days TBD in design session)
-- T-21 UX locked: 1 row + ×N badge in the review UI; `apply` expands to N log entries
-- `--year` flags to be added uniformly to `auto`/`batch-auto`/`add`
-- T-38 RESOLVED by decision: plain `batch` is a pre-pivot artifact (writes the workbook directly; no vision path uses it) — delete `utils.ParseDate` with its caller under WS-E, do NOT repair. Widens WS-E's previously-narrow scope.
+- §10 locks: home = new `internal/parse` (NOT rehabilitated `internal/parser` — that dies with WS-E); struct = single stored `time.Time` + `DateString()` method (user proposal — inconsistent date pair unrepresentable; formatting can't fail; supersedes the "both fields" lean); API = field-wise core + semicolon wrapper returning subcategory ALONGSIDE (classification ≠ parsing); migration order add/correct → auto → batch-auto → apply, one PR per slice; boundary owns ALL input normalization (Q3); internal-first — MCP `parse_expense` deferred to Layer 6 (T-15 slice-2 lesson)
+- Grace window = 0 (user never enters future-dated transactions); bare date strictly after Now → LAST year; same-day is not future
+- `correct` also gets `--year` (beyond the plan's list) — T-16 parity; its GenerateID lookup must resolve years identically to what `add` wrote
+- `parseOptions(yearFlag, cfg)` cmd-level extraction deferred to slice 2 (no seam below 3 callers — extract-keep-divergence rule 3); recorded in plan §5
+- Rung 4 stays unit-only (injected clock): runtime-dependent acceptance expectations would be their own time bomb
 
 ### Next
 
-- Merge PR #52 (T-39 + T-24 + doc sync)
-- T-41 parse-boundary design session — plan §10 open questions: package home/struct shape, migration order (candidate: add/correct → auto → batch-auto → apply), currency-normalization ownership, MCP `parse_expense` timing
-- Then T-21 threading (first consumer slice), then T-42 (first real monthly close on 2026 data)
-- Standing queue: T-25, T-27, T-28, T-29, Apoia-se rename, promote all-years log
+- Merge PR #54, then slice 2: repoint `auto` (auto.go:51/:58) to `parse.Fields` + extract cmd-level `parseOptions` (third caller)
+- Then slice 3 (`batch-auto` parse-once-per-row; T-40 becomes a boundary unit test) → slice 4 (`apply`, retires `canonicalDate`) → T-21 threading → T-42 monthly close
+- T-43 (correct fixtures explicit year) is a 2-line quickie any session can absorb
 
 ### Gotchas
 
-- Piping a background full-suite run through `tail -80` truncated the captured log — the roster was unverifiable from it. Capture full output to a file; the re-run was free because `go test` served cached results.
-- `go test` result caching replays the recorded output of an unchanged run (`ok ... (cached)`) — legitimate for roster verification, but TIMING numbers must come from uncached runs.
-- GPU contention invalidates suite timing — the first `-full` run was stopped because the GPU was in use; verify the GPU is idle before any benchmark/timing run.
-- Latency claims rot fast: the think-off default made "q3 ≈12s/classify, suite needs 30m" stale in several memories/READMEs within one session — swept, but future latency claims should name their think mode.
+- `generate_code` `output_file` RELATIVE paths resolve against the LLM repo's REPO_ROOT even from this repo's session — the first file landed under `/mnt/i/workspaces/llm/expense-reporter/`; always pass absolute paths
+- Fable (claude.ai/code) transcripts store NO assistant text blocks → `verdict-capture.py` can never see `[VERDICT]` blocks written here; append records directly to `calls.jsonl` in the hook schema (memory `feedback_verdict_transcript_gap`; llm T-109 lists all 5 findings incl. background-call template bypass and warm_model not covering large-context first calls — 120s default still times out, retry with timeout=300)
+- `utils.ParseCurrency` NEVER parsed `1.234,56` (naive comma→dot swap) — the documented BR thousands format was unsupported everywhere until the boundary's normalizeThousands (both separators present → strip dots; dot-only keeps legacy decimal meaning)
+- Existing `correct` acceptance tests send bare `15/04` against `15/04/2026` seeds — pass today via rung 4 (past → current year) but go RED in January 2027 (→ T-43)

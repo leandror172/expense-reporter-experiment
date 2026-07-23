@@ -19,9 +19,10 @@ func TestApply_IdempotencyAndFeedback(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "apply-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "apply command handles idempotency and feedback correctly",
-		Given: expensesAutoInsertedBeforeReview(fixDir),
-		When:  actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Name:    "apply command handles idempotency and feedback correctly",
+		Fixture: fixDir,
+		Given:   expensesAutoInsertedBeforeReview(),
+		When:    actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
 		Then: slices.Concat(
 			commandSucceeded(),
 			correctionsLoggedForAlreadyInserted(fixDir),
@@ -43,9 +44,10 @@ func TestApply_DryRunWritesNothing(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "apply-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "apply --dry-run writes nothing to either log, even for a found+corrected row",
-		Given: expensesAutoInsertedBeforeReview(fixDir),
-		When:  actions.RunApplyDryRun(filepath.Join(fixDir, "reviewed.json")),
+		Name:    "apply --dry-run writes nothing to either log, even for a found+corrected row",
+		Fixture: fixDir,
+		Given:   expensesAutoInsertedBeforeReview(),
+		When:    actions.RunApplyDryRun(filepath.Join(fixDir, "reviewed.json")),
 		Then: slices.Concat(
 			commandSucceeded(),
 			dryRunLeftClassificationsUnchanged(fixDir),
@@ -64,10 +66,11 @@ func TestApply_UnwritableLogPath_FailsFast(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "apply-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "unwritable expense log fails fast with a Hint",
-		Given: applyEntriesSubmittedWithUnwritableLogPath(fixDir),
-		When:  actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
-		Then:  commandFailedWithHint(),
+		Name:    "unwritable expense log fails fast with a Hint",
+		Fixture: fixDir,
+		Given:   applyEntriesSubmittedWithUnwritableLogPath(),
+		When:    actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Then:    commandFailedWithHint(),
 	})
 }
 
@@ -82,22 +85,21 @@ func TestApply_UnwritableClassificationsPath_FailsFast(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "apply-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "unwritable classifications path fails fast with a Hint",
-		Given: applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir),
-		When:  actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
-		Then:  commandFailedWithHint(),
+		Name:    "unwritable classifications path fails fast with a Hint",
+		Fixture: fixDir,
+		Given:   applyEntriesSubmittedWithUnwritableClassificationsPath(),
+		When:    actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Then:    commandFailedWithHint(),
 	})
 }
 
 // --- Given helpers (Event Modeling style — past-tense events that happened) ---
 
-func expensesAutoInsertedBeforeReview(fixDir string) func(*harness.Context) {
+func expensesAutoInsertedBeforeReview() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
 		withFeedbackConfig(ctx)
-		if err := harness.SeedFileFromFixture(ctx, fixDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
+		if err := harness.SeedFileFromFixture(ctx, ctx.FixtureDir, "seed-classifications.jsonl", "classifications.jsonl"); err != nil {
 			ctx.T.Fatalf("SeedFileFromFixture: %v", err)
 		}
 	}
@@ -109,12 +111,10 @@ func expensesAutoInsertedBeforeReview(fixDir string) func(*harness.Context) {
 // intentionally left unseeded (entries are "new" rather than "found"), matching the
 // non-dry-run path that actually needs to write a log. Local-model generated
 // (my-go-qcoder), mirrors batchSubmittedWithUnwritableLogPath in batch_auto_test.go.
-func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Context) {
+func applyEntriesSubmittedWithUnwritableLogPath() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+		if err := harness.CopyFixtureToWorkDir(ctx, ctx.FixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
 		blocker := filepath.Join(ctx.WorkDir, "blocker")
@@ -135,12 +135,10 @@ func applyEntriesSubmittedWithUnwritableLogPath(fixDir string) func(*harness.Con
 // expenses_log_path) is the one nested under the blocker file. Proves the
 // dedup-index pre-flight, not just the log pre-flight. Local-model generated
 // (my-go-qcoder), mirrors batchSubmittedWithUnwritableLogPath in batch_auto_test.go.
-func applyEntriesSubmittedWithUnwritableClassificationsPath(fixDir string) func(*harness.Context) {
+func applyEntriesSubmittedWithUnwritableClassificationsPath() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+		if err := harness.CopyFixtureToWorkDir(ctx, ctx.FixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
 		blocker := filepath.Join(ctx.WorkDir, "blocker")
@@ -200,9 +198,10 @@ func TestApply_JoinIDMatchesAcrossLogs(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "apply-join-id")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "apply writes one row to each log under the same join id",
-		Given: reviewQueueSubmittedWithNoPriorClassifications(fixDir),
-		When:  actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Name:    "apply writes one row to each log under the same join id",
+		Fixture: fixDir,
+		Given:   reviewQueueSubmittedWithNoPriorClassifications(),
+		When:    actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
 		Then: slices.Concat(
 			commandSucceeded(),
 			newRowJoinableAcrossBothLogs(),
@@ -212,11 +211,9 @@ func TestApply_JoinIDMatchesAcrossLogs(t *testing.T) {
 
 // reviewQueueSubmittedWithNoPriorClassifications seeds nothing: the row must be NEW so
 // it takes the append path and lands exactly once in each log, making the join unambiguous.
-func reviewQueueSubmittedWithNoPriorClassifications(fixDir string) func(*harness.Context) {
+func reviewQueueSubmittedWithNoPriorClassifications() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
 		withFeedbackConfig(ctx)
 	}
 }

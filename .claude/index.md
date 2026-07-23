@@ -59,7 +59,7 @@
 | Harness extraction plan (T2 — standalone `acceptance-harness` repo, career-search repoint, expenses migration, LTG path; session 56) | `.claude/plans/harness-extraction-plan.md` |
 | acceptance-test vs harness comparison (companion: old-job pipeline framework — adopt/adapt/discard analysis; session 56) | `.claude/plans/harness-extraction-acceptance-test-comparison.md` |
 | Harness extraction Session B — executable migration plan (expenses `test/` → module; measured inventory, D1 verify-namespace + D2 Context-carrier open; session 59) | `.claude/plans/harness-extraction-session-b.md` |
-| Parse boundary — structured input, parse-once (year precedence, installments field, T-37/T-38/T-40/T-21 resolutions; DRAFT, session 62) | `.claude/plans/parse-boundary.md` |
+| Parse boundary — structured input, parse-once (year precedence, installments field, T-37/T-38/T-40/T-21 resolutions; FINAL — design session 63, awaiting implementation go) | `.claude/plans/parse-boundary.md` |
 | Per-sheet structural digests (Layer 3 inputs, Sonnet fan-out) | `.claude/workbook-dump/digests/*.md` (gitignored with dump) |
 | Template golden master (user-curated, fake data) | `.claude/workbook-template/template-reviewed.xlsx` + `template.xlsx` (generated) |
 | Template build/convergence reports | `.claude/workbook-template/{ambiguities,review-diff,convergence-report}.md` + `diff.py` |
@@ -76,6 +76,8 @@
 | T-20 implementation report (`batch-auto --resume` + duplicate warning; [ref:batch-auto-resume] semantics block, session 60) | `.claude/t20-resume-implementation-report.md` |
 | batch-auto resume acceptance (A1–A5: seeded-skip, one-of-two-dups, warning; deterministic seeds via real append path) | `expense-reporter/test/batch_auto_resume_test.go` + `test/expect/resume.go` + `test/fixtures/batch-auto-resume-*`, `batch-auto-dup-warning` |
 | Join-id acceptance (T-35: both logs share one `GenerateID`) | `expense-reporter/test/apply_test.go` + `test/auto_log_append_test.go` (`*_JoinIDMatchesAcrossLogs`), `test/expect/feedback.go` (`JoinIDMatchesAcrossLogs`), fixture `test/fixtures/apply-join-id/` — fixtures use SHORT `DD/MM` on purpose; a full date hides the bug |
+| Year-precedence acceptance (T-41 slice 1: `--year` flag, `date_year` fallback, explicit-year wins — deterministic, no Ollama) | `expense-reporter/test/add_year_test.go` + `test/expect/json.go` `OutputJSONHasDate` |
+| Correct `--year` join acceptance (bare date + flag → GenerateID hits prior-year seed) + BR thousands CLI pin (`1.234,56`) | `expense-reporter/test/correct_year_test.go` + fixture `test/fixtures/correct-year-flag/`; `test/json_output_test.go` `TestAdd_ReadsBrazilianThousandsAmount` |
 | Date/year semantics across the system (T-35 survey — six parsers, year sources, what NOT to "fix") | `.claude/t35-date-year-semantics.md` [ref:date-year-semantics] |
 | T-35 implementation report (join-id fix: scope correction, RED evidence, T-37/T-38 findings, session 61) | `.claude/t35-implementation-report.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
@@ -93,6 +95,10 @@
 | QUICK.md memory audit — 46K→16K consolidation into KNOWLEDGE.md (2026-07-01) | `.claude/quick-memory-audit-2026-07-01.md` |
 | Session 42 postmortem — PR #36 review, model revert (qcoder→q3), acceptance repair (T-17/T-18) | `.claude/session42-postmortem.md` |
 | WS-B slice 3 work report — `batch-auto` → log-append (session 43) | `.claude/ws-b-slice3-implementation-report.md` |
+| **DSL reading guide — READ BEFORE WRITING ANY TEST** (what to read, in what order, + the invariants) | `expense-reporter/test/.memories/KNOWLEDGE.md` [ref:acceptance-dsl] |
+| Shared Given vocabulary (atomic events + 3 canonical Givens, composed with `harness.Events`) | `expense-reporter/test/givens_test.go`; config accumulates via `domain.SetupBinaryConfig` + `ctx.BeforeWhen` |
+| `Given`-as-slice upstream analysis (62-scenario survey; verdict: upstream the helper as v1.1.0, NOT the slice) | `.claude/given-slice-upstream-analysis.md` |
+| Harness v1.1.0 upstream proposal (PR-ready: `Scenario.Fixture`, `UseBinary`, `ctx.State`+`BeforeWhen`, `harness.Events`; all additive) | `.claude/plans/harness-v1.1-engine-ownership.md` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
 
@@ -123,6 +129,7 @@
 | `internal/config` | `expense-reporter/internal/config/` | Config struct + `Load()` + `ClassificationsFilePath()` + `ExpensesLogFilePath()` + `TaxonomyFilePath()` + `TypeDescriptionsFilePath()` |
 | `internal/feedback` | `expense-reporter/internal/feedback/` | JSONL feedback logging: `Entry`, `GenerateID`, `Append`, `NewConfirmedEntry`, `NewManualEntry`; `ExpenseEntry`, `NewExpenseEntry`, `AppendExpense` (slim insert log → `expenses_log.jsonl`); `LoadExpenseIDCounts` (id-multiplicity ledger for `--resume`/dup warning — T-20) |
 | `internal/appender` | `expense-reporter/internal/appender/` | Log-append path (WS-B): `ExpandAndAppend` (installment expansion → `expenses_log.jsonl`), `PredictEntryIDs` (same `expandEntries` step — T-20 resume drift guard) |
+| `internal/parse` | `expense-reporter/internal/parse/` | **The T-41 parse boundary** — the ONE string→struct conversion: `ParsedExpense` (single stored `time.Time` date + `DateString()` = sole identity-bytes site), `Fields` (field-wise core; year ladder explicit > `--year` > `date_year` > most-recent-non-future, grace 0; BR thousands normalization), `ExpenseString` (semicolon wrapper, returns subcategory alongside). Slice 1 consumers: `add`/`correct` |
 | `internal/review` | `expense-reporter/internal/review/` | Review command package: `ReadQueue` (7-field CSV reader), `BuildTaxonomy` (3-level tree from workbook mappings), `Render` (placeholder injection), `TemplateHTML` (go:embed); types in `types.go` |
 | `harness` (module) | `github.com/leandror172/acceptance-harness` v1.0.0 | **External dep since T2 Session B** — the acceptance engine (Context, Scenario, Run, fixtures, FindModuleRoot/BuildBinary) + generic `verify` Then-closures. `test/harness/` no longer exists. Engine changes = a PR upstream + a version bump here |
 | `test/actions` | `expense-reporter/test/actions/` | When-closures: RunClassify, RunAuto, RunBatchAuto, RunAdd; `runCommand` forwards `ctx.Env` |
@@ -442,6 +449,7 @@ Desktop-era planning documents — read for context, do not modify.
 | `expense-reporter/internal/apply/.memories/` | QUICK.md | Review UI ingestion, workbook row insertion, feedback + expense log output; entry type drop point (Plan A) |
 | `expense-reporter/internal/classifier/.memories/` | QUICK.md, KNOWLEDGE.md | Few-shot algorithm, prompt architecture, empirical findings |
 | `expense-reporter/internal/feedback/.memories/` | QUICK.md, KNOWLEDGE.md | Two-file JSONL structure (classifications.jsonl + expenses_log.jsonl), GenerateID join key, type persistence gap (Plan A) |
+| `expense-reporter/internal/parse/.memories/` | QUICK.md | T-41 parse boundary: contract (single time.Time + DateString identity bytes), year ladder + grace 0, BR thousands rule, migration status |
 | `expense-reporter/internal/review/.memories/` | QUICK.md | HTML review page builder, taxonomy re-derivation from CSV, localStorage state, type-aware UI already in place |
 | `expense-reporter/internal/taxonomy/.memories/` | QUICK.md, KNOWLEDGE.md | Full-path identity, bare-name routing + ambiguous fallback, classifier/generator taxonomy disconnect (Plan B two-tier routing) |
 | `expense-reporter/test/.memories/` | QUICK.md, KNOWLEDGE.md | BDD harness design, fixture format, soft/hard assertions |

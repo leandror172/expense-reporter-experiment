@@ -13,7 +13,9 @@ up front, skips fully-logged rows BEFORE the LLM; partially-logged series → re
 (never auto-completed); always-on stderr duplicate-append warning. Ledger = one
 `map[id]int` (`feedback.LoadExpenseIDCounts`), consumed classify-skips-first;
 `appender.PredictEntryIDs` shares `expandEntries` with `ExpandAndAppend` (drift
-guard). Next: WS-D (retire bare-name fallback) → WS-E (delete dead insert code).
+guard). **T-41 parse boundary slice 1 (s63): `add`/`correct` parse via
+`internal/parse`; `--year` on both; `date_year` LIVE there (rung 3); slices
+2–4 (auto → batch-auto → apply) pending.** Next after T-41: T-21 → T-42 close.
 History → KNOWLEDGE.md "Milestone Log".
 
 ## Structure
@@ -21,8 +23,8 @@ History → KNOWLEDGE.md "Milestone Log".
 cmd/expense-reporter/cmd/  # Cobra subcommands (one file each)
 cmd/workbook-inspect/      # Thin wrapper over internal/inspect
 internal/                  # batch classifier cli config excel feedback generate
-                           # taxonomy inspect logger models parser resolver review
-                           # apply appender workflow
+                           # taxonomy inspect logger models parse parser resolver
+                           # review apply appender workflow
 pkg/utils/  config/config.json
 ```
 
@@ -35,6 +37,10 @@ pkg/utils/  config/config.json
   (≤~15 lines); step-comments promote to helper doc comments (KNOWLEDGE.md)
 - **Installments** — "99,90/3" = 3 monthly payments, expanded at APPEND time;
   plain `batch` still expands at insert
+- **Parse boundary (T-41)** — commands parse input ONLY via `internal/parse`
+  (`ParsedExpense`; `DateString()` = the identity bytes); never call utils
+  date/currency parsers from command code. Migrated: add/correct; pending:
+  auto/batch-auto/apply. `internal/parser` (no "e") is the DYING pre-pivot one
 
 ## Deeper Memory → KNOWLEDGE.md
 Log-append path (WS-B) · workbook generator design · milestone log (sessions 26–44)

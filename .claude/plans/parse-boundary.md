@@ -1,8 +1,8 @@
-# Parse Boundary — Structured Input, Parse-Once (design draft)
+# Parse Boundary — Structured Input, Parse-Once
 
-**Date:** 2026-07-20 (session 62 discussion; drafted before design session)
-**Status:** DRAFT — decisions marked OPEN are not locked; this captures the discussion
-so no angle is lost. Design session to follow.
+**Date:** 2026-07-20 (session 62 discussion); design session 2026-07-22 (session 63)
+**Status:** FINAL — all §10 questions decided in the session-63 design session.
+Implementation not started (awaiting explicit user go).
 **Origin:** User direction after reading the grand vision: chat-era input (Telegram/
 WhatsApp) does not need one monolithic "receive string → do everything" call. A
 dedicated parse step converts input into structured data; every other tool takes
@@ -45,24 +45,54 @@ place, everything downstream structured.**
 - `GenerateID` migration (§6) — door left open, not walked through.
 - Retiring plain `batch` (WS-E owns that; see §7 T-38).
 
-## 3. The contract (draft)
+## 3. The contract (DECIDED session 63)
 
 A canonical parsed-expense value, produced only by the boundary:
 
 ```go
 type ParsedExpense struct {
-    Item         string  // trimmed, original casing
-    Date         string  // ALWAYS canonical DD/MM/YYYY (year resolved at parse time)
-    Value        float64 // per-installment value, BR decimal already parsed
-    Installments int     // 1 when no /N notation
-    RawValue     string  // original value token (e.g. "99,90/3") for display/audit
+    Item         string    // trimmed, original casing
+    Date         time.Time // the SINGLE stored date truth (year resolved at parse time)
+    Value        float64   // per-installment value, BR decimal already parsed
+    Installments int       // 1 when no /N notation
+    RawValue     string    // original value token (e.g. "99,90/3") for display/audit
 }
+
+// DateString returns the canonical DD/MM/YYYY form — the identity bytes consumed
+// by GenerateID and both JSONL logs. The SOLE formatting site for expense
+// identity in the codebase.
+func (pe ParsedExpense) DateString() string { return utils.FormatDate(pe.Date) }
 ```
 
-OPEN: exact home — a new `internal/parse` package (leading candidate: it will import
-`utils` date/currency helpers and `models` imports nothing) vs. `internal/models`.
-OPEN: whether `Date` should also carry the parsed `time.Time` alongside the canonical
-string (two fields, one truth) or string-only with parse-on-demand.
+**Home (decided): new `internal/parse` package.** Not `internal/models` (leaf
+package, imports nothing, and `NewExpense` is on the WS-E death list); not a
+rehabilitated `internal/parser` (its only callers are the dying plain-`batch`
+chain, and its output type carries a subcategory — classification is not parsing;
+keeping old/new grep-separable makes the WS-E deletion wholesale, not surgical).
+
+**Date shape (decided): store `time.Time`, derive the string via method** (user
+proposal, session 63 — supersedes the earlier "both fields" lean). Rationale
+ladder: string-only keeps re-parse sites (wrong-helper class) reachable
+downstream; a parse-on-demand method can fail at a distance and throws away the
+`time.Time` the constructor already had; two stored fields hold "the forms agree"
+only by convention. One stored field + a formatting method makes an inconsistent
+pair **unrepresentable** — formatting cannot fail, and the identity bytes become
+the output of one named method instead of N write-site calls. Zero value formats
+as `01/01/0001` — garishly wrong rather than subtly wrong, as desired.
+
+**API shape (decided): field-wise core + semicolon wrapper.** The semicolon
+string only exists at `add`/`correct` (`auto` = 3 args, `batch-auto` = CSV
+columns, `apply` = JSON fields), so the boundary is:
+- core: `(item, dateStr, valueStr, opts) → (ParsedExpense, error)` — used by all
+  commands; year policy (§4) lives here;
+- wrapper: 4-field semicolon form → `(ParsedExpense, subcategory, error)` —
+  subcategory returned alongside, NOT a struct field (classification ≠ parsing).
+
+**Construction discipline:** exported fields, constructor-only by convention
+(struct is `internal/`, so external construction is impossible anyway); tests
+build values via the real parser on real inputs, not literals — same discipline
+as the T-35 short-`DD/MM` fixtures. The single-stored-truth shape makes drift
+structurally impossible; `expect.JoinIDMatchesAcrossLogs` remains the net.
 
 ## 4. Year resolution policy (the T-37 wiring)
 
@@ -79,10 +109,11 @@ Precedence, highest wins — **decided in discussion (user):**
    zero config; expense entry is almost always retrospective. Genuinely future-dated
    entries (scheduled payments) must carry an explicit year — which wins anyway (rung 1).
    Replaces blind `time.Now().Year()` — a deliberate behavior change from today.
-   *Design-session detail:* consider a small grace window (future within ~7 days →
-   still current year) so a card transaction posted with tomorrow's date, entered
-   today, doesn't flip to last year. Pick the window in the design session; the
-   rule's tests should pin both sides of it.
+   *Grace window (DECIDED session 63): **0 days**.* The user never enters
+   future-dated transactions, so any bare `DD/MM` landing in the future resolves
+   to last year, no exceptions; genuinely future-dated entries must carry an
+   explicit year (rung 1 wins anyway). The rule's tests pin both sides of the
+   today/tomorrow edge.
 
 **`--year` surface (decided session 62): uniform.** `auto`/`batch-auto`/`add` gain the
 flag so precedence rung 2 exists on every date-accepting command (T-16 parity lesson;
@@ -106,13 +137,38 @@ Current parser → fate under the boundary:
 | `utils.ParseDate` (hardcoded 2025) | NOT migrated — dies with plain `batch` under WS-E (T-38 resolution, §7) |
 | `taxonomy.parseDate` (year=0 sentinel) | UNTOUCHED — generator-side, deliberately refuses to guess; correct as-is (t35 survey §4) |
 
-Migration order OPEN, but the constraint is: repoint one command at a time with the
-T-35 join-id guards + acceptance suite as the net (deterministic group now runs in
-~8s — post-T-39 this iteration is cheap). Candidate order: `add`/`correct` (already
-normalized, lowest risk) → `auto` → `batch-auto` → `apply`.
+**Migration order DECIDED (session 63): `add`/`correct` → `auto` → `batch-auto` →
+`apply`, one PR per slice**, with the T-35 join-id guards + acceptance suite as the
+net (deterministic group ~8s, `-full` ~2min — post-T-39 iteration is cheap). Each
+slice manufactures what the next needs: slice 1 founds the package from proven code,
+slice 2 proves the field-wise core against the join-id guards, slice 3 uses the
+proven core for the highest-multiplicity rewrite, slice 4 touches the cross-language
+schema only after the Go side is stable.
 
-**T-40 lands here:** the batch-auto join-id unit seam becomes a boundary test —
-one short-`DD/MM` input through parse → both log writers → one id.
+Per-slice mechanics (call-site survey, session 63):
+1. **`add`/`correct`** — LIFT `parseExpenseForFeedback` (add.go:168; it already does
+   split → `ParseDateFlexible` → `FormatDate` → `ParseCurrencyWithInstallments`)
+   into `internal/parse` as the founding code; both commands repoint. Year policy
+   §4 goes live here (rungs 2–4 are new behavior — test-pin both sides).
+2. **`auto`** — replace the two separate parse calls (auto.go:51, :58) with the
+   field-wise core. Net: existing `expect.JoinIDMatchesAcrossLogs` + short-`DD/MM`
+   fixtures. **Also extract here (deferred from slice 1 per the
+   extract-keep-divergence rule — no seam below 3 callers):** a cmd-level
+   `parseOptions(yearFlag int, cfg *config.Config) parse.Options` helper — `add`
+   and `correct` hand-build identical `parse.Options{...}` literals today, and
+   `auto` is the third copy. Cmd-level, NOT in `parse` (the boundary package must
+   not import `config`).
+3. **`batch-auto`** — the real dedup win: SIX re-parse sites (batch_auto.go:360/364,
+   376/385, 448; batch_auto_resume.go:87/92) collapse into **parse-once-per-CSV-row
+   at read time**; the row struct carries `ParsedExpense`, downstream consumes
+   fields. `PredictEntryIDs` and append read the same parsed struct — the advisor's
+   "prediction from raw strings mismatches" bug class becomes unrepresentable.
+   **T-40 lands here:** the batch-auto join-id unit seam becomes a boundary test —
+   one short-`DD/MM` input through parse → both log writers → one id (no Ollama).
+4. **`apply`** — retires `canonicalDate` (apply.go:250, the T-35 prototype absorbed
+   by what it prototyped). Deliberately last: `apply`'s input crosses the
+   `reviewed.json` schema (HTML export JS), which T-21 is about to change anyway —
+   sequencing apply-then-T-21 touches that schema once, with the boundary in place.
 
 ## 6. Identity (`GenerateID`) — door open, not walked through
 
@@ -140,15 +196,19 @@ taken, is one function + one backfill.
 - **T-40 (batch-auto join-id coverage)** → becomes a boundary unit test (§5).
 - **T-35 bug class** → structurally impossible once all writers consume `ParsedExpense`.
 
-## 8. Surface (chat-era exposure) — OPEN
+## 8. Surface (chat-era exposure) — DECIDED session 63: internal-first (a)
 
-Options for exposing parse as a step:
-- (a) Internal-only for now; MCP `parse_expense` tool added when Layer 6 starts.
-- (b) Add the MCP tool now (mcp-server) so the chat layer's shape is proven early;
-  CLI stays string-convenience.
-Lean: (a)-then-(b) — build the internal boundary first; the MCP tool is a thin JSON
-wrapper over it whenever Layer 6 needs it. The vision's confirm-before-commit UX only
-requires that the parse result be *serializable and echoable*, which the contract gives.
+T-41 ships only Go: `ParsedExpense` + boundary functions, CLI commands repointed.
+No `parse_expense` MCP tool now — `mcp-server/` stays as-is; its existing tools
+benefit anyway once the commands they shell out to hit the boundary internally.
+Deferred, not lost: the vision's parse → echo-back → confirm → act UX needs the
+tool only when Layer 6 (chat) starts; at that point it is a thin JSON wrapper over
+an already-tested boundary, shaped by a real consumer (the T-15 slice-2 lesson —
+no speculative API surface). Bet being made: no real MCP consumer needs
+parse-as-a-step before Layer 6; if wrong, pull the tool forward — nothing blocks it.
+The confirm-before-commit UX only requires the parse result be *serializable and
+echoable*, which the contract gives (note: `Date time.Time` marshals as RFC 3339 —
+the wrapper, when built, should emit `DateString()` for display).
 
 ## 9. Context: the milestone this serves
 
@@ -159,14 +219,19 @@ parse boundary (this plan, absorbing T-37/T-40, resolving T-38) → T-21 threadi
 (first consumer) → T-03 year-rollover check → promote all-years log (user decision).
 Everything else surfaced by the dogfood run becomes the real backlog.
 
-## 10. Open questions for the design session
+## 10. Design-session record — ALL DECIDED (session 63, 2026-07-22)
 
-1. Package home + struct shape (§3) — `internal/parse` vs `models`; `time.Time` field?
-2. Migration order + per-command repoint mechanics (§5).
-3. Does the boundary also own **currency** parsing policy (it already parses BR
-   decimals via the value field) — i.e., is `ParsedExpense` the home for ALL input
-   normalization, not just dates?
-4. Surface timing (§8): internal-first confirmed, or MCP tool now?
+1. **Package home + struct shape (§3):** new `internal/parse`; single stored
+   `Date time.Time` + `DateString()` method (user proposal — inconsistent date
+   pair unrepresentable; formatting cannot fail; one named identity-bytes site).
+   API = field-wise core + semicolon wrapper returning subcategory alongside.
+2. **Migration order (§5):** `add`/`correct` → `auto` → `batch-auto` → `apply`,
+   one PR per slice; T-40 in slice 3; T-21 immediately after slice 4.
+3. **Currency ownership:** YES — the boundary owns ALL input normalization
+   (dates, BR decimals, installments). Anything else recreates the six-parsers
+   problem for a second field class.
+4. **Surface timing (§8):** internal-first; MCP `parse_expense` deferred to Layer 6.
 
-Decided session 62 (moved out of this list): year fallback = most recent non-future
-(§4 rung 4); T-21 UX = 1 row + ×N badge (§7); `--year` flags = uniform (§4).
+Decided session 62 (context): year fallback = most recent non-future (§4 rung 4);
+grace window = 0 (locked session 63); T-21 UX = 1 row + ×N badge (§7); `--year`
+flags = uniform (§4).
