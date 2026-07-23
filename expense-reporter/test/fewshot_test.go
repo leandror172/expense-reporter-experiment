@@ -23,10 +23,11 @@ func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 	requireDataDir(t)
 
 	harness.Run(t, harness.Scenario{
-		Name:  "classify with training data logs few-shot injection under --verbose",
-		Given: classifierWithDataDir(),
-		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
-		Then:  thenFewShotLineVisible(),
+		Name:    "classify with training data logs few-shot injection under --verbose",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
+		Then:    thenFewShotLineVisible(),
 	})
 }
 
@@ -38,9 +39,10 @@ func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
 	requireDataDir(t)
 
 	harness.Run(t, harness.Scenario{
-		Name:  "classify without training data degrades gracefully — no error, few-shot count 0",
-		Given: classifierWithKeywordsOnly(),
-		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
+		Name:    "classify without training data degrades gracefully — no error, few-shot count 0",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithKeywordsOnly(),
+		When:    actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenFewShotLineVisible(),
 			thenNoTrainingErrorShown(),
@@ -56,10 +58,11 @@ func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto with few-shot still produces classified and review CSV files",
-		Given: mixedExpensesReadyForDryRun(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
-		Then:  classifiedAndReviewFilesProduced(),
+		Name:    "batch-auto with few-shot still produces classified and review CSV files",
+		Fixture: fixDir,
+		Given:   tenMixedExpensesSubmittedForClassification(),
+		When:    actions.RunBatchAutoWithFixture(),
+		Then:    classifiedAndReviewFilesProduced(),
 	})
 }
 
@@ -76,33 +79,22 @@ func requireDataDir(t *testing.T) {
 	}
 }
 
-// classifierWithDataDir sets up the real data directory (training data + keyword index)
-// plus a taxonomy config (T-13: classify requires a configured taxonomy).
-func classifierWithDataDir() func(*harness.Context) {
+// taxonomyAuthoredWithKeywordsOnly: the keyword dictionary was recorded but the
+// training corpus never was — a cold-start install. Built as a stripped data dir
+// holding only feature_dictionary_enhanced.json.
+func taxonomyAuthoredWithKeywordsOnly() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output"))
-	}
-}
-
-// classifierWithKeywordsOnly creates a stripped data dir containing only
-// feature_dictionary_enhanced.json (no training_data_complete.json).
-// This simulates a cold-start environment where training data is absent.
-func classifierWithKeywordsOnly() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 
 		// Build a temp dir with only the keyword index.
 		tmpDir := ctx.T.TempDir()
 		src := filepath.Join(dataDir, "feature_dictionary_enhanced.json")
 		dst := filepath.Join(tmpDir, "feature_dictionary_enhanced.json")
 		if err := copyFile(src, dst); err != nil {
-			ctx.T.Fatalf("classifierWithKeywordsOnly: copy feature dict: %v", err)
+			ctx.T.Fatalf("taxonomyAuthoredWithKeywordsOnly: copy feature dict: %v", err)
 		}
 		// Intentionally omit training_data_complete.json.
 		domain.SetDataDir(ctx, tmpDir)
-		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
+		withFeedbackAndTaxonomyConfig(ctx) // T-13: classify needs a taxonomy
 	}
 }
 

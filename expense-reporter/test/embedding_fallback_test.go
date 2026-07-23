@@ -24,9 +24,10 @@ func TestEmbeddingFallback_KeywordMissRetrievesByEmbedding(t *testing.T) {
 	extern.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "keyword-miss item gets embedding-retrieved few-shot examples + cache populated",
-		Given: smallPoolRecordedWithNoKeywordForQuery(),
-		When:  actions.RunClassify("--verbose", "Pastel de feira", "25,00", "15/04"),
+		Name:    "keyword-miss item gets embedding-retrieved few-shot examples + cache populated",
+		Fixture: jsonOutputFixture(), // supplies the taxonomy; the mini pool below is its own fixture
+		Given:   smallPoolRecordedWithNoKeywordForQuery(),
+		When:    actions.RunClassify("--verbose", "Pastel de feira", "25,00", "15/04"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			embeddingFallbackInjectedExamples(),
@@ -43,20 +44,19 @@ func TestEmbeddingFallback_KeywordMissRetrievesByEmbedding(t *testing.T) {
 // fallback is the only example source. Fake data lives in fixtures/embedding-fallback.
 func smallPoolRecordedWithNoKeywordForQuery() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		fixDir := filepath.Join(fixturesDir(), "embedding-fallback")
+		poolDir := filepath.Join(fixturesDir(), "embedding-fallback")
 
 		tmpDir := ctx.T.TempDir()
-		if err := copyFile(filepath.Join(fixDir, "mini-training.json"),
+		if err := copyFile(filepath.Join(poolDir, "mini-training.json"),
 			filepath.Join(tmpDir, "training_data_complete.json")); err != nil {
 			ctx.T.Fatalf("copy mini training pool: %v", err)
 		}
-		if err := copyFile(filepath.Join(fixDir, "mini-feature-dict.json"),
+		if err := copyFile(filepath.Join(poolDir, "mini-feature-dict.json"),
 			filepath.Join(tmpDir, "feature_dictionary_enhanced.json")); err != nil {
 			ctx.T.Fatalf("copy mini feature dict: %v", err)
 		}
 		domain.SetDataDir(ctx, tmpDir)
-		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
+		withFeedbackAndTaxonomyConfig(ctx) // T-13: classify needs a taxonomy
 	}
 }
 

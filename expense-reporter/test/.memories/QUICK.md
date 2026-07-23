@@ -3,13 +3,16 @@
 *Working memory for the acceptance test harness. Injected into agents. Keep under 30 lines.*
 
 ## Status
-**Engine is now the `github.com/leandror172/acceptance-harness` module (v1.0.0, T2
-Session B).** `test/harness/` is gone: Context/Scenario/Run, fixture plumbing and
-BuildBinary come from the module; everything expense-shaped stayed here. 15+ fixture
-dirs cover all commands incl. apply, review, generate-workbook. Details → KNOWLEDGE.md.
+**Engine is the `github.com/leandror172/acceptance-harness` module (v1.1.0 since session
+64).** `test/harness/` is gone: Context/Scenario/Run, fixture plumbing and BuildBinary come
+from the module; everything expense-shaped stayed here. Since v1.1 the **engine owns
+scenario plumbing** — `Scenario.Fixture` sets `ctx.FixtureDir`, `harness.UseBinary` (TestMain)
+sets `ctx.BinaryPath`, so no Given wires either or takes a fixture path. 15+ fixture dirs
+cover all commands incl. apply, review, generate-workbook. Details → KNOWLEDGE.md.
 
 ## Structure
 ```
+givens_test.go  # Given vocabulary: 4 atomic events + 3 canonical Givens (start here)
 actions/    # When — CLI command runners (+ runCommand, forwards ctx.Env)
 expect/     # Then — DOMAIN assertions (feedback/expense logs, CSV, HTML, workbook)
 domain/     # expense-specific test helpers the module excludes: workbook gate +
@@ -19,6 +22,11 @@ fixtures/   # Test data dirs; results/ gitignored
 ```
 
 ## Key Rules
+- **READ THE DSL GUIDE BEFORE WRITING OR CHANGING ANY TEST** — `[ref:acceptance-dsl]`
+  (`.claude/tools/ref-lookup.sh acceptance-dsl`). It lists what to read in what order
+  (`test/PATTERNS.md` → `givens_test.go` → `actions/commands.go` header → the module's docs
+  and `harness/scenario.go`) and the invariants a new scenario must not break. Skipping it is
+  how the suite reached 27 Given bodies for 3 real preconditions.
 - **Two assertion packages, both imported by scenarios** — `verify.*` = the MODULE's
   generic Then (CommandSucceeded, OutputContains, OutputJSONHasKey…); `expect.*` = ours.
   Never re-add a `verify`-named local package.
@@ -33,7 +41,7 @@ fixtures/   # Test data dirs; results/ gitignored
   **T-41 sharpens this for add/correct:** a bare date strictly in the future now resolves
   to LAST year (rung 4, grace 0) — a late-December bare date in a fixture flips years
   depending on the run date. Year-precedence tests: `add_year_test.go` (deterministic;
-  local Given `binaryWithDateYearConfig` writes `date_year`; `expect.OutputJSONHasDate`).
+  local Given `defaultYearConfiguredAs(year)` writes `date_year`; `expect.OutputJSONHasDate`).
   **Exception (T-35): join-id tests MUST use short `DD/MM`** — a full date makes the raw and
   normalized strings identical, so it hides exactly the bug they guard. Safe only because
   they assert id EQUALITY, never a literal date, so no year is pinned. Do NOT "fix" the

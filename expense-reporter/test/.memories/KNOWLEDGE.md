@@ -2,9 +2,51 @@
 
 *Acceptance test harness accumulated decisions. Read on demand by agents.*
 
-## Harness Design — Engine Extracted to a Module (2026-03 → T2 Session B, 2026-07-17)
+<!-- ref:acceptance-dsl -->
+## Reading the DSL Before Writing Tests (session 64)
+
+The suite is written in a small DSL, split across two repos. **Read these before adding or
+changing a scenario** — writing tests without them is how the suite accumulated 27 Given
+bodies for 3 real preconditions.
+
+| # | Read | Why |
+|---|---|---|
+| 1 | `test/PATTERNS.md` (this repo) | The rules: Given/Then naming, composition, canonical Givens, the config-merge constraint. Start here. |
+| 2 | `test/givens_test.go` | The Given vocabulary itself — 4 atomic events + 3 canonical Givens. Every new Given should be a wrapper over one of these. |
+| 3 | `test/actions/commands.go` header | The **When** rule, which is the inverse of the Given rule (below). |
+| 4 | module `docs/PATTERNS.md` | The generic methodology (three-phase model, zero-copy-read vs copy-to-write, traps). At `$(go env GOMODCACHE)/github.com/leandror172/acceptance-harness@v1.1.0/docs/`, or the clone at `/mnt/i/workspaces/acceptance-harness`. |
+| 5 | module `harness/scenario.go` | The whole DSL surface is ~150 lines: `Context`, `Scenario`, `Run`, `Events`, `UseBinary`. Read it once; it answers most "can the harness do X" questions. |
+
+### The invariants a new test must not break
+
+- **The engine owns scenario plumbing.** A Given never sets `ctx.BinaryPath` (from
+  `harness.UseBinary` in TestMain) or `ctx.FixtureDir` (from `Scenario.Fixture`), and never
+  takes a fixture path — events read `ctx.FixtureDir`.
+- **A Given with an empty body means the scenario has no precondition** — omit `Given:`
+  rather than keep a no-op with a domain-sounding name. Adopting v1.1 emptied six helpers
+  whose entire bodies had been plumbing.
+- **Compose inside helper definitions, not at the call site.** `harness.Events(...)` builds a
+  named Given from atoms; the scenario still reads as one domain sentence.
+- **Config must accumulate, never overwrite.** `domain.SetupBinaryConfig` collects keys in
+  `ctx.State` and writes config.json once from a `ctx.BeforeWhen` hook. Two events each
+  writing the file would silently drop each other's keys. Never write config.json directly.
+- **Given vs When name the opposite things.** For a Given, every argument is plumbing → make
+  it implicit. For a When, arguments are the *subject under test* (`RunAdd("Uber Centro;…")`)
+  → keep them explicit; only fixture *location* is implicit.
+- **Duplicate bodies are the tell** that a name describes assembly rather than a fact. Two
+  smells: a Given naming a command flag (`--dry-run` belongs to the When), and a Given taking
+  a fixture path it never uses (Go does not flag unused parameters).
+
+### Where a change belongs
+
+Engine capability gap (Context/Scenario/Run) → PR to the module + version bump here. Generic
+assertion → module `verify/`. Domain assertion → `expect/`. This boundary is the point of the
+extraction; see the section below.
+<!-- /ref:acceptance-dsl -->
+
+## Harness Design — Engine Extracted to a Module (2026-03 → T2 Session B, 2026-07-17; v1.1.0 since session 64)
 The engine that used to live in `test/harness/` is now the public
-`github.com/leandror172/acceptance-harness` module (pinned v1.0.0). It was always written
+`github.com/leandror172/acceptance-harness` module (pinned **v1.1.0**). It was always written
 to contain zero expense knowledge, and the extraction proved that: `Context`, `Scenario`,
 `Run`, fixture plumbing, `FindModuleRoot`/`BuildBinary` all lifted unchanged.
 **Rationale:** a second consumer (career-search's `roles` CLI — Go, deterministic, non-LLM)

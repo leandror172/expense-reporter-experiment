@@ -57,9 +57,10 @@ func TestTypeRoutingCycle_1_BatchAutoEmitsType(t *testing.T) {
 	fixDir := typeRoutingFixtureDir()
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto writes a type column into classified.csv",
-		Given: expensesAwaitingClassification(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto writes a type column into classified.csv",
+		Fixture: fixDir,
+		Given:   expensesAwaitingClassification(),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classifiedCsvCarriesTypeColumn(),
@@ -78,9 +79,10 @@ func TestTypeRoutingCycle_2_ReviewRendersTypes(t *testing.T) {
 	reviewInput := filepath.Join(fixDir, "review-input.csv")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "review embeds taxonomy.types and pre-fills predicted.type per row",
-		Given: expensesClassifiedWithTypes(fixDir),
-		When:  actions.RunReview(reviewInput),
+		Name:    "review embeds taxonomy.types and pre-fills predicted.type per row",
+		Fixture: fixDir,
+		Given:   expensesClassifiedWithTypes(),
+		When:    actions.RunReview(reviewInput),
 		Then: slices.Concat(
 			reviewHTMLProduced(),
 			reviewDataEmbedded(),
@@ -107,9 +109,10 @@ func TestTypeRoutingCycle_3_ApplyBackfillsType(t *testing.T) {
 	reviewedPath := filepath.Join(fixDir, "reviewed.json")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "apply inserts the confirmed entry and logs its type to expenses_log.jsonl",
-		Given: expenseTypedDuringBrowserReview(fixDir),
-		When:  actions.RunApply(reviewedPath),
+		Name:    "apply inserts the confirmed entry and logs its type to expenses_log.jsonl",
+		Fixture: fixDir,
+		Given:   expenseTypedDuringBrowserReview(),
+		When:    actions.RunApply(reviewedPath),
 		Then: slices.Concat(
 			commandSucceeded(),
 			confirmedReviewRowRecordedAsTypedLogLine(fixDir),
@@ -125,13 +128,11 @@ func TestTypeRoutingCycle_3_ApplyBackfillsType(t *testing.T) {
 
 func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 	fixDir := typeRoutingFixtureDir()
-	taxonomyPath := filepath.Join(fixDir, "taxonomy.json")
-	entriesPath := filepath.Join(fixDir, "typed-expenses_log.jsonl")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "generate-workbook routes the ambiguous-leaf entry to its typed sheet",
-		Given: cycleCompletedThroughApply(fixDir),
-		When:  actions.RunGenerateWorkbook(taxonomyPath, entriesPath),
+		Name:    "generate-workbook routes the ambiguous-leaf entry to its typed sheet",
+		Fixture: fixDir,
+		When:    actions.RunGenerateWorkbook("typed-expenses_log.jsonl"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			typedEntryRoutedToSheet(250, "Variáveis"), // Dentista → its chosen type
@@ -142,12 +143,10 @@ func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 
 // --- Given helpers (Event Modeling style — past-tense events) ---
 
-func expensesAwaitingClassification(fixDir string) func(*harness.Context) {
+func expensesAwaitingClassification() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+		if err := harness.CopyFixtureToWorkDir(ctx, ctx.FixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
 		// T-13: batch-auto requires a configured taxonomy. CopyFixtureToWorkDir already
@@ -163,28 +162,19 @@ func expensesAwaitingClassification(fixDir string) func(*harness.Context) {
 	}
 }
 
-func expensesClassifiedWithTypes(fixDir string) func(*harness.Context) {
+func expensesClassifiedWithTypes() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.FixtureDir = fixDir
 		domain.SetWorkbookPath(ctx, createAmbiguousReferenceWorkbook(ctx.T, ctx.WorkDir))
 	}
 }
 
-func expenseTypedDuringBrowserReview(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		withFeedbackConfig(ctx) // classifications.jsonl + expenses_log.jsonl in WorkDir
-	}
-}
-
-func cycleCompletedThroughApply(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		// The typed log is supplied directly to the When via the entries flag; nothing
-		// else is needed — this models the cumulative state after apply.
-		ctx.FixtureDir = fixDir
-	}
+// expenseTypedDuringBrowserReview: the reviewer picked a type in the browser and
+// exported it (step 4, folded into the reviewed.json fixture the When reads). Only the
+// two logs apply writes into need a home; the export itself is fixture data.
+func expenseTypedDuringBrowserReview() func(*harness.Context) {
+	return harness.Events(
+		feedbackLogsConfigured(),
+	)
 }
 
 // createAmbiguousReferenceWorkbook builds a reference-sheet-only workbook where

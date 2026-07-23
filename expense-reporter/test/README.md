@@ -20,6 +20,7 @@ stayed here:
                        OutputFileExists, JSON assertions, file-state assertions
 
                     --- ours, under test/ ---
+  givens_test.go    -- Given vocabulary: atomic events + the 3 canonical Givens
   actions/          -- When: command runners
     commands.go     -- RunClassify, RunAuto, RunBatchAuto, RunBatchAutoWithFixture
   expect/           -- DOMAIN Then: what our artifacts mean
@@ -42,14 +43,24 @@ stayed here:
 called `verify`.
 
 **Context** holds per-scenario state: `BinaryPath`, `WorkDir` (temp), `FixtureDir`,
-`Env map[string]string`, `Artifacts map[string]string`, `Stdout`, `Stderr`, `ExitCode`.
-It carries no domain fields — `DataDir`/`WorkbookPath` ride in `Env` via `domain`'s
-accessors, and `runCommand` forwards `Env` to the command.
+`Env map[string]string`, `Artifacts map[string]string`, `State map[string]any`, `Stdout`,
+`Stderr`, `ExitCode`, plus `BeforeWhen(fn)`. It carries no domain fields —
+`DataDir`/`WorkbookPath` ride in `Env` via `domain`'s accessors, and `runCommand` forwards
+`Env` to the command.
 
-**Scenario** has three phases:
-- `Given func(*Context)` — set up: copy fixtures, set binary path, prepare workbook
-- `When func(*Context)` — action: run the CLI command
+**Scenario** declares its plumbing and its three phases:
+- `Fixture string` — the fixture dir; the engine assigns `ctx.FixtureDir` **before** Given
+- `Given func(*Context)` — set up state. Never sets `BinaryPath`/`FixtureDir` and never takes
+  a fixture path (see `givens_test.go`); compose several events with `harness.Events(...)`
+- `When func(*Context)` — action: run the CLI command once
 - `Then []func(*Context)` — assertions: composable, order-independent checks
+
+`harness.UseBinary(binaryPath)` in `TestMain` supplies `ctx.BinaryPath` to every scenario.
+Setup that accumulates across composed events — config keys — collects in `ctx.State` and is
+flushed once by a `ctx.BeforeWhen` hook that runs after Given and before When.
+
+**Before writing a scenario, read `[ref:acceptance-dsl]`**
+(`.claude/tools/ref-lookup.sh acceptance-dsl`) — the reading order and the invariants.
 
 **Run(t, Scenario)** executes the scenario **directly on `t`, not as a subtest** — so `t.Log`
 output flushes in real time under `-v`, which matters when a step is waiting seconds on

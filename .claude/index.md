@@ -77,7 +77,7 @@
 | batch-auto resume acceptance (A1–A5: seeded-skip, one-of-two-dups, warning; deterministic seeds via real append path) | `expense-reporter/test/batch_auto_resume_test.go` + `test/expect/resume.go` + `test/fixtures/batch-auto-resume-*`, `batch-auto-dup-warning` |
 | Join-id acceptance (T-35: both logs share one `GenerateID`) | `expense-reporter/test/apply_test.go` + `test/auto_log_append_test.go` (`*_JoinIDMatchesAcrossLogs`), `test/expect/feedback.go` (`JoinIDMatchesAcrossLogs`), fixture `test/fixtures/apply-join-id/` — fixtures use SHORT `DD/MM` on purpose; a full date hides the bug |
 | Year-precedence acceptance (T-41 slice 1: `--year` flag, `date_year` fallback, explicit-year wins — deterministic, no Ollama) | `expense-reporter/test/add_year_test.go` + `test/expect/json.go` `OutputJSONHasDate` |
-| Correct `--year` join acceptance (bare date + flag → GenerateID hits prior-year seed) + BR thousands CLI pin (`1.234,56`) | `expense-reporter/test/correct_year_test.go` + fixture `test/fixtures/correct-year-flag/`; `test/json_output_test.go` `TestAddDryRunJSON_ParsesThousandsSeparatorValue` |
+| Correct `--year` join acceptance (bare date + flag → GenerateID hits prior-year seed) + BR thousands CLI pin (`1.234,56`) | `expense-reporter/test/correct_year_test.go` + fixture `test/fixtures/correct-year-flag/`; `test/json_output_test.go` `TestAdd_ReadsBrazilianThousandsAmount` |
 | Date/year semantics across the system (T-35 survey — six parsers, year sources, what NOT to "fix") | `.claude/t35-date-year-semantics.md` [ref:date-year-semantics] |
 | T-35 implementation report (join-id fix: scope correction, RED evidence, T-37/T-38 findings, session 61) | `.claude/t35-implementation-report.md` |
 | Session log archive (sessions 1–2) | `.claude/archive/session-log-2026-03-02-to-2026-03-02.md` |
@@ -95,6 +95,10 @@
 | QUICK.md memory audit — 46K→16K consolidation into KNOWLEDGE.md (2026-07-01) | `.claude/quick-memory-audit-2026-07-01.md` |
 | Session 42 postmortem — PR #36 review, model revert (qcoder→q3), acceptance repair (T-17/T-18) | `.claude/session42-postmortem.md` |
 | WS-B slice 3 work report — `batch-auto` → log-append (session 43) | `.claude/ws-b-slice3-implementation-report.md` |
+| **DSL reading guide — READ BEFORE WRITING ANY TEST** (what to read, in what order, + the invariants) | `expense-reporter/test/.memories/KNOWLEDGE.md` [ref:acceptance-dsl] |
+| Shared Given vocabulary (atomic events + 3 canonical Givens, composed with `harness.Events`) | `expense-reporter/test/givens_test.go`; config accumulates via `domain.SetupBinaryConfig` + `ctx.BeforeWhen` |
+| `Given`-as-slice upstream analysis (62-scenario survey; verdict: upstream the helper as v1.1.0, NOT the slice) | `.claude/given-slice-upstream-analysis.md` |
+| Harness v1.1.0 upstream proposal (PR-ready: `Scenario.Fixture`, `UseBinary`, `ctx.State`+`BeforeWhen`, `harness.Events`; all additive) | `.claude/plans/harness-v1.1-engine-ownership.md` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
 

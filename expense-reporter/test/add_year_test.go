@@ -14,73 +14,100 @@ import (
 	"github.com/leandror172/acceptance-harness/harness"
 )
 
-// TestAddDryRunJSON_YearFlagResolvesBareDate pins the precedence of --year flag
-// when input date is bare (no year). The flag value should be used as the year.
-func TestAddDryRunJSON_YearFlagResolvesBareDate(t *testing.T) {
+// TestAdd_BareDateResolvesToFlagYear pins the year-precedence ladder: a bare
+// date (no year) takes its year from the --year flag.
+func TestAdd_BareDateResolvesToFlagYear(t *testing.T) {
 	harness.Run(t, harness.Scenario{
-		Name:  "add --dry-run --json with --year flag resolves bare date to that year",
-		Given: classifierForJSON(),
-		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json", "--year", "2024"),
+		Name:    "add --dry-run --json with --year flag resolves bare date to that year",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json", "--year", "2024"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
-			thenJSONDateIs("15/04/2024"),
+			flagYearResolvedBareDateTo("15/04/2024"),
 		),
 	})
 }
 
-// TestAddDryRunJSON_ExplicitYearBeatsYearFlag pins the precedence of explicit year
-// in input string over --year flag. The input's year should always win.
-func TestAddDryRunJSON_ExplicitYearBeatsYearFlag(t *testing.T) {
+// TestAdd_ExplicitYearWinsOverFlag pins the top rung of the ladder: a year
+// written in the input itself always beats the --year flag.
+func TestAdd_ExplicitYearWinsOverFlag(t *testing.T) {
 	harness.Run(t, harness.Scenario{
-		Name:  "add --dry-run --json with explicit year in input beats --year flag",
-		Given: classifierForJSON(),
-		When:  actions.RunAddDryRun("Uber Centro;15/04/2023;35,50;Uber/Taxi", "--json", "--year", "2024"),
+		Name:    "add --dry-run --json with explicit year in input beats --year flag",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAddDryRun("Uber Centro;15/04/2023;35,50;Uber/Taxi", "--json", "--year", "2024"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
-			thenJSONDateIs("15/04/2023"),
+			explicitYearKeptDateAs("15/04/2023"),
 		),
 	})
 }
 
-// TestAddDryRunJSON_ConfigDateYearResolvesBareDate pins the precedence of config date_year
-// as fallback when neither input string nor --year provides a year.
-func TestAddDryRunJSON_ConfigDateYearResolvesBareDate(t *testing.T) {
+// TestAdd_BareDateFallsBackToConfiguredYear pins the fallback rung: with no
+// explicit year and no flag, the configured default year dates the entry.
+func TestAdd_BareDateFallsBackToConfiguredYear(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json with config date_year resolves bare date to that year",
-		Given: binaryWithDateYearConfig(2024),
+		Given: defaultYearConfiguredAs(2024),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
-			thenJSONDateIs("15/04/2024"),
+			configuredYearResolvedBareDateTo("15/04/2024"),
 		),
 	})
 }
 
-// TestAddDryRunJSON_YearFlagBeatsConfigDateYear pins the precedence of --year flag
-// over config date_year. The flag should always override the config.
-func TestAddDryRunJSON_YearFlagBeatsConfigDateYear(t *testing.T) {
+// TestAdd_FlagYearOverridesConfiguredYear pins the ordering between the two
+// middle rungs: the --year flag beats the configured default year.
+func TestAdd_FlagYearOverridesConfiguredYear(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json with --year flag beats config date_year",
-		Given: binaryWithDateYearConfig(2022),
+		Given: defaultYearConfiguredAs(2022),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json", "--year", "2024"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
-			thenJSONDateIs("15/04/2024"),
+			flagYearBeatConfiguredYearResolvingTo("15/04/2024"),
 		),
 	})
 }
 
-// thenJSONDateIs returns a verification that the JSON output has the given date.
-func thenJSONDateIs(date string) []func(*harness.Context) {
+// flagYearResolvedBareDateTo asserts the bare input date came out dated with
+// the --year flag's year.
+func flagYearResolvedBareDateTo(date string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		expect.OutputJSONHasDate(date),
 	}
 }
 
-// binaryWithDateYearConfig sets up context with config including date_year.
-func binaryWithDateYearConfig(dateYear int) func(*harness.Context) {
+// explicitYearKeptDateAs asserts the input's own year survived untouched
+// despite a competing --year flag.
+func explicitYearKeptDateAs(date string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		expect.OutputJSONHasDate(date),
+	}
+}
+
+// configuredYearResolvedBareDateTo asserts the configured default year dated
+// the bare input date.
+func configuredYearResolvedBareDateTo(date string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		expect.OutputJSONHasDate(date),
+	}
+}
+
+// flagYearBeatConfiguredYearResolvingTo asserts the --year flag won over the
+// configured default year in dating the bare input date.
+func flagYearBeatConfiguredYearResolvingTo(date string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		expect.OutputJSONHasDate(date),
+	}
+}
+
+// defaultYearConfiguredAs sets up the binary with a config whose date_year is
+// the given year — the "a default year was configured" event.
+func defaultYearConfiguredAs(dateYear int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
 		taxonomyDest := filepath.Join(ctx.WorkDir, "taxonomy.json")
 		fixtureTaxPath := filepath.Join(fixturesDir(), "json-output", "fixture-taxonomy.json")
 
