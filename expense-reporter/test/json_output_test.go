@@ -19,9 +19,10 @@ func TestClassifyJSON_ReturnsValidJSONWithCandidates(t *testing.T) {
 	extern.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "classify --json returns valid JSON with candidates array",
-		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
-		When:  actions.RunClassify("--json", "Uber Centro", "35,50", "15/04"),
+		Name:    "classify --json returns valid JSON with candidates array",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunClassify("--json", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
 			thenJSONHasCandidates(),
@@ -35,9 +36,10 @@ func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
 	extern.RequireOllama(t, "")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "auto --json returns action recommendation without inserting",
-		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
-		When:  actions.RunAuto("--json", "Uber Centro", "35,50", "15/04"),
+		Name:    "auto --json returns action recommendation without inserting",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAuto("--json", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
 			thenJSONHasActionAndCandidates(),
@@ -51,9 +53,10 @@ func TestAutoJSON_ReturnsRecommendationWithoutInserting(t *testing.T) {
 // Does NOT require Ollama — no classification involved.
 func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
 	harness.Run(t, harness.Scenario{
-		Name:  "add --dry-run --json returns valid JSON with would_insert action",
-		Given: taxonomyAuthoredWithoutTrainingData(jsonOutputFixture()),
-		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Name:    "add --dry-run --json returns valid JSON with would_insert action",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithoutTrainingData(),
+		When:    actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
 			thenJSONHasExpenseFields(),
@@ -67,9 +70,10 @@ func TestAddDryRunJSON_ReturnsValidJSONWithAction(t *testing.T) {
 // the parent category from taxonomy when --data-dir is provided.
 func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
 	harness.Run(t, harness.Scenario{
-		Name:  "add --dry-run --json resolves category from taxonomy",
-		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
-		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Name:    "add --dry-run --json resolves category from taxonomy",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
 			thenJSONCategoryIs("Transporte"),
@@ -83,9 +87,10 @@ func TestAddDryRunJSON_ResolvesCategory(t *testing.T) {
 // so the resolved type is deterministic — no Ollama involved.
 func TestAddDryRunJSON_SurfacesResolvedType(t *testing.T) {
 	harness.Run(t, harness.Scenario{
-		Name:  "add --dry-run --json surfaces the type resolved from taxonomy",
-		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
-		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
+		Name:    "add --dry-run --json surfaces the type resolved from taxonomy",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
 			thenJSONTypeIs("Variáveis"),
@@ -99,9 +104,10 @@ func TestAddDryRunJSON_SurfacesResolvedType(t *testing.T) {
 // naive comma→dot swap produced "1.234.56" and errored.
 func TestAdd_ReadsBrazilianThousandsAmount(t *testing.T) {
 	harness.Run(t, harness.Scenario{
-		Name:  "add --dry-run --json parses BR thousands-separator value",
-		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
-		When:  actions.RunAddDryRun("Passagem Aérea;15/04/2026;1.234,56;Uber/Taxi", "--json"),
+		Name:    "add --dry-run --json parses BR thousands-separator value",
+		Fixture: jsonOutputFixture(),
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAddDryRun("Passagem Aérea;15/04/2026;1.234,56;Uber/Taxi", "--json"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
 			thousandsAmountReadAs(1234.56),

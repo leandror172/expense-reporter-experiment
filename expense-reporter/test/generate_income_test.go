@@ -18,9 +18,9 @@ func TestGenerateWorkbook_IncomeRoute(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "generate-income")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "generate-workbook command produces income route structure when entries are provided",
-		Given: incomeEntriesRecorded(fixDir),
-		When:  actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries.jsonl"), "--year", "2026", "--income-entries", filepath.Join(fixDir, "income-entries.jsonl")),
+		Name:    "generate-workbook command produces income route structure when entries are provided",
+		Fixture: fixDir,
+		When:    actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries.jsonl"), "--year", "2026", "--income-entries", filepath.Join(fixDir, "income-entries.jsonl")),
 		Then: slices.Concat(
 			commandSucceeded(),
 			incomeRouteStructureGenerated(fixDir),
@@ -29,13 +29,6 @@ func TestGenerateWorkbook_IncomeRoute(t *testing.T) {
 }
 
 // --- Given helpers (Event Modeling style — past-tense events that happened) ---
-
-func incomeEntriesRecorded(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.FixtureDir = fixDir
-	}
-}
 
 // --- Then helpers (composable) ---
 

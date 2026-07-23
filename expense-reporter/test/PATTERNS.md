@@ -100,27 +100,52 @@ Name it pragmatically — e.g. `noClassificationsRecorded()`.
 Given names align with how the system actually evolves over time (a sequence of recorded
 events) and keep the test description domain-focused.
 
+### The engine owns scenario plumbing (harness v1.1)
+
+A Given never sets `ctx.BinaryPath` or `ctx.FixtureDir`, and never takes a fixture path:
+
+```go
+harness.Run(t, harness.Scenario{
+    Name:    "...",
+    Fixture: fixDir,                          // engine assigns ctx.FixtureDir
+    Given:   taxonomyAuthoredWithTrainingData(),  // no arguments — events read ctx
+    ...
+})
+```
+
+`harness.UseBinary(binaryPath)` in `TestMain` supplies `ctx.BinaryPath` for every scenario.
+Events that need the fixture read `ctx.FixtureDir`.
+
+**A Given with an empty body means the scenario has no precondition** — omit `Given:`
+entirely rather than keeping a no-op with a domain-sounding name. Adopting v1.1 emptied six
+such helpers (the whole generate family): their entire bodies had been engine plumbing, which
+is exactly how one of them, `cycleCompletedThroughApply`, could claim a three-step history it
+never established.
+
 ### Composing a Given from events
 
 `Scenario.Given` holds ONE function while `Scenario.Then` holds a slice. That asymmetry is
 why Given helpers duplicated for so long: a scenario needing three facts had no way to say
 so except to write a new body containing all three, so every combination grew its own copy.
 
-`given(...)` (in `givens_test.go`) restores the missing composition — it folds a list of
-events into the single function the harness expects:
+`harness.Events(...)` folds a list of events into the single function the field takes.
+Compose **inside** helper definitions, not at the `Given:` call site — the scenario should
+still read as one domain sentence:
 
 ```go
-Given: given(binaryBuilt(), fixtureAvailable(fixDir), trainingCorpusRecorded()),
+func priorClassificationsRecorded() func(*harness.Context) {
+    return harness.Events(taxonomyAuthoredWithTrainingData(), classificationsSeededFromFixture())
+}
 ```
 
-Atomic events each carry ONE fact and compose in any combination: `binaryBuilt`,
-`fixtureAvailable`, `trainingCorpusRecorded`, `taxonomyPublished`, `feedbackLogsConfigured`,
-`inputBatchStaged`.
+Atomic events each carry ONE fact and compose in any combination: `trainingCorpusRecorded`,
+`taxonomyPublished`, `feedbackLogsConfigured`, `inputBatchStaged`.
 
-**This works only because `domain.SetupBinaryConfig` MERGES keys** across calls within a
-scenario (it accumulates per `*harness.Context`). Before that, two events each writing part
-of config.json would silently erase each other — the second `os.WriteFile` won. Any new
-event that writes config must go through `SetupBinaryConfig`, never write config.json itself.
+**This works only because `domain.SetupBinaryConfig` ACCUMULATES keys** and writes
+config.json once, from a `ctx.BeforeWhen` hook that runs after every Given event. Two events
+each writing the file directly would silently erase each other — the second `os.WriteFile`
+would win. Any new event that configures the binary must go through `SetupBinaryConfig`,
+never write config.json itself.
 
 ### Canonical Givens — reuse, don't re-copy
 
@@ -130,14 +155,15 @@ setup genuinely differs.
 
 | Canonical | What is true | Fixture copied to WorkDir? |
 |---|---|---|
-| `taxonomyAuthoredWithTrainingData(fixDir)` | taxonomy + real training corpus | no (read-only) |
-| `taxonomyAuthoredWithoutTrainingData(fixDir)` | taxonomy only — for commands that never classify | no |
-| `expenseBatchSubmittedForClassification(fixDir)` | taxonomy + corpus + a submitted input CSV | yes — batch-auto writes beside its input |
+| `taxonomyAuthoredWithTrainingData()` | taxonomy + real training corpus | no (read-only) |
+| `taxonomyAuthoredWithoutTrainingData()` | taxonomy only — for commands that never classify | no |
+| `expenseBatchSubmittedForClassification()` | taxonomy + corpus + a submitted input CSV | yes — batch-auto writes beside its input |
 
 `jsonOutputFixture()` is the shared taxonomy-only fixture for scenarios that author no
-fixture data of their own. Existing wrappers: `noExpensesLoggedYet`,
+fixture data of their own — pass it as `Fixture:`. Existing wrappers: `noExpensesLoggedYet`,
 `knownExpenseNotYetLogged`, `expenseManuallyAdded`, `expenseClassifiedByModel`,
-`tenMixedExpensesSubmittedForClassification`, `expensesWithExcludedCategoryMarkers`.
+`tenMixedExpensesSubmittedForClassification`, `expensesWithExcludedCategoryMarkers`,
+`priorClassificationsRecorded` (+ `expenseAutoConfirmed`, `expenseConfirmedThenCorrected`).
 
 ## Generate-Workbook Fixture Sub-Format (G3, 2026-06-11)
 

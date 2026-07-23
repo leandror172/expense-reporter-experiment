@@ -20,9 +20,10 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "auto command logs confirmed feedback entry on successful append",
-		Given: knownExpenseNotYetLogged(fixDir),
-		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
+		Name:    "auto command logs confirmed feedback entry on successful append",
+		Fixture: fixDir,
+		Given:   knownExpenseNotYetLogged(),
+		When:    actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
 		Then: slices.Concat(
 			autoAppendSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -37,9 +38,10 @@ func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-feedback")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto logs confirmed feedback for all auto-appended rows",
-		Given: knownExpenseBatchSubmittedForClassification(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto logs confirmed feedback for all auto-appended rows",
+		Fixture: fixDir,
+		Given:   knownExpenseBatchSubmittedForClassification(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -55,9 +57,10 @@ func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto dry-run does not create feedback log",
-		Given: tenMixedExpensesSubmittedForClassification(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto dry-run does not create feedback log",
+		Fixture: fixDir,
+		Given:   tenMixedExpensesSubmittedForClassification(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			noLogsCreated(),
@@ -69,9 +72,10 @@ func TestAdd_ManualFeedbackLogged(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-feedback")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add command logs manual feedback entry",
-		Given: taxonomyAuthoredWithoutTrainingData(fixDir),
-		When:  actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
+		Name:    "add command logs manual feedback entry",
+		Fixture: fixDir,
+		Given:   taxonomyAuthoredWithoutTrainingData(),
+		When:    actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -84,15 +88,15 @@ func TestAdd_ManualFeedbackLogged(t *testing.T) {
 
 // knownExpenseNotYetLogged: an expense the keyword dictionary already knows (so the
 // agreement gate will pass) has never been logged.
-func knownExpenseNotYetLogged(fixDir string) func(*harness.Context) {
-	return taxonomyAuthoredWithTrainingData(fixDir)
+func knownExpenseNotYetLogged() func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData()
 }
 
 // knownExpenseBatchSubmittedForClassification submits a batch whose expenses the
 // keyword dictionary already knows, so the agreement gate passes and rows are
 // appended — the precondition for asserting feedback was logged for them.
-func knownExpenseBatchSubmittedForClassification(fixDir string) func(*harness.Context) {
-	return expenseBatchSubmittedForClassification(fixDir)
+func knownExpenseBatchSubmittedForClassification() func(*harness.Context) {
+	return expenseBatchSubmittedForClassification()
 }
 
 // --- Then helpers (composable) ---
@@ -137,8 +141,9 @@ func TestAdd_ConfirmedFeedbackWhenPredictionMatches(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-with-prediction-match")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add with --predicted-subcategory matching chosen subcategory logs confirmed feedback",
-		Given: expenseClassifiedByModel(fixDir),
+		Name:    "add with --predicted-subcategory matching chosen subcategory logs confirmed feedback",
+		Fixture: fixDir,
+		Given:   expenseClassifiedByModel(),
 		When: actions.RunAdd(
 			"Uber Centro;15/04/2026;35,50;Uber/Taxi",
 			"--predicted-subcategory", "Uber/Taxi",
@@ -160,8 +165,9 @@ func TestAdd_CorrectedFeedbackWhenPredictionMismatches(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-with-prediction-mismatch")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add with --predicted-subcategory differing from chosen subcategory logs corrected feedback",
-		Given: expenseClassifiedByModel(fixDir),
+		Name:    "add with --predicted-subcategory differing from chosen subcategory logs corrected feedback",
+		Fixture: fixDir,
+		Given:   expenseClassifiedByModel(),
 		When: actions.RunAdd(
 			"Uber Centro;15/04/2026;35,50;Combustível",
 			"--predicted-subcategory", "Uber/Taxi",
@@ -185,9 +191,10 @@ func TestAdd_ManualFeedbackWithoutPredictionFlags(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-feedback")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add without prediction flags continues to write manual feedback entry",
-		Given: taxonomyAuthoredWithoutTrainingData(fixDir),
-		When:  actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
+		Name:    "add without prediction flags continues to write manual feedback entry",
+		Fixture: fixDir,
+		Given:   taxonomyAuthoredWithoutTrainingData(),
+		When:    actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -197,6 +204,6 @@ func TestAdd_ManualFeedbackWithoutPredictionFlags(t *testing.T) {
 }
 
 // expenseClassifiedByModel: the model already produced a prediction for this expense, arriving on the add command as --predicted-* flags.
-func expenseClassifiedByModel(fixDir string) func(*harness.Context) {
-	return taxonomyAuthoredWithTrainingData(fixDir)
+func expenseClassifiedByModel() func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData()
 }

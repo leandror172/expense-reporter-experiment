@@ -4,21 +4,17 @@ package acceptance_test
 
 // Shared Given vocabulary for the whole suite.
 //
-// The harness's Scenario.Given holds ONE function while Scenario.Then holds a slice.
-// That asymmetry is why Given helpers historically duplicated: a scenario needing
-// "taxonomy authored AND corpus recorded AND batch submitted" had no way to say so
-// except to write a new function containing all three, so every distinct combination
-// grew its own body. `given(...)` restores the missing composition: it folds a list of
-// events into the single function the harness expects, so a Given can be read — and
-// written — as the sequence of events it actually is.
+// Scenario plumbing belongs to the engine (harness v1.1): `Scenario.Fixture` seeds
+// ctx.FixtureDir and `harness.UseBinary` (TestMain) seeds ctx.BinaryPath, so no Given
+// wires either — and no Given takes a fixture path just to pass it along. Events read
+// the fixture from the context.
 //
-// Three layers live here:
-//   1. `given`            — the compose helper
-//   2. atomic events      — one fact each, composable in any combination
-//   3. canonical Givens   — the three combinations nearly every scenario wants
+// Two layers live here:
+//   1. atomic events    — one fact each, composable in any combination
+//   2. canonical Givens — the three combinations nearly every scenario wants
 //
 // Scenario-specific Givens elsewhere should be one-line wrappers over a canonical (or a
-// `given(...)` of atoms), never a fresh body. See PATTERNS.md "Canonical Givens".
+// harness.Events(...) of atoms), never a fresh body. See PATTERNS.md "Canonical Givens".
 
 import (
 	"os"
@@ -28,35 +24,8 @@ import (
 	"github.com/leandror172/acceptance-harness/harness"
 )
 
-// given folds a sequence of events into the single setup function Scenario.Given takes.
-// Events are applied in order and each contributes its own slice of context, so they
-// compose without erasing one another — see domain.SetupBinaryConfig, whose keys merge
-// across calls precisely so two events can each configure part of config.json.
-func given(events ...func(*harness.Context)) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		for _, event := range events {
-			event(ctx)
-		}
-	}
-}
-
 // --- Atomic events -------------------------------------------------------------
-// One fact each. Compose with given(...); do not inline these into new bodies.
-
-// binaryBuilt: the CLI under test was built (once, by TestMain) and is on disk.
-func binaryBuilt() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-	}
-}
-
-// fixtureAvailable: the scenario's fixture directory is readable as a source. Read-only —
-// it does NOT stage anything in the WorkDir; see inputBatchStaged for that.
-func fixtureAvailable(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.FixtureDir = fixDir
-	}
-}
+// One fact each. Compose with harness.Events(...); do not inline into new bodies.
 
 // trainingCorpusRecorded: the real training corpus + keyword dictionary exist, so
 // few-shot retrieval and the keyword agreement gate have something to work with.
@@ -66,14 +35,14 @@ func trainingCorpusRecorded() func(*harness.Context) {
 	}
 }
 
-// taxonomyPublished: the fixture's taxonomy was published where the binary reads it —
+// taxonomyPublished: the scenario's taxonomy was published where the binary reads it —
 // copied into the WorkDir and pointed at by config. Since T-13 every classifying command
 // resolves its full path through this file.
-func taxonomyPublished(fixDir string) func(*harness.Context) {
+func taxonomyPublished() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		taxonomyDest := filepath.Join(ctx.WorkDir, "taxonomy.json")
 
-		taxData, err := os.ReadFile(filepath.Join(fixDir, "fixture-taxonomy.json"))
+		taxData, err := os.ReadFile(filepath.Join(ctx.FixtureDir, "fixture-taxonomy.json"))
 		if err != nil {
 			ctx.T.Fatalf("reading fixture taxonomy: %v", err)
 		}
@@ -89,7 +58,7 @@ func taxonomyPublished(fixDir string) func(*harness.Context) {
 }
 
 // feedbackLogsConfigured: both JSONL logs have a home in the WorkDir and are registered
-// as artifacts. They start absent — a scenario that needs prior entries seeds them.
+// as artifacts. They start absent — a scenario needing prior entries seeds them.
 func feedbackLogsConfigured() func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		classificationsPath := filepath.Join(ctx.WorkDir, "classifications.jsonl")
@@ -108,9 +77,9 @@ func feedbackLogsConfigured() func(*harness.Context) {
 
 // inputBatchStaged: the fixture's files were copied into the WorkDir, because the
 // command writes its output beside its input and must not touch the fixture.
-func inputBatchStaged(fixDir string) func(*harness.Context) {
+func inputBatchStaged() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
+		if err := harness.CopyFixtureToWorkDir(ctx, ctx.FixtureDir); err != nil {
 			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
 		}
 	}
@@ -129,12 +98,10 @@ func jsonOutputFixture() string {
 // most common Given in the suite. Read-only: the fixture is NOT staged in the WorkDir,
 // so scenarios whose command writes beside its input want
 // expenseBatchSubmittedForClassification instead.
-func taxonomyAuthoredWithTrainingData(fixDir string) func(*harness.Context) {
-	return given(
-		binaryBuilt(),
-		fixtureAvailable(fixDir),
+func taxonomyAuthoredWithTrainingData() func(*harness.Context) {
+	return harness.Events(
 		trainingCorpusRecorded(),
-		taxonomyPublished(fixDir),
+		taxonomyPublished(),
 		feedbackLogsConfigured(),
 	)
 }
@@ -143,11 +110,9 @@ func taxonomyAuthoredWithTrainingData(fixDir string) func(*harness.Context) {
 // ever recorded — no data dir, and therefore no few-shot examples or keyword index.
 // The honest Given for commands that never classify (add), and for dry-run paths that
 // resolve a full path from the taxonomy but call no model.
-func taxonomyAuthoredWithoutTrainingData(fixDir string) func(*harness.Context) {
-	return given(
-		binaryBuilt(),
-		fixtureAvailable(fixDir),
-		taxonomyPublished(fixDir),
+func taxonomyAuthoredWithoutTrainingData() func(*harness.Context) {
+	return harness.Events(
+		taxonomyPublished(),
 		feedbackLogsConfigured(),
 	)
 }
@@ -156,21 +121,19 @@ func taxonomyAuthoredWithoutTrainingData(fixDir string) func(*harness.Context) {
 // classification — staged in the WorkDir because batch-auto writes its output files
 // beside the input. Shared by every batch scenario; per-scenario wrappers elsewhere
 // name what their own fixture's batch contains.
-func expenseBatchSubmittedForClassification(fixDir string) func(*harness.Context) {
-	return given(
-		binaryBuilt(),
-		fixtureAvailable(fixDir),
+func expenseBatchSubmittedForClassification() func(*harness.Context) {
+	return harness.Events(
 		trainingCorpusRecorded(),
-		inputBatchStaged(fixDir),
-		taxonomyPublished(fixDir),
+		inputBatchStaged(),
+		taxonomyPublished(),
 		feedbackLogsConfigured(),
 	)
 }
 
 // withFeedbackAndTaxonomyConfig is the pre-composition plumbing form, kept for the
 // Givens that still assemble their own context. Prefer composing the atoms above.
-func withFeedbackAndTaxonomyConfig(ctx *harness.Context, fixDir string) {
-	taxonomyPublished(fixDir)(ctx)
+func withFeedbackAndTaxonomyConfig(ctx *harness.Context) {
+	taxonomyPublished()(ctx)
 	feedbackLogsConfigured()(ctx)
 }
 

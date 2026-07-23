@@ -18,10 +18,11 @@ func TestAuto_KnownExpenseIsClassifiedWithConfidence(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "Uber Centro classified as transport with confidence score",
-		Given: taxonomyAuthoredWithTrainingData(fixDir),
-		When:  actions.RunAuto("Uber Centro", "35,50", "15/04"),
-		Then:  expenseClassifiedWithConfidence(),
+		Name:    "Uber Centro classified as transport with confidence score",
+		Fixture: fixDir,
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAuto("Uber Centro", "35,50", "15/04"),
+		Then:    expenseClassifiedWithConfidence(),
 	})
 }
 
@@ -31,10 +32,11 @@ func TestAuto_AmbiguousExpenseKeptForManualReview(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "vague expense description must not be auto-inserted",
-		Given: taxonomyAuthoredWithTrainingData(fixDir),
-		When:  actions.RunAuto("Outros gastos aleatorios xyz", "10.00", "01/01"),
-		Then:  expenseKeptForManualReview(),
+		Name:    "vague expense description must not be auto-inserted",
+		Fixture: fixDir,
+		Given:   taxonomyAuthoredWithTrainingData(),
+		When:    actions.RunAuto("Outros gastos aleatorios xyz", "10.00", "01/01"),
+		Then:    expenseKeptForManualReview(),
 	})
 }
 

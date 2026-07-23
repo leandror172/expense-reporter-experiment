@@ -20,9 +20,10 @@ func TestCorrect_YearFlagResolvesBareDateToPriorEntry(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "correct-year-flag")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "correct --year joins a bare date to the prior year's entry",
-		Given: expenseAutoConfirmedInAPriorYear(fixDir),
-		When:  actions.RunCorrect("Uber Centro;15/04;35,50;Combustível", "--year", "2024"),
+		Name:    "correct --year joins a bare date to the prior year's entry",
+		Fixture: fixDir,
+		Given:   expenseAutoConfirmedInAPriorYear(),
+		When:    actions.RunCorrect("Uber Centro;15/04;35,50;Combustível", "--year", "2024"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			correctionJoinedThePriorYearEntry(fixDir),
@@ -33,8 +34,8 @@ func TestCorrect_YearFlagResolvesBareDateToPriorEntry(t *testing.T) {
 // expenseAutoConfirmedInAPriorYear returns the same auto-confirmed event as
 // expenseAutoConfirmed, distinguished because the seed is dated in a PRIOR year (2024)
 // while the correction arrives with a bare date.
-func expenseAutoConfirmedInAPriorYear(fixDir string) func(*harness.Context) {
-	return expenseAutoConfirmed(fixDir)
+func expenseAutoConfirmedInAPriorYear() func(*harness.Context) {
+	return expenseAutoConfirmed()
 }
 
 // correctionJoinedThePriorYearEntry asserts the corrected entry was appended with

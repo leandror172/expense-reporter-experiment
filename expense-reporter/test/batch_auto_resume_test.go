@@ -10,7 +10,6 @@ import (
 
 	"expense-reporter/internal/appender"
 	"expense-reporter/test/actions"
-	"expense-reporter/test/domain"
 	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
 
@@ -34,9 +33,10 @@ func TestBatchAutoResume_AllRowsAlreadyLogged(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-resume-all-seeded")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto --resume skips every pre-logged row (plain + installment series) before classifying",
-		Given: allInputRowsAlreadyLogged(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto --resume skips every pre-logged row (plain + installment series) before classifying",
+		Fixture: fixDir,
+		Given:   allInputRowsAlreadyLogged(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			bothRowsReportedAsAlreadyLogged(),
@@ -62,9 +62,10 @@ func TestBatchAutoResume_OneOfTwoDuplicatesSkipped(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-resume-one-of-two")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto --resume skips exactly one of two identical rows when the log holds one copy",
-		Given: oneOfTwoDuplicatesAlreadyLogged(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto --resume skips exactly one of two identical rows when the log holds one copy",
+		Fixture: fixDir,
+		Given:   oneOfTwoDuplicatesAlreadyLogged(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			exactlyOneRowSkipped(),
@@ -83,9 +84,10 @@ func TestBatchAutoResume_OnlyNewRowClassifies(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-resume-one-new")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto --resume classifies only the new row and appends it once, skipping the pre-logged row",
-		Given: oneRowAlreadyLoggedOtherIsNew(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto --resume classifies only the new row and appends it once, skipping the pre-logged row",
+		Fixture: fixDir,
+		Given:   oneRowAlreadyLoggedOtherIsNew(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			newRowAppendedSeededRowSkipped(fixDir),
@@ -103,9 +105,10 @@ func TestBatchAutoDuplicateWarning_FiresWithoutResume(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-dup-warning")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto without --resume re-appends a pre-logged row and warns exactly once",
-		Given: expenseAlreadyLoggedThenReappended(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto without --resume re-appends a pre-logged row and warns exactly once",
+		Fixture: fixDir,
+		Given:   expenseAlreadyLoggedThenReappended(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			rowAppendedAgainWithSingleDuplicateWarning(fixDir),
@@ -120,9 +123,10 @@ func TestBatchAutoResume_DryRunShowsSkipsWritesNoLog(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-resume-dryrun")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto --dry-run --resume shows the skips and writes nothing to the log",
-		Given: allInputRowsAlreadyLogged(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto --dry-run --resume shows the skips and writes nothing to the log",
+		Fixture: fixDir,
+		Given:   allInputRowsAlreadyLogged(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			bothRowsReportedAsAlreadyLogged(),
@@ -148,15 +152,9 @@ type seedRow struct {
 // expenseLogSeededWith copies the fixture to the work dir, configures feedback + taxonomy
 // paths, then writes the given rows into the expense log using appender.ExpandAndAppend — the
 // exact code path batch-auto's append phase uses — so seeded ids match the binary's predictions.
-func expenseLogSeededWith(fixDir string, rows []seedRow) func(*harness.Context) {
+func expenseLogSeededWith(rows []seedRow) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
+		expenseBatchSubmittedForClassification()(ctx)
 
 		logPath := ctx.Artifacts["expenses_log.jsonl"]
 		for _, r := range rows {
@@ -167,27 +165,27 @@ func expenseLogSeededWith(fixDir string, rows []seedRow) func(*harness.Context) 
 	}
 }
 
-func allInputRowsAlreadyLogged(fixDir string) func(*harness.Context) {
-	return expenseLogSeededWith(fixDir, []seedRow{
+func allInputRowsAlreadyLogged() func(*harness.Context) {
+	return expenseLogSeededWith([]seedRow{
 		{item: "Netflix", date: date(2026, 3, 10), value: 55.90, count: 1, expenseType: "Fixas", category: "Lazer", subcategory: "Netflix"},
 		{item: "Posto Ipiranga", date: date(2026, 4, 1), value: 30.00, count: 3, expenseType: "Variáveis", category: "Transporte", subcategory: "Combustível"},
 	})
 }
 
-func oneOfTwoDuplicatesAlreadyLogged(fixDir string) func(*harness.Context) {
-	return expenseLogSeededWith(fixDir, []seedRow{
+func oneOfTwoDuplicatesAlreadyLogged() func(*harness.Context) {
+	return expenseLogSeededWith([]seedRow{
 		{item: "Uber Centro", date: date(2026, 4, 15), value: 35.50, count: 1, expenseType: "Variáveis", category: "Transporte", subcategory: "Uber/Taxi"},
 	})
 }
 
-func oneRowAlreadyLoggedOtherIsNew(fixDir string) func(*harness.Context) {
-	return expenseLogSeededWith(fixDir, []seedRow{
+func oneRowAlreadyLoggedOtherIsNew() func(*harness.Context) {
+	return expenseLogSeededWith([]seedRow{
 		{item: "Netflix", date: date(2026, 3, 10), value: 55.90, count: 1, expenseType: "Fixas", category: "Lazer", subcategory: "Netflix"},
 	})
 }
 
-func expenseAlreadyLoggedThenReappended(fixDir string) func(*harness.Context) {
-	return expenseLogSeededWith(fixDir, []seedRow{
+func expenseAlreadyLoggedThenReappended() func(*harness.Context) {
+	return expenseLogSeededWith([]seedRow{
 		{item: "Posto Ipiranga", date: date(2026, 4, 15), value: 35.50, count: 1, expenseType: "Variáveis", category: "Transporte", subcategory: "Combustível"},
 	})
 }

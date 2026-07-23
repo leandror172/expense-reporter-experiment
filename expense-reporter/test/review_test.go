@@ -24,9 +24,10 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 	csvPath := filepath.Join(fixDir, "input.csv")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "review command produces HTML with queue and taxonomy",
-		Given: expensesReceivedForReview(fixDir),
-		When:  actions.RunReview(csvPath),
+		Name:    "review command produces HTML with queue and taxonomy",
+		Fixture: fixDir,
+		Given:   expensesReceivedForReview(),
+		When:    actions.RunReview(csvPath),
 		Then: slices.Concat(
 			reviewHTMLProduced(),
 			reviewDataEmbedded(),
@@ -36,10 +37,8 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 	})
 }
 
-func expensesReceivedForReview(fixDir string) func(*harness.Context) {
+func expensesReceivedForReview() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.FixtureDir = fixDir
 		domain.SetDataDir(ctx, dataDir)
 		domain.SetWorkbookPath(ctx, createSyntheticWorkbook(ctx.T, ctx.WorkDir))
 	}

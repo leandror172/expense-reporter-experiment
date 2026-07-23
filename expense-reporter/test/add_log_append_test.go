@@ -20,9 +20,10 @@ func TestAdd_LogAppendsTypedEntry(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-log-append")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add appends a typed expense-log entry without touching the workbook",
-		Given: expenseManuallyAdded(fixDir),
-		When:  actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
+		Name:    "add appends a typed expense-log entry without touching the workbook",
+		Fixture: fixDir,
+		Given:   expenseManuallyAdded(),
+		When:    actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -40,9 +41,10 @@ func TestAdd_InstallmentsExpandToNEntriesInLog(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-log-append-installments")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add with installment notation appends N dated entries to expenses_log.jsonl",
-		Given: expenseWithInstallmentsAdded(fixDir),
-		When:  actions.RunAdd("Assinatura Netflix;15/03/2026;90,00/3;Netflix"),
+		Name:    "add with installment notation appends N dated entries to expenses_log.jsonl",
+		Fixture: fixDir,
+		Given:   expenseWithInstallmentsAdded(),
+		When:    actions.RunAdd("Assinatura Netflix;15/03/2026;90,00/3;Netflix"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -60,9 +62,10 @@ func TestAdd_CrossYearInstallmentLogsNextYearDate(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "add-log-append-crossyear")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "add with cross-year installments logs all entries with correct dates including next year",
-		Given: crossYearInstallmentAdded(fixDir),
-		When:  actions.RunAdd("Assinatura Netflix;15/11/2026;90,00/3;Netflix"),
+		Name:    "add with cross-year installments logs all entries with correct dates including next year",
+		Fixture: fixDir,
+		Given:   crossYearInstallmentAdded(),
+		When:    actions.RunAdd("Assinatura Netflix;15/11/2026;90,00/3;Netflix"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			crossYearInstallmentNotDivertedToRollover(),
@@ -75,18 +78,18 @@ func TestAdd_CrossYearInstallmentLogsNextYearDate(t *testing.T) {
 // --- Given helpers (event-modeling style) ---
 
 // expenseManuallyAdded: a single expense was entered by hand — no model in the loop.
-func expenseManuallyAdded(fixDir string) func(*harness.Context) {
-	return taxonomyAuthoredWithTrainingData(fixDir)
+func expenseManuallyAdded() func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData()
 }
 
 // expenseWithInstallmentsAdded: an expense carrying installment notation was entered by hand.
-func expenseWithInstallmentsAdded(fixDir string) func(*harness.Context) {
-	return taxonomyAuthoredWithTrainingData(fixDir)
+func expenseWithInstallmentsAdded() func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData()
 }
 
 // crossYearInstallmentAdded: a hand-entered installment series that runs past December into the next year.
-func crossYearInstallmentAdded(fixDir string) func(*harness.Context) {
-	return taxonomyAuthoredWithTrainingData(fixDir)
+func crossYearInstallmentAdded() func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData()
 }
 
 // --- Then helpers (name the specific expected result of each scenario) ---

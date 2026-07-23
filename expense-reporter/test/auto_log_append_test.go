@@ -34,9 +34,10 @@ func TestAuto_KeywordAgreementAppendsToLog(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "auto HIGH confidence appends typed expense log entry without workbook",
-		Given: noExpensesLoggedYet(fixDir),
-		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
+		Name:    "auto HIGH confidence appends typed expense log entry without workbook",
+		Fixture: fixDir,
+		Given:   noExpensesLoggedYet(),
+		When:    actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
 			expect.NoRolloverFileCreated(),
@@ -65,9 +66,10 @@ func TestAuto_InstallmentsExpandToNEntries(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "auto with installment value notation appends N dated log entries",
-		Given: noExpensesLoggedYet(fixDir),
-		When:  actions.RunAuto("Posto Ipiranga", "90,00/3", "15/04/2026"),
+		Name:    "auto with installment value notation appends N dated log entries",
+		Fixture: fixDir,
+		Given:   noExpensesLoggedYet(),
+		When:    actions.RunAuto("Posto Ipiranga", "90,00/3", "15/04/2026"),
 		Then: []func(*harness.Context){
 			verify.CommandSucceeded(),
 			expect.NoRolloverFileCreated(),
@@ -82,8 +84,8 @@ func TestAuto_InstallmentsExpandToNEntries(t *testing.T) {
 // noExpensesLoggedYet: nothing has been logged — a fresh WorkDir with the taxonomy
 // authored and the training corpus recorded. The empty log is the salient fact: every
 // scenario here asserts on exactly what the auto run appended to it.
-func noExpensesLoggedYet(fixDir string) func(*harness.Context) {
-	return taxonomyAuthoredWithTrainingData(fixDir)
+func noExpensesLoggedYet() func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData()
 }
 
 // TestAuto_JoinIDMatchesAcrossLogs guards the T-35 join-key divergence on the auto path.
@@ -107,9 +109,10 @@ func TestAuto_JoinIDMatchesAcrossLogs(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "auto-log-append")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "auto given a short DD/MM date logs one row to each log under the same join id",
-		Given: noExpensesLoggedYet(fixDir),
-		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04"),
+		Name:    "auto given a short DD/MM date logs one row to each log under the same join id",
+		Fixture: fixDir,
+		Given:   noExpensesLoggedYet(),
+		When:    actions.RunAuto("Posto Ipiranga", "35,50", "15/04"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			shortDateExpenseJoinableAcrossBothLogs(),

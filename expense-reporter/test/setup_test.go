@@ -46,6 +46,8 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "TestMain: build: %v\n", err)
 		os.Exit(1)
 	}
+	// Every scenario gets ctx.BinaryPath from here, so no Given assigns it.
+	harness.UseBinary(binaryPath)
 
 	// Not deferred: os.Exit skips defers, so a deferred cleanup here would never
 	// run and every suite run would leak its binary dir under /tmp.

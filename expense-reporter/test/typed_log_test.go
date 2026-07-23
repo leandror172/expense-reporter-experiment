@@ -18,9 +18,10 @@ func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-typed")
 
 	harness.Run(t, harness.Scenario{
-		Name:  "batch-auto with taxonomy logs entries with correct type field",
-		Given: typedExpenseBatchSubmittedForClassification(fixDir),
-		When:  actions.RunBatchAutoWithFixture(fixDir),
+		Name:    "batch-auto with taxonomy logs entries with correct type field",
+		Fixture: fixDir,
+		Given:   typedExpenseBatchSubmittedForClassification(),
+		When:    actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -33,6 +34,6 @@ func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 // anchor: the submitted batch carries expenses whose type the log must record. No
 // workbook is involved (the log-append path needs none). This is the load-bearing
 // coverage of the append path that the dry-run survivors do not provide.
-func typedExpenseBatchSubmittedForClassification(fixDir string) func(*harness.Context) {
-	return expenseBatchSubmittedForClassification(fixDir)
+func typedExpenseBatchSubmittedForClassification() func(*harness.Context) {
+	return expenseBatchSubmittedForClassification()
 }
