@@ -95,6 +95,7 @@
 | QUICK.md memory audit — 46K→16K consolidation into KNOWLEDGE.md (2026-07-01) | `.claude/quick-memory-audit-2026-07-01.md` |
 | Session 42 postmortem — PR #36 review, model revert (qcoder→q3), acceptance repair (T-17/T-18) | `.claude/session42-postmortem.md` |
 | WS-B slice 3 work report — `batch-auto` → log-append (session 43) | `.claude/ws-b-slice3-implementation-report.md` |
+| **DSL reading guide — READ BEFORE WRITING ANY TEST** (what to read, in what order, + the invariants) | `expense-reporter/test/.memories/KNOWLEDGE.md` [ref:acceptance-dsl] |
 | Shared Given vocabulary (atomic events + 3 canonical Givens, composed with `harness.Events`) | `expense-reporter/test/givens_test.go`; config accumulates via `domain.SetupBinaryConfig` + `ctx.BeforeWhen` |
 | `Given`-as-slice upstream analysis (62-scenario survey; verdict: upstream the helper as v1.1.0, NOT the slice) | `.claude/given-slice-upstream-analysis.md` |
 | Harness v1.1.0 upstream proposal (PR-ready: `Scenario.Fixture`, `UseBinary`, `ctx.State`+`BeforeWhen`, `harness.Events`; all additive) | `.claude/plans/harness-v1.1-engine-ownership.md` |
