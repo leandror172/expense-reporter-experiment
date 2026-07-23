@@ -97,6 +97,7 @@
 | WS-B slice 3 work report — `batch-auto` → log-append (session 43) | `.claude/ws-b-slice3-implementation-report.md` |
 | Shared Given vocabulary (`given(...)` compose helper, atomic events, 3 canonical Givens) | `expense-reporter/test/givens_test.go`; composition requires the merging `domain.SetupBinaryConfig` |
 | `Given`-as-slice upstream analysis (62-scenario survey; verdict: upstream the helper as v1.1.0, NOT the slice) | `.claude/given-slice-upstream-analysis.md` |
+| Harness v1.1.0 upstream proposal (PR-ready: `Scenario.Fixture`, `UseBinary`, `ctx.State`+`BeforeWhen`, `harness.Events`; all additive) | `.claude/plans/harness-v1.1-engine-ownership.md` |
 | Acceptance test patterns | `expense-reporter/test/PATTERNS.md` — [ref:acceptance-patterns] effort table + ref index |
 | Acceptance test architecture | `expense-reporter/test/README.md` — [ref:acceptance-harness], [ref:acceptance-fixtures], [ref:acceptance-verify], [ref:acceptance-run] |
 
