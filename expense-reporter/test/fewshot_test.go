@@ -61,7 +61,7 @@ func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
 		Name:    "batch-auto with few-shot still produces classified and review CSV files",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    classifiedAndReviewFilesProduced(),
 	})
 }

@@ -41,7 +41,7 @@ func TestBatchAuto_FeedbackLoggedForAppendedRows(t *testing.T) {
 		Name:    "batch-auto logs confirmed feedback for all auto-appended rows",
 		Fixture: fixDir,
 		Given:   knownExpenseBatchSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -60,7 +60,7 @@ func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
 		Name:    "batch-auto dry-run does not create feedback log",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			noLogsCreated(),

@@ -21,7 +21,7 @@ func TestBatchAuto_TypeEmittedInExpenseLog(t *testing.T) {
 		Name:    "batch-auto with taxonomy logs entries with correct type field",
 		Fixture: fixDir,
 		Given:   typedExpenseBatchSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),

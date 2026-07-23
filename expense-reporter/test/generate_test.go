@@ -22,7 +22,7 @@ func TestGenerateWorkbook_Skeleton(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:    "generate-workbook command produces skeleton structure when no entries provided",
 		Fixture: fixDir,
-		When:    actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), "", "--year", "2026"),
+		When:    actions.RunGenerateWorkbook("", "--year", "2026"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			skeletonStructureGenerated(fixDir),
@@ -36,7 +36,7 @@ func TestGenerateWorkbook_WithEntries(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:    "generate-workbook command produces data-bearing structure when entries are provided",
 		Fixture: fixDir,
-		When:    actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries.jsonl"), "--year", "2026"),
+		When:    actions.RunGenerateWorkbook("entries.jsonl", "--year", "2026"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			dataBearingStructureGenerated(fixDir),
@@ -50,7 +50,7 @@ func TestGenerateWorkbook_UnmappedSubcategorySkipped(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:    "generate-workbook command skips unmapped subcategories and warns about them",
 		Fixture: fixDir,
-		When:    actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries-with-unmapped.jsonl"), "--year", "2026"),
+		When:    actions.RunGenerateWorkbook("entries-with-unmapped.jsonl", "--year", "2026"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			unmappedEntryWarnedAndSkipped(),
@@ -64,7 +64,7 @@ func TestGenerateWorkbook_MultiYearLogFiltersToYear(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:    "generate-workbook command filters multi-year log to target year",
 		Fixture: fixDir,
-		When:    actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries-multiyear.jsonl"), "--year", "2026"),
+		When:    actions.RunGenerateWorkbook("entries-multiyear.jsonl", "--year", "2026"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			dataBearingStructureGenerated(fixDir),

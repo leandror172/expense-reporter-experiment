@@ -24,7 +24,7 @@ func TestBatchAuto_Basic(t *testing.T) {
 		Name:    "batch-auto basic — 10 rows dry-run",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    classifiedAndReviewFilesProduced(),
 	})
 }
@@ -38,7 +38,7 @@ func TestBatchAuto_MixedConfidence(t *testing.T) {
 		Name:    "batch-auto — classified.csv has 11 rows (1 header + 10 data), 8 columns",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    allInputExpensesClassified(11),
 	})
 }
@@ -52,7 +52,7 @@ func TestBatchAuto_ExcludedCategoriesGoToReview(t *testing.T) {
 		Name:    "batch pipeline runs cleanly with mixed confidence and exclusion markers",
 		Fixture: fixDir,
 		Given:   expensesWithExcludedCategoryMarkers(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    classifiedAndReviewFilesProduced(),
 	})
 }
@@ -68,7 +68,7 @@ func TestBatchAuto_ClassificationAccuracy(t *testing.T) {
 		Name:    "batch-auto accuracy >= 50% against expected classifications",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    classificationMatchesExpectedWithMinAccuracy(expectedPath, resultsDir),
 	})
 }
@@ -82,7 +82,7 @@ func TestBatchAuto_OutputDirFlag(t *testing.T) {
 		Name:    "output CSVs are written to --output-dir, not input file directory",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesWithCustomOutputDirectory(),
-		When:    actions.RunBatchAutoIntoArtifactDir(fixDir, "outDir"),
+		When:    actions.RunBatchAutoIntoArtifactDir("outDir"),
 		Then:    classifiedAndReviewFilesProduced(),
 	})
 }
@@ -96,7 +96,7 @@ func TestBatchAuto_SameYearInstallmentsExpandedInLog(t *testing.T) {
 		Name:    "same-year installments expand into one dated log line each",
 		Fixture: fixtureDir,
 		Given:   expenseBatchSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithInput(fixtureDir, "midyear-input.csv"),
+		When:    actions.RunBatchAutoWithInput("midyear-input.csv"),
 		Then:    installmentsExpandedInLog(fixtureDir),
 	})
 }
@@ -110,7 +110,7 @@ func TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver(t *testing.T) {
 		Name:    "cross-year installments are logged with their real next-year date — no rollover.csv",
 		Fixture: fixtureDir,
 		Given:   expenseBatchSubmittedForClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixtureDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    crossYearInstallmentsLoggedNotRolledOver(fixtureDir),
 	})
 }
@@ -215,7 +215,7 @@ func TestBatchAuto_UnwritableLogPath_FailsFastBeforeClassification(t *testing.T)
 		Name:    "unwritable expense log fails fast before classification",
 		Fixture: fixDir,
 		Given:   batchSubmittedWithUnwritableLogPath(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then:    commandFailedWithHint(),
 	})
 }

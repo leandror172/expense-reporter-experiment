@@ -20,7 +20,7 @@ func TestGenerateWorkbook_IncomeRoute(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:    "generate-workbook command produces income route structure when entries are provided",
 		Fixture: fixDir,
-		When:    actions.RunGenerateWorkbook(filepath.Join(fixDir, "taxonomy.json"), filepath.Join(fixDir, "entries.jsonl"), "--year", "2026", "--income-entries", filepath.Join(fixDir, "income-entries.jsonl")),
+		When:    actions.RunGenerateWorkbook("entries.jsonl", "--year", "2026", "--income-entries", filepath.Join(fixDir, "income-entries.jsonl")),
 		Then: slices.Concat(
 			commandSucceeded(),
 			incomeRouteStructureGenerated(fixDir),

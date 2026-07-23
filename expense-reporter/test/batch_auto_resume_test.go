@@ -36,7 +36,7 @@ func TestBatchAutoResume_AllRowsAlreadyLogged(t *testing.T) {
 		Name:    "batch-auto --resume skips every pre-logged row (plain + installment series) before classifying",
 		Fixture: fixDir,
 		Given:   allInputRowsAlreadyLogged(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			bothRowsReportedAsAlreadyLogged(),
@@ -65,7 +65,7 @@ func TestBatchAutoResume_OneOfTwoDuplicatesSkipped(t *testing.T) {
 		Name:    "batch-auto --resume skips exactly one of two identical rows when the log holds one copy",
 		Fixture: fixDir,
 		Given:   oneOfTwoDuplicatesAlreadyLogged(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			exactlyOneRowSkipped(),
@@ -87,7 +87,7 @@ func TestBatchAutoResume_OnlyNewRowClassifies(t *testing.T) {
 		Name:    "batch-auto --resume classifies only the new row and appends it once, skipping the pre-logged row",
 		Fixture: fixDir,
 		Given:   oneRowAlreadyLoggedOtherIsNew(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			newRowAppendedSeededRowSkipped(fixDir),
@@ -108,7 +108,7 @@ func TestBatchAutoDuplicateWarning_FiresWithoutResume(t *testing.T) {
 		Name:    "batch-auto without --resume re-appends a pre-logged row and warns exactly once",
 		Fixture: fixDir,
 		Given:   expenseAlreadyLoggedThenReappended(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			rowAppendedAgainWithSingleDuplicateWarning(fixDir),
@@ -126,7 +126,7 @@ func TestBatchAutoResume_DryRunShowsSkipsWritesNoLog(t *testing.T) {
 		Name:    "batch-auto --dry-run --resume shows the skips and writes nothing to the log",
 		Fixture: fixDir,
 		Given:   allInputRowsAlreadyLogged(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			bothRowsReportedAsAlreadyLogged(),

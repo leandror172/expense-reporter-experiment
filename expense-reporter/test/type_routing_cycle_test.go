@@ -60,7 +60,7 @@ func TestTypeRoutingCycle_1_BatchAutoEmitsType(t *testing.T) {
 		Name:    "batch-auto writes a type column into classified.csv",
 		Fixture: fixDir,
 		Given:   expensesAwaitingClassification(),
-		When:    actions.RunBatchAutoWithFixture(fixDir),
+		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classifiedCsvCarriesTypeColumn(),
@@ -128,13 +128,11 @@ func TestTypeRoutingCycle_3_ApplyBackfillsType(t *testing.T) {
 
 func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 	fixDir := typeRoutingFixtureDir()
-	taxonomyPath := filepath.Join(fixDir, "taxonomy.json")
-	entriesPath := filepath.Join(fixDir, "typed-expenses_log.jsonl")
 
 	harness.Run(t, harness.Scenario{
 		Name:    "generate-workbook routes the ambiguous-leaf entry to its typed sheet",
 		Fixture: fixDir,
-		When:    actions.RunGenerateWorkbook(taxonomyPath, entriesPath),
+		When:    actions.RunGenerateWorkbook("typed-expenses_log.jsonl"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			typedEntryRoutedToSheet(250, "Variáveis"), // Dentista → its chosen type

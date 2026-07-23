@@ -2,6 +2,14 @@
 
 package actions
 
+// When closures: each runs the binary once and captures everything observable into
+// the context.
+//
+// What belongs in an action's signature: the command's SUBJECT — the expense string,
+// the flags, which input file. What does not: where the fixture lives. The scenario
+// already declares that as Scenario.Fixture, so actions read ctx.FixtureDir rather
+// than taking the same path a second time.
+
 import (
 	"bytes"
 	"fmt"
@@ -14,175 +22,204 @@ import (
 	"github.com/leandror172/acceptance-harness/harness"
 )
 
+// --- Context-carried flags ------------------------------------------------------
+// The scenario context decides these, not the caller. Kept as two helpers rather
+// than one with a boolean so that a command omitting the workbook reads as a
+// deliberate choice at its call site instead of a false argument.
+
+// dataDirFlag passes the classification data directory when the scenario set one.
+func dataDirFlag(ctx *harness.Context) []string {
+	if domain.DataDir(ctx) == "" {
+		return nil
+	}
+	return []string{"--data-dir", domain.DataDir(ctx)}
+}
+
+// workbookFlag passes the workbook when the scenario set one.
+func workbookFlag(ctx *harness.Context) []string {
+	if domain.WorkbookPath(ctx) == "" {
+		return nil
+	}
+	return []string{"--workbook", domain.WorkbookPath(ctx)}
+}
+
+// --- Single-expense commands ----------------------------------------------------
+
 // RunClassify returns a When closure that runs the classify command.
-// Passes --data-dir from ctx when set.
 func RunClassify(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cmdArgs := []string{"classify"}
-		if domain.DataDir(ctx) != "" {
-			cmdArgs = append(cmdArgs, "--data-dir", domain.DataDir(ctx))
-		}
+		cmdArgs := append([]string{"classify"}, dataDirFlag(ctx)...)
 		runCommand(ctx, append(cmdArgs, args...)...)
 	}
 }
 
 // RunAuto returns a When closure that runs the auto command.
-// Passes --data-dir and --workbook from ctx when set.
 func RunAuto(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cmdArgs := []string{"auto"}
-		if domain.DataDir(ctx) != "" {
-			cmdArgs = append(cmdArgs, "--data-dir", domain.DataDir(ctx))
-		}
-		if domain.WorkbookPath(ctx) != "" {
-			cmdArgs = append(cmdArgs, "--workbook", domain.WorkbookPath(ctx))
-		}
+		cmdArgs := append([]string{"auto"}, dataDirFlag(ctx)...)
+		cmdArgs = append(cmdArgs, workbookFlag(ctx)...)
 		runCommand(ctx, append(cmdArgs, args...)...)
 	}
 }
 
-// RunAdd returns a When closure that runs the add command with the given expense string.
-// Passes --data-dir and --workbook from ctx when set. Extra flags (e.g. prediction context) appended last.
+// RunAdd returns a When closure that runs the add command with the given expense
+// string. Extra flags (e.g. prediction context) are appended last.
 func RunAdd(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"add", expenseString}
-		if domain.DataDir(ctx) != "" {
-			args = append(args, "--data-dir", domain.DataDir(ctx))
-		}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		args = append(args, extraFlags...)
-		runCommand(ctx, args...)
+		args = append(args, dataDirFlag(ctx)...)
+		args = append(args, workbookFlag(ctx)...)
+		runCommand(ctx, append(args, extraFlags...)...)
 	}
 }
 
 // RunCorrect returns a When closure that runs the correct command.
-// Passes --data-dir from ctx when set. Does NOT pass --workbook (correct is feedback-only).
-// extraFlags are appended after the expense string (e.g. "--year", "2024").
+// No --workbook on purpose: correct is feedback-only and never touches one.
 func RunCorrect(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		args := []string{"correct", expenseString}
-		if domain.DataDir(ctx) != "" {
-			args = append(args, "--data-dir", domain.DataDir(ctx))
-		}
-		args = append(args, extraFlags...)
-		runCommand(ctx, args...)
+		args = append(args, dataDirFlag(ctx)...)
+		runCommand(ctx, append(args, extraFlags...)...)
 	}
 }
 
 // RunAddDryRun returns a When closure that runs the add command with --dry-run.
-// Passes --data-dir from ctx when set. Extra flags (e.g., "--json") are appended after the expense string.
+// No --workbook: a dry run must not resolve one. Extra flags (e.g. "--json") are
+// appended after the expense string.
 func RunAddDryRun(expenseString string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		args := []string{"add", "--dry-run"}
-		if domain.DataDir(ctx) != "" {
-			args = append(args, "--data-dir", domain.DataDir(ctx))
-		}
+		args := append([]string{"add", "--dry-run"}, dataDirFlag(ctx)...)
 		args = append(args, expenseString)
-		args = append(args, extraFlags...)
-		runCommand(ctx, args...)
+		runCommand(ctx, append(args, extraFlags...)...)
 	}
 }
 
-// RunBatchAuto returns a When closure that runs the batch-auto command.
+// --- batch-auto -----------------------------------------------------------------
+
+// batchAutoRun is the variation between the batch-auto When closures: which input
+// file the run reads, and where its output CSVs land. Everything else — fixture
+// config, context flags, artifact registration — is identical across them, so it
+// lives once in runBatchAuto.
+type batchAutoRun struct {
+	inputFile    string // "" → the fixture's default input.csv
+	outputDirKey string // "" → the WorkDir; otherwise an artifact registered in Given
+}
+
+// runBatchAuto reads the scenario fixture's config, runs batch-auto, and registers
+// the two output CSVs as artifacts.
+func runBatchAuto(run batchAutoRun) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		cfg, err := domain.LoadExpenseFixtureConfig(ctx.FixtureDir)
+		if err != nil {
+			ctx.T.Fatalf("runBatchAuto: load fixture config: %v", err)
+		}
+
+		inputFile := run.inputFile
+		if inputFile == "" {
+			inputFile = "input.csv"
+		}
+		outputDir := ctx.WorkDir
+		if run.outputDirKey != "" {
+			registered, ok := ctx.Artifacts[run.outputDirKey]
+			if !ok {
+				ctx.T.Fatalf("runBatchAuto: artifact key %q not registered in Given", run.outputDirKey)
+			}
+			outputDir = registered
+		}
+
+		// No --threshold: T-32 replaced the confidence band with the keyword
+		// agreement gate, and the flag is ignored.
+		args := []string{
+			"batch-auto",
+			filepath.Join(ctx.WorkDir, inputFile),
+			"--model", cfg.Model,
+			"--top", fmt.Sprintf("%d", cfg.TopN),
+			"--output-dir", outputDir,
+		}
+		args = append(args, dataDirFlag(ctx)...)
+		args = append(args, workbookFlag(ctx)...)
+		args = append(args, cfg.ExtraArgs...)
+		runCommand(ctx, args...)
+
+		ctx.Artifacts["classified.csv"] = filepath.Join(outputDir, "classified.csv")
+		ctx.Artifacts["review.csv"] = filepath.Join(outputDir, "review.csv")
+	}
+}
+
+// RunBatchAutoWithFixture runs batch-auto over the scenario fixture's input.csv.
+func RunBatchAutoWithFixture() func(*harness.Context) {
+	return runBatchAuto(batchAutoRun{})
+}
+
+// RunBatchAutoWithInput runs batch-auto over a named input file instead of the
+// default input.csv. Use when one fixture holds several inputs.
+func RunBatchAutoWithInput(inputFile string) func(*harness.Context) {
+	return runBatchAuto(batchAutoRun{inputFile: inputFile})
+}
+
+// RunBatchAutoIntoArtifactDir writes the output CSVs into the directory registered
+// in Given under outputDirKey, rather than beside the input.
+func RunBatchAutoIntoArtifactDir(outputDirKey string) func(*harness.Context) {
+	return runBatchAuto(batchAutoRun{outputDirKey: outputDirKey})
+}
+
+// RunBatchAuto returns a When closure that runs batch-auto with raw args — no
+// fixture config, no context flags. For scenarios asserting on argument handling.
 func RunBatchAuto(args ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		runCommand(ctx, append([]string{"batch-auto"}, args...)...)
 	}
 }
 
-// RunBatchAutoWithFixture reads the fixture config.json, builds batch-auto args, runs the command,
-// and registers classified.csv and review.csv in ctx.Artifacts.
-func RunBatchAutoWithFixture(fixtureDir string) func(*harness.Context) {
+// --- Review pipeline ------------------------------------------------------------
+
+// RunReview renders the review page for csvPath and registers review.html.
+func RunReview(csvPath string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cfg, err := domain.LoadExpenseFixtureConfig(fixtureDir)
-		if err != nil {
-			ctx.T.Fatalf("RunBatchAutoWithFixture: load config: %v", err)
-		}
-		args := []string{
-			"batch-auto",
-			filepath.Join(ctx.WorkDir, "input.csv"),
-			"--model", cfg.Model,
-			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
-			"--top", fmt.Sprintf("%d", cfg.TopN),
-			"--output-dir", ctx.WorkDir,
-		}
-		if domain.DataDir(ctx) != "" {
-			args = append(args, "--data-dir", domain.DataDir(ctx))
-		}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		args = append(args, cfg.ExtraArgs...)
+		outputPath := filepath.Join(ctx.WorkDir, "review.html")
+		args := append([]string{"review", csvPath}, workbookFlag(ctx)...)
+		args = append(args, "--output", outputPath)
 		runCommand(ctx, args...)
-		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
-		ctx.Artifacts["review.csv"] = filepath.Join(ctx.WorkDir, "review.csv")
+		ctx.Artifacts["review.html"] = outputPath
 	}
 }
 
-// RunBatchAutoWithInput reads config from fixtureDir but uses inputFile as the CSV input
-// instead of the default "input.csv". Registers classified.csv and review.csv in ctx.Artifacts.
-// Use when a fixture directory contains multiple input files for different test scenarios.
-func RunBatchAutoWithInput(fixtureDir, inputFile string) func(*harness.Context) {
+// RunApply applies a reviewed export.
+func RunApply(reviewedPath string) func(*harness.Context) {
+	return runApply(reviewedPath)
+}
+
+// RunApplyDryRun applies a reviewed export with --dry-run.
+func RunApplyDryRun(reviewedPath string) func(*harness.Context) {
+	return runApply(reviewedPath, "--dry-run")
+}
+
+// runApply is the shared apply invocation. The year is pinned so the scenarios stay
+// deterministic across calendar years.
+func runApply(reviewedPath string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cfg, err := domain.LoadExpenseFixtureConfig(fixtureDir)
-		if err != nil {
-			ctx.T.Fatalf("RunBatchAutoWithInput: load config: %v", err)
-		}
-		args := []string{
-			"batch-auto",
-			filepath.Join(ctx.WorkDir, inputFile),
-			"--model", cfg.Model,
-			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
-			"--top", fmt.Sprintf("%d", cfg.TopN),
-			"--output-dir", ctx.WorkDir,
-		}
-		if domain.DataDir(ctx) != "" {
-			args = append(args, "--data-dir", domain.DataDir(ctx))
-		}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		args = append(args, cfg.ExtraArgs...)
-		runCommand(ctx, args...)
-		ctx.Artifacts["classified.csv"] = filepath.Join(ctx.WorkDir, "classified.csv")
-		ctx.Artifacts["review.csv"] = filepath.Join(ctx.WorkDir, "review.csv")
+		args := []string{"apply", reviewedPath, "--year", "2026"}
+		args = append(args, workbookFlag(ctx)...)
+		runCommand(ctx, append(args, extraFlags...)...)
 	}
 }
 
-// RunBatchAutoIntoArtifactDir reads config from fixtureDir, then uses the artifact registered
-// under outputDirKey as the --output-dir value. Registers classified.csv and review.csv in
-// ctx.Artifacts pointing into that directory. Use when the output directory is set up in Given
-// and its path is only known at runtime via ctx.Artifacts.
-func RunBatchAutoIntoArtifactDir(fixtureDir, outputDirKey string) func(*harness.Context) {
+// RunGenerateWorkbook generates a workbook from the scenario fixture's taxonomy.json
+// and the named entries file (fixture-relative; "" generates a skeleton). The output
+// lands in the WorkDir as the "generated-workbook" artifact.
+func RunGenerateWorkbook(entriesFile string, extraFlags ...string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		cfg, err := domain.LoadExpenseFixtureConfig(fixtureDir)
-		if err != nil {
-			ctx.T.Fatalf("RunBatchAutoIntoArtifactDir: load config: %v", err)
-		}
-		outDir, ok := ctx.Artifacts[outputDirKey]
-		if !ok {
-			ctx.T.Fatalf("RunBatchAutoIntoArtifactDir: artifact key %q not registered in Given", outputDirKey)
-		}
+		outputPath := filepath.Join(ctx.WorkDir, "generated.xlsx")
 		args := []string{
-			"batch-auto",
-			filepath.Join(ctx.WorkDir, "input.csv"),
-			"--model", cfg.Model,
-			"--threshold", fmt.Sprintf("%.2f", cfg.Threshold),
-			"--top", fmt.Sprintf("%d", cfg.TopN),
-			"--output-dir", outDir,
+			"generate-workbook",
+			"-o", outputPath,
+			"--taxonomy", filepath.Join(ctx.FixtureDir, "taxonomy.json"),
 		}
-		if domain.DataDir(ctx) != "" {
-			args = append(args, "--data-dir", domain.DataDir(ctx))
+		if entriesFile != "" {
+			args = append(args, "--entries", filepath.Join(ctx.FixtureDir, entriesFile))
 		}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		args = append(args, cfg.ExtraArgs...)
-		runCommand(ctx, args...)
-		ctx.Artifacts["classified.csv"] = filepath.Join(outDir, "classified.csv")
-		ctx.Artifacts["review.csv"] = filepath.Join(outDir, "review.csv")
+		runCommand(ctx, append(args, extraFlags...)...)
+		ctx.Artifacts["generated-workbook"] = outputPath
 	}
 }
 
@@ -217,55 +254,5 @@ func runCommand(ctx *harness.Context, args ...string) {
 		ctx.T.Logf("  ✗ completed in %s (exit %d)", elapsed, ctx.ExitCode)
 	} else {
 		ctx.T.Fatalf("runCommand %v: unexpected error: %v", args, err)
-	}
-}
-
-func RunReview(csvPath string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		args := []string{"review", csvPath}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		outputPath := filepath.Join(ctx.WorkDir, "review.html")
-		args = append(args, "--output", outputPath)
-		runCommand(ctx, args...)
-		ctx.Artifacts["review.html"] = outputPath
-	}
-}
-
-func RunApply(reviewedPath string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		args := []string{"apply", reviewedPath, "--year", "2026"}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		runCommand(ctx, args...)
-	}
-}
-
-// RunApplyDryRun returns a When closure that runs the apply command with --dry-run.
-func RunApplyDryRun(reviewedPath string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		args := []string{"apply", reviewedPath, "--year", "2026", "--dry-run"}
-		if domain.WorkbookPath(ctx) != "" {
-			args = append(args, "--workbook", domain.WorkbookPath(ctx))
-		}
-		runCommand(ctx, args...)
-	}
-}
-
-// RunGenerateWorkbook returns a When closure that runs the generate-workbook command.
-// The output workbook lands in ctx.WorkDir and is registered as the
-// "generated-workbook" artifact for structure verification.
-func RunGenerateWorkbook(taxonomyPath, entriesPath string, extraFlags ...string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		outputPath := filepath.Join(ctx.WorkDir, "generated.xlsx")
-		args := []string{"generate-workbook", "-o", outputPath, "--taxonomy", taxonomyPath}
-		if entriesPath != "" {
-			args = append(args, "--entries", entriesPath)
-		}
-		args = append(args, extraFlags...)
-		runCommand(ctx, args...)
-		ctx.Artifacts["generated-workbook"] = outputPath
 	}
 }
