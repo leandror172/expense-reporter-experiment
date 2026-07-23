@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/domain"
 	"expense-reporter/test/expect"
 	"github.com/leandror172/acceptance-harness/harness"
 )
@@ -75,31 +74,19 @@ func TestAdd_CrossYearInstallmentLogsNextYearDate(t *testing.T) {
 
 // --- Given helpers (event-modeling style) ---
 
+// expenseManuallyAdded: a single expense was entered by hand — no model in the loop.
 func expenseManuallyAdded(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
+	return taxonomyAuthoredWithTrainingData(fixDir)
 }
 
+// expenseWithInstallmentsAdded: an expense carrying installment notation was entered by hand.
 func expenseWithInstallmentsAdded(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
+	return taxonomyAuthoredWithTrainingData(fixDir)
 }
 
+// crossYearInstallmentAdded: a hand-entered installment series that runs past December into the next year.
 func crossYearInstallmentAdded(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
+	return taxonomyAuthoredWithTrainingData(fixDir)
 }
 
 // --- Then helpers (name the specific expected result of each scenario) ---

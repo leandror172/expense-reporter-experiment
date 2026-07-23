@@ -100,6 +100,23 @@ Name it pragmatically — e.g. `noClassificationsRecorded()`.
 Given names align with how the system actually evolves over time (a sequence of recorded
 events) and keep the test description domain-focused.
 
+### Canonical Givens — reuse, don't re-copy
+
+Three implementations cover nearly every scenario. A new Given should be a one-line
+wrapper over one of them, named for its own scenario; write a new body only when the
+setup genuinely differs.
+
+| Canonical | What is true | Fixture copied to WorkDir? |
+|---|---|---|
+| `taxonomyAuthoredWithTrainingData(fixDir)` | taxonomy + real training corpus | no (read-only) |
+| `taxonomyAuthoredWithoutTrainingData(fixDir)` | taxonomy only — for commands that never classify | no |
+| `expenseBatchSubmittedForClassification(fixDir)` | taxonomy + corpus + a submitted input CSV | yes — batch-auto writes beside its input |
+
+`jsonOutputFixture()` is the shared taxonomy-only fixture for scenarios that author no
+fixture data of their own. Existing wrappers: `noExpensesLoggedYet`,
+`knownExpenseNotYetLogged`, `expenseManuallyAdded`, `expenseClassifiedByModel`,
+`tenMixedExpensesSubmittedForClassification`, `expensesWithExcludedCategoryMarkers`.
+
 ## Generate-Workbook Fixture Sub-Format (G3, 2026-06-11)
 
 `generate-basic` does NOT follow the config.json+input.csv format. It is file-in/file-out:

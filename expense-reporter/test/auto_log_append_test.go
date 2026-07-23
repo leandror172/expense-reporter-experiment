@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/domain"
 	"expense-reporter/test/expect"
 	"expense-reporter/test/extern"
 	"github.com/leandror172/acceptance-harness/harness"
@@ -84,12 +83,7 @@ func TestAuto_InstallmentsExpandToNEntries(t *testing.T) {
 // authored and the training corpus recorded. The empty log is the salient fact: every
 // scenario here asserts on exactly what the auto run appended to it.
 func noExpensesLoggedYet(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
+	return taxonomyAuthoredWithTrainingData(fixDir)
 }
 
 // TestAuto_JoinIDMatchesAcrossLogs guards the T-35 join-key divergence on the auto path.

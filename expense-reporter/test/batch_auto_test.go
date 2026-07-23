@@ -22,7 +22,7 @@ func TestBatchAuto_Basic(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto basic — 10 rows dry-run",
-		Given: tenMixedExpensesReadyForBatch(fixDir),
+		Given: tenMixedExpensesSubmittedForClassification(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then:  classifiedAndReviewFilesProduced(),
 	})
@@ -35,7 +35,7 @@ func TestBatchAuto_MixedConfidence(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto — classified.csv has 11 rows (1 header + 10 data), 8 columns",
-		Given: tenMixedExpensesReadyForBatch(fixDir),
+		Given: tenMixedExpensesSubmittedForClassification(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then:  allInputExpensesClassified(11),
 	})
@@ -63,7 +63,7 @@ func TestBatchAuto_ClassificationAccuracy(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto accuracy >= 50% against expected classifications",
-		Given: tenMixedExpensesReadyForBatch(fixDir),
+		Given: tenMixedExpensesSubmittedForClassification(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then:  classificationMatchesExpectedWithMinAccuracy(expectedPath, resultsDir),
 	})
@@ -108,39 +108,24 @@ func TestBatchAuto_CrossYearInstallmentsLoggedNotRolledOver(t *testing.T) {
 	})
 }
 
-func tenMixedExpensesReadyForBatch(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
-	}
+// tenMixedExpensesSubmittedForClassification: the batch-auto-basic batch — ten expenses
+// of mixed familiarity, some the keyword dictionary knows and some it does not.
+func tenMixedExpensesSubmittedForClassification(fixDir string) func(*harness.Context) {
+	return expenseBatchSubmittedForClassification(fixDir)
 }
 
+// expensesWithExcludedCategoryMarkers: the submitted batch contains rows whose
+// subcategory sits in auto_insert_excluded, so the gate must route them to review.
 func expensesWithExcludedCategoryMarkers(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
-	}
+	return expenseBatchSubmittedForClassification(fixDir)
 }
 
+// tenMixedExpensesWithCustomOutputDirectory: the same batch, plus a separate directory
+// the run is told to write its output CSVs into instead of beside the input.
 func tenMixedExpensesWithCustomOutputDirectory(fixDir string) func(*harness.Context) {
+	submitted := expenseBatchSubmittedForClassification(fixDir)
 	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
+		submitted(ctx)
 		outDir := filepath.Join(ctx.WorkDir, "out")
 		if err := os.MkdirAll(outDir, 0o755); err != nil {
 			ctx.T.Fatalf("mkdir out: %v", err)

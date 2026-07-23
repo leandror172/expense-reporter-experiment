@@ -19,7 +19,7 @@ import (
 func TestAdd_BareDateResolvesToFlagYear(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json with --year flag resolves bare date to that year",
-		Given: taxonomyAuthoredWithTrainingData(),
+		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
 		When:  actions.RunAddDryRun("Uber Centro;15/04;35,50;Uber/Taxi", "--json", "--year", "2024"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),
@@ -33,7 +33,7 @@ func TestAdd_BareDateResolvesToFlagYear(t *testing.T) {
 func TestAdd_ExplicitYearWinsOverFlag(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "add --dry-run --json with explicit year in input beats --year flag",
-		Given: taxonomyAuthoredWithTrainingData(),
+		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
 		When:  actions.RunAddDryRun("Uber Centro;15/04/2023;35,50;Uber/Taxi", "--json", "--year", "2024"),
 		Then: slices.Concat(
 			thenJSONSucceeded(),

@@ -22,7 +22,7 @@ func TestAuto_FeedbackLoggedOnInsert(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "auto command logs confirmed feedback entry on successful append",
-		Given: knownExpenseReadyForAutoInsert(fixDir),
+		Given: knownExpenseNotYetLogged(fixDir),
 		When:  actions.RunAuto("Posto Ipiranga", "35,50", "15/04/2026"),
 		Then: slices.Concat(
 			autoAppendSucceeded(),
@@ -57,7 +57,7 @@ func TestBatchAuto_DryRunNoFeedbackLogged(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto dry-run does not create feedback log",
-		Given: mixedExpensesReadyForDryRun(fixDir),
+		Given: tenMixedExpensesSubmittedForClassification(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -71,7 +71,7 @@ func TestAdd_ManualFeedbackLogged(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "add command logs manual feedback entry",
-		Given: singleExpenseReadyForManualAdd(fixDir),
+		Given: taxonomyAuthoredWithoutTrainingData(fixDir),
 		When:  actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -83,13 +83,10 @@ func TestAdd_ManualFeedbackLogged(t *testing.T) {
 
 // --- Given helpers ---
 
-func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: auto requires a configured taxonomy
-	}
+// knownExpenseNotYetLogged: an expense the keyword dictionary already knows (so the
+// agreement gate will pass) has never been logged.
+func knownExpenseNotYetLogged(fixDir string) func(*harness.Context) {
+	return taxonomyAuthoredWithTrainingData(fixDir)
 }
 
 // knownExpenseBatchSubmittedForClassification submits a batch whose expenses the
@@ -97,26 +94,6 @@ func knownExpenseReadyForAutoInsert(fixDir string) func(*harness.Context) {
 // appended — the precondition for asserting feedback was logged for them.
 func knownExpenseBatchSubmittedForClassification(fixDir string) func(*harness.Context) {
 	return expenseBatchSubmittedForClassification(fixDir)
-}
-
-func mixedExpensesReadyForDryRun(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		if err := harness.CopyFixtureToWorkDir(ctx, fixDir); err != nil {
-			ctx.T.Fatalf("CopyFixtureToWorkDir: %v", err)
-		}
-		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: batch-auto requires a configured taxonomy
-	}
-}
-
-func singleExpenseReadyForManualAdd(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
 }
 
 // withFeedbackConfig writes binary config with classifications_path + expenses_log_path and registers both artifacts.
@@ -224,7 +201,7 @@ func TestAdd_ManualFeedbackWithoutPredictionFlags(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "add without prediction flags continues to write manual feedback entry",
-		Given: singleExpenseReadyForManualAdd(fixDir),
+		Given: taxonomyAuthoredWithoutTrainingData(fixDir),
 		When:  actions.RunAdd("Padaria Maeda;15/03/2026;27,50;Padaria"),
 		Then: slices.Concat(
 			commandSucceeded(),
@@ -234,13 +211,7 @@ func TestAdd_ManualFeedbackWithoutPredictionFlags(t *testing.T) {
 	})
 }
 
-// expenseClassifiedByModel reflects the system action that creates the precondition:
-// the classify command ran and returned a prediction, now the user is about to add with that context.
+// expenseClassifiedByModel: the model already produced a prediction for this expense, arriving on the add command as --predicted-* flags.
 func expenseClassifiedByModel(fixDir string) func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		ctx.BinaryPath = binaryPath
-		domain.SetDataDir(ctx, dataDir)
-		ctx.FixtureDir = fixDir
-		withFeedbackAndTaxonomyConfig(ctx, fixDir)
-	}
+	return taxonomyAuthoredWithTrainingData(fixDir)
 }

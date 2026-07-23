@@ -24,7 +24,7 @@ func TestFewShot_ClassifyWithTrainingDataShowsFewShot(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify with training data logs few-shot injection under --verbose",
-		Given: taxonomyAuthoredWithTrainingData(),
+		Given: taxonomyAuthoredWithTrainingData(jsonOutputFixture()),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
 		Then:  thenFewShotLineVisible(),
 	})
@@ -39,7 +39,7 @@ func TestFewShot_ClassifyWithoutTrainingDataSucceeds(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "classify without training data degrades gracefully — no error, few-shot count 0",
-		Given: taxonomyAuthoredWithKeywordsOnly(),
+		Given: taxonomyAuthoredWithKeywordsOnly(jsonOutputFixture()),
 		When:  actions.RunClassify("--verbose", "Uber Centro", "35,50", "15/04"),
 		Then: slices.Concat(
 			thenFewShotLineVisible(),
@@ -57,7 +57,7 @@ func TestFewShot_BatchAutoProducesOutputFiles(t *testing.T) {
 
 	harness.Run(t, harness.Scenario{
 		Name:  "batch-auto with few-shot still produces classified and review CSV files",
-		Given: mixedExpensesReadyForDryRun(fixDir),
+		Given: tenMixedExpensesSubmittedForClassification(fixDir),
 		When:  actions.RunBatchAutoWithFixture(fixDir),
 		Then:  classifiedAndReviewFilesProduced(),
 	})
@@ -76,12 +76,13 @@ func requireDataDir(t *testing.T) {
 	}
 }
 
-// taxonomyAuthoredWithKeywordsOnly creates a stripped data dir containing only
-// feature_dictionary_enhanced.json (no training_data_complete.json).
-// This simulates a cold-start environment where training data is absent.
-func taxonomyAuthoredWithKeywordsOnly() func(*harness.Context) {
+// taxonomyAuthoredWithKeywordsOnly: the keyword dictionary was recorded but the
+// training corpus never was — a cold-start install. Built as a stripped data dir
+// holding only feature_dictionary_enhanced.json.
+func taxonomyAuthoredWithKeywordsOnly(fixDir string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.BinaryPath = binaryPath
+		ctx.FixtureDir = fixDir
 
 		// Build a temp dir with only the keyword index.
 		tmpDir := ctx.T.TempDir()
@@ -92,7 +93,7 @@ func taxonomyAuthoredWithKeywordsOnly() func(*harness.Context) {
 		}
 		// Intentionally omit training_data_complete.json.
 		domain.SetDataDir(ctx, tmpDir)
-		withFeedbackAndTaxonomyConfig(ctx, filepath.Join(fixturesDir(), "json-output")) // T-13: classify needs a taxonomy
+		withFeedbackAndTaxonomyConfig(ctx, fixDir) // T-13: classify needs a taxonomy
 	}
 }
 
