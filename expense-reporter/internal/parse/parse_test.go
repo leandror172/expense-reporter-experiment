@@ -315,3 +315,93 @@ func TestFields_RejectsYearBeyondCurrent(t *testing.T) {
 		})
 	}
 }
+
+// TestFields_YearSource pins which rung of the year ladder supplied the year.
+// The source is asserted alongside the resolved date so a case that reports the
+// right rung for the wrong reason still fails. The clock is injected so these
+// cases do not change meaning with the calendar year the suite runs in.
+func TestFields_YearSource(t *testing.T) {
+	now := time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name        string
+		dateStr     string
+		opts        Options
+		wantSource  YearSource
+		wantDateStr string
+	}{
+		{
+			name:        "year written into the date string",
+			dateStr:     "15/04/2023",
+			opts:        Options{Now: now},
+			wantSource:  YearFromDateString,
+			wantDateStr: "15/04/2023",
+		},
+		{
+			name:        "year flag",
+			dateStr:     "15/04",
+			opts:        Options{Year: 2024, Now: now},
+			wantSource:  YearFromFlag,
+			wantDateStr: "15/04/2024",
+		},
+		{
+			name:        "configured default year",
+			dateStr:     "15/04",
+			opts:        Options{ConfigYear: 2024, Now: now},
+			wantSource:  YearFromConfig,
+			wantDateStr: "15/04/2024",
+		},
+		{
+			name:        "clock fallback, date already past this year",
+			dateStr:     "15/04",
+			opts:        Options{Now: now},
+			wantSource:  YearFromClock,
+			wantDateStr: "15/04/2026",
+		},
+		{
+			name:        "clock fallback, future date resolves to last year",
+			dateStr:     "23/07",
+			opts:        Options{Now: now},
+			wantSource:  YearFromClock,
+			wantDateStr: "23/07/2025",
+		},
+		{
+			name:        "date string outranks both flag and config",
+			dateStr:     "15/04/2023",
+			opts:        Options{Year: 2024, ConfigYear: 2022, Now: now},
+			wantSource:  YearFromDateString,
+			wantDateStr: "15/04/2023",
+		},
+		{
+			name:        "flag outranks config",
+			dateStr:     "15/04",
+			opts:        Options{Year: 2024, ConfigYear: 2022, Now: now},
+			wantSource:  YearFromFlag,
+			wantDateStr: "15/04/2024",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			expense, err := Fields("Uber Centro", tc.dateStr, "35,50", tc.opts)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantSource, expense.YearSource)
+			assert.Equal(t, tc.wantDateStr, expense.DateString())
+		})
+	}
+}
+
+// TestYearSource_ZeroValueIsUnknown pins the enum's zero value, which no
+// successful parse can produce and so cannot be covered by the table above.
+// It matters because every error path returns ParsedExpense{}: if the zero value
+// named a real rung, a failed parse would report a plausible source, and the
+// stale-date_year warning that reads this field would decide on a value no parse
+// ever produced. Same reasoning as the zero Date formatting as 01/01/0001 —
+// wrong loudly rather than wrong quietly.
+func TestYearSource_ZeroValueIsUnknown(t *testing.T) {
+	assert.Equal(t, YearSourceUnknown, ParsedExpense{}.YearSource)
+
+	expense, err := Fields("Uber Centro", "not-a-date", "35,50", Options{})
+	require.Error(t, err)
+	assert.Equal(t, YearSourceUnknown, expense.YearSource, "a failed parse must not report a rung")
+}

@@ -9,6 +9,33 @@ import (
 	"expense-reporter/pkg/utils"
 )
 
+// YearSource names the rung of the year-precedence ladder that supplied a
+// parsed expense's year. Callers use it to tell a year the user stated from one
+// the boundary inferred — the two are indistinguishable in the resulting date.
+type YearSource int
+
+const (
+	// YearSourceUnknown means "not produced by a successful parse". Every error
+	// path returns ParsedExpense{}, so if the zero value named a real rung a
+	// failed parse would report a plausible source to code that reads this field
+	// to make a decision. Same reasoning as the zero Date formatting as
+	// 01/01/0001 — wrong loudly rather than wrong quietly.
+	YearSourceUnknown YearSource = iota
+
+	// YearFromDateString: the year was written into the date string itself.
+	YearFromDateString
+
+	// YearFromFlag: the year came from Options.Year (the --year flag).
+	YearFromFlag
+
+	// YearFromConfig: the year came from Options.ConfigYear (config date_year).
+	YearFromConfig
+
+	// YearFromClock: no year was supplied, so the most-recent-non-future rule
+	// resolved it against the clock.
+	YearFromClock
+)
+
 // Options controls how date strings are resolved when they lack year information.
 type Options struct {
 	// Year is the explicit year from command-line flag --year.
@@ -27,6 +54,7 @@ type ParsedExpense struct {
 	Value        float64
 	Installments int
 	RawValue     string
+	YearSource   YearSource
 }
 
 // DateString returns the canonical DD/MM/YYYY representation of the expense date.
@@ -51,7 +79,7 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 		return ParsedExpense{}, errors.New("date string cannot be empty")
 	}
 
-	date, err := resolveDate(dateStr, opts)
+	date, yearSource, err := resolveDate(dateStr, opts)
 	if err != nil {
 		return ParsedExpense{}, err
 	}
@@ -73,6 +101,7 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 		Value:        value,
 		Installments: installments,
 		RawValue:     valueStr,
+		YearSource:   yearSource,
 	}, nil
 }
 
@@ -111,18 +140,25 @@ func normalizeThousands(valueStr string) string {
 
 // resolveDate resolves a date string to a time.Time under the year-precedence
 // ladder: an explicit year in the string wins; otherwise Options.Year, then
-// Options.ConfigYear, then the most-recent-non-future rule.
-func resolveDate(dateStr string, opts Options) (time.Time, error) {
+// Options.ConfigYear, then the most-recent-non-future rule. It reports which
+// rung fired alongside the date, because this is the only place that knows —
+// the resolved date carries no trace of where its year came from, and a caller
+// re-deriving it would be a second copy of the ladder, free to drift from this one.
+func resolveDate(dateStr string, opts Options) (time.Time, YearSource, error) {
 	if strings.Count(dateStr, "/") == 2 {
-		return utils.ParseDateFlexible(dateStr)
+		date, err := utils.ParseDateFlexible(dateStr)
+		return date, YearFromDateString, err
 	}
 	if opts.Year != 0 {
-		return utils.ParseDateWithYear(dateStr, opts.Year)
+		date, err := utils.ParseDateWithYear(dateStr, opts.Year)
+		return date, YearFromFlag, err
 	}
 	if opts.ConfigYear != 0 {
-		return utils.ParseDateWithYear(dateStr, opts.ConfigYear)
+		date, err := utils.ParseDateWithYear(dateStr, opts.ConfigYear)
+		return date, YearFromConfig, err
 	}
-	return mostRecentNonFuture(dateStr, opts)
+	date, err := mostRecentNonFuture(dateStr, opts)
+	return date, YearFromClock, err
 }
 
 // nowFromOptions resolves the clock every year rule reads, so "now" has exactly
