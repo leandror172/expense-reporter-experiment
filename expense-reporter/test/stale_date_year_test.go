@@ -64,6 +64,11 @@ func TestStaleDateYear_SilentWhenOutrankedByExplicitYear(t *testing.T) {
 // correct as well as add, and covers the case where a stale year is most baffling:
 // the wrong year is precisely what makes the lookup miss, so without the warning
 // the user sees only "no prior classification found" for an expense they did log.
+//
+// The failure is pinned to the no-prior-prediction hint, not just a non-zero exit:
+// this scenario's whole point is that the warning survives THAT failure, so an
+// assertion satisfied by any failure would let it drift into passing for the
+// wrong reason.
 func TestStaleDateYear_WarnsOnCorrectDespiteFailure(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "correct warns about the stale configured year even though the lookup fails",
@@ -71,6 +76,7 @@ func TestStaleDateYear_WarnsOnCorrectDespiteFailure(t *testing.T) {
 		When:  actions.RunCorrect("Uber Centro;15/04;35,50;Combustível"),
 		Then: slices.Concat(
 			commandFailed(),
+			correctionHintShownToUser(),
 			staleConfiguredYearWarned(),
 		),
 	})
