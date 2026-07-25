@@ -349,7 +349,7 @@ test/                      # Acceptance test suite (BDD harness, live Ollama)
 {
   "workbook_path": "../workbook.xlsx",
   "reference_sheet": "Referência de Categorias",
-  "date_year": 2025,
+  "date_year": 2026,
   "auto_insert_excluded": ["Diversos"],
   "classifications_path": "classifications.jsonl",
   "expenses_log_path": "expenses_log.jsonl"
@@ -358,9 +358,32 @@ test/                      # Acceptance test suite (BDD harness, live Ollama)
 
 Workbook path resolution: `--workbook` flag → `EXPENSE_WORKBOOK_PATH` env → config default.
 
-Note: `date_year` is currently not read by any code path — bare `DD/MM` dates fall back
-to the current year (classifier-era commands). Wiring it as the configured fallback year
-is planned (parse boundary).
+### `date_year` — the year you are currently closing
+
+`date_year` is **live for `add` and `correct`** (T-41 slice 1 onward), where it is rung 3
+of the year-precedence ladder:
+
+```
+year written in the date ("15/04/2026")  >  --year  >  config date_year  >  most recent non-future
+```
+
+Set it to the year you are closing; a bare `DD/MM` then resolves to that year no matter
+when you type it. It is **not** a set-and-forget value — a `date_year` below the current
+year silently back-dates entries, and a wrong year is invisible downstream (the row writes
+cleanly to both logs, then `generate-workbook --year N` never routes it). `add`/`correct`
+therefore warn on stderr when a `date_year` below the current year is what actually dated
+an entry:
+
+```
+⚠  config date_year=2025 is before the current year (2026); it dated this entry
+   15/04/2025 — pass --year to override, or update config.json
+```
+
+Leave it unset (or `0`) to fall through to the most-recent-non-future rule, which needs no
+maintenance but resolves a bare date later in the year to *last* year.
+
+Still **not** read by `auto`/`batch-auto`/`apply` — those bare dates get `time.Now().Year()`
+until their parse-boundary slices land.
 
 ## Testing
 

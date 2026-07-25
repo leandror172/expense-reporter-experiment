@@ -17,6 +17,12 @@ Design authority: `.claude/plans/parse-boundary.md` (FINAL, session 63).
   ALONGSIDE (classification is not parsing — never add it to the struct).
 - `Value` is PER-INSTALLMENT (total ÷ N for "total/N"); `RawValue` keeps the
   original token for display/audit.
+- `YearSource` (s65) — WHICH rung resolved the year. Zero is
+  `YearSourceUnknown`, never a real rung: every error path returns
+  `ParsedExpense{}`, so a zero naming a rung would let a failed parse report a
+  plausible source to code that reads it to decide. Produced by `resolveDate`,
+  where the branch is made — re-deriving it in a caller would be a second copy
+  of the ladder, free to drift.
 
 ## Key Rules
 - **Year ladder (Options):** explicit year in string > `Year` (--year) >
@@ -24,6 +30,13 @@ Design authority: `.claude/plans/parse-boundary.md` (FINAL, session 63).
   a bare date strictly after Now resolves to LAST year; same-day is not future
   (candidate is midnight UTC). `Options.Now` zero value = time.Now(); tests
   inject the clock.
+- **Two year validations on the RESOLVED year (s65), so one check covers every
+  rung:** `validateRenderableYear` (permanent — outside 1..9999 `DateString()`
+  emits malformed identity bytes) and `validateYearNotBeyondCurrent`
+  (PROVISIONAL policy, T-47 — year-scale, so later-this-year is fine). Kept
+  separate so the policy can be relaxed without touching the contract. Past side
+  is deliberately unguarded (T-48). Installment expansion never re-enters here,
+  so a 24× purchase still writes rows years ahead.
 - **BR thousands:** token with BOTH '.' and ',' → dots stripped ("1.234,56" OK);
   dot-only tokens keep legacy decimal-dot meaning. Boundary owns ALL input
   normalization (design Q3).

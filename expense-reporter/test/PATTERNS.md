@@ -54,6 +54,19 @@ alone without opening the helper or the fixture.
   `classificationsMatchExpected()`); only the scenario-varying concern needs the
   outcome-describing name.
 
+**An assertion satisfied by many causes tests nothing (session 65).** When a scenario's
+claim is about surviving one SPECIFIC failure, `commandFailed()` alone is too weak — it
+keeps passing when the command starts failing for an unrelated reason (a missing taxonomy
+leaf, a config-contract change, a new guard), and the test silently stops covering what its
+name says. Pair it with the helper that pins the actual failure, as
+`TestCorrect_FailsWhenNoPriorPredictionToOverride` and
+`TestStaleDateYear_WarnsOnCorrectDespiteFailure` both do with
+`correctionHintShownToUser()`. This is the same family as the fixture traps in
+`.memories/KNOWLEDGE.md` "Traps That Masked Regressions" — `RequireWorkbook` skipping when
+the workbook is absent, and a full date making a join-id fixture assert nothing: in every
+case the suite reports success while the coverage has evaporated, so nothing turns red to
+tell you.
+
 See `add_log_append_test.go` for the worked example.
 
 **Call site reads as an English phrase (Given and Then alike):** the name plus its

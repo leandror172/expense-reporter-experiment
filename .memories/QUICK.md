@@ -13,7 +13,10 @@ branch `feat/t41-parse-boundary`): plan FINAL (all §10 locked — `internal/par
 single `time.Time` + `DateString()`, grace 0, internal-first). Slice 1 DONE:
 add/correct migrated, `--year` flags, `date_year` live (rung 3), BR thousands
 parse. Slices 2–4: auto → batch-auto (T-40 lands there) → apply, then T-21 →
-T-42 monthly close.** WS-D (HELD: gate-to-review) → WS-E after.
+T-42 monthly close.** **s65 date/year hardening (PRs #56/#57 open):** resolved-year
+validations (renderable; entry beyond the current year refused), `YearSource`
+provenance, stale-`date_year` stderr warning, `date_year` → 2026.
+WS-D (HELD: gate-to-review) → WS-E after.
 History + measurement detail → KNOWLEDGE.md "Milestone Log".
 
 ## Repo Structure

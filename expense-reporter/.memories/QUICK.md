@@ -15,7 +15,11 @@ up front, skips fully-logged rows BEFORE the LLM; partially-logged series → re
 `appender.PredictEntryIDs` shares `expandEntries` with `ExpandAndAppend` (drift
 guard). **T-41 parse boundary slice 1 (s63): `add`/`correct` parse via
 `internal/parse`; `--year` on both; `date_year` LIVE there (rung 3); slices
-2–4 (auto → batch-auto → apply) pending.** Next after T-41: T-21 → T-42 close.
+2–4 (auto → batch-auto → apply) pending.** **s65 date/year hardening (PRs #56/#57):**
+the boundary now validates the RESOLVED year twice (renderable 1..9999; entry beyond
+the CURRENT year refused — provisional, year-scale), reports WHICH rung resolved it
+(`YearSource`), and `add`/`correct` warn on stderr when a `date_year` below the current
+year is what dated the entry. `config.json` `date_year` → 2026. Next after T-41: T-21 → T-42 close.
 History → KNOWLEDGE.md "Milestone Log".
 
 ## Structure
