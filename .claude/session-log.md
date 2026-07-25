@@ -1,49 +1,50 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-23 — Session 64: test architecture — Then/Given naming, harness v1.1 (upstream + adoption), When collapse; PR #54 split into #54/#55
-**Current Layer:** Parse Boundary (T-41) — slice 1 shipped (PR #54, now T-41-only); test-architecture split to PR #55; slices 2–4 pending
+**Current Session:** 2026-07-25 — Session 65: date/year hardening — T-43/44/45, T-46/T-47 guards, then date_year provenance + stale warning + 2026 bump (PRs #56/#57)
+**Current Layer:** T-41 parse boundary — slice 1 shipped + date_year hardened; slice 2 (`auto`) next → T-21 → T-42 first monthly close
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-23 - Session 64: test architecture — Then/Given naming, harness v1.1 (upstream + adoption), When collapse; PR #54 split into #54/#55
+## 2026-07-25 - Session 65: date/year hardening — T-43/44/45, T-46/T-47 guards, then date_year provenance + stale warning + 2026 bump (PRs #56/#57)
 
 ### Context
 
-Opened on the T-41 slice-1 branch to answer three review comments left on PR #54 (two acceptance-test naming, one ordering). Fixing them exposed a structural problem in the suite and ended in an engine change shipped upstream, adopted here, and written up for the sibling consumer.
+Opened on a clean master with PRs #54/#55 merged, intending to discuss and start T-41 slice 2. The housekeeping trio (T-43/T-44/T-45) went first; probing one of them ("how about a strongly future date, like 2050?") uncovered two unguarded year bugs, and framing the slice-2 discussion then uncovered a third — a live, already-shipped config bug. Slice 2 itself was never started.
 
 ### What Was Done
 
-- **Then naming (PR #54 review)** — 4 year-precedence tests + the thousands test renamed to domain outcomes; `thenJSONDateIs` split into 4 per-scenario Then wrappers; `correct_year_test.go` reordered (test above helpers). User-taught rule recorded in PATTERNS.md: the call site must read as an English phrase with the argument slotted into the grammar (`defaultYearConfiguredAs(2024)`).
-- **Given naming + dedup** — applying the same rule exposed that `Ready*`/`classifierFor*` names were ALIASES: 7 names shared one body, 4 shared another. Collapsed to canonical Givens + one-line wrappers. `mixedExpensesReadyForDryRun` deleted outright — `--dry-run` is a When property, so that Given could only ever be a redundant alias.
-- **Composable Given** — root cause identified: `Scenario.Given` holds one func while `Then` holds a slice, so a Given needing 3 facts had no way to say so except a new body. Added a compose helper; unblocked by rewriting `domain.SetupBinaryConfig` to accumulate keys instead of whole-file overwrite.
-- **Upstream analysis** (`.claude/given-slice-upstream-analysis.md`) — 62-scenario survey deciding AGAINST `Given []func(*Context)`.
-- **acceptance-harness v1.1.0 — PR #2 opened, merged, tagged** (other repo). `Scenario.Fixture`, `UseBinary`/`Scenario.Binary`, `Context.State`+`BeforeWhen`, `Events(...)`; 15 engine tests; upstream PATTERNS/ADOPTION/README updated. Compatibility PROVEN not asserted: this suite ran 62/62 against the branch via a `replace` directive with zero consumer edits before merge.
-- **v1.1 adopted here** — `UseBinary` in TestMain; scenarios carry `Fixture:`; Given helpers no longer take a fixture path at all (events read `ctx.FixtureDir`); `SetupBinaryConfig` on `ctx.State`+`BeforeWhen`, deleting the package-level map+mutex; local `given(...)` → `harness.Events(...)`.
-- **When actions collapsed** — 3 batch-auto actions were ~25-line near-copies; now one `runBatchAuto(batchAutoRun{...})` + named entry points; `dataDirFlag`/`workbookFlag` replace 16 copy-pasted blocks; actions stopped taking a fixture path (24 scenarios stopped passing it twice); dropped `--threshold` (ignored since T-32). Code lines 225 → 176.
-- **PR #54 SPLIT into #54 + #55** — #54 reset to the 8 T-41 commits (verified green in isolation on harness v1.0.0); #55 `feat/test-architecture` stacked on it with the 9 test-architecture commits. Two force-pushes were needed and were run by the user (classifier-blocked for the agent).
-- **Docs/memory** — `[ref:acceptance-dsl]` added to `test/.memories/KNOWLEDGE.md` (what to read before writing any test + the invariants); test QUICK.md gained it as its first Key Rule; test README updated for the v1.1 Scenario/Context shape.
-- **career-search prepared** (other repo, committed there, unpushed) — `.claude/plans/harness-v1.1-adoption-and-test-architecture.md` + task TC-EXT2.
+- `chore: pin correct-test dates (T-43) + fix stale helper name (T-44)`; T-45 done too (`backup/t41-full-20260723` deleted). T-43's filed trigger date was wrong ("January 2027") — proved empirically by clock probe that the real break is **2027-04-15**, since grace 0 falls back to last year while the candidate is still future.
+- `fix(parse): reject years DateString cannot render as DD/MM/YYYY (T-46)` — the filed report blamed `Options.Year`, but probing showed **all three** year-supplying rungs unvalidated; fixed with ONE check on the RESOLVED year rather than three per-rung checks.
+- `feat(parse): block entering an expense dated beyond the current year (T-47)` — user policy call. Year-scale, not day-scale.
+- `feat(parse): report which rung of the year ladder resolved the date` — `YearSource` on `ParsedExpense`; `Fields`/`ExpenseString` signatures unchanged so no call site churns in slices 2–4.
+- `feat(cmd): warn when a stale configured date_year dated the entry` — `add` + `correct`, stderr, two-condition predicate.
+- `fix(config): set date_year to 2026, the year now being closed`.
+- `test: pin correct's failure to the no-prior-prediction hint` — advisor-review fix.
+- PR #56 (T-43/44/46/47) and PR #57 (date_year provenance + warning + bump) opened against master. Full suite green (111s), vet + gofmt clean.
+- Read for conventions before implementing: repo `test/PATTERNS.md`, `[ref:acceptance-dsl]`, `givens_test.go`, `actions/commands.go` header, local-model conventions, and the llm repo's `patterns-code-named-methods`, `patterns-refactoring-characterize-first`, `patterns-code-extract-keep-divergence`, `patterns-git-workflow`.
 
 ### Decisions Made
 
-- **`Given` must NOT become a slice.** All 62 scenarios name exactly one Given and none would be written as a list; the convention is one domain-named event per scenario where the name IS the documentation. Compose inside helper definitions instead. Upstreamed the compose helper, not the shape change.
-- **`When` stays singular** — a second action would mask the first's effects and the Then could no longer attribute observed state to an invocation. The `Given(one)/Then(many)` asymmetry was a defect; `When(one)` is correct.
-- **Given and When name opposite things.** For a Given every argument is plumbing → implicit. For a When the arguments are the SUBJECT under test → explicit; only fixture *location* becomes implicit. Recorded in `actions/commands.go`'s header because the pull to "make it consistent" with Givens is real.
-- **An empty Given body means the scenario has no precondition** → omit `Given:` rather than keep a no-op with a domain-sounding name.
-- **Composed setup must accumulate and flush once** (`ctx.State` + `ctx.BeforeWhen`), never write per event.
-- **Stacked PR over independent branch** — the test work renames tests inside files T-41 creates, so a master-based branch would show phantom conflicts.
-- **career-search guide deliberately scoped DOWN** — measured 2 `BinaryPath` / 2 `FixtureDir` assignments across its 63 scenarios (vs our 21/18) because its Givens were already funneled and event-named. Told them explicitly not to replicate our sweep.
+- **`date_year` = per-close-cycle switch → bumped to 2026 (Option A), not dropped.** The alternative (delete it, let rung 4 handle everything) is self-maintaining but wrong for a close: probe-verified, a close run on 28 Dec 2026 with a bare `30/12` row resolves to **2025** under rung 4 alone. Advisor corrected my initial recommendation of dropping it; the user's lean toward keeping it was the better call.
+- **The warning's predicate needs BOTH conditions** — rung-fired AND year-below-current. My first spec (`date_year != currentYear`) was wrong: it fires on every command during a legitimate backfill and trains the reader to ignore it.
+- **`YearSourceUnknown` at zero.** Every error path returns `ParsedExpense{}`; a zero value naming a real rung would let a failed parse report a plausible source to the code that reads it to decide.
+- **T-47b/T-48 (past-side year bound) deferred by user** — no natural floor, and the 5.R4 corpus legitimately spans 2022–2025, so any bound risks blocking real backfill.
+- **`classify` stays out of T-41 slice 2** — read-only, its date never reaches a log or a hash; folding it in would add a prompt-bytes change to a slice whose net is the join-id guards.
+- **The config bump is its own commit**, not bundled into slice 2 — it changes shipped behavior for already-merged commands, and bundling would mislabel it as part of the `auto` repoint.
+- **`workbook_path`'s 2025 reference left alone** — different setting, largely vestigial since `generate-workbook` became the only writer.
 
 ### Next
 
-- Merge PR #54, then PR #55 (GitHub retargets #55 to master automatically), then T-41 slice 2: repoint `auto` (auto.go:51/:58) to `parse.Fields` + extract cmd-level `parseOptions` (third caller)
-- Then slice 3 (`batch-auto` parse-once-per-row; T-40 becomes a boundary unit test) → slice 4 (`apply`, retires `canonicalDate`) → T-21 threading → T-42 monthly close
-- Housekeeping once merged: T-45 (delete `backup/t41-full-20260723`), T-44 (stale helper name in tasks.md)
+- Merge PR #56, then PR #57.
+- **Verify verdict capture** for `9de3ef267870`, `1f8d911ee6d0`, `af4aa8d39856` in `~/.local/share/ollama-bridge/calls.jsonl`; append manually if the Stop hook missed them (`88726fd1167f` was already appended by hand — backgrounded call).
+- T-41 slice 2: repoint `auto` (auto.go:51/:58) to `parse.Fields` + extract cmd-level `parseOptions(yearFlag, cfg)` — now genuinely the third caller. Hoist `config.Load()` above the parse (it currently sits below, at auto.go:69); take the `appendExpense(item, date, parsedDate, value, installmentCount, …)` → `pe parse.ParsedExpense` collapse, which is the slice's real value; point the arg-transposition test at the resolved date specifically.
+- Then slice 3 (`batch-auto`; T-40 becomes a boundary unit test; decide the warning's per-run vs per-row shape — T-49) → slice 4 (`apply`) → T-21 → T-42.
 
 ### Gotchas
 
-- **A branch created but never checked out is a silent trap.** `git branch X` then continuing to commit puts the work on the OLD branch — the docs commit landed on the T-41 branch where it was factually wrong (citing v1.1.0 and `defaultYearConfiguredAs`, neither of which exists there). Cherry-picked across with 2 conflicts. Always `git checkout` right after `git branch`.
-- **Force-push is classifier-blocked for the agent** — the user must run it. Two were needed for the split. Plan for that round-trip; PRs stay open through a force-push (only a branch RENAME closes them irrecoverably).
-- **`GOPROXY=direct go get` on a freshly pushed tag fails** with a sumdb 500; retrying through the default proxy works (it populates sum.golang.org).
-- **Adopting v1.1 emptied six Given helpers to `harness.Events()` with nothing in it** — their entire bodies had been engine plumbing. That is the same mechanism that let `cycleCompletedThroughApply` claim a three-step history it never established, and let a sibling take a `fixDir` it never used (Go does not flag unused function parameters).
-- **`ctx.FixtureDir` is read only by `verify.FileUnchanged`**, unused in this suite — so setting it where it previously was not is inert. Checked before relying on it.
+- **`date_year` was correct as decoration and became wrong as behavior, with no diff to the line itself.** T-37 filed it as dead config; slice 1 woke it up without anyone revisiting its value. Waking dormant config is its own category of change — audit the VALUE, not just the wiring.
+- **rung 3 and rung 4 diverge only late in the year**, which is exactly when a close runs. `30/12` entered 28 Dec 2026 → 2025 without `date_year`, 2026 with it.
+- **A backgrounded MCP call lost its verdict again** — no `call_id` template injected AND no capture, in a normal (non-Fable) session. Second independent trigger; memory `feedback_verdict_transcript_gap` already updated.
+- **The local model returned HTML-escaped Go** (`&amp;&amp;`, `&gt;`, `&lt;`) through the background-task notification — unusable verbatim. Applying it as targeted edits instead also kept the untouched functions byte-identical.
+- **`commandFailed()` alone is a weak assertion** (advisor catch): it keeps passing if the command starts failing for an unrelated reason. Same defect family as `RequireWorkbook` skipping and full dates hiding join-id bugs — the test reports success while silently testing nothing.
+- Acceptance `-short`/`-full` both green with the new warning firing inside two pre-existing tests: `ctx.Stdout`/`ctx.Stderr` are separate and `OutputJSONHasValue` reads stdout only, so `defaultYearConfiguredAs(2024)`/`(2022)` became incidental coverage rather than breakage.
