@@ -51,6 +51,7 @@ func runCorrect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\": %w", err)
 	}
+	warnIfStaleConfiguredYear(pe, appCfg)
 	item, date, value := pe.Item, pe.DateString(), pe.Value
 
 	path := appCfg.ClassificationsFilePath()

@@ -76,6 +76,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM[/YYYY];value[/N];subcategory\": %w", err)
 	}
+	warnIfStaleConfiguredYear(pe, appCfg)
 
 	sheets, err := loadTaxonomyTree(appCfg)
 	if err != nil {
