@@ -220,3 +220,46 @@ func TestDateString_ZeroPads(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "05/03/2026", expense.DateString())
 }
+
+// TestFields_RejectsUnrenderableYear guards the DateString() contract (T-46).
+// DateString is documented as the canonical DD/MM/YYYY form and is the sole
+// producer of the bytes hashed into the join id, so a year it cannot render in
+// four digits must be rejected rather than silently emitted. Every rung that
+// can supply a year is covered: the year written into the string itself, the
+// --year flag, and config date_year. The zero value of Year/ConfigYear means
+// "unset" and must keep falling through to the clock rung, never error.
+func TestFields_RejectsUnrenderableYear(t *testing.T) {
+	now := time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		dateStr     string
+		opts        Options
+		wantErr     bool
+		wantDateStr string
+	}{
+		{"valid full date", "15/04/2023", Options{Now: now}, false, "15/04/2023"},
+		{"negative year in string", "15/04/-5", Options{Now: now}, true, ""},
+		{"five-digit year in string", "15/04/12345", Options{Now: now}, true, ""},
+		{"negative --year", "15/04", Options{Year: -5, Now: now}, true, ""},
+		{"--year 10000", "15/04", Options{Year: 10000, Now: now}, true, ""},
+		{"--year 1 accepted", "15/04", Options{Year: 1, Now: now}, false, "15/04/0001"},
+		{"--year 9999 accepted", "15/04", Options{Year: 9999, Now: now}, false, "15/04/9999"},
+		{"--year 0 falls through", "15/04", Options{Year: 0, Now: now}, false, "15/04/2023"},
+		{"negative config date_year", "15/04", Options{ConfigYear: -5, Now: now}, true, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			expense, err := Fields("Uber Centro", tt.dateStr, "35,50", tt.opts)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "9999",
+					"error should name the acceptable range so a bad --year is actionable")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantDateStr, expense.DateString())
+		})
+	}
+}

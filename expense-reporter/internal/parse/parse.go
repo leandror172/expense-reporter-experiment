@@ -2,6 +2,7 @@ package parse
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -52,6 +53,9 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 
 	date, err := resolveDate(dateStr, opts)
 	if err != nil {
+		return ParsedExpense{}, err
+	}
+	if err := validateRenderableYear(date.Year()); err != nil {
 		return ParsedExpense{}, err
 	}
 
@@ -116,6 +120,23 @@ func resolveDate(dateStr string, opts Options) (time.Time, error) {
 		return utils.ParseDateWithYear(dateStr, opts.ConfigYear)
 	}
 	return mostRecentNonFuture(dateStr, opts.Now)
+}
+
+// validateRenderableYear rejects a year DateString cannot render as DD/MM/YYYY.
+// The DD/MM/YYYY form is not cosmetic: DateString is the sole producer of the
+// bytes hashed into the join id shared by classifications.jsonl and
+// expenses_log.jsonl, so a year outside 1..9999 would put a malformed year
+// field ("15/04/-005", "15/04/12345") into that key. Checking the RESOLVED year
+// covers every rung of the ladder at once — a year typed into the date string,
+// --year, and config date_year are all guarded by this one check, and the
+// clock rung cannot violate it. Note 0 is unreachable here: it is the "unset"
+// sentinel for Year/ConfigYear, so those rungs fall through rather than
+// resolving to year 0.
+func validateRenderableYear(year int) error {
+	if year < 1 || year > 9999 {
+		return fmt.Errorf("year %d cannot be written as DD/MM/YYYY: expected a year between 1 and 9999", year)
+	}
+	return nil
 }
 
 // mostRecentNonFuture resolves a bare DD/MM date to the most recent year in
