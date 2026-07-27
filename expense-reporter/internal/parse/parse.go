@@ -2,6 +2,7 @@ package parse
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -52,6 +53,12 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 
 	date, err := resolveDate(dateStr, opts)
 	if err != nil {
+		return ParsedExpense{}, err
+	}
+	if err := validateRenderableYear(date.Year()); err != nil {
+		return ParsedExpense{}, err
+	}
+	if err := validateYearNotBeyondCurrent(date, opts); err != nil {
 		return ParsedExpense{}, err
 	}
 
@@ -115,7 +122,56 @@ func resolveDate(dateStr string, opts Options) (time.Time, error) {
 	if opts.ConfigYear != 0 {
 		return utils.ParseDateWithYear(dateStr, opts.ConfigYear)
 	}
-	return mostRecentNonFuture(dateStr, opts.Now)
+	return mostRecentNonFuture(dateStr, opts)
+}
+
+// nowFromOptions resolves the clock every year rule reads, so "now" has exactly
+// one definition in this package: the injected Options.Now when set, else the
+// real clock. Tests inject it to stay independent of the calendar year they run in.
+func nowFromOptions(opts Options) time.Time {
+	if !opts.Now.IsZero() {
+		return opts.Now
+	}
+	return time.Now()
+}
+
+// validateYearNotBeyondCurrent rejects an ENTERED date landing in a later year
+// than the current one. The rule is deliberately year-scale, not day-scale: a
+// date later in the current year is accepted, because the failure worth blocking
+// is a mistyped YEAR. A wrong year is silent and expensive — the row hashes and
+// writes cleanly to both logs, then `generate-workbook --year N` simply does not
+// route it, so it vanishes from the workbook with no error anywhere.
+//
+// This guards only what a human types. Installment expansion builds its later
+// dates downstream from an already-parsed time.Time and never re-enters this
+// boundary, so a 24x purchase still writes rows years ahead — deliberately, since
+// those payments are consequences of a purchase that already happened.
+//
+// Provisional (T-47): kept separate from validateRenderableYear, which is the
+// permanent DD/MM/YYYY contract, so this policy can be relaxed on its own.
+func validateYearNotBeyondCurrent(date time.Time, opts Options) error {
+	currentYear := nowFromOptions(opts).Year()
+	if date.Year() > currentYear {
+		return fmt.Errorf("date %s is in a future year: entering an expense dated beyond the current year (%d) is not allowed", utils.FormatDate(date), currentYear)
+	}
+	return nil
+}
+
+// validateRenderableYear rejects a year DateString cannot render as DD/MM/YYYY.
+// The DD/MM/YYYY form is not cosmetic: DateString is the sole producer of the
+// bytes hashed into the join id shared by classifications.jsonl and
+// expenses_log.jsonl, so a year outside 1..9999 would put a malformed year
+// field ("15/04/-005", "15/04/12345") into that key. Checking the RESOLVED year
+// covers every rung of the ladder at once — a year typed into the date string,
+// --year, and config date_year are all guarded by this one check, and the
+// clock rung cannot violate it. Note 0 is unreachable here: it is the "unset"
+// sentinel for Year/ConfigYear, so those rungs fall through rather than
+// resolving to year 0.
+func validateRenderableYear(year int) error {
+	if year < 1 || year > 9999 {
+		return fmt.Errorf("year %d cannot be written as DD/MM/YYYY: expected a year between 1 and 9999", year)
+	}
+	return nil
 }
 
 // mostRecentNonFuture resolves a bare DD/MM date to the most recent year in
@@ -123,10 +179,8 @@ func resolveDate(dateStr string, opts Options) (time.Time, error) {
 // candidate lands strictly after now. The grace window is 0 by decision (T-41
 // §4); same-day is never future because the candidate is midnight UTC. This is
 // a deliberate behavior change from the old blind time.Now().Year().
-func mostRecentNonFuture(dateStr string, now time.Time) (time.Time, error) {
-	if now.IsZero() {
-		now = time.Now()
-	}
+func mostRecentNonFuture(dateStr string, opts Options) (time.Time, error) {
+	now := nowFromOptions(opts)
 	candidate, err := utils.ParseDateWithYear(dateStr, now.Year())
 	if err != nil {
 		return time.Time{}, err

@@ -20,7 +20,7 @@ func TestCorrect_LogsCorrectedEntryWhenPredictionExists(t *testing.T) {
 		Name:    "correct command logs corrected entry when prediction exists",
 		Fixture: fixDir,
 		Given:   expenseAutoConfirmed(),
-		When:    actions.RunCorrect("Uber Centro;15/04;35,50;Combustível"),
+		When:    actions.RunCorrect("Uber Centro;15/04/2026;35,50;Combustível"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
@@ -28,6 +28,9 @@ func TestCorrect_LogsCorrectedEntryWhenPredictionExists(t *testing.T) {
 	})
 }
 
+// The bare DD/MM date here is deliberate and stable: with no seed at all, the
+// lookup misses at every year, so this scenario never depends on how a bare date
+// resolves. Its siblings assert the lookup JOIN and therefore pin the year (T-43).
 func TestCorrect_FailsWhenNoPriorPredictionToOverride(t *testing.T) {
 	harness.Run(t, harness.Scenario{
 		Name:  "correct command fails when no prior prediction exists to override",
@@ -48,7 +51,7 @@ func TestCorrect_UsesMostRecentPredictionWhenIdRepeats(t *testing.T) {
 		Name:    "correct command uses most recent prediction when id repeats",
 		Fixture: fixDir,
 		Given:   expenseConfirmedThenCorrected(),
-		When:    actions.RunCorrect("Uber Centro;15/04;35,50;Combustível"),
+		When:    actions.RunCorrect("Uber Centro;15/04/2026;35,50;Combustível"),
 		Then: slices.Concat(
 			commandSucceeded(),
 			classificationsMatchExpected(fixDir),
