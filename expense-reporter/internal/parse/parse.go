@@ -62,6 +62,26 @@ func (pe ParsedExpense) DateString() string {
 	return utils.FormatDate(pe.Date)
 }
 
+// Sentinel errors naming WHICH field Fields rejected. They exist so a caller can
+// branch on the failure without reading the message, which matters for two
+// consumers this package must not know about: a command re-attaching its own
+// per-field hint (auto knows which argument held the bad token; parse does not),
+// and — per the vision's Phase 1 and 4 — an error log that records the failing
+// phase, plus a chat layer that has to explain the failure in Portuguese. An
+// English message is one presentation of a parse failure; it must not be the only
+// representation of it.
+//
+// Every wrap keeps the underlying cause in the chain, so the specific reason
+// ("...year 12345 is not renderable...") still reaches whoever prints it. The
+// generic sentinel text is a prefix, never a replacement.
+//
+// There is deliberately no sentinel for an empty item: no caller distinguishes
+// that case, and an unused one would be API nobody reads.
+var (
+	ErrInvalidDate  = errors.New("invalid date")
+	ErrInvalidValue = errors.New("invalid value")
+)
+
 // Fields parses the three field-wise inputs into a ParsedExpense. Inputs are
 // trimmed; an empty item or date is an error. The value token accepts BR
 // formats including thousands separators ("1.234,56") and installment
@@ -76,23 +96,23 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 		return ParsedExpense{}, errors.New("item cannot be empty")
 	}
 	if dateStr == "" {
-		return ParsedExpense{}, errors.New("date string cannot be empty")
+		return ParsedExpense{}, fmt.Errorf("%w: date string cannot be empty", ErrInvalidDate)
 	}
 
 	date, yearSource, err := resolveDate(dateStr, opts)
 	if err != nil {
-		return ParsedExpense{}, err
+		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidDate, err)
 	}
 	if err := validateRenderableYear(date.Year()); err != nil {
-		return ParsedExpense{}, err
+		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidDate, err)
 	}
 	if err := validateYearNotBeyondCurrent(date, opts); err != nil {
-		return ParsedExpense{}, err
+		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidDate, err)
 	}
 
 	value, installments, err := utils.ParseCurrencyWithInstallments(normalizeThousands(valueStr))
 	if err != nil {
-		return ParsedExpense{}, err
+		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidValue, err)
 	}
 
 	return ParsedExpense{
