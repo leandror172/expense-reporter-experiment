@@ -3,9 +3,10 @@
 *Working memory for the T-41 parse boundary. Injected into agents. Keep under 30 lines.*
 
 ## Status
-Slice 1 (s63): package founded from `parseExpenseForFeedback` (add.go, deleted);
-consumers = `add`/`correct`. Slices pending: auto → batch-auto → apply.
-Design authority: `.claude/plans/parse-boundary.md` (FINAL, session 63).
+Slice 1 (s63): package founded from `parseExpenseForFeedback` (add.go, deleted).
+Slice 2 (s66): `auto` migrated — consumers now `add`/`correct`/`auto`. Slices
+pending: batch-auto → apply. Design authority: `.claude/plans/parse-boundary.md`
+(FINAL, session 63).
 
 ## Contract
 - `ParsedExpense` — SINGLE stored `Date time.Time`; `DateString()` derives the
@@ -40,4 +41,14 @@ Design authority: `.claude/plans/parse-boundary.md` (FINAL, session 63).
 - **BR thousands:** token with BOTH '.' and ',' → dots stripped ("1.234,56" OK);
   dot-only tokens keep legacy decimal-dot meaning. Boundary owns ALL input
   normalization (design Q3).
+- **Field sentinels (s66):** `ErrInvalidDate` / `ErrInvalidValue` name WHICH field
+  `Fields` rejected, so a caller branches with `errors.Is` instead of matching
+  English message text — required because the eventual consumers are an error log
+  keyed by phase and a PT-BR chat layer (vision Phases 1 and 4), neither of which
+  can read an English string. **Wrapped with TWO `%w` verbs** (sentinel + cause):
+  the field must be identifiable AND the specific reason must survive. Dropping
+  the cause is a live hazard, not a theoretical one — slice 2's first command-layer
+  helper answered every date rejection with a format hint, telling a user who typed
+  `15/04/2027` their format was wrong when the objection was the future year.
+  No item sentinel: nothing branches on it.
 - **Tests build values via the real parser**, never struct literals.
