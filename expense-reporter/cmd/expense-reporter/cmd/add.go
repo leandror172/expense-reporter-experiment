@@ -72,7 +72,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 
 	// T-41: the parse boundary owns all input normalization; the config is
 	// loaded first because date_year feeds the year-precedence ladder.
-	pe, subcategory, err := parse.ExpenseString(args[0], parse.Options{Year: addYear, ConfigYear: appCfg.DateYear})
+	pe, subcategory, err := parse.ExpenseString(args[0], parseOptions(addYear, appCfg))
 	if err != nil {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM[/YYYY];value[/N];subcategory\": %w", err)
 	}
