@@ -120,10 +120,20 @@ Flags:
 - `--resume` — idempotent re-run: skip rows whose expense-log entry ids are ALL already
   present (printed as `SKIP … already logged`), before the model is called.
   Partially-logged installment series route to `review.csv` for manual resolution
-  instead of being auto-completed. Bare `DD/MM` dates infer the current year, so a
-  resume crossing a year boundary may not match — use `DD/MM/YYYY` for December batches.
+  instead of being auto-completed. A resume must resolve the same year as the original
+  run — the predicted ids are hashed from the date, so pass `--year` (or set
+  `date_year`) when re-running a batch across a year boundary, or the resume matches
+  nothing and silently re-appends.
+- `--year` — fallback year for bare `DD/MM` dates; outranks config `date_year`, and a
+  year written into the date always wins. Same ladder as `add`/`correct`/`auto`.
 - `--threshold` — **deprecated, ignored** (the gate no longer uses confidence)
 - `--model`, `--data-dir`, `--output-dir`, `--top`
+
+The `date` column of `classified.csv`/`review.csv` is written in canonical `DD/MM/YYYY`
+form even when the input was a bare `DD/MM`, because `review` hashes that column into the
+id it carries through to `apply`, and both JSONL logs hash the canonical form. The `value`
+column keeps the ORIGINAL token (`99,90/3`), which is how the installment count reaches
+the review queue.
 
 Independently of `--resume`, batch-auto always warns on stderr when an appended entry's
 id already exists in the log (a likely duplicate append).
@@ -360,8 +370,8 @@ Workbook path resolution: `--workbook` flag → `EXPENSE_WORKBOOK_PATH` env → 
 
 ### `date_year` — the year you are currently closing
 
-`date_year` is **live for `add` and `correct`** (T-41 slice 1 onward), where it is rung 3
-of the year-precedence ladder:
+`date_year` is **live for `add`, `correct`, `auto` and `batch-auto`** (T-41 slices 1–3),
+where it is rung 3 of the year-precedence ladder:
 
 ```
 year written in the date ("15/04/2026")  >  --year  >  config date_year  >  most recent non-future
@@ -370,7 +380,7 @@ year written in the date ("15/04/2026")  >  --year  >  config date_year  >  most
 Set it to the year you are closing; a bare `DD/MM` then resolves to that year no matter
 when you type it. It is **not** a set-and-forget value — a `date_year` below the current
 year silently back-dates entries, and a wrong year is invisible downstream (the row writes
-cleanly to both logs, then `generate-workbook --year N` never routes it). `add`/`correct`
+cleanly to both logs, then `generate-workbook --year N` never routes it). These commands
 therefore warn on stderr when a `date_year` below the current year is what actually dated
 an entry:
 
@@ -382,8 +392,16 @@ an entry:
 Leave it unset (or `0`) to fall through to the most-recent-non-future rule, which needs no
 maintenance but resolves a bare date later in the year to *last* year.
 
-Still **not** read by `auto`/`batch-auto`/`apply` — those bare dates get `time.Now().Year()`
-until their parse-boundary slices land.
+`batch-auto` emits ONE such warning for the whole run, naming how many rows the stale year
+dated — per-row would print an identical line for every bare-dated row in the file:
+
+```
+⚠  config date_year=2025 is before the current year (2026); it dated 137 of 300 row(s)
+   — pass --year to override, or update config.json
+```
+
+Still **not** read by `apply` — its bare dates take their year outside the ladder until
+its parse-boundary slice lands.
 
 ## Testing
 

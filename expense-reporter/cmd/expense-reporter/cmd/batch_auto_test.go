@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"encoding/csv"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -11,6 +13,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+// Column positions in classified.csv / review.csv, which share one header:
+// item;date;value;subcategory;category;confidence;auto_inserted;type
+const (
+	itemColumn  = 0
+	dateColumn  = 1
+	valueColumn = 2
 )
 
 // testParseOptions pins the year ladder so no assertion in this file depends on the
@@ -291,4 +301,77 @@ func TestWriteReviewCSV_TypeColumn(t *testing.T) {
 	if fields[7] != "Extras" {
 		t.Errorf("type field: got %q, want %q", fields[7], "Extras")
 	}
+}
+
+// csvDataRows writes rows through one of the CSV writers and reads the result back with a
+// real CSV reader, returning the data rows only. Parsing rather than splitting on ';'
+// matters: a field containing the delimiter is quoted on the way out, so a naive split
+// would mis-align exactly the malformed-input row one of these tests is about.
+func csvDataRows(t *testing.T, write func(string, []classifiedRow) error, rows []classifiedRow) [][]string {
+	t.Helper()
+	f, err := os.CreateTemp("", "csv-rows-*.csv")
+	require.NoError(t, err)
+	f.Close()
+	defer os.Remove(f.Name())
+
+	require.NoError(t, write(f.Name(), rows))
+
+	handle, err := os.Open(f.Name())
+	require.NoError(t, err)
+	defer handle.Close()
+
+	reader := csv.NewReader(handle)
+	reader.Comma = ';'
+	records, err := reader.ReadAll()
+	require.NoError(t, err)
+	require.NotEmpty(t, records, "the writer produced no header")
+	return records[1:]
+}
+
+// TestCSVWriters_PreserveInstallmentNotation pins the plan's one flagged hazard (D4).
+//
+// The assertion looks trivial — a string round-trips — but the value column is the only
+// place an installment count survives into the review queue: review.ReadQueue re-derives
+// the count by re-parsing this token. Writing the parsed per-installment float instead
+// would be silent, with no error and no failing test anywhere else, and three installments
+// would quietly become one (T-21, made worse). Do NOT "simplify" this column to the
+// numeric value.
+func TestCSVWriters_PreserveInstallmentNotation(t *testing.T) {
+	const rawValue = "99,90/3"
+	row := classifiedRowWithPrediction(t, "Notebook;15/04;"+rawValue, "Eletrônicos", "Casa", 0.95, false)
+
+	writers := []struct {
+		name  string
+		write func(string, []classifiedRow) error
+	}{
+		{"classified.csv", writeClassifiedCSV},
+		{"review.csv", writeReviewCSV},
+	}
+	for _, w := range writers {
+		t.Run(w.name, func(t *testing.T) {
+			data := csvDataRows(t, w.write, []classifiedRow{row})
+			require.Len(t, data, 1)
+			assert.Equal(t, rawValue, data[0][valueColumn],
+				"%s must carry the original value token, not the per-installment float", w.name)
+		})
+	}
+}
+
+// TestWriteClassifiedCSV_UnparsedRowKeepsItsRawLine covers the row shape that has no
+// parsed expense at all.
+//
+// Such a row must still name itself, so the item column falls back to the original line.
+// The date and value cells must be EMPTY rather than rendered: a zero time.Time formats as
+// the well-formed but meaningless 01/01/0001, and a plausible-looking date is worse than a
+// blank one because nothing downstream can tell it was never real.
+func TestWriteClassifiedCSV_UnparsedRowKeepsItsRawLine(t *testing.T) {
+	const line = "Uber Centro;not-a-date;35,50"
+	rows := []classifiedRow{{RawLine: line, Error: errors.New("unparseable")}}
+
+	data := csvDataRows(t, writeClassifiedCSV, rows)
+
+	require.Len(t, data, 1)
+	assert.Equal(t, line, data[0][itemColumn], "an unparsed row identifies itself by its raw line")
+	assert.Empty(t, data[0][dateColumn], "a row that never parsed has no date to render")
+	assert.Empty(t, data[0][valueColumn], "a row that never parsed has no value to render")
 }
