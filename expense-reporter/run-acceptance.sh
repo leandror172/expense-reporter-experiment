@@ -67,10 +67,16 @@ else
   MODE_FLAGS="-short -timeout 600s"
 fi
 
+# -count=1 disables the test cache. The suite's subject is the CLI binary, which
+# TestMain builds at runtime, so Go's cache key — the test package's own inputs —
+# does not cover it: edits under cmd/ or internal/ leave the entry valid and the
+# script reports a pass that ran none of the change (T-53, hit live in session 66).
+NO_CACHE="-count=1"
+
 if [ -n "$RUN_FILTER" ]; then
-  go test -tags=acceptance -v $MODE_FLAGS -run "$RUN_FILTER" ./test/... $EXTRA_FLAGS
+  go test -tags=acceptance -v $NO_CACHE $MODE_FLAGS -run "$RUN_FILTER" ./test/... $EXTRA_FLAGS
 else
-  go test -tags=acceptance -v $MODE_FLAGS ./test/... $EXTRA_FLAGS
+  go test -tags=acceptance -v $NO_CACHE $MODE_FLAGS ./test/... $EXTRA_FLAGS
 fi
 
 echo ""
