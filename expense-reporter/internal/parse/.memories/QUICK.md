@@ -4,10 +4,10 @@
 
 ## Status
 Slice 1 (s63): package founded from `parseExpenseForFeedback` (add.go, deleted).
-Slice 2 (s66): `auto` migrated. Slice 3 (s67): `batch-auto` migrated —
-consumers now `add`/`correct`/`auto`/`batch-auto`; `apply` is the last one
-pending. Design authority: `.claude/plans/parse-boundary.md` (FINAL, session
-63; slice-3 decisions in §11).
+Slice 2 (s66): `auto`. Slice 3 (s67): `batch-auto`. Slice 4 (s67): `apply` —
+**all six parsers now route here**; `cmd.canonicalDate` (the T-35 prototype) is
+retired. Design authority: `.claude/plans/parse-boundary.md` (FINAL, session 63;
+slice-3 decisions in §11).
 
 ## Contract
 - `ParsedExpense` — SINGLE stored `Date time.Time`; `DateString()` derives the
@@ -15,6 +15,12 @@ pending. Design authority: `.claude/plans/parse-boundary.md` (FINAL, session
   (`GenerateID` + both JSONL logs consume its output). An inconsistent date pair
   is unrepresentable by construction — do not add a stored string date field.
 - `Fields(item, dateStr, valueStr, Options)` — field-wise core; all commands use it.
+- `Date(dateStr, Options)` (s67) — date-only entry point, for a caller whose other
+  fields are already structured. `apply` reads `reviewed.json`, where the JSON
+  decoder already typed item and value and only the date is text; without this it
+  would have to re-serialize a float purely to have the boundary parse it back.
+  `Fields` DELEGATES to it — one ladder, one pair of year validations, whichever
+  door a caller comes through.
 - `ExpenseString(s, Options)` — 4-field semicolon wrapper; returns subcategory
   ALONGSIDE (classification is not parsing — never add it to the struct).
 - `Value` is PER-INSTALLMENT (total ÷ N for "total/N"); `RawValue` keeps the
