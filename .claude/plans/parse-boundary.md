@@ -235,3 +235,111 @@ Everything else surfaced by the dogfood run becomes the real backlog.
 Decided session 62 (context): year fallback = most recent non-future (§4 rung 4);
 grace window = 0 (locked session 63); T-21 UX = 1 row + ×N badge (§7); `--year`
 flags = uniform (§4).
+
+---
+
+## 11. Slice 3 design record — DECIDED (session 66, 2026-07-29)
+
+Decided at the end of the slice-2 session, deliberately BEFORE implementing, so
+slice 3 opens with mechanics settled. Advisor-reviewed; the user locked D1–D3 and
+the advisor's checks then moved D2's placement and added a case to D3.
+
+### The actual problem is bigger than "six re-parse sites"
+
+One row's `RawValue`/`Date` strings are re-parsed up to **four times**:
+
+| Site | Re-parses |
+|------|-----------|
+| `parse3FieldLine` (batch_auto.go:448) | value only — **leaves `Date` a raw string**, and **discards the installment count** (`_`) |
+| `classifyResumeDecision` (batch_auto_resume.go:87,92) | value AND date |
+| `appendOneRow` (batch_auto.go:360,364) | value AND date |
+| `logConfirmedFeedbackForRow` (batch_auto.go:376,385,389) | value, date, + a hand-written T-35 canonicalization |
+
+**The discarded installment count at :448 is the root**, not the split: because
+`parse3FieldLine` throws the count away, `appendOneRow` MUST re-parse to recover it.
+Retaining it in the row struct removes the reason the downstream re-parses exist.
+
+Both `inputRow` and `classifiedRow` carry `Date string` + `RawValue string` — the same
+loose-scalar shape `appendExpense` shed in slice 2, for the same reason.
+
+### D1 — the 3-field split stays in `cmd` (option a)
+
+`parse3FieldLine` keeps splitting `item;DD/MM;value` and calls `parse.Fields`. No new
+boundary API.
+
+- The two splits are different FORMATS with different messages, not one drifted
+  mechanism, so `ref:patterns-code-extract-keep-divergence` rule 3 says don't unify.
+- Merging into one 3-or-4-field function would break error locality: `add
+  "Item;15/04;35,50"` would stop failing at parse and instead fail later inside
+  taxonomy resolution, with a confusing message.
+- A 3-field boundary function would exist solely to serve one CSV reader that already
+  splits correctly.
+
+### D2 — ONE stale-year warning, carrying a count, emitted in `printBatchSummary`
+
+Per-row placement emits one identical line per bare-dated row (300 lines for a 300-row
+statement), which buries the batch's own output. Hoisting above the loop is WRONG in a
+different way: it fires even when every row carries an explicit year, i.e. a false
+warning.
+
+So: accumulate a count while the rows are processed, emit a single line naming it
+("config date_year=2025 dated 137 of 300 rows").
+
+**Placement is `printBatchSummary`, not "after the read phase" — there is no read
+phase.** `runBatchAuto`'s `for i, line := range lines` interleaves parse → resume →
+classify → append per row. A parse-all-rows pre-pass was considered and NOT taken:
+it would fail fast on malformed input before spending ~12 s/row on the model (matching
+`preflightLogPath`'s rationale) but it reorders when errors surface, which is a
+behavior change slice 3 should not smuggle in. File it separately if wanted.
+
+**`--resume`-skipped rows DO count toward the total.** They are parsed before the
+ledger lookup, so a stale `date_year` gives them wrong predicted ids — meaning
+`--resume` silently matches nothing and re-appends rows it should have skipped. That is
+the case the warning most needs to cover, so excluding skipped rows would hide it.
+
+### D3 — T-40 becomes a unit test on construction, `Installments == 1` only
+
+Once the row carries a `ParsedExpense`, join-id equality holds BY CONSTRUCTION, so pin
+the construction, not the I/O — no Ollama, no fixture, no files:
+
+    feedback.GenerateID(pe.Item, pe.DateString(), pe.Value)
+      == appender.PredictEntryIDs(pe.Item, pe.Date, pe.Value, pe.Installments)[0]
+
+Build `pe` from a SHORT `DD/MM` (a full date makes raw == normalized and disables the
+test — the standing join-id fixture rule applies to unit inputs too).
+
+**Assert equality for `Installments == 1` ONLY.** `expandEntries` calls
+`formatInstallmentItem(item, i, N)` for N > 1, so every expense-log entry in a series
+hashes a SUFFIXED item while the feedback entry hashes the un-suffixed one — the ids
+legitimately differ. The T-35 survey already lists "installment ids differing between
+logs" as CORRECT and not to be fixed. A second case should document that divergence so
+nobody later "repairs" it.
+
+### D4 — the cross-command CSV contract (advisor catch; the one real hazard)
+
+`classifiedRow` is not local state: `writeClassifiedCSV` serializes it to
+`classified.csv` / `review.csv` (header
+`item;date;value;subcategory;category;confidence;auto_inserted;type`) and
+`review.ReadQueue` reads it back.
+
+**The `value` column currently receives `r.RawValue`**, which is what preserves
+`99,90/3`. `ReadQueue` re-parses it and discards the count (`_`, queue.go:63) — that
+discard IS T-21.
+
+So when `classifiedRow` carries a `ParsedExpense`, the value column MUST map to
+`pe.RawValue`, never `pe.Value` (the per-installment float). Writing `pe.Value` would
+silently erase installment notation from the review queue, making T-21 worse and
+corrupting the T-42 dogfood. Verify against the fixtures, not by inspection.
+
+Upside worth noting: after slice 3 the installment count IS parsed and retained at read
+time, so T-21's missing count becomes reachable — the remaining gap is `ReadQueue` and
+the `reviewed.json` schema, exactly as T-21 describes.
+
+### Two cleanups slice 3 must not skip
+
+- `logConfirmedFeedbackForRow`'s early return on a date parse error becomes
+  UNREACHABLE once the row is pre-parsed. Delete it; a comment explaining an
+  impossible case misleads the next reader.
+- The batch path must call `describeParseFailure` (prefixed with the row number)
+  rather than re-phrasing the error inline — otherwise the helper slice 2 justified as
+  reusable has one caller and slice 3 grows a second copy of the same wording.
