@@ -51,8 +51,8 @@ by `runBatchAuto`, preserving the already-written CSVs). CSVs are therefore writ
 **Pre-flight:** `preflightLogPath`/`verifyAppendable` opens the log in `O_APPEND` mode before classifying, so an
 unwritable log fails fast (saves ~12 s/row on the model). `--dry-run` skips both pre-flight and append (classify
 + CSVs only). **Date reformat gotcha:** the appender formats dates `DD/MM/YYYY`. For the **not-yet-migrated**
-callers (`batch-auto`, `apply`) bare `DD/MM` inputs still get `time.Now().Year()` via
-`ParseDateFlexible`. Since T-41 slice 2, `auto` instead resolves bare dates through the parse
+caller (`apply`) bare `DD/MM` inputs still take their year outside the ladder. Since T-41
+slices 2–3, `auto` and `batch-auto` instead resolve bare dates through the parse
 boundary's year ladder (`--year` > `date_year` > most-recent-non-future) — so its fixtures are
 stable against the CLOCK but not against `date_year`, and an explicit-year input remains the
 way to pin a date outright. Note the standing exception: join-id fixtures MUST keep the short
@@ -129,10 +129,12 @@ history (data queries). The shared hash enables joins without a database.
   by slice 2 session 66): `internal/parse` consumes it as precedence rung 3 (string
   year > `--year` > `date_year` > most-recent-non-future, grace 0 — a bare date
   landing strictly in the future resolves to LAST year). All three also carry a
-  `--year` flag that outranks it. **Still dead for `batch-auto`/`apply`** (slices 3–4
-  pending) — those bare dates still get `time.Now().Year()` via `ParseDateFlexible`;
-  plain `batch` still hardcodes 2025 (`utils.ParseDate`, dies under WS-E). Plan:
-  `.claude/plans/parse-boundary.md`.
+  `--year` flag that outranks it. `batch-auto` joined them in slice 3 (session 67),
+  where the warning takes a batch shape: ONE line for the run carrying the row count,
+  because per-row would emit one identical line per bare-dated row. **Still dead for
+  `apply`** (slice 4 pending) — its bare dates still get their year from `canonicalDate`
+  /`ParseDateFlexible`; plain `batch` still hardcodes 2025 (`utils.ParseDate`, dies under
+  WS-E). Plan: `.claude/plans/parse-boundary.md`.
 - `auto_insert_excluded` (["Diversos"]) — subcategories blocked from auto-insert
 - `classifications_path`, `expenses_log_path` — JSONL output locations
 **Rationale:** Runtime behavior that changes between years or users belongs in config,

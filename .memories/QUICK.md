@@ -15,8 +15,11 @@ add/correct migrated, `--year` flags, `date_year` live (rung 3), BR thousands
 parse. **Slice 2 DONE (s66): `auto` migrated** — single `parse.Fields` call,
 `--year`, stale-year warning, `appendExpense(pe ParsedExpense, …)` collapse,
 `parse` field sentinels (`ErrInvalidDate`/`ErrInvalidValue`, double-`%w` so the
-cause survives). Slices 3–4: batch-auto (T-40 + T-49 land there) → apply, then
-T-21 → T-42 monthly close.** **s65 date/year hardening (PRs #56/#57 open):** resolved-year
+cause survives). **Slice 3 DONE (s67): `batch-auto` migrated** — `inputRow` and the
+unreachable `resumeParseErr` deleted, `--year`, one counted stale-year warning
+(T-49), join-id pinned at construction (T-40); the classified CSVs now carry the
+canonical date, repairing a silent `review`→`apply` id divergence. Slice 4: apply
+(also recompute `entry.ID` alongside the date), then T-21 → T-42 monthly close.** **s65 date/year hardening (PRs #56/#57 open):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.
 WS-D (HELD: gate-to-review) → WS-E after.

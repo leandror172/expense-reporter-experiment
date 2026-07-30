@@ -4,9 +4,10 @@
 
 ## Status
 Slice 1 (s63): package founded from `parseExpenseForFeedback` (add.go, deleted).
-Slice 2 (s66): `auto` migrated — consumers now `add`/`correct`/`auto`. Slices
-pending: batch-auto → apply. Design authority: `.claude/plans/parse-boundary.md`
-(FINAL, session 63).
+Slice 2 (s66): `auto` migrated. Slice 3 (s67): `batch-auto` migrated —
+consumers now `add`/`correct`/`auto`/`batch-auto`; `apply` is the last one
+pending. Design authority: `.claude/plans/parse-boundary.md` (FINAL, session
+63; slice-3 decisions in §11).
 
 ## Contract
 - `ParsedExpense` — SINGLE stored `Date time.Time`; `DateString()` derives the
@@ -51,4 +52,9 @@ pending: batch-auto → apply. Design authority: `.claude/plans/parse-boundary.m
   helper answered every date rejection with a format hint, telling a user who typed
   `15/04/2027` their format was wrong when the objection was the future year.
   No item sentinel: nothing branches on it.
-- **Tests build values via the real parser**, never struct literals.
+- **Tests build values via the real parser**, never struct literals. This is not
+  style: `YearSource` is recorded by `resolveDate`, so a hand-set field tests the
+  literal rather than the ladder, and a literal can express a combination the
+  boundary rejects — the test would then describe behavior production cannot
+  produce. A generated slice-3 test was rejected for the adjacent sin of asserting
+  the parser against a second call to itself.
