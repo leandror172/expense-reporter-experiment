@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -15,6 +14,7 @@ import (
 	"expense-reporter/internal/classifier"
 	internalconfig "expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
+	"expense-reporter/internal/parse"
 	"expense-reporter/pkg/utils"
 )
 
@@ -228,35 +228,47 @@ func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath s
 }
 
 // entriesWithCanonicalDates returns the entries with every Date rewritten to the
-// canonical DD/MM/YYYY form, so every downstream consumer hashes the same bytes.
-// Entries whose date cannot be parsed are returned untouched: appendNewRows already
-// validates dates and reports the failure, and this helper must not change which
-// entries survive.
+// canonical DD/MM/YYYY form AND every ID recomputed from it, so every downstream
+// consumer hashes the same bytes.
+//
+// Rewriting both is the point. The ID is a hash of (item, date, value), so a function
+// that rewrites the date and keeps the id leaves the entry carrying an identity that no
+// longer describes it — and this id is what handleActiveEntry looks up in the
+// classifications log to decide whether the row was already applied. A miss there is
+// silent: the entry is treated as new and appended. So a stale id does not surface as
+// an error, it surfaces as a duplicate expense, months later, in a workbook.
+//
+// Entries whose date cannot be resolved are returned untouched, id included:
+// appendNewRows already validates dates and reports the failure, and this helper must
+// not change which entries survive.
 func entriesWithCanonicalDates(entries []apply.ReviewedEntry, year int) []apply.ReviewedEntry {
 	normalized := make([]apply.ReviewedEntry, len(entries))
 	for i, entry := range entries {
 		normalized[i] = entry
 		if canonical, ok := canonicalDate(entry.Date, year); ok {
 			normalized[i].Date = canonical
+			normalized[i].ID = feedback.GenerateID(entry.Item, canonical, entry.Value)
 		}
 	}
 	return normalized
 }
 
-// canonicalDate renders a DD/MM or DD/MM/YYYY date as DD/MM/YYYY, reporting whether
-// it parsed. A date that already carries a year keeps it; only the short form takes
-// the supplied year — never time.Now(), which would make the resulting hash id depend
-// on when the command ran.
+// canonicalDate renders a reviewed entry's date as DD/MM/YYYY, reporting whether it
+// resolved. A date that already carries a year keeps it; a bare DD/MM takes the year
+// from the ladder — never time.Now() directly, which would make the resulting hash id
+// depend on when the command ran.
+//
+// This was the T-35 prototype: the first place a date was canonicalized once at a
+// boundary rather than per-writer. It now delegates to internal/parse, the thing it
+// prototyped, so apply resolves years by the same ladder and the same validations as
+// every other command — including the refusal of a year beyond the current one, which
+// here downgrades the row to `failed` rather than aborting the run.
 func canonicalDate(dateStr string, year int) (string, bool) {
-	parse := utils.ParseDateFlexible
-	if len(strings.Split(dateStr, "/")) == 2 {
-		parse = func(s string) (time.Time, error) { return utils.ParseDateWithYear(s, year) }
-	}
-	parsed, err := parse(dateStr)
+	resolved, _, err := parse.Date(dateStr, parse.Options{Year: year})
 	if err != nil {
 		return "", false
 	}
-	return utils.FormatDate(parsed), true
+	return utils.FormatDate(resolved), true
 }
 
 func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {

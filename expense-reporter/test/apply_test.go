@@ -225,3 +225,32 @@ func newRowJoinableAcrossBothLogs() []func(*harness.Context) {
 		expect.JoinIDMatchesAcrossLogs(),
 	}
 }
+
+// TestApply_StaleReviewedIDIsRecomputedNotTrusted proves apply derives an entry's
+// identity from the entry's own data rather than trusting the id it arrived with.
+//
+// Why this needs its own fixture: apply rewrites a bare date to canonical form before
+// anything else, so any id supplied by whoever produced reviewed.json was hashed from a
+// date apply is about to change. Trusting it means looking up an id apply will never
+// itself write, and that lookup miss is SILENT — handleActiveEntry treats an unfound
+// entry as new and appends it. The symptom is therefore a duplicate expense in the log,
+// not an error anyone sees.
+//
+// The sibling apply-basic fixture cannot catch this. It is internally self-consistent,
+// which is right for what it tests, but that means the lookup succeeds whether or not
+// the id was recomputed — verified by mutation: with the recompute removed, apply-basic
+// stays green and only this scenario goes red.
+func TestApply_StaleReviewedIDIsRecomputedNotTrusted(t *testing.T) {
+	fixDir := filepath.Join(fixturesDir(), "apply-stale-id")
+
+	harness.Run(t, harness.Scenario{
+		Name:    "apply recognises a row whose reviewed.json id was hashed from the pre-canonical date",
+		Fixture: fixDir,
+		Given:   expensesAutoInsertedBeforeReview(),
+		When:    actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Then: slices.Concat(
+			commandSucceeded(),
+			noNewExpensesInserted(),
+		),
+	})
+}
