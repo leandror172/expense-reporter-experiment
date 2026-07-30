@@ -11,8 +11,8 @@ import (
 	"expense-reporter/internal/batch"
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
+	"expense-reporter/internal/parse"
 	"expense-reporter/internal/taxonomy"
-	"expense-reporter/pkg/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -37,9 +37,12 @@ with an unambiguous, high-specificity keyword match) into the workbook.
 Output files are written to --output-dir (default: same directory as input):
   classified.csv  — all rows with classification results
   review.csv      — rows not auto-inserted (gate not met or excluded)
-  rollover.csv    — installment rows whose later months fall into next year (if any)
 
 Use --dry-run to skip workbook insertion and only produce the CSV outputs.
+
+Bare DD/MM dates resolve their year through the parse boundary's precedence ladder:
+a year written into the date wins, then --year, then config date_year, then the most
+recent occurrence that is not in the future.
 
 Use --resume for an idempotent re-run after a partial failure: each row's expense-log
 entry ids are predicted up front, and any row whose ids are ALL already present in the log
@@ -72,7 +75,8 @@ func init() {
 	batchAutoCmd.Flags().BoolVar(&batchAutoDryRun, "dry-run", false, "Classify and write CSVs without inserting into workbook")
 	batchAutoCmd.Flags().StringVar(&batchAutoOutputDir, "output-dir", "", "Directory for output CSV files (default: same as input file)")
 	batchAutoCmd.Flags().BoolVar(&batchAutoThink, "think", false, "Allow the model to emit thinking tokens (~10x slower for a marginal accuracy gain)")
-	batchAutoCmd.Flags().BoolVar(&batchAutoResume, "resume", false, "Skip rows already present in the expense log (idempotent re-run after a partial failure). Note: bare DD/MM dates infer the current year, so a resume crossing a year boundary may not match — use DD/MM/YYYY inputs for December batches.")
+	batchAutoCmd.Flags().BoolVar(&batchAutoResume, "resume", false, "Skip rows already present in the expense log (idempotent re-run after a partial failure). Bare DD/MM dates take their year from the precedence ladder, so a resume must resolve the same year as the original run — pass --year (or set config date_year) when re-running a batch across a year boundary.")
+	batchAutoCmd.Flags().IntVar(&batchAutoYear, "year", 0, "Fallback year for bare DD/MM dates (outranks config date_year; an explicit year in the date always wins)")
 	// T-32: the agreement gate replaced the confidence threshold; keep the flag
 	// accepted (so existing scripts/fixtures don't error) but mark it deprecated.
 	_ = batchAutoCmd.Flags().MarkDeprecated("threshold", "ignored — the auto-insert gate now uses keyword agreement, not confidence")
@@ -80,12 +84,22 @@ func init() {
 
 var batchAutoThink bool
 var batchAutoResume bool
+var batchAutoYear int
 
 // classifiedRow holds the result of classifying a single input row.
 type classifiedRow struct {
-	Item         string
-	Date         string
-	RawValue     string // original value string, preserves installment notation (e.g. "99,90/3")
+	// Expense is the row's input, parsed ONCE at the top of the loop. Everything
+	// downstream — the resume prediction, the append, the feedback write, the CSVs —
+	// reads it instead of re-parsing the line, which is what let those consumers
+	// disagree about a row's date and split one expense across two join ids (T-35).
+	//
+	// A row whose parse failed carries the zero value. That is detectable without a
+	// second flag: YearSource is YearSourceUnknown, which the boundary defines as
+	// "not produced by a successful parse".
+	Expense parse.ParsedExpense
+	// RawLine is the original CSV line, kept only so a row that never parsed can still
+	// be named in the output — it is the sole identity such a row has.
+	RawLine      string
 	Subcategory  string
 	Category     string
 	Confidence   float64
@@ -97,6 +111,47 @@ type classifiedRow struct {
 	// counted separately in the summary. Distinct from an error and from a review row.
 	Skipped bool
 	Error   error
+}
+
+// displayItem names the row in output. A row that never parsed has no item, so it
+// falls back to the raw line — which is also what the CSV's item column has always
+// carried for such rows.
+func (r classifiedRow) displayItem() string {
+	if r.Expense.Item != "" {
+		return r.Expense.Item
+	}
+	return r.RawLine
+}
+
+// dateCell renders the row's date for the CSV writers, canonical DD/MM/YYYY, or empty
+// for a row that never parsed.
+//
+// Canonical rather than the raw input is deliberate. review.ReadQueue hashes this exact
+// column into the id it puts in reviewed.json, while both JSONL logs hash the canonical
+// form — so emitting the raw "15/04" here handed the review queue an id that apply would
+// never itself write, and an id miss in apply is silent (it treats the entry as new and
+// appends it). Writing the canonical date is the same one-boundary normalization T-35
+// applied to the two log writers, extended to their third reader.
+//
+// The empty case is read off YearSourceUnknown rather than a separate "parsed" flag,
+// because that is already the boundary's own marker for "not produced by a successful
+// parse" — one fact with one home. Without the guard a failed row would render its zero
+// time as 01/01/0001.
+func (r classifiedRow) dateCell() string {
+	if r.Expense.YearSource == parse.YearSourceUnknown {
+		return ""
+	}
+	return r.Expense.DateString()
+}
+
+// valueCell renders the row's value for the CSV writers.
+//
+// It MUST be the raw token, never the parsed per-installment float: "99,90/3" is how the
+// installment count survives into review.csv, and review.ReadQueue re-reads this column.
+// Writing the float would erase the count from the review queue silently — no error, just
+// three installments quietly becoming one (T-21).
+func (r classifiedRow) valueCell() string {
+	return r.Expense.RawValue
 }
 
 func runBatchAuto(cmd *cobra.Command, args []string) error {
@@ -143,7 +198,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("loading expense log ledger: %w", err)
 	}
 
-	results := classifyLines(lines, sheets, appCfg, cfg, ledger, batchAutoResume)
+	results := classifyLines(lines, sheets, appCfg, cfg, ledger, batchAutoResume, parseOptions(batchAutoYear, appCfg))
 
 	var appendErr error
 	if !batchAutoDryRun {
@@ -163,7 +218,7 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("writing review.csv: %w", err)
 	}
 
-	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath)
+	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath, appCfg)
 	if appendErr != nil {
 		return fmt.Errorf("log append failed (classification CSVs preserved at %s): %w", outputDir, appendErr)
 	}
@@ -203,7 +258,7 @@ func loadBatchAutoDeps() ([]taxonomy.ExpenseType, *config.Config, error) {
 	return sheets, appCfg, nil
 }
 
-func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config.Config, cfg classifier.Config, ledger map[string]int, resume bool) []classifiedRow {
+func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config.Config, cfg classifier.Config, ledger map[string]int, resume bool, opts parse.Options) []classifiedRow {
 	total := len(lines)
 	results := make([]classifiedRow, 0, total)
 
@@ -217,51 +272,53 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 	}
 
 	for i, line := range lines {
-		row, err := parse3FieldLine(line)
+		pe, err := parse3FieldLine(line, opts)
 		if err != nil {
+			// describeParseFailure rather than a second phrasing of the same failure:
+			// the row number is already this line's prefix, and the helper is what
+			// knows the accepted value spellings.
+			err = describeParseFailure(err)
 			fmt.Fprintf(os.Stderr, "[%d/%d] SKIP  %q: %v\n", i+1, total, line, err)
-			results = append(results, classifiedRow{Item: line, Error: err})
+			results = append(results, classifiedRow{RawLine: line, Error: err})
 			continue
 		}
 
-		// --resume: parse date/value up front, predict this row's entry ids, and consult the
-		// ledger BEFORE the model call. A full match skips (consuming the ledger); a parse
-		// failure routes to an error row (never a skip); a partial match forces review below.
+		// --resume: predict this row's entry ids from the already-parsed expense and
+		// consult the ledger BEFORE the model call. A full match skips (consuming the
+		// ledger); a partial match forces review below.
 		partial := false
 		if resume {
-			handled, forceReview := applyResumeDecision(ledger, row, i, total, &results)
+			handled, forceReview := applyResumeDecision(ledger, pe, i, total, &results)
 			if handled {
 				continue
 			}
 			partial = forceReview
 		}
 
-		classResults, err := classifier.Classify(row.Item, row.Value, row.Date, sheets, cfg)
+		classResults, err := classifier.Classify(pe.Item, pe.Value, pe.DateString(), sheets, cfg)
 		if err != nil || len(classResults) == 0 {
-			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, row.Item, err)
-			results = append(results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Error: err})
+			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: classifier error: %v\n", i+1, total, pe.Item, err)
+			results = append(results, classifiedRow{Expense: pe, Error: err})
 			continue
 		}
 
 		top := classResults[0]
-		signal := classifier.MatchStrength(row.Item, keywords)
+		signal := classifier.MatchStrength(pe.Item, keywords)
 		autoInsert := classifier.IsAutoInsertable(top, signal, appCfg.AutoInsertExcluded)
 		if partial {
 			// A partially-logged series must be resolved by hand, never auto-completed:
 			// a divergent re-classification would split the series across categories.
 			autoInsert = false
-			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: partially logged — resolve manually\n", i+1, total, row.Item)
+			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: partially logged — resolve manually\n", i+1, total, pe.Item)
 		}
 		status := "REVIEW"
 		if autoInsert {
 			status = "AUTO  "
 		}
-		fmt.Printf("[%d/%d] %s %s → %s (%.0f%%)\n", i+1, total, status, row.Item, top.Subcategory, top.Confidence*100)
+		fmt.Printf("[%d/%d] %s %s → %s (%.0f%%)\n", i+1, total, status, pe.Item, top.Subcategory, top.Confidence*100)
 
 		results = append(results, classifiedRow{
-			Item:         row.Item,
-			Date:         row.Date,
-			RawValue:     row.RawValue,
+			Expense:      pe,
 			Subcategory:  top.Subcategory,
 			Category:     top.Category,
 			Confidence:   top.Confidence,
@@ -273,19 +330,17 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 }
 
 // applyResumeDecision runs the --resume pre-check for one row and records any terminal outcome
-// directly into results. It returns handled=true when the row is fully resolved here (skipped
-// or routed to an error row) so the caller must `continue`; when handled=false the row proceeds
-// to classification, and forceReview=true means it is partially logged and must go to review.
-func applyResumeDecision(ledger map[string]int, row inputRow, i, total int, results *[]classifiedRow) (handled, forceReview bool) {
-	outcome, err := classifyResumeDecision(ledger, row)
-	switch outcome {
-	case resumeParseErr:
-		fmt.Fprintf(os.Stderr, "[%d/%d] ERROR  %q: %v\n", i+1, total, row.Item, err)
-		*results = append(*results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Error: err})
-		return true, false
+// directly into results. It returns handled=true when the row is fully resolved here (skipped)
+// so the caller must `continue`; when handled=false the row proceeds to classification, and
+// forceReview=true means it is partially logged and must go to review.
+//
+// There is no parse-failure branch any more: the line is parsed once before this is reached,
+// so a row that could not be parsed never arrives here.
+func applyResumeDecision(ledger map[string]int, pe parse.ParsedExpense, i, total int, results *[]classifiedRow) (handled, forceReview bool) {
+	switch classifyResumeDecision(ledger, pe) {
 	case resumeSkipFull:
-		fmt.Printf("[%d/%d] SKIP  %s (already logged)\n", i+1, total, row.Item)
-		*results = append(*results, classifiedRow{Item: row.Item, Date: row.Date, RawValue: row.RawValue, Subcategory: skippedMarker, Skipped: true})
+		fmt.Printf("[%d/%d] SKIP  %s (already logged)\n", i+1, total, pe.Item)
+		*results = append(*results, classifiedRow{Expense: pe, Subcategory: skippedMarker, Skipped: true})
 		return true, false
 	case resumePartial:
 		return false, true
@@ -339,7 +394,7 @@ func appendClassified(results []classifiedRow, appCfg *config.Config, model stri
 		if err := appendOneRow(logPath, r, ledger); err != nil {
 			results[idx].AutoInserted = false
 			results[idx].Error = err
-			fmt.Fprintf(os.Stderr, "  APPEND ERROR %q: %v\n", r.Item, err)
+			fmt.Fprintf(os.Stderr, "  APPEND ERROR %q: %v\n", r.displayItem(), err)
 			failCount++
 			continue
 		}
@@ -352,51 +407,39 @@ func appendClassified(results []classifiedRow, appCfg *config.Config, model stri
 }
 
 // appendOneRow expands installments and appends a single classified row to the
-// expense log. Returns an error if the value/date cannot be parsed or the append
-// fails — any of which means the row was not persisted. Before appending, it emits
-// the always-on duplicate warning for any entry id already present in the ledger
-// (consuming that count), so a re-append over a pre-existing log line is flagged.
+// expense log. Returns an error if the append fails, which means the row was not
+// persisted. Before appending, it emits the always-on duplicate warning for any entry
+// id already present in the ledger (consuming that count), so a re-append over a
+// pre-existing log line is flagged.
+//
+// It no longer re-parses anything: the row carries the expense parsed at read time, so
+// the ids predicted here and the entries written below are derived from one value.
 func appendOneRow(logPath string, r classifiedRow, ledger map[string]int) error {
-	perInstallment, installmentCount, err := utils.ParseCurrencyWithInstallments(r.RawValue)
-	if err != nil {
-		return fmt.Errorf("parsing value %q: %w", r.RawValue, err)
-	}
-	parsedDate, err := utils.ParseDateFlexible(r.Date)
-	if err != nil {
-		return fmt.Errorf("parsing date %q: %w", r.Date, err)
-	}
-	warnDuplicateEntries(ledger, r.Item, appender.PredictEntryIDs(r.Item, parsedDate, perInstallment, installmentCount))
-	return appender.ExpandAndAppend(logPath, r.Item, parsedDate, perInstallment, installmentCount, r.Type, r.Category, r.Subcategory)
+	pe := r.Expense
+	warnDuplicateEntries(ledger, pe.Item, appender.PredictEntryIDs(pe.Item, pe.Date, pe.Value, pe.Installments))
+	return appender.ExpandAndAppend(logPath, pe.Item, pe.Date, pe.Value, pe.Installments, r.Type, r.Category, r.Subcategory)
 }
 
 // logConfirmedFeedbackForRow records the confirmed classification to
 // classifications.jsonl for a successfully appended row. Secondary to the expense
 // log: a failure here is non-fatal (logConfirmedFeedback warns internally).
+//
+// The two logs join on a hash of the date string, and this function used to re-parse
+// and re-format the row's raw date to match what the expense log had written (T-35).
+// That canonicalization is gone because the divergence it repaired is now
+// unrepresentable: both writers read the same ParsedExpense, and DateString() is the
+// single place those identity bytes are produced.
 func logConfirmedFeedbackForRow(appCfg *config.Config, r classifiedRow, model string) {
-	perInstallment, _, err := utils.ParseCurrencyWithInstallments(r.RawValue)
-	if err != nil {
-		return
-	}
-	// Canonicalize the date to match what appendOneRow wrote to the expense log (T-35):
-	// both logs are joined on a hash of it, and a bare DD/MM row from the input CSV
-	// otherwise logs DD/MM here and DD/MM/YYYY there. A row whose date does not parse
-	// never reaches this function — appendOneRow fails it first — so a parse error here
-	// means the row was already downgraded; leave the raw string alone.
-	parsedDate, derr := utils.ParseDateFlexible(r.Date)
-	if derr != nil {
-		return
-	}
-	r.Date = utils.FormatDate(parsedDate)
 	predicted := classifier.Result{
 		Type:        r.Type,
 		Category:    r.Category,
 		Subcategory: r.Subcategory,
 		Confidence:  r.Confidence,
 	}
-	logConfirmedFeedback(appCfg, r.Item, r.Date, perInstallment, predicted, model)
+	logConfirmedFeedback(appCfg, r.Expense.Item, r.Expense.DateString(), r.Expense.Value, predicted, model)
 }
 
-func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath string) {
+func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath string, appCfg *config.Config) {
 	autoCount, reviewCount, errorCount, skippedCount := 0, 0, 0, 0
 	for _, r := range results {
 		switch {
@@ -422,34 +465,23 @@ func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, rev
 	fmt.Printf("  Errors        : %d\n", errorCount)
 	fmt.Printf("  classified.csv: %s\n", classifiedPath)
 	fmt.Printf("  review.csv    : %s\n", reviewPath)
+	warnIfStaleConfiguredYearInBatch(results, appCfg)
 }
 
-// inputRow is a parsed 3-field line.
-type inputRow struct {
-	Item     string
-	Date     string
-	Value    float64 // per-installment value, used for classifier display
-	RawValue string  // original string, preserves installment notation (e.g. "99,90/3")
-}
-
-// parse3FieldLine splits "item;DD/MM;value" and parses currency.
-// value may include installment notation (e.g. "99,90/3"); RawValue preserves it.
-func parse3FieldLine(line string) (inputRow, error) {
+// parse3FieldLine splits the CSV's "item;DD/MM;value" form and hands the three fields
+// to the parse boundary, which owns every rule about what they may contain.
+//
+// The split stays here rather than moving into the boundary because this is a different
+// INPUT FORMAT from the 4-field semicolon CLI form, not a drifted copy of it. Merging
+// them into one 3-or-4-field function would cost error locality: `add "Item;15/04;35,50"`
+// would stop failing at the parse with a field-count message and instead fail later,
+// inside taxonomy resolution, with a message about something else entirely.
+func parse3FieldLine(line string, opts parse.Options) (parse.ParsedExpense, error) {
 	parts := strings.SplitN(line, ";", 3)
 	if len(parts) != 3 {
-		return inputRow{}, fmt.Errorf("expected 3 fields (item;DD/MM;value), got %d", len(parts))
+		return parse.ParsedExpense{}, fmt.Errorf("expected 3 fields (item;DD/MM;value), got %d", len(parts))
 	}
-	item := strings.TrimSpace(parts[0])
-	date := strings.TrimSpace(parts[1])
-	valueStr := strings.TrimSpace(parts[2])
-	if item == "" {
-		return inputRow{}, fmt.Errorf("empty item field")
-	}
-	perInstallment, _, err := utils.ParseCurrencyWithInstallments(valueStr)
-	if err != nil {
-		return inputRow{}, fmt.Errorf("parsing value %q: %w", valueStr, err)
-	}
-	return inputRow{Item: item, Date: date, Value: perInstallment, RawValue: valueStr}, nil
+	return parse.Fields(parts[0], parts[1], parts[2], opts)
 }
 
 // writeClassifiedCSV writes all classified rows to path.
@@ -468,9 +500,9 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 	}
 	for _, r := range rows {
 		w.Write([]string{ //nolint:errcheck
-			r.Item,
-			r.Date,
-			r.RawValue,
+			r.displayItem(),
+			r.dateCell(),
+			r.valueCell(),
 			r.Subcategory,
 			r.Category,
 			fmt.Sprintf("%.4f", r.Confidence),
@@ -504,9 +536,9 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 			continue
 		}
 		w.Write([]string{ //nolint:errcheck
-			r.Item,
-			r.Date,
-			r.RawValue,
+			r.displayItem(),
+			r.dateCell(),
+			r.valueCell(),
 			r.Subcategory,
 			r.Category,
 			fmt.Sprintf("%.4f", r.Confidence),

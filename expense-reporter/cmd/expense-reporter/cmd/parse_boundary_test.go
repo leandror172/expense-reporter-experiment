@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"io"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,4 +128,97 @@ func TestParseOptions_ProducesTheDocumentedPrecedence(t *testing.T) {
 			assert.Equal(t, tt.wantSource, pe.YearSource, "the reported rung must match the one that fired")
 		})
 	}
+}
+
+// rowsDatedByConfigYear builds n rows whose year came from the config rung, by parsing
+// bare dates with only ConfigYear supplied. Building them through the real parser is what
+// makes the assertion meaningful: YearSource is recorded by resolveDate, so a hand-set
+// field would test the test rather than the ladder.
+func rowsDatedByConfigYear(t *testing.T, configYear, n int) []classifiedRow {
+	t.Helper()
+	rows := make([]classifiedRow, 0, n)
+	for i := 0; i < n; i++ {
+		pe, err := parse3FieldLine("Posto Ipiranga;15/01;35,50", parse.Options{ConfigYear: configYear})
+		require.NoError(t, err)
+		require.Equal(t, parse.YearFromConfig, pe.YearSource, "precondition: the config rung must be what dated this row")
+		rows = append(rows, classifiedRow{Expense: pe})
+	}
+	return rows
+}
+
+// rowWithExplicitYear builds a row whose date carried its own year, so the config rung
+// never ran for it.
+func rowWithExplicitYear(t *testing.T) classifiedRow {
+	t.Helper()
+	pe, err := parse3FieldLine("Netflix;15/01/2024;55,90", parse.Options{ConfigYear: 2024})
+	require.NoError(t, err)
+	require.Equal(t, parse.YearFromDateString, pe.YearSource)
+	return classifiedRow{Expense: pe}
+}
+
+// captureStderr runs fn with os.Stderr redirected and returns what it wrote.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	old := os.Stderr
+	os.Stderr = w
+
+	fn()
+
+	w.Close()
+	os.Stderr = old
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+	return string(out)
+}
+
+// TestWarnIfStaleConfiguredYearInBatch_EmitsOneLineNamingTheRowCount pins the batch
+// shape of the stale-year warning (T-49).
+//
+// The single-row warning cannot simply be called per row: a 300-row statement of bare
+// dates would emit 300 identical lines, burying the command's own output and training
+// the reader to ignore stderr. So the batch form must be exactly one line, and it must
+// carry the count — that number is the whole diagnostic, since it says how much of the
+// run a leftover config value silently dated.
+func TestWarnIfStaleConfiguredYearInBatch_EmitsOneLineNamingTheRowCount(t *testing.T) {
+	staleYear := time.Now().Year() - 1
+	results := rowsDatedByConfigYear(t, staleYear, 2)
+	results = append(results, rowWithExplicitYear(t))
+
+	out := captureStderr(t, func() {
+		warnIfStaleConfiguredYearInBatch(results, &config.Config{DateYear: staleYear})
+	})
+
+	assert.Equal(t, 1, strings.Count(out, "\n"), "the batch warning must be a single line, not one per row:\n%s", out)
+	assert.Contains(t, out, "2 of 3 row(s)", "the warning must name how many rows the stale year dated")
+}
+
+// TestWarnIfStaleConfiguredYearInBatch_SilentWhenConfigYearIsCurrent guards the half of
+// the condition that stops the warning from crying wolf: naming the year being closed is
+// the SUPPORTED use of date_year, so a run that uses it that way must say nothing.
+func TestWarnIfStaleConfiguredYearInBatch_SilentWhenConfigYearIsCurrent(t *testing.T) {
+	currentYear := time.Now().Year()
+	results := rowsDatedByConfigYear(t, currentYear, 2)
+
+	out := captureStderr(t, func() {
+		warnIfStaleConfiguredYearInBatch(results, &config.Config{DateYear: currentYear})
+	})
+
+	assert.Empty(t, out, "date_year naming the current year is the supported usage, not a hazard")
+}
+
+// TestWarnIfStaleConfiguredYearInBatch_SilentWhenNoRowUsedTheConfigRung guards the other
+// half: a stale date_year that no input consulted has dated nothing, so there is nothing
+// to warn about. Warning on staleness alone would fire on every run throughout a
+// legitimate backfill of an earlier year.
+func TestWarnIfStaleConfiguredYearInBatch_SilentWhenNoRowUsedTheConfigRung(t *testing.T) {
+	staleYear := time.Now().Year() - 1
+	results := []classifiedRow{rowWithExplicitYear(t), rowWithExplicitYear(t)}
+
+	out := captureStderr(t, func() {
+		warnIfStaleConfiguredYearInBatch(results, &config.Config{DateYear: staleYear})
+	})
+
+	assert.Empty(t, out, "a configured year no input consulted has dated nothing")
 }

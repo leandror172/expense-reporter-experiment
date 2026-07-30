@@ -7,7 +7,7 @@ import (
 	"expense-reporter/internal/appender"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
-	"expense-reporter/pkg/utils"
+	"expense-reporter/internal/parse"
 )
 
 const skippedMarker = "(already logged)"
@@ -77,31 +77,25 @@ const (
 	resumeProceed resumeOutcome = iota
 	resumeSkipFull
 	resumePartial
-	resumeParseErr
 )
 
 // classifyResumeDecision makes a decision about whether to skip or proceed with a row.
 // Consumes ledger counts only on a full skip; partial/absent consume nothing.
-// A parse failure routes to an error row, never a skip.
-func classifyResumeDecision(ledger map[string]int, row inputRow) (resumeOutcome, error) {
-	perInstallment, count, err := utils.ParseCurrencyWithInstallments(row.RawValue)
-	if err != nil {
-		return resumeParseErr, fmt.Errorf("parsing value %q: %w", row.RawValue, err)
-	}
-
-	parsedDate, err := utils.ParseDateFlexible(row.Date)
-	if err != nil {
-		return resumeParseErr, fmt.Errorf("parsing date %q: %w", row.Date, err)
-	}
-
-	predictedIDs := appender.PredictEntryIDs(row.Item, parsedDate, perInstallment, count)
+//
+// It cannot fail. The row arrives already parsed, so the value and date rejections this
+// used to report — and the resumeParseErr outcome that carried them — have no way to
+// occur here; a line that does not parse never reaches the resume check at all. Predicting
+// from the same ParsedExpense the append will later use is also what keeps the prediction
+// honest: the ids compared against the ledger are derived exactly as the written ones are.
+func classifyResumeDecision(ledger map[string]int, pe parse.ParsedExpense) resumeOutcome {
+	predictedIDs := appender.PredictEntryIDs(pe.Item, pe.Date, pe.Value, pe.Installments)
 	skip, partial := evaluateResumeSkip(ledger, predictedIDs)
 
 	if skip {
-		return resumeSkipFull, nil
+		return resumeSkipFull
 	}
 	if partial {
-		return resumePartial, nil
+		return resumePartial
 	}
-	return resumeProceed, nil
+	return resumeProceed
 }

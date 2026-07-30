@@ -88,3 +88,47 @@ func warnIfStaleConfiguredYear(pe parse.ParsedExpense, appCfg *config.Config) {
 		"⚠  config date_year=%d is before the current year (%d); it dated this entry %s — pass --year to override, or update config.json\n",
 		appCfg.DateYear, currentYear, pe.DateString())
 }
+
+// staleConfiguredYearRowCount counts the rows a stale config date_year actually dated.
+// It reads each row's recorded YearSource rather than re-deciding the ladder, for the
+// same reason its single-row sibling does: a second copy of the precedence rules is a
+// second thing that can drift out of step with the boundary.
+func staleConfiguredYearRowCount(results []classifiedRow) int {
+	dated := 0
+	for _, r := range results {
+		if r.Expense.YearSource == parse.YearFromConfig {
+			dated++
+		}
+	}
+	return dated
+}
+
+// warnIfStaleConfiguredYearInBatch is the batch counterpart of
+// warnIfStaleConfiguredYear: one line for the whole run, naming how many rows a stale
+// config date_year dated.
+//
+// It is a separate function rather than a call to the single-row version inside the loop
+// because the per-row shape is unusable at batch scale — a 300-row statement of bare dates
+// would emit 300 identical lines, burying the command's own output and teaching the reader
+// to ignore stderr. Hoisting the check above the loop would be wrong differently: it would
+// fire even for a batch whose every row carries an explicit year, which the config rung
+// never touched.
+//
+// Rows that --resume skipped are counted deliberately. They are parsed before the ledger
+// is consulted, so a stale date_year gives them the wrong predicted ids — meaning --resume
+// silently matches nothing and re-appends rows it was asked to skip. That is the case this
+// warning most needs to cover, so excluding skipped rows would hide it.
+func warnIfStaleConfiguredYearInBatch(results []classifiedRow, appCfg *config.Config) {
+	currentYear := time.Now().Year()
+	if appCfg.DateYear >= currentYear {
+		return
+	}
+	dated := staleConfiguredYearRowCount(results)
+	if dated == 0 {
+		return
+	}
+
+	fmt.Fprintf(os.Stderr,
+		"⚠  config date_year=%d is before the current year (%d); it dated %d of %d row(s) — pass --year to override, or update config.json\n",
+		appCfg.DateYear, currentYear, dated, len(results))
+}
