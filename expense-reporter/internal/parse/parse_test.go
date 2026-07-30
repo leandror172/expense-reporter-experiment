@@ -405,3 +405,109 @@ func TestYearSource_ZeroValueIsUnknown(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, YearSourceUnknown, expense.YearSource, "a failed parse must not report a rung")
 }
+
+// TestFields_ErrorsNameTheFieldThatFailed pins that every rejection is
+// attributable to a field via errors.Is, so no caller has to match on message
+// text to know what went wrong. Message matching is what this replaces: the CLI
+// wants to name the offending argument, and a future chat layer has to explain
+// the failure in Portuguese, which it cannot do by reading English strings.
+//
+// The load-bearing rows are the three year validations. They fail for quite
+// different reasons — unparseable, unrenderable, beyond the current year — yet
+// all three are the DATE field's problem, and a caller that only handled
+// "unparseable" would print the wrong hint for the other two.
+func TestFields_ErrorsNameTheFieldThatFailed(t *testing.T) {
+	// A fixed clock keeps the beyond-current-year row from depending on the run
+	// date, which would otherwise turn green into red in some future year.
+	july2026 := Options{Now: time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC)}
+
+	tests := []struct {
+		name     string
+		item     string
+		dateStr  string
+		valueStr string
+		opts     Options
+		wantIs   error
+		wantNot  error
+	}{
+		{
+			name:     "empty date",
+			item:     "Posto Ipiranga",
+			dateStr:  "",
+			valueStr: "35,50",
+			opts:     july2026,
+			wantIs:   ErrInvalidDate,
+			wantNot:  ErrInvalidValue,
+		},
+		{
+			name:     "unparseable date",
+			item:     "Posto Ipiranga",
+			dateStr:  "not-a-date",
+			valueStr: "35,50",
+			opts:     july2026,
+			wantIs:   ErrInvalidDate,
+			wantNot:  ErrInvalidValue,
+		},
+		{
+			name:     "year outside the renderable range",
+			item:     "Posto Ipiranga",
+			dateStr:  "15/04/12345",
+			valueStr: "35,50",
+			opts:     july2026,
+			wantIs:   ErrInvalidDate,
+			wantNot:  ErrInvalidValue,
+		},
+		{
+			name:     "year beyond the current one",
+			item:     "Posto Ipiranga",
+			dateStr:  "15/04/2027",
+			valueStr: "35,50",
+			opts:     july2026,
+			wantIs:   ErrInvalidDate,
+			wantNot:  ErrInvalidValue,
+		},
+		{
+			name:     "unparseable value",
+			item:     "Posto Ipiranga",
+			dateStr:  "15/04/2024",
+			valueStr: "not-a-number",
+			opts:     july2026,
+			wantIs:   ErrInvalidValue,
+			wantNot:  ErrInvalidDate,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Fields(tt.item, tt.dateStr, tt.valueStr, tt.opts)
+
+			require.Error(t, err)
+			assert.ErrorIs(t, err, tt.wantIs)
+			assert.NotErrorIs(t, err, tt.wantNot, "a failure must name one field, not both")
+		})
+	}
+}
+
+// TestFields_EmptyItemCarriesNoFieldSentinel pins the deliberate absence. Adding
+// an item sentinel later is easy; having one that no caller reads is API that
+// misleads the next reader into thinking someone branches on it.
+func TestFields_EmptyItemCarriesNoFieldSentinel(t *testing.T) {
+	_, err := Fields("", "15/04/2024", "35,50", Options{})
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, ErrInvalidDate)
+	assert.NotErrorIs(t, err, ErrInvalidValue)
+}
+
+// TestFields_WrappedErrorKeepsTheSpecificCause guards the half of the wrapping
+// that errors.Is cannot see. Wrapping with a single %w would satisfy every
+// assertion above while replacing "year 12345 is not renderable" with a bare
+// "invalid date" — the caller would know WHICH field failed and no longer know
+// WHY. Both halves have to survive, so both are asserted.
+func TestFields_WrappedErrorKeepsTheSpecificCause(t *testing.T) {
+	_, err := Fields("Posto Ipiranga", "15/04/12345", "35,50", Options{})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrInvalidDate, "the field must still be identifiable")
+	assert.ErrorContains(t, err, "12345", "the underlying reason must survive the wrap")
+}

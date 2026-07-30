@@ -47,7 +47,7 @@ func runCorrect(cmd *cobra.Command, args []string) error {
 	// T-41: parse at the boundary; config loads first so date_year feeds the
 	// year ladder. The canonical DateString keeps GenerateID's lookup bytes
 	// aligned with what add/auto wrote.
-	pe, actualSubcategory, err := parse.ExpenseString(args[0], parse.Options{Year: correctYear, ConfigYear: appCfg.DateYear})
+	pe, actualSubcategory, err := parse.ExpenseString(args[0], parseOptions(correctYear, appCfg))
 	if err != nil {
 		return fmt.Errorf("invalid expense format: expected \"item;DD/MM;value;subcategory\": %w", err)
 	}

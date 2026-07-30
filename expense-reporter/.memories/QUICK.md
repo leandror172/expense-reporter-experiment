@@ -19,7 +19,11 @@ guard). **T-41 parse boundary slice 1 (s63): `add`/`correct` parse via
 the boundary now validates the RESOLVED year twice (renderable 1..9999; entry beyond
 the CURRENT year refused — provisional, year-scale), reports WHICH rung resolved it
 (`YearSource`), and `add`/`correct` warn on stderr when a `date_year` below the current
-year is what dated the entry. `config.json` `date_year` → 2026. Next after T-41: T-21 → T-42 close.
+year is what dated the entry. `config.json` `date_year` → 2026. **T-41 slice 2 (s66): `auto` migrated** — one
+`parse.Fields` call, `--year` flag, `date_year` live, stale-year warning;
+`appendExpense` collapsed to take a `ParsedExpense` (the five-scalar signature was
+what produced T-35); field sentinels added to `parse`. Next: slice 3 (`batch-auto`,
+takes T-40 + the T-49 warning-shape call) → slice 4 (`apply`) → T-21 → T-42 close.
 History → KNOWLEDGE.md "Milestone Log".
 
 ## Structure
@@ -43,8 +47,10 @@ pkg/utils/  config/config.json
   plain `batch` still expands at insert
 - **Parse boundary (T-41)** — commands parse input ONLY via `internal/parse`
   (`ParsedExpense`; `DateString()` = the identity bytes); never call utils
-  date/currency parsers from command code. Migrated: add/correct; pending:
-  auto/batch-auto/apply. `internal/parser` (no "e") is the DYING pre-pivot one
+  date/currency parsers from command code. Migrated: add/correct/auto; pending:
+  batch-auto/apply. Command-layer helpers live in `cmd/parse_boundary.go`
+  (`parseOptions`, `warnIfStaleConfiguredYear`, `describeParseFailure`) — `parse`
+  must not import `config`. `internal/parser` (no "e") is the DYING pre-pivot one
 
 ## Deeper Memory → KNOWLEDGE.md
 Log-append path (WS-B) · workbook generator design · milestone log (sessions 26–44)

@@ -12,8 +12,11 @@ T-20 resume+dup warning (s60), T-35 join-id canonicalization (s61), T-39 suite s
 branch `feat/t41-parse-boundary`): plan FINAL (all §10 locked — `internal/parse`,
 single `time.Time` + `DateString()`, grace 0, internal-first). Slice 1 DONE:
 add/correct migrated, `--year` flags, `date_year` live (rung 3), BR thousands
-parse. Slices 2–4: auto → batch-auto (T-40 lands there) → apply, then T-21 →
-T-42 monthly close.** **s65 date/year hardening (PRs #56/#57 open):** resolved-year
+parse. **Slice 2 DONE (s66): `auto` migrated** — single `parse.Fields` call,
+`--year`, stale-year warning, `appendExpense(pe ParsedExpense, …)` collapse,
+`parse` field sentinels (`ErrInvalidDate`/`ErrInvalidValue`, double-`%w` so the
+cause survives). Slices 3–4: batch-auto (T-40 + T-49 land there) → apply, then
+T-21 → T-42 monthly close.** **s65 date/year hardening (PRs #56/#57 open):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.
 WS-D (HELD: gate-to-review) → WS-E after.

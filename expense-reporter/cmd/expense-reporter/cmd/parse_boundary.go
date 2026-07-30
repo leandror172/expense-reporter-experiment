@@ -5,6 +5,7 @@ package cmd
 // file is where those command concerns meet a ParsedExpense.
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -12,6 +13,49 @@ import (
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/parse"
 )
+
+// describeParseFailure adds what the command layer knows and the boundary cannot:
+// the accepted spellings of a value, which parse's own message never mentions.
+//
+// It only ever ADDS to the boundary's reason, never replaces it. An earlier version
+// substituted a fixed "expected DD/MM or DD/MM/YYYY" hint for every date rejection,
+// and so told a user entering 15/04/2027 that their FORMAT was wrong when the real
+// objection was the future year (T-47): the field was named correctly and the reason
+// was destroyed. That is the same defect the sentinels' double-%w wrapping exists to
+// prevent inside parse, reintroduced one layer up — so the rule here is the same,
+// the cause always survives.
+//
+// Hence the apparent asymmetry, which is deliberate: parse's date messages already
+// state the accepted format (and, for a rejected year, say so instead), so a date
+// failure needs nothing added. Its value messages never mention installment syntax,
+// so that hint is genuinely the command's to supply.
+//
+// The rejected token is not repeated here — every value rejection already quotes it
+// — so this appends the accepted forms and nothing else.
+func describeParseFailure(err error) error {
+	if errors.Is(err, parse.ErrInvalidValue) {
+		return fmt.Errorf("%w — accepted: 35.50, 35,50, or 35,50/3 for three installments", err)
+	}
+	return err
+}
+
+// parseOptions assembles the year-precedence ladder's inputs from a command's
+// --year flag and the loaded config, so the ladder is wired in ONE place instead
+// of at each command's call site. The boundary package cannot do this itself:
+// internal/parse must not import config, which is exactly why this helper is
+// command-layer.
+//
+// It takes no seam for per-command divergence because there is none — add,
+// correct and auto all want the identical ladder, and a parameter that only one
+// caller would ever pass is speculative generality rather than a modelled
+// difference.
+//
+// Options.Now is deliberately left at its zero value, which parse reads as
+// time.Now(). Every command wants the real clock; only tests inject one, and
+// they build Options directly rather than going through here.
+func parseOptions(yearFlag int, cfg *config.Config) parse.Options {
+	return parse.Options{Year: yearFlag, ConfigYear: cfg.DateYear}
+}
 
 // warnIfStaleConfiguredYear tells the user when a leftover config date_year is
 // what dated this entry. A wrong year is the quietest failure in the system: the

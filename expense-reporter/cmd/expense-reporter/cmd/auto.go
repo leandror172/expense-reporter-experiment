@@ -6,12 +6,11 @@ import (
 	"expense-reporter/internal/classifier"
 	"expense-reporter/internal/config"
 	"expense-reporter/internal/feedback"
-	"expense-reporter/pkg/utils"
+	"expense-reporter/internal/parse"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -21,6 +20,7 @@ var (
 	autoDataDir string
 	autoConfirm bool
 	autoThink   bool
+	autoYear    int
 )
 
 var autoCmd = &cobra.Command{
@@ -43,35 +43,33 @@ func init() {
 	autoCmd.Flags().StringVar(&autoDataDir, "data-dir", "data/classification", "Path to classification data directory")
 	autoCmd.Flags().BoolVar(&autoConfirm, "confirm", false, "Always ask for confirmation before inserting")
 	autoCmd.Flags().BoolVar(&autoThink, "think", false, "Allow the model to emit thinking tokens (~10x slower for a marginal accuracy gain)")
+	autoCmd.Flags().IntVar(&autoYear, "year", 0, "Fallback year for bare DD/MM dates (outranks config date_year; an explicit year in the date always wins)")
 }
 
 func runAuto(cmd *cobra.Command, args []string) error {
-	item := args[0]
-
-	value, installmentCount, err := utils.ParseCurrencyWithInstallments(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid value %q: expected a number (e.g. 35.50 or 35,50) or with installments (e.g. 35,50/3)", args[1])
-	}
-
-	date := args[2]
-
-	parsedDate, err := utils.ParseDateFlexible(date)
-	if err != nil {
-		return fmt.Errorf("invalid date %q: expected DD/MM or DD/MM/YYYY", date)
-	}
-
-	// Canonicalize once, before any consumer reads it (T-35). `date` still feeds the
-	// feedback log, the JSON classification_id and the classifier prompt, while
-	// parsedDate feeds the expense log — and both logs are joined on a hash OF this
-	// date. Re-deriving the string from parsedDate keeps the two writers byte-identical;
-	// previously a `15/04` argument logged `15/04` in one file and `15/04/2026` in the
-	// other, splitting one expense across two ids.
-	date = utils.FormatDate(parsedDate)
-
+	// The config loads before the parse because its date_year is a rung of the
+	// year-precedence ladder the parse resolves against — the same order add and
+	// correct use. It also means a broken config is reported ahead of bad input.
 	appCfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
+
+	// Mind the argument order: this command takes <item> <value> <date>, while the
+	// boundary takes (item, date, value). Handing them over in the command's own
+	// order compiles cleanly and parses the value as a date.
+	//
+	// Parsing here is what keeps the two logs joinable. Both are keyed on a hash of
+	// the date STRING, and previously the raw argument fed one writer while a
+	// normalized time.Time fed the other — so a `15/04` argument logged `15/04` in
+	// one file and `15/04/2026` in the other, splitting one expense across two ids
+	// (T-35). ParsedExpense stores one time.Time and derives the string from it, so
+	// that pair can no longer disagree.
+	pe, err := parse.Fields(args[0], args[2], args[1], parseOptions(autoYear, appCfg))
+	if err != nil {
+		return describeParseFailure(err)
+	}
+	warnIfStaleConfiguredYear(pe, appCfg)
 
 	sheets, err := loadTaxonomyTree(appCfg)
 	if err != nil {
@@ -87,7 +85,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		NoThink:      !autoThink,
 	}
 
-	results, err := classifier.Classify(item, value, date, sheets, cfg)
+	results, err := classifier.Classify(pe.Item, pe.Value, pe.DateString(), sheets, cfg)
 	if err != nil {
 		return fmt.Errorf("classification failed: %w", err)
 	}
@@ -105,7 +103,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 	if kerr != nil {
 		keywords = nil
 	}
-	signal := classifier.MatchStrength(item, keywords)
+	signal := classifier.MatchStrength(pe.Item, keywords)
 
 	// JSON mode: read-only — classify and return recommendation, never insert.
 	if outputJSON {
@@ -119,7 +117,7 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		if classifier.IsAutoInsertable(top, signal, appCfg.AutoInsertExcluded) {
 			action = "would_insert"
 			message = fmt.Sprintf("%s → %s (%s) — agrees with keyword match, ready to insert",
-				item, top.Subcategory, top.Category)
+				pe.Item, top.Subcategory, top.Category)
 		} else if classifier.IsExcluded(top.Subcategory, appCfg.AutoInsertExcluded) {
 			action = "excluded"
 			message = fmt.Sprintf("%q is excluded from auto-insert", top.Subcategory)
@@ -129,14 +127,14 @@ func runAuto(cmd *cobra.Command, args []string) error {
 		}
 
 		return printJSON(AutoOutput{
-			Item:             item,
-			Value:            value,
-			Date:             date,
+			Item:             pe.Item,
+			Value:            pe.Value,
+			Date:             pe.DateString(),
 			Action:           action,
 			Result:           topCandidate,
 			Candidates:       toCandidates(results),
 			Message:          message,
-			ClassificationID: feedback.GenerateID(item, date, value),
+			ClassificationID: feedback.GenerateID(pe.Item, pe.DateString(), pe.Value),
 		})
 	}
 
@@ -145,15 +143,15 @@ func runAuto(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Top match: %s (%s) — agrees with keyword match\n", top.Subcategory, top.Category)
 			fmt.Printf("Insert? [y/N] ")
 			if !confirmInsert(os.Stdin) {
-				printCandidates(item, value, date, results)
+				printCandidates(pe.Item, pe.Value, pe.DateString(), results)
 				fmt.Println("\n⚠  Not appended — cancelled by user.")
 				return nil
 			}
 		}
-		return appendExpense(item, date, parsedDate, value, installmentCount, top, appCfg)
+		return appendExpense(pe, top, appCfg)
 	}
 
-	printCandidates(item, value, date, results)
+	printCandidates(pe.Item, pe.Value, pe.DateString(), results)
 	if classifier.IsExcluded(top.Subcategory, appCfg.AutoInsertExcluded) {
 		fmt.Printf("\n⚠  Not appended — \"%s\" is excluded from auto-insert.\n", top.Subcategory)
 	} else {
@@ -181,21 +179,28 @@ func gateReviewReason(top classifier.Result, signal classifier.MatchSignal) stri
 	}
 }
 
-func appendExpense(item, date string, parsedDate time.Time, value float64, installmentCount int, result classifier.Result, appCfg *config.Config) error {
+// appendExpense writes one classified expense to both logs.
+//
+// It takes the whole ParsedExpense rather than the fields it needs because the two
+// writers need the date in different forms — the expense log takes a time.Time so
+// installments can be dated forward, the feedback log takes the canonical string —
+// and passing those as separate parameters is what let them drift apart into two
+// join ids for one expense (T-35). Derived from one struct, they cannot.
+func appendExpense(pe parse.ParsedExpense, result classifier.Result, appCfg *config.Config) error {
 	// T-13: the type comes straight from the predicted full path — no post-hoc
 	// (category, subcategory) lookup that could fail or disagree.
 	logPath := appCfg.ExpensesLogFilePath()
 	if logPath == "" {
 		fmt.Fprintf(os.Stderr, "⚠  expense log: no path configured\n")
 	} else {
-		if err := appender.ExpandAndAppend(logPath, item, parsedDate, value, installmentCount, result.Type, result.Category, result.Subcategory); err != nil {
+		if err := appender.ExpandAndAppend(logPath, pe.Item, pe.Date, pe.Value, pe.Installments, result.Type, result.Category, result.Subcategory); err != nil {
 			fmt.Fprintf(os.Stderr, "⚠  expense log append failed: %v\n", err)
 		}
 	}
 
 	fmt.Printf("✓ Appended: %s → %s (%s) — %.0f%% confidence\n",
-		item, result.Subcategory, result.Category, result.Confidence*100)
-	logConfirmedFeedback(appCfg, item, date, value, result, autoModel)
+		pe.Item, result.Subcategory, result.Category, result.Confidence*100)
+	logConfirmedFeedback(appCfg, pe.Item, pe.DateString(), pe.Value, result, autoModel)
 	return nil
 }
 
