@@ -95,19 +95,9 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 	if item == "" {
 		return ParsedExpense{}, errors.New("item cannot be empty")
 	}
-	if dateStr == "" {
-		return ParsedExpense{}, fmt.Errorf("%w: date string cannot be empty", ErrInvalidDate)
-	}
-
-	date, yearSource, err := resolveDate(dateStr, opts)
+	date, yearSource, err := Date(dateStr, opts)
 	if err != nil {
-		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidDate, err)
-	}
-	if err := validateRenderableYear(date.Year()); err != nil {
-		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidDate, err)
-	}
-	if err := validateYearNotBeyondCurrent(date, opts); err != nil {
-		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidDate, err)
+		return ParsedExpense{}, err
 	}
 
 	value, installments, err := utils.ParseCurrencyWithInstallments(normalizeThousands(valueStr))
@@ -123,6 +113,44 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 		RawValue:     valueStr,
 		YearSource:   yearSource,
 	}, nil
+}
+
+// Date resolves a date string under the year-precedence ladder and validates the
+// resolved year. It is the boundary's date-only entry point.
+//
+// It exists because not every consumer arrives holding three strings. `apply` reads
+// `reviewed.json`, whose item and value are already typed by the JSON decoder and
+// whose date alone is still text — so Fields would have forced it to re-serialize a
+// float purely to have the boundary parse it back. A caller with one unresolved field
+// should not have to fake the other two.
+//
+// Fields delegates here rather than duplicating the sequence, so there is exactly one
+// ladder and one pair of year validations no matter which door a caller comes through.
+// That matters more than the shared lines: the two validations are what stand between a
+// mistyped year and a row that hashes cleanly into both logs and then vanishes from the
+// workbook.
+//
+// Every failure returns YearSourceUnknown, for the same reason ParsedExpense{} does —
+// a zero that named a real rung would let a failed resolution report a plausible source
+// to code that reads it to decide.
+func Date(dateStr string, opts Options) (time.Time, YearSource, error) {
+	dateStr = strings.TrimSpace(dateStr)
+	if dateStr == "" {
+		return time.Time{}, YearSourceUnknown, fmt.Errorf("%w: date string cannot be empty", ErrInvalidDate)
+	}
+
+	date, yearSource, err := resolveDate(dateStr, opts)
+	if err != nil {
+		return time.Time{}, YearSourceUnknown, fmt.Errorf("%w: %w", ErrInvalidDate, err)
+	}
+	if err := validateRenderableYear(date.Year()); err != nil {
+		return time.Time{}, YearSourceUnknown, fmt.Errorf("%w: %w", ErrInvalidDate, err)
+	}
+	if err := validateYearNotBeyondCurrent(date, opts); err != nil {
+		return time.Time{}, YearSourceUnknown, fmt.Errorf("%w: %w", ErrInvalidDate, err)
+	}
+
+	return date, yearSource, nil
 }
 
 // ExpenseString parses the 4-field semicolon CLI form

@@ -1,0 +1,1 @@
+{"id": "8c434a0b64c0", "item": "Uber Centro", "date": "15/04/2026", "value": 35.5, "predicted_subcategory": "Uber/Taxi", "predicted_category": "Transporte", "actual_subcategory": "Uber/Taxi", "actual_category": "Transporte", "confidence": 0.91, "model": "my-classifier-q3", "status": "confirmed", "timestamp": "2026-05-01T10:00:00Z"}

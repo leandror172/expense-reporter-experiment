@@ -16,6 +16,18 @@ is the sole workbook writer (WS-B slice 4). Driven by `cmd/.../apply.go`.
 - **Pre-flight (non-dry-run):** both paths probed non-destructively before work
   (expense-log only when newRows>0, NO `O_CREATE`); errors carry `Hint:`.
 
+- **Identity is DERIVED, never trusted (T-41 slice 4, s67).** `entriesWithCanonicalDates`
+  rewrites each entry's Date to canonical form AND recomputes its `ID` from it. The id
+  in `reviewed.json` is advisory: it was hashed from a date apply is about to change, so
+  trusting it meant looking up an id apply never writes — and that miss is SILENT
+  (unfound → treated as new → appended), so the symptom was a duplicate expense, not an
+  error. `canonicalDate` now delegates to `internal/parse` (`parse.Date`), inheriting the
+  year ladder and BOTH year validations — including T-47's future-year refusal, which
+  here downgrades the row to `failed` rather than aborting the run.
+- **Fixture note:** `apply-basic` is self-consistent and therefore CANNOT catch a
+  regression of the above — mutation-verified. `apply-stale-id` is the only
+  discriminating fixture; its id is deliberately hashed from the pre-canonical date.
+
 **Open:** T-20 (best-effort idempotency), T-21 (reviewed installments recorded count=1).
 Details + rationale → KNOWLEDGE.md.
 

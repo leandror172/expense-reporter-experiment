@@ -1,47 +1,46 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-29 — Session 66: T-41 slice 2 — auto repointed at the parse boundary (PR #58), field sentinels, and the slice-3 design record
-**Current Layer:** T-41 parse boundary — slices 1–2 shipped (add/correct/auto); slice 3 (`batch-auto`) decided in plan §11 and next → slice 4 (`apply`) → T-21 → T-42 first monthly close
+**Current Session:** 2026-07-30 — Session 67: T-41 slices 3 & 4 — batch-auto and apply on the parse boundary (T-41 COMPLETE), plus T-53
+**Current Layer:** T-41 parse boundary COMPLETE — next T-21 (reviewed installments), then T-42 first monthly close
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-29 - Session 66: T-41 slice 2 — auto repointed at the parse boundary (PR #58), field sentinels, and the slice-3 design record
+## 2026-07-30 - Session 67: T-41 slices 3 & 4 — batch-auto and apply on the parse boundary (T-41 COMPLETE), plus T-53
 
 ### Context
 
-Opened as a "discuss next steps" session with PRs #56/#57 merged and master clean. A trace of who actually parses dates showed the entire T-42 close path (`batch-auto → review → apply → generate-workbook`) still on `utils.ParseDateFlexible` while everything session 65 hardened protected only `add`/`correct` — so the parse-boundary slices were confirmed as genuine pre-work rather than incidental cleanup, and slice 2 was implemented.
+Opened on merged PRs and a clean master, asking to discuss next steps. Chose T-53 as a prelude (it guards the evidence for everything after it), then implemented T-41 slice 3 against the already-locked plan §11, and after an advisor pass continued into slice 4 — completing T-41.
 
 ### What Was Done
 
-- `feat(parse)`: `ErrInvalidDate`/`ErrInvalidValue` sentinels naming the rejected field, wrapped with TWO `%w` verbs so identifying the field never costs the reason. Chosen over a `FieldError` struct because nothing reads a field name programmatically.
-- `refactor(cmd)`: `auto` repointed at the boundary — one `parse.Fields` call replacing a currency parse, a date parse and a manual re-format; `config.Load()` hoisted above the parse (aligning with `add`/`correct`); `parseOptions` extracted as the single owner of the year ladder's inputs and adopted by all three commands; `--year` flag + stale-year warning; `appendExpense` collapsed to take a `ParsedExpense`.
-- `docs`: memories/index synced; two KNOWLEDGE statements that had become INSTRUCTIONS were corrected (Config Design's "still dead for auto", and Log-Append's "use explicit-year inputs BECAUSE bare dates take time.Now().Year()").
-- `docs(plan)`: slice-3 design record as plan §11 (D1–D4), decided before implementing.
-- Established a real characterization baseline first (66 pass / 0 skip / 110.6s) and matched it after (66 / 0 / 105.6s) with `-count=1`; 8 new deterministic unit tests; `gofmt`/`vet` clean including `-tags=replay` and `-tags=acceptance`.
-- Verified verdict capture for both local-model runs; one was missing and was appended by hand with a dedupe guard.
-- Corrected the `feedback_verdict_transcript_gap` memory twice — first to stop it over-generalizing, then again when direct evidence falsified the correction.
+- `test(acceptance)`: disable the test cache in `run-acceptance.sh` (T-53) — the suite builds the CLI in `TestMain`, so Go's cache key never covered it and the script could report a pass that ran none of the change.
+- `refactor(cmd)`: repoint batch-auto at the parse boundary (T-41 slice 3) — `inputRow` deleted, the four re-parses collapsed to one, `resumeParseErr` deleted as unreachable, `--year` added, D2/T-49 counted stale-year warning, D3/T-40 join-id pinned at construction, D4 raw value token.
+- `docs`: sync memories and index for T-41 slice 3.
+- `test(cmd)`: make the slice-3 contracts enforceable, not just documented — advisor found D4 and the `--year` wiring were correct by INSPECTION only, the exact state D4 warned against. Three guards added, each mutation-verified.
+- `refactor(cmd)`: repoint apply at the parse boundary (T-41 slice 4) — `canonicalDate` retired into new `parse.Date`, `entry.ID` recomputed from the canonical date, fixtures swept, new `apply-stale-id` fixture.
+- `docs`: sync memories and index for T-41 slice 4.
+- PRs #59 (slice 3) and #60 (slice 4, stacked, contains #59) opened against master; both awaiting review.
+- README corrected: `--year` for batch-auto, the CSV column contract, and a `date_year` section that had been stale since slice 2 (still claimed the setting was unread by `auto`).
 
 ### Decisions Made
 
-- **Slices 2→3→4 before the T-42 dogfood** (user call). The old parser is accidentally CORRECT for a July-2026 close of 2026 data (`time.Now().Year()` == the close year), so the hole only bites on backfill or a December-in-January close — but the close path is exactly the unguarded part.
-- **`parseOptions` takes no seam.** `add`/`correct`/`auto` build byte-identical `Options`; `ref:patterns-code-extract-keep-divergence` says byte-identical copies need plain extraction, and rule 3 forbids the speculative parameter. `Options.Now` deliberately left zero.
-- **No Ollama-gated test for `auto`'s year ladder.** Every path through `auto` calls `classifier.Classify` (`--json` included), so there is no deterministic CLI route; the ladder is already pinned inside `parse`, so `parseOptions`/`describeParseFailure` are pinned at the helper level per the `apply_dates_test.go` precedent.
-- **Slice 3 D1–D4 locked** (plan §11): split stays in `cmd`; one counted warning in `printBatchSummary`; T-40 as a construction unit test at `Installments == 1`; and `classifiedRow`'s `value` column must map to `pe.RawValue`.
-- **T-49 and T-40 left UNCHECKED despite their decisions being made.** An unchecked task with a locked decision costs a redundant glance at §11; a checked task whose implementation never happened costs the requirement.
-- Deferred by user call: `auto --json` + T-47 refusal shape, and `auto`'s argument shape vs the vision — both to T-42 (now T-51/T-52).
+- **`classified.csv`/`review.csv` now carry the CANONICAL date.** It falls out of `classifiedRow` carrying a `ParsedExpense`, and it closes a real divergence: `review.ReadQueue` hashes that column into the id it puts in `reviewed.json` while both JSONL logs hash the canonical form.
+- **`apply` inherits the FULL boundary including T-47's future-year refusal** (user call). A future-dated reviewed row downgrades to `failed` with a non-zero exit rather than being written — loud rather than silent, which is T-47's purpose. Per-row failure honesty preserved.
+- **`parse.Date` added as a date-only entry point, with `Fields` delegating to it.** `apply` does not arrive holding three strings — `reviewed.json`'s item and value are already typed by the JSON decoder — so `Fields` would have forced it to re-serialize a float purely to have the boundary parse it back. Delegation keeps one ladder and one pair of year validations behind both doors.
+- **Identity is derived, never trusted.** `entriesWithCanonicalDates` recomputes `entry.ID` alongside the date it rewrites. Third appearance of the T-35/T-18 shape.
+- The two help-text corrections (rollover.csv, the `--resume` year note) were kept in slice 3 rather than split out, because the `--resume` note becomes actively wrong as a direct result of the change.
 
 ### Next
 
-- Merge PR #58, then implement T-41 slice 3 (`batch-auto`) against plan §11 — the decisions are made, so this is implementation.
-- Start from the root cause: `parse3FieldLine` DISCARDS the installment count (`_`), which is why `appendOneRow` re-parses to recover it. Retaining it in the row struct removes the reason the downstream re-parses exist.
-- Treat D4 as the hazard: verify the `classified.csv` `value` column against the fixtures, not by inspection.
-- Then slice 4 (`apply`, retires `canonicalDate`) → T-21 → T-42.
+- **T-21 — reviewed-installment under-recording.** Now genuinely unblocked: `Installments` and `RawValue` are boundary fields and slice 3 made the count reachable at read time. Remaining gap is `review.ReadQueue` (queue.go:63 discards the count) → the HTML export JS → the `reviewed.json` schema → `apply.ReviewedEntry`. UX locked: 1 row + ×N badge.
+- **T-54 first if the dogfood is near** — `review` cannot currently read `batch-auto`'s output at all (auto_inserted true/false vs 1/0), which breaks the middle of the T-42 chain. It touches the same `ReadQueue` code as T-21, so doing them together touches that reader once.
+- Then T-42 — first real monthly close on 2026 data.
+- PRs #59 and #60 await review; #60 contains #59.
 
 ### Gotchas
 
-- **`./run-acceptance.sh` can report a cached pass that never ran your change** (T-53). `TestMain` builds the CLI at runtime, so edits under `cmd/` do not invalidate the test package's cache entry; the script has no `-count=1` and forwards only `-keep-on-failure`/`-keep-artifacts`. The first "green" this session was a stale cache hit.
-- **A foreign resident Ollama model turned a ~110s `-full` run into a 3602s timeout.** `my-python-q25c14` held 9.2 GB of the 12 GB GPU; the 3600s ceiling did not protect anything, it just burned an hour before failing on a cause unrelated to the tests. Check `curl -s localhost:11434/api/ps` before trusting any `-full` timing.
-- **`run_result` fixes verdict IDENTITY, not CAPTURE.** Two `run_result` calls, both with a correct `run_id` in the template; one verdict landed in `calls.jsonl`, one did not. The grep is the check, not a backstop.
-- **`generate_code`'s router silently overrides CLAUDE.md's model tier** — it picks `my-go-q3` for Go unless `model=` is passed explicitly, where the tier list names `my-go-qcoder`.
-- **Naming the right field while replacing the reason is its own bug class.** `describeParseFailure` reported a well-formed `15/04/2027` as a format error when the objection was the year. Caught by running the binary, not by any test — every unit test still passed.
-- A stale memory can be factually correct and still produce a wrong conclusion, if it describes a symptom class broadly enough to swallow a mechanism it never examined.
+- **A fixture sweep can create a blind spot.** Making `apply-basic` self-consistent meant its lookup succeeds whether or not the id is recomputed — so after fixing the bug the end-to-end test could no longer detect it. Found only by mutating the fix and watching acceptance stay green. `apply-stale-id` exists because of this and must NOT be "corrected".
+- **Four instances this session of one shape: a check that reports success while testing nothing** — the cached acceptance pass (T-53), a generated test that asserted the parser against a second call to itself, the silent id miss in `apply`, and the fixture blind spot above. The habit that catches them is mutation: break the thing the guard guards and confirm it goes red.
+- **`my-go-qcoder` is 20.7 GB on a 12 GB GPU** — it runs CPU-offloaded, so a long generation blew a 300s ceiling while a shorter one finished in ~2 min. Prefer tightly-scoped asks, and `warm_model` the classifier back before any `-full` run.
+- **The background-task notification is not the file.** One result arrived HTML-escaped (`&amp;`) AND shorter than what landed on disk — the real file had three more tests. Always read the file.
+- Backgrounded MCP calls still inject no verdict template; grep `calls.jsonl` for the call_id and append by hand.

@@ -3,7 +3,7 @@
   "source": "classified.csv",
   "entries": [
     {
-      "id": "8c434a0b64c0",
+      "id": "f0c3bf1293f3",
       "item": "Uber Centro",
       "date": "15/04",
       "value": 35.5,
@@ -14,7 +14,7 @@
       },
       "action": "confirmed",
       "reviewed": {
-        "sheet": "Variáveis",
+        "type": "Variáveis",
         "category": "Transporte",
         "subcategory": "Uber/Taxi"
       }

@@ -18,8 +18,14 @@ parse. **Slice 2 DONE (s66): `auto` migrated** — single `parse.Fields` call,
 cause survives). **Slice 3 DONE (s67): `batch-auto` migrated** — `inputRow` and the
 unreachable `resumeParseErr` deleted, `--year`, one counted stale-year warning
 (T-49), join-id pinned at construction (T-40); the classified CSVs now carry the
-canonical date, repairing a silent `review`→`apply` id divergence. Slice 4: apply
-(also recompute `entry.ID` alongside the date), then T-21 → T-42 monthly close.** **s65 date/year hardening (PRs #56/#57 open):** resolved-year
+canonical date, repairing a silent `review`→`apply` id divergence. **Slice 4 DONE
+(s67): `apply` migrated — T-41 COMPLETE, all six parsers route through the boundary.**
+`canonicalDate` retired into new `parse.Date` (date-only entry point; `Fields`
+delegates to it), and `entry.ID` is recomputed from the canonical date — apply had
+been looking up an id it never writes, and that miss is SILENT (unfound → appended →
+duplicate). Fixtures swept off the raw-date ids T-18 had already migrated for
+`correct`; new `apply-stale-id` is the only fixture that discriminates. Next: T-21 →
+T-42 monthly close.** **s65 date/year hardening (merged):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.
 WS-D (HELD: gate-to-review) → WS-E after.
