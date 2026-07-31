@@ -174,11 +174,13 @@ func RunBatchAuto(args ...string) func(*harness.Context) {
 // --- Review pipeline ------------------------------------------------------------
 
 // RunReview renders the review page for csvPath and registers review.html.
+//
+// No workbook flag: since S2 the picker's taxonomy comes from config/taxonomy.json,
+// so review reads no workbook at all.
 func RunReview(csvPath string) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		outputPath := filepath.Join(ctx.WorkDir, "review.html")
-		args := append([]string{"review", csvPath}, workbookFlag(ctx)...)
-		args = append(args, "--output", outputPath)
+		args := []string{"review", csvPath, "--output", outputPath}
 		runCommand(ctx, args...)
 		ctx.Artifacts["review.html"] = outputPath
 	}

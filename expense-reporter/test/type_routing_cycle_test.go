@@ -10,8 +10,9 @@ package acceptance_test
 // non-CLI steps are represented as fixtures and noted where they fold in:
 //
 //   1. batch-auto            → TestTypeRoutingCycle_1_BatchAutoEmitsType        (When)
-//   2. bridge true/false→1/0 → folded into the `review-input.csv` fixture (a known
-//                              CSV-format gap between writeClassifiedCSV and ReadQueue)
+//   (there is no step 2 bridge any more — T-54 made ReadQueue accept the writer's own
+//    true/false spelling, so review-input.csv is now plain batch-auto output, not a
+//    hand-converted copy of it)
 //   3. review                → TestTypeRoutingCycle_2_ReviewRendersTypes        (When)
 //   4. browser pick + export → folded into the `reviewed.json` fixture (can't drive a
 //                              browser from the harness)
@@ -24,7 +25,7 @@ package acceptance_test
 // alone could not.
 
 import (
-	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -87,7 +88,7 @@ func TestTypeRoutingCycle_2_ReviewRendersTypes(t *testing.T) {
 			reviewHTMLProduced(),
 			reviewDataEmbedded(),
 			pendingExpensesQueued(3),
-			workbookSheetsInTaxonomy([]string{"Fixas", "Variáveis", "Extras"}),
+			expenseTypesOfferedForPicking([]string{"Fixas", "Variáveis", "Extras"}),
 			predictedTypesPrefilled(map[string]string{
 				"Uber Centro":      "Variáveis",
 				"Diarista Letícia": "Fixas",
@@ -162,9 +163,29 @@ func expensesAwaitingClassification() func(*harness.Context) {
 	}
 }
 
+// expensesClassifiedWithTypes: the batch was classified and its taxonomy published —
+// the SAME taxonomy.json generate-workbook routes with in step 4.
+//
+// Before S2 this built a synthetic reference workbook carrying the Saúde/Dentista
+// ambiguity (Variáveis AND Extras), because review derived its picker from the workbook.
+// That workbook was a hand-kept DUPLICATE of the fixture's taxonomy.json, which already
+// encodes the same ambiguity — exactly the two-sources-of-truth arrangement that let the
+// real workbook and the real taxonomy.json drift 7 leaves apart in production.
 func expensesClassifiedWithTypes() func(*harness.Context) {
 	return func(ctx *harness.Context) {
-		domain.SetWorkbookPath(ctx, createAmbiguousReferenceWorkbook(ctx.T, ctx.WorkDir))
+		taxonomyDest := filepath.Join(ctx.WorkDir, "taxonomy.json")
+		data, err := os.ReadFile(filepath.Join(ctx.FixtureDir, "taxonomy.json"))
+		if err != nil {
+			ctx.T.Fatalf("reading fixture taxonomy: %v", err)
+		}
+		if err := os.WriteFile(taxonomyDest, data, 0o644); err != nil {
+			ctx.T.Fatalf("writing taxonomy to workdir: %v", err)
+		}
+		if err := domain.SetupBinaryConfig(ctx, map[string]interface{}{
+			"taxonomy_path": taxonomyDest,
+		}); err != nil {
+			ctx.T.Fatalf("SetupBinaryConfig: %v", err)
+		}
 	}
 }
 
@@ -177,45 +198,6 @@ func expenseTypedDuringBrowserReview() func(*harness.Context) {
 	)
 }
 
-// createAmbiguousReferenceWorkbook builds a reference-sheet-only workbook where
-// Saúde/Dentista appears under BOTH Variáveis and Extras, so review's taxonomy carries
-// the ambiguity. Rows 1-4 are header rows skipped by LoadReferenceSheet.
-func createAmbiguousReferenceWorkbook(t testing.TB, dir string) string {
-	t.Helper()
-
-	path := filepath.Join(dir, "reference-workbook.xlsx")
-	f := excelize.NewFile()
-	if err := f.SetSheetName("Sheet1", "Referência de Categorias"); err != nil {
-		t.Fatalf("rename sheet: %v", err)
-	}
-
-	rows := [][]string{
-		{"Fixas", "Habitação", "Diarista"},
-		{"Variáveis", "Transporte", "Uber/Taxi"},
-		{"Variáveis", "Saúde", "Dentista"},
-		{"Extras", "Saúde", "Dentista"},
-	}
-	for i, row := range rows {
-		rowNum := i + 5
-		for j, value := range row {
-			cell := fmt.Sprintf("%c%d", 'A'+j, rowNum)
-			if err := f.SetCellValue("Referência de Categorias", cell, value); err != nil {
-				t.Fatalf("set cell %s: %v", cell, err)
-			}
-		}
-	}
-	if err := f.SaveAs(path); err != nil {
-		t.Fatalf("save workbook: %v", err)
-	}
-	return path
-}
-
-// --- Then helpers (composable, one concern each) ---
-
-// confirmedReviewRowRecordedAsTypedLogLine names the outcome of step 5: the
-// human-confirmed, ambiguous-leaf entry lands in expenses_log.jsonl carrying the
-// type the reviewer chose (PR #35 naming sweep — wraps the mechanism-named
-// expenseLogMatchesExpected with a result-describing name).
 func confirmedReviewRowRecordedAsTypedLogLine(fixDir string) []func(*harness.Context) {
 	return expenseLogMatchesExpected(fixDir)
 }

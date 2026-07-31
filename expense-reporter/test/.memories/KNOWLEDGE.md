@@ -234,6 +234,13 @@ validated the `sheets`→`types` fix. Design decisions worth reusing:
   into a fixture, the producer and consumer disagree — fix them, don't document the gap.
   Guard: `cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote` now feeds the REAL writer's bytes
   to the REAL reader, so no fixture has to be kept in step for this to stay honest.
+- **S2 (s68) removed the suite's LAST synthetic workbooks.** Both review scenarios used to
+  build an `.xlsx` in their Given purely to feed review's picker (`createSyntheticWorkbook`,
+  `createAmbiguousReferenceWorkbook`). Those builders were hand-kept DUPLICATES of the
+  fixture's own `taxonomy.json` — the same two-sources-of-truth arrangement that let the real
+  workbook and the real `taxonomy.json` drift 7 leaves apart in production. Both are deleted;
+  the Givens publish the fixture taxonomy instead, and the Dentista ambiguity the cycle relies
+  on now comes from the file that actually routes.
 - **Hermetic skeleton trick:** apply's new-row insert needs a workbook with the target slot.
   Instead of committing a binary `.xlsx`, the Given builds one with `generate-workbook` (no
   `--entries`). So generate-workbook is both the *subject* of the last test and a *setup tool*

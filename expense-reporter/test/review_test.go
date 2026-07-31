@@ -4,16 +4,13 @@ package acceptance_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/xuri/excelize/v2"
 
 	"expense-reporter/test/actions"
-	"expense-reporter/test/domain"
 	"expense-reporter/test/expect"
 	"github.com/leandror172/acceptance-harness/harness"
 	"github.com/leandror172/acceptance-harness/verify"
@@ -32,50 +29,20 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 			reviewHTMLProduced(),
 			reviewDataEmbedded(),
 			pendingExpensesQueued(5),
-			workbookSheetsInTaxonomy([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
+			expenseTypesOfferedForPicking([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
 		),
 	})
 }
 
+// expensesReceivedForReview: since S2 the picker's vocabulary comes from
+// config/taxonomy.json — the same file every other command reads — so publishing the
+// taxonomy is the ENTIRE precondition. It used to build a synthetic workbook and point
+// review at it, because review derived its types from the workbook's Referência sheet.
+// That made the close cycle run on two taxonomies that had measurably drifted apart
+// (7 leaves, incl. IRFF/IRRF), so a reviewer could pick a leaf that generate-workbook
+// could not route — and the row vanished silently.
 func expensesReceivedForReview() func(*harness.Context) {
-	return func(ctx *harness.Context) {
-		domain.SetDataDir(ctx, dataDir)
-		domain.SetWorkbookPath(ctx, createSyntheticWorkbook(ctx.T, ctx.WorkDir))
-	}
-}
-
-func createSyntheticWorkbook(t testing.TB, dir string) string {
-	t.Helper()
-
-	path := filepath.Join(dir, "test-workbook.xlsx")
-	f := excelize.NewFile()
-
-	if err := f.SetSheetName("Sheet1", "Referência de Categorias"); err != nil {
-		t.Fatalf("failed to rename sheet: %v", err)
-	}
-
-	dataRows := [][]string{
-		{"Fixas", "Habitação", "Diarista"},
-		{"Variáveis", "Transporte", "Uber/Taxi"},
-		{"Extras", "Lazer", "Restaurante"},
-		{"Adicionais", "Saúde", "Farmácia"},
-	}
-
-	for i, row := range dataRows {
-		rowNum := i + 5 // rows 1-4 are skipped as headers by LoadReferenceSheet
-		for j, value := range row {
-			cell := fmt.Sprintf("%c%d", 'A'+j, rowNum)
-			if err := f.SetCellValue("Referência de Categorias", cell, value); err != nil {
-				t.Fatalf("failed to set cell %s: %v", cell, err)
-			}
-		}
-	}
-
-	if err := f.SaveAs(path); err != nil {
-		t.Fatalf("failed to save workbook: %v", err)
-	}
-
-	return path
+	return taxonomyPublished()
 }
 
 func reviewHTMLProduced() []func(*harness.Context) {
@@ -114,7 +81,7 @@ type reviewTaxonomyOnly struct {
 	} `json:"taxonomy"`
 }
 
-func workbookSheetsInTaxonomy(expectedSheets []string) []func(*harness.Context) {
+func expenseTypesOfferedForPicking(expectedTypes []string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		func(ctx *harness.Context) {
 			ctx.T.Helper()
@@ -124,7 +91,8 @@ func workbookSheetsInTaxonomy(expectedSheets []string) []func(*harness.Context) 
 			for i, s := range data.Taxonomy.Types {
 				actualNames[i] = s.Name
 			}
-			assert.ElementsMatch(ctx.T, expectedSheets, actualNames, "taxonomy types mismatch")
+			assert.ElementsMatch(ctx.T, expectedTypes, actualNames,
+				"the picker must offer exactly the types in config/taxonomy.json")
 		},
 	}
 }

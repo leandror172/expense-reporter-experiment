@@ -1,86 +1,49 @@
 package review
 
-import (
-	"slices"
-	"sort"
+import "expense-reporter/internal/taxonomy"
 
-	"expense-reporter/internal/resolver"
-)
-
-var sheetOrder = []string{"Fixas", "Variáveis", "Extras", "Adicionais"}
-
-func BuildTaxonomy(mappings map[string][]resolver.SubcategoryMapping) Taxonomy {
-	tree := buildTree(mappings)
-	names := sortedSheetNames(tree)
-
-	types := make([]Type, 0, len(names))
-	for _, name := range names {
-		types = append(types, buildType(name, tree[name]))
+// BuildTaxonomy projects the taxonomy loaded from config/taxonomy.json into the picker
+// tree the review page embeds.
+//
+// The SOURCE is the point of this function. Review used to derive the picker from the
+// workbook's "Referência de Categorias" sheet while every other command routed with
+// config/taxonomy.json — two vocabularies for one close cycle, and they drifted:
+// measured at 7 divergent leaves (e.g. the workbook's IRFF vs the taxonomy's IRRF).
+// A reviewer picking a workbook-only leaf produced a row that generate-workbook could
+// not route, so it was warn-skipped and vanished from the workbook with no error the
+// user would ever see. Worse, two such picks were logged as CORRECTIONS — the
+// highest-priority few-shot source — teaching the classifier the unroutable spelling.
+//
+// Order is preserved verbatim at all three levels, and NOTHING here sorts. The previous
+// implementation sorted (a hardcoded type order, then alphabetical) purely because it
+// folded workbook rows through Go maps, whose iteration order is random, and the
+// spreadsheet carried no authored order of its own. A JSON array does carry one. Do not
+// "restore" the sorting: it would silently reorder what the taxonomy author chose.
+func BuildTaxonomy(types []taxonomy.ExpenseType) Taxonomy {
+	result := make([]Type, 0, len(types))
+	for _, t := range types {
+		categories := buildCategories(t.Cats)
+		result = append(result, Type{
+			Name:       t.Name,
+			Categories: categories,
+		})
 	}
-	return Taxonomy{Types: types}
+	return Taxonomy{Types: result}
 }
 
-// buildTree converts flat SubcategoryMappings into a 3-level nested set:
-// sheetName → categoryName → set of subcategories.
-func buildTree(mappings map[string][]resolver.SubcategoryMapping) map[string]map[string]map[string]struct{} {
-	tree := map[string]map[string]map[string]struct{}{}
-	for _, list := range mappings {
-		for _, m := range list {
-			if _, ok := tree[m.SheetName]; !ok {
-				tree[m.SheetName] = map[string]map[string]struct{}{}
-			}
-			if _, ok := tree[m.SheetName][m.Category]; !ok {
-				tree[m.SheetName][m.Category] = map[string]struct{}{}
-			}
-			tree[m.SheetName][m.Category][m.Subcategory] = struct{}{}
+// buildCategories converts a slice of taxonomy.Category into review.Categories,
+// preserving the source order and dropping per-month entry data.
+func buildCategories(cats []taxonomy.Category) []Category {
+	result := make([]Category, 0, len(cats))
+	for _, c := range cats {
+		subcategories := make([]string, 0, len(c.Subs))
+		for _, s := range c.Subs {
+			subcategories = append(subcategories, s.Name)
 		}
+		result = append(result, Category{
+			Name:          c.Name,
+			Subcategories: subcategories,
+		})
 	}
-	return tree
-}
-
-// sortedSheetNames returns sheet names ordered by sheetOrder, then alphabetically.
-func sortedSheetNames(tree map[string]map[string]map[string]struct{}) []string {
-	names := make([]string, 0, len(tree))
-	for name := range tree {
-		names = append(names, name)
-	}
-	sort.Slice(names, func(i, j int) bool {
-		ri, rj := sheetRank(names[i]), sheetRank(names[j])
-		if ri != rj {
-			return ri < rj
-		}
-		return names[i] < names[j]
-	})
-	return names
-}
-
-// buildType converts one type's category map into a Type with sorted categories and subcategories.
-// The name originates from the workbook-facing resolver mapping (SheetName); the returned Type is
-// the domain representation surfaced to the review UI.
-func buildType(name string, catMap map[string]map[string]struct{}) Type {
-	catNames := make([]string, 0, len(catMap))
-	for n := range catMap {
-		catNames = append(catNames, n)
-	}
-	sort.Strings(catNames)
-
-	categories := make([]Category, 0, len(catNames))
-	for _, catName := range catNames {
-		subs := make([]string, 0, len(catMap[catName]))
-		for sub := range catMap[catName] {
-			subs = append(subs, sub)
-		}
-		sort.Strings(subs)
-		categories = append(categories, Category{Name: catName, Subcategories: subs})
-	}
-
-	return Type{Name: name, Categories: categories}
-}
-
-func sheetRank(name string) int {
-	idx := slices.Index(sheetOrder, name)
-	if idx >= 0 {
-		return idx
-	}
-	return len(sheetOrder) // unknown sheets sort after known ones, then alphabetically handled by caller
+	return result
 }

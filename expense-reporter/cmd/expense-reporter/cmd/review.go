@@ -9,14 +9,13 @@ import (
 	"github.com/spf13/cobra"
 
 	internalconfig "expense-reporter/internal/config"
-	"expense-reporter/internal/excel"
 	"expense-reporter/internal/review"
+	"expense-reporter/internal/taxonomy"
 )
 
 var (
-	reviewOutput   string
-	reviewWorkbook string
-	reviewForce    bool
+	reviewOutput string
+	reviewForce  bool
 )
 
 var reviewCmd = &cobra.Command{
@@ -29,9 +28,12 @@ The output file is NOT overwritten without --force. Use --force to replace an ex
 Use -o - to write to stdout; the summary line is written to stderr in that case.
 
 Examples:
+The picker's categories come from the configured taxonomy (config/taxonomy.json) — the
+same file classify, auto, batch-auto and generate-workbook use. No workbook is read.
+
+Examples:
   expense-reporter review classified.csv
   expense-reporter review classified.csv --output review.html
-  expense-reporter review classified.csv --workbook /path/to/workbook.xlsx
   expense-reporter review classified.csv -o -`,
 	Args: cobra.ExactArgs(1),
 	RunE: runReview,
@@ -40,7 +42,6 @@ Examples:
 func init() {
 	rootCmd.AddCommand(reviewCmd)
 	reviewCmd.Flags().StringVarP(&reviewOutput, "output", "o", "review.html", "Output HTML file path")
-	reviewCmd.Flags().StringVar(&reviewWorkbook, "workbook", "", "Workbook path (overrides config)")
 	reviewCmd.Flags().BoolVarP(&reviewForce, "force", "f", false, "Overwrite output file if it exists")
 }
 
@@ -50,24 +51,19 @@ func runReview(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	workbookPath := reviewWorkbook
-	if workbookPath == "" {
-		workbookPath = cfg.WorkbookFilePath()
-	}
-	if workbookPath == "" {
-		return fmt.Errorf("workbook path not configured (set EXPENSE_WORKBOOK or use --workbook)")
+	taxonomyPath := cfg.TaxonomyFilePath()
+	if taxonomyPath == "" {
+		return fmt.Errorf("taxonomy path not configured (set taxonomy_path in config.json)")
 	}
 
-	if err := excel.ValidateWorkbook(workbookPath); err != nil {
-		return fmt.Errorf("validating workbook: %w", err)
-	}
-
-	mappings, err := excel.LoadReferenceSheet(workbookPath)
+	// Entries and income are irrelevant here — the picker needs the tree, not the data —
+	// so both paths are empty and the year filter is 0 (keep everything).
+	types, _, err := taxonomy.LoadTaxonomy(taxonomyPath, "", "", 0)
 	if err != nil {
-		return fmt.Errorf("loading reference sheet: %w", err)
+		return fmt.Errorf("loading taxonomy: %w", err)
 	}
 
-	taxonomy := review.BuildTaxonomy(mappings)
+	pickerTaxonomy := review.BuildTaxonomy(types)
 
 	queue, err := review.ReadQueue(args[0])
 	if err != nil {
@@ -81,7 +77,7 @@ func runReview(cmd *cobra.Command, args []string) error {
 		Source:      filepath.Base(args[0]),
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Queue:       queue,
-		Taxonomy:    taxonomy,
+		Taxonomy:    pickerTaxonomy,
 	}
 
 	html, err := review.Render(review.TemplateHTML, data)
