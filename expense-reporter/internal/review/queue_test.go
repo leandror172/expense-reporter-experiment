@@ -114,7 +114,7 @@ func TestReadQueue(t *testing.T) {
 				require.NoError(t, os.WriteFile(csvPath, []byte(tt.csvContent), 0o644))
 			}
 
-			entries, err := ReadQueue(csvPath)
+			entries, _, err := ReadQueue(csvPath)
 
 			if tt.wantError {
 				require.Error(t, err)
@@ -131,4 +131,31 @@ func TestReadQueue(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestReadQueue_UnparsedRowsAreReturnedNotFatal pins the S1 contract at unit level: the
+// shape batch-auto writes for a row it could not parse (raw text in the item column, empty
+// date and value) is returned as unreviewable instead of failing the whole read.
+//
+// The tolerance is deliberately narrow — see the sibling table's "malformed confidence",
+// "bad auto_inserted" and "wrong field count" cases, which still hard-error. An empty
+// date/value pair is a documented producer output; corruption is not.
+func TestReadQueue_UnparsedRowsAreReturnedNotFatal(t *testing.T) {
+	t.Parallel()
+
+	const content = "item;date;value;subcategory;category;confidence;auto_inserted;type\n" +
+		"Uber Centro;15/05;35,50;Taxi;Transporte;0.95;true;\n" +
+		`"Anita;Elô ADM;09/01;405,25";;;;;0.0000;false;` + "\n" +
+		"Aluguel;05/01;2500,00;Aluguel;Moradia;0.95;false;Fixas"
+
+	csvPath := filepath.Join(t.TempDir(), "classified.csv")
+	require.NoError(t, os.WriteFile(csvPath, []byte(content), 0o644))
+
+	entries, unreviewable, err := ReadQueue(csvPath)
+
+	require.NoError(t, err, "an unparsed row must not fail the whole read")
+	assert.Len(t, entries, 2, "the reviewable rows are still queued")
+	require.Len(t, unreviewable, 1, "the unparsed row is reported back to the caller")
+	assert.Equal(t, "Anita;Elô ADM;09/01;405,25", unreviewable[0],
+		"the caller gets the original text, which is what the user needs to fix the source")
 }

@@ -12,10 +12,24 @@ import (
 	"expense-reporter/pkg/utils"
 )
 
-func ReadQueue(csvPath string) ([]QueueEntry, error) {
+// ReadQueue reads a classified CSV into the review queue, returning the reviewable
+// entries and the raw lines of any rows that could not be reviewed.
+//
+// The second return exists because batch-auto DELIBERATELY records a row it failed to
+// parse, keeping the original text in the item column with empty date/value cells rather
+// than rendering a zero time as 01/01/0001. This reader used to hard-error on exactly that
+// shape, so a single unparseable row killed the entire review step — measured on real
+// data, 4 rows in 69 (T-42 scout, S1). Skipping them is only half the fix: the caller MUST
+// report them, or a loud failure silently becomes a lost expense.
+//
+// This tolerance is deliberately narrow. An empty date/value pair is a DOCUMENTED producer
+// output; a malformed float, a bad confidence or a wrong field count is corruption, and
+// those still hard-error. Widening this to "skip anything that fails to parse" would turn a
+// corrupt file into a quietly short queue.
+func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 	file, err := os.Open(csvPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file %s: %w", csvPath, err)
+		return nil, nil, fmt.Errorf("failed to open file %s: %w", csvPath, err)
 	}
 	defer file.Close()
 
@@ -25,6 +39,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 	reader.FieldsPerRecord = -1 // disable auto-check; we validate length explicitly below
 
 	entries := []QueueEntry{}
+	unreviewable := []string{}
 	lineNumber := 0
 	headerSeen := false
 
@@ -34,7 +49,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 			if err == io.EOF {
 				break
 			}
-			return nil, fmt.Errorf("failed to read line %d: %w", lineNumber+1, err)
+			return nil, nil, fmt.Errorf("failed to read line %d: %w", lineNumber+1, err)
 		}
 		lineNumber++
 
@@ -48,7 +63,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 		}
 
 		if len(record) != 8 {
-			return nil, fmt.Errorf("line %d: expected 8 fields, got %d", lineNumber, len(record))
+			return nil, nil, fmt.Errorf("line %d: expected 8 fields, got %d", lineNumber, len(record))
 		}
 
 		item := strings.TrimSpace(record[0])
@@ -60,14 +75,22 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 		autoInsertedStr := strings.TrimSpace(record[6])
 		expenseType := strings.TrimSpace(record[7])
 
+		// The unparsed-row shape batch-auto writes: raw text kept in the item column,
+		// date and value blank. Recognised BEFORE any field parsing, because it is the
+		// value parse that used to reject it.
+		if date == "" || valueStr == "" {
+			unreviewable = append(unreviewable, item)
+			continue
+		}
+
 		perInstallment, _, err := utils.ParseCurrencyWithInstallments(valueStr)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: invalid value: %w", lineNumber, err)
+			return nil, nil, fmt.Errorf("line %d: invalid value: %w", lineNumber, err)
 		}
 
 		confidence, err := strconv.ParseFloat(confidenceStr, 64)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: invalid confidence: %w", lineNumber, err)
+			return nil, nil, fmt.Errorf("line %d: invalid confidence: %w", lineNumber, err)
 		}
 
 		// "true"/"false" is the exact inverse of what the writers emit (fmt %v on a bool
@@ -86,7 +109,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 		case "false":
 			autoInserted = false
 		default:
-			return nil, fmt.Errorf("line %d: invalid auto_inserted value %q (want \"true\" or \"false\")", lineNumber, autoInsertedStr)
+			return nil, nil, fmt.Errorf("line %d: invalid auto_inserted value %q (want \"true\" or \"false\")", lineNumber, autoInsertedStr)
 		}
 
 		// The id is hashed from the date column exactly as it appears in the CSV. Since
@@ -110,5 +133,5 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 		})
 	}
 
-	return entries, nil
+	return entries, unreviewable, nil
 }

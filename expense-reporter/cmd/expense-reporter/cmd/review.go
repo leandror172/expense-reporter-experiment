@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,9 +28,11 @@ The output file contains the full expense queue and taxonomy, ready to open in a
 The output file is NOT overwritten without --force. Use --force to replace an existing file.
 Use -o - to write to stdout; the summary line is written to stderr in that case.
 
-Examples:
 The picker's categories come from the configured taxonomy (config/taxonomy.json) — the
 same file classify, auto, batch-auto and generate-workbook use. No workbook is read.
+
+A row batch-auto could not parse is recorded in classified.csv with empty date/value
+cells; those rows are left out of the queue and named on stderr, not treated as fatal.
 
 Examples:
   expense-reporter review classified.csv
@@ -65,10 +68,11 @@ func runReview(cmd *cobra.Command, args []string) error {
 
 	pickerTaxonomy := review.BuildTaxonomy(types)
 
-	queue, err := review.ReadQueue(args[0])
+	queue, unreviewable, err := review.ReadQueue(args[0])
 	if err != nil {
 		return fmt.Errorf("reading queue: %w", err)
 	}
+	reportUnreviewableRows(cmd.ErrOrStderr(), unreviewable)
 	if len(queue) == 0 {
 		return fmt.Errorf("no rows to review")
 	}
@@ -108,4 +112,25 @@ func runReview(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// reportUnreviewableRows names every row batch-auto could not parse, so a row dropped from
+// the queue is visible rather than merely absent.
+//
+// The message lives here rather than in ReadQueue for the reason parse reports YearSource
+// instead of printing: a library that owns a stderr contract cannot be reused by a caller
+// wanting a different one, and its output can only be tested by capturing stderr.
+//
+// Per-row lines are right here, unlike the T-49 stale-year warning that had to collapse to
+// one counted line. That one fired once per GOOD row (300 lines for a 300-row batch); this
+// fires once per PROBLEM, and the raw text is exactly what the user needs to fix the source
+// and re-run. stderr because --json owns stdout.
+func reportUnreviewableRows(w io.Writer, rows []string) {
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "warning: %d row(s) could not be parsed upstream and are NOT in the review queue; fix them in the source CSV and re-run:\n", len(rows))
+	for _, raw := range rows {
+		fmt.Fprintf(w, "  unreviewable: %s\n", raw)
+	}
 }

@@ -30,6 +30,7 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 			reviewDataEmbedded(),
 			pendingExpensesQueued(5),
 			expenseTypesOfferedForPicking([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
+			cleanQueueReportsNothingUnreviewable(),
 		),
 	})
 }
@@ -95,4 +96,39 @@ func expenseTypesOfferedForPicking(expectedTypes []string) []func(*harness.Conte
 				"the picker must offer exactly the types in config/taxonomy.json")
 		},
 	}
+}
+
+// TestReview_UnparsedRowsAreSkippedNotFatal pins the S1 contract found by the T-42 scout:
+// batch-auto DELIBERATELY records a row it could not parse in classified.csv with empty
+// date/value cells (see cmd.TestWriteClassifiedCSV_UnparsedRowKeepsItsRawLine), and
+// ReadQueue used to hard-error on exactly that shape. One such row in 69 killed the whole
+// review step on real data — producer and consumer each deliberately contradicting the
+// other, the same defect family as T-54 in a different column.
+//
+// The queue must therefore carry the 3 reviewable rows and leave out the 2 unparsed ones,
+// and review must SAY so — silently dropping them would trade a loud failure for a quiet
+// one, which is the trade this codebase keeps getting wrong.
+func TestReview_UnparsedRowsAreSkippedNotFatal(t *testing.T) {
+	fixDir := filepath.Join(fixturesDir(), "review-malformed-rows")
+	csvPath := filepath.Join(fixDir, "input.csv")
+
+	harness.Run(t, harness.Scenario{
+		Name:    "review skips rows batch-auto could not parse and reports them",
+		Fixture: fixDir,
+		Given:   expensesReceivedForReview(),
+		When:    actions.RunReview(csvPath),
+		Then: slices.Concat(
+			reviewHTMLProduced(),
+			pendingExpensesQueued(3),
+			unreviewableRowsReportedToUser(2),
+		),
+	})
+}
+
+func unreviewableRowsReportedToUser(n int) []func(*harness.Context) {
+	return []func(*harness.Context){expect.UnreviewableRowsReported(n)}
+}
+
+func cleanQueueReportsNothingUnreviewable() []func(*harness.Context) {
+	return []func(*harness.Context){expect.NoUnreviewableRowsReported()}
 }

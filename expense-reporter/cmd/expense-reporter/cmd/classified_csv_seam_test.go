@@ -75,7 +75,7 @@ func writeThenReadQueue(t *testing.T, rows []classifiedRow) []review.QueueEntry 
 	csvPath := filepath.Join(t.TempDir(), "classified.csv")
 	require.NoError(t, writeClassifiedCSV(csvPath, rows), "writing classified.csv")
 
-	entries, err := review.ReadQueue(csvPath)
+	entries, _, err := review.ReadQueue(csvPath)
 	require.NoError(t, err, "review.ReadQueue must accept what writeClassifiedCSV produced")
 	return entries
 }
