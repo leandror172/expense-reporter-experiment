@@ -22,8 +22,15 @@ the CURRENT year refused — provisional, year-scale), reports WHICH rung resolv
 year is what dated the entry. `config.json` `date_year` → 2026. **T-41 slice 2 (s66): `auto` migrated** — one
 `parse.Fields` call, `--year` flag, `date_year` live, stale-year warning;
 `appendExpense` collapsed to take a `ParsedExpense` (the five-scalar signature was
-what produced T-35); field sentinels added to `parse`. Next: slice 3 (`batch-auto`,
-takes T-40 + the T-49 warning-shape call) → slice 4 (`apply`) → T-21 → T-42 close.
+what produced T-35); field sentinels added to `parse`. **T-41 slice 3 (s67):
+`batch-auto` migrated** — `inputRow` deleted (`ParsedExpense` already held every
+field plus the installment count it discarded, which was the ROOT of the 4× re-parse);
+`resumeParseErr` deleted as unreachable; `--year`; ONE counted stale-year warning
+(T-49); join-id pinned at construction (T-40). `classified.csv`/`review.csv` now carry
+the CANONICAL date, which repairs a live silent divergence — `review.ReadQueue` hashed
+the raw column into `reviewed.json`'s id while both logs hashed the canonical form, so
+`apply` looked up an id it never writes and an id miss there appends silently.
+Next: slice 4 (`apply`, incl. recomputing `entry.ID` alongside the date) → T-21 → T-42 close.
 History → KNOWLEDGE.md "Milestone Log".
 
 ## Structure

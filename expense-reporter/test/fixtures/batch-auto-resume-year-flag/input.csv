@@ -1,0 +1,6 @@
+# BARE DD/MM dates on purpose. The Given seeds the log at 2024, and --year 2024 is the only
+# thing that can make these rows resolve to that year — the ladder's clock rung would date
+# them in the current year and the predicted ids would match nothing.
+# Do NOT "fix" these to DD/MM/YYYY: an explicit year outranks --year, which would make the
+# test pass without the flag ever being read.
+Netflix;10/03;55,90

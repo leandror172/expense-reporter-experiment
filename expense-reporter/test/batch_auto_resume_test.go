@@ -245,3 +245,44 @@ func rowAppendedAgainWithSingleDuplicateWarning(fixDir string) []func(*harness.C
 		expect.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
 	}
 }
+
+// TestBatchAutoResume_YearFlagResolvesTheSeededYear proves that --year actually reaches the
+// parse boundary from runBatchAuto — the wiring, not the ladder.
+//
+// The ladder itself is covered by unit tests, and TestBatchAutoCommand_Flags proves --year is
+// registered. Neither would catch the gap between them: a call site that forgot to pass
+// batchAutoYear into parseOptions, or transposed it with the config year, compiles cleanly,
+// passes vet, and leaves every other test green. The same gap
+// TestParseOptions_WiresEachYearSourceToItsOwnRung was written to close for add/correct.
+//
+// The proof is indirect on purpose, because --resume makes it observable without a model:
+// the row's input date is BARE, the log is seeded at 2024, and predicted ids are hashed from
+// the resolved date. So the row can only be recognised as already-logged if --year 2024 was
+// read. Drop the flag from the call site and the date resolves to the current year instead,
+// the ids match nothing, and the row is not skipped.
+//
+// Deterministic: a skipped row never reaches the classifier.
+func TestBatchAutoResume_YearFlagResolvesTheSeededYear(t *testing.T) {
+	harness.Run(t, harness.Scenario{
+		Name:    "batch-auto --resume --year matches a bare-dated row against a prior-year seed",
+		Fixture: filepath.Join(fixturesDir(), "batch-auto-resume-year-flag"),
+		Given:   bareDatedRowAlreadyLoggedUnderAPriorYear(),
+		When:    actions.RunBatchAutoWithFixture(),
+		Then: slices.Concat(
+			commandSucceeded(),
+			bareDatedRowRecognisedAsAlreadyLogged(),
+		),
+	})
+}
+
+// bareDatedRowAlreadyLoggedUnderAPriorYear seeds the one input row at 2024 — a year the
+// clock rung can never produce for a bare date, so only the --year flag can reach it.
+func bareDatedRowAlreadyLoggedUnderAPriorYear() func(*harness.Context) {
+	return expenseLogSeededWith([]seedRow{
+		{item: "Netflix", date: date(2024, 3, 10), value: 55.90, count: 1, expenseType: "Fixas", category: "Lazer", subcategory: "Netflix"},
+	})
+}
+
+func bareDatedRowRecognisedAsAlreadyLogged() []func(*harness.Context) {
+	return []func(*harness.Context){expect.ResumeSkipCount(1)}
+}
