@@ -70,6 +70,7 @@
 | T-23 logprob-confidence probe (leaf-first; pre-mask logprobs, session 49) | `.claude/t23-logprob-confidence-probe.md` |
 | T-23 strategic implications (gate route → workbook plan + grand vision, session 50) | `.claude/t23-strategic-implications.md` |
 | T-32 agreement-gate report (work + findings: replay validation, verifier false-pass, fixture coupling, session 57) | `.claude/t32-agreement-gate-report.md` |
+| **T-42 scout report (first real chain run on 2026 data, session 68)** — isolation recipe (scratch install root; no flag redirects the logs), 2 `review` blockers (S1 unparsed-row contradiction, S2 workbook-derived taxonomy + dangling `workbook_path`), T-21 measured at 22% of the queue, and the real-usage installment forms (`- 1/4`, `4x`) the parser does not accept | `.claude/t42-scout-report.md` |
 | T2 closeout report (v1.0.0 tag rationale + shape decision, session 60) | `.claude/t2-closeout-report.md` |
 | T-34/T-12 red-test repair report (5 reds → 49/49 green; latent join-ID divergence finding, session 60) | `.claude/t34-t12-red-test-repair-report.md` |
 | Advisor review — T-20 `--resume`/dedup design (Opus xhigh; adopted contract, session 60) | `.claude/advisor-t20-resume-dedup.md` |
