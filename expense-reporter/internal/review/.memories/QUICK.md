@@ -16,6 +16,16 @@ the drift was actively teaching the classifier the unroutable spelling.
 only WS-E dead callers left. **`BuildTaxonomy` must never sort** — the JSON array carries
 the author's order; the old sorting existed only because map iteration is random.
 
+**`ReadQueue` returns THREE values (S1, s68): `(entries, unreviewable, error)`.** A row
+batch-auto could not parse is written with its raw text in the item column and EMPTY
+date/value cells; this reader used to hard-error on that shape, so 4 bad rows in 69 killed
+the whole review step on real data. Those rows now come back as `unreviewable` and
+`cmd/review.go` names each on stderr — skipping without reporting would swap a loud failure
+for a lost expense. **The tolerance is deliberately narrow:** empty date/value is a
+documented producer output; a bad number, bad confidence or wrong field count is corruption
+and still hard-errors. The warning lives in `cmd`, not here — same reason `parse` reports
+`YearSource` instead of printing.
+
 **Input contract — `ReadQueue` must match batch-auto's writers exactly (T-54, s68):**
 exactly 8 semicolon fields, and `auto_inserted` spelled **`true`/`false`** — the inverse of
 `fmt %v` on a bool. `1`/`0` is REJECTED on purpose: it was accepted for months while NO

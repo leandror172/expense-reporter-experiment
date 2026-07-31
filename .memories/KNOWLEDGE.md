@@ -162,3 +162,30 @@ LLM repo; this repo only references model names.
   structured input, parse-once; year precedence string > `--year` > config `date_year` >
   most-recent-non-future (grace window TBD); T-21 UX = 1 row + ×N badge; `--year` uniform;
   T-38 resolved = delete `utils.ParseDate` with plain `batch` under WS-E, don't repair.
+- **Session 68 — T-54, the T-42 scout, and the close-cycle repairs (S1/S2/S5).** The chain
+  ran on real 2026 data for the first time, isolated in a **scratch install root** (binary +
+  its own `config/` + a copy of `data/classification`) — the only mechanism that isolates,
+  because no flag redirects the logs: `config.json` and relative log paths both resolve
+  against `filepath.Dir(os.Executable())`, and `--data-dir` is the TRAINING data dir (which
+  also owns the 5.R2 embedding cache). Real logs verified byte-identical afterwards.
+  **Rationale for scouting before fixing:** the backlog was speculation until the chain ran;
+  one throwaway run converted it into a measured list and reordered the work.
+  **What it found:** two hard blockers in `review` — T-54 (`ReadQueue` accepted only `1`/`0`
+  for `auto_inserted`, a spelling NO producer ever emitted, invented by fixtures) and S2
+  (`review` derived its picker from the workbook's Referência sheet while everything else
+  routed with `config/taxonomy.json`; measured **7 divergent leaves**). Plus S1 (one
+  unparseable row killed the step; 4 of 69 did) and S5 (`generate-workbook` ignored config).
+  **The recurring shape, four more times:** a check that reports success while testing
+  nothing. The `1`/`0` parser whose only inputs were fixtures authored to satisfy it; a
+  fixture that hand-converted producer output and a memory note calling that a legitimate
+  "fold point"; two test-only synthetic workbooks duplicating the fixtures' own taxonomy;
+  and the T-54 seam test itself, which fed only parsed rows and so passed while the seam
+  stayed broken for unparsed ones. **Mutation is the only cheap discriminator** — every
+  guard this session was broken deliberately and confirmed red, and where a mutation did
+  NOT go red the reason was recorded rather than assumed to be a gap.
+  **Implication:** a fixture that TRANSFORMS producer output is not bridging a harness
+  limitation — it is asserting a contract neither side implements. Feed real producer bytes
+  to the real consumer instead, and no fixture has to be kept in step.
+  **Also:** the drift had inverted the feedback loop — 2 logged "corrections" taught the
+  classifier `IRFF` over the routable `IRRF`, and corrected entries are the HIGHEST-priority
+  few-shot source. 3 real records backfilled. Report: `.claude/t42-scout-report.md`.

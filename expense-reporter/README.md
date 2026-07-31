@@ -1,7 +1,12 @@
 # Expense Reporter
 
-Go CLI that automates personal expense management — reads bank statement exports,
-classifies them using local LLMs, and inserts entries into an Excel budget workbook.
+Go CLI that automates personal expense management — reads semicolon-delimited expense
+lines, classifies them using local LLMs, and generates an Excel budget workbook from the
+resulting logs.
+
+> The JSONL logs (`classifications.jsonl`, `expenses_log.jsonl`) are the single source of
+> truth and `generate-workbook` is the only writer. No command inserts into a workbook, and
+> since session 68 no command on the live path *reads* one either.
 
 ## Overview
 
@@ -12,7 +17,7 @@ Classification runs entirely on local Ollama models — no cloud API calls, keep
 financial data private.
 
 **Current version:** 2.1.0  
-**Tests:** 263 unit test functions (647 with subtests), 56 acceptance tests across 31 fixtures  
+**Tests:** 303 unit test functions, 69 acceptance tests across 35 fixtures  
 **Go version:** 1.25.5
 
 ## Commands
@@ -142,13 +147,32 @@ id already exists in the log (a likely duplicate append).
 
 ```bash
 expense-reporter review classified.csv
-expense-reporter review classified.csv --output review.html --workbook /path/to/workbook.xlsx
+expense-reporter review classified.csv --output review.html
 # wrote review.html — 349 rows (23 need review)
 ```
 
 Takes the `classified.csv` output from `batch-auto` and bakes it into a self-contained
-`review.html` file. The HTML contains the full expense queue and workbook taxonomy as
-embedded JSON — open it directly in a browser, no server needed.
+`review.html` file. The HTML contains the full expense queue and the taxonomy as embedded
+JSON — open it directly in a browser, no server needed.
+
+**Reads no workbook.** The picker's categories come from `config/taxonomy.json` — the same
+file `classify`, `auto`, `batch-auto`, `add` and `generate-workbook` use. Until session 68
+the picker was built from the workbook's "Referência de Categorias" sheet instead, so the
+close cycle ran on two vocabularies; they had drifted 7 leaves apart, and picking a
+workbook-only leaf produced a row `generate-workbook` could not route — it was warn-skipped
+and vanished with no error. `--workbook` is gone from this command.
+
+**Rows `batch-auto` could not parse are skipped, not fatal.** Such a row is recorded in
+`classified.csv` with its raw text in the item column and empty date/value cells; `review`
+leaves it out of the queue and names it on stderr:
+
+```
+warning: 4 row(s) could not be parsed upstream and are NOT in the review queue; fix them in the source CSV and re-run:
+  unreviewable: Comida cinema;109,39;14/01
+```
+
+Fix them in the source CSV and re-run (`batch-auto --resume` makes the re-run safe). A
+genuinely corrupt file — bad number, wrong field count — still fails loudly.
 
 **Workflow position:** `batch-auto` → `classified.csv` → **`review`** → `review.html`
 → (browser review) → `reviewed.json` → `apply` (appends to `expenses_log.jsonl`)
@@ -172,7 +196,6 @@ In the browser:
 
 Flags:
 - `--output` / `-o` — output path (default: `review.html`)
-- `--workbook` — workbook path override (for taxonomy; uses config/env otherwise)
 
 ### `correct` — Override a prior auto-classification
 
@@ -194,8 +217,8 @@ Flags:
 ### `generate-workbook` — Generate a complete workbook from data
 
 ```bash
-expense-reporter generate-workbook -o 2026.xlsx --taxonomy taxonomy.json \
-    --entries expenses_log.jsonl --year 2026
+expense-reporter generate-workbook -o 2026.xlsx --entries expenses_log.jsonl --year 2026
+# --taxonomy defaults to the configured taxonomy_path
 ```
 
 Builds a full expense workbook (Listas de itens + Receitas + one sheet per expense
@@ -206,8 +229,8 @@ into** — rerun the command after the log changes.
 | Flag | Required | Meaning |
 |------|----------|---------|
 | `-o, --output` | yes | output `.xlsx` path |
-| `--taxonomy` | yes | taxonomy JSON file (sheets → categories → subcategories, plus income categories/blocks) |
-| `--entries` | no | entries JSONL; omitted = skeleton workbook |
+| `--taxonomy` | no (config `taxonomy_path`) | taxonomy JSON file (types → categories → subcategories, plus income categories/blocks) |
+| `--entries` | no | entries JSONL; **omitted = empty skeleton workbook** — deliberately NOT defaulted from config, or asking for a skeleton would be impossible to express (year rollover depends on it) |
 | `--year` | no (current year) | year applied to entry dates (`DD/MM` in the log has no year) |
 | `--headroom` | no (0) | spare data rows per block beyond the busiest month |
 
