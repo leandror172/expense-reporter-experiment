@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	internalconfig "expense-reporter/internal/config"
 	"expense-reporter/internal/generate"
 )
 
@@ -32,7 +33,7 @@ func init() {
 	rootCmd.AddCommand(generateWorkbookCmd)
 
 	generateWorkbookCmd.Flags().StringVarP(&generateOutput, "output", "o", "", "Output .xlsx path (required)")
-	generateWorkbookCmd.Flags().StringVar(&generateTaxonomy, "taxonomy", "", "Taxonomy JSON file path (required)")
+	generateWorkbookCmd.Flags().StringVar(&generateTaxonomy, "taxonomy", "", "Taxonomy JSON file path (default: config taxonomy_path)")
 	generateWorkbookCmd.Flags().StringVar(&generateEntries, "entries", "", "Entries JSONL path (optional)")
 	generateWorkbookCmd.Flags().StringVar(&generateIncomeEntries, "income-entries", "", "Income entries JSONL path (income_log.jsonl schema; optional)")
 	generateWorkbookCmd.Flags().IntVar(&generateYear, "year", time.Now().Year(), "Year applied to entry dates")
@@ -41,14 +42,41 @@ func init() {
 	if err := generateWorkbookCmd.MarkFlagRequired("output"); err != nil {
 		panic(err)
 	}
-	if err := generateWorkbookCmd.MarkFlagRequired("taxonomy"); err != nil {
-		panic(err)
+	// taxonomy is NOT MarkFlagRequired: it is a required VALUE, which config can supply.
+	// resolveTaxonomyPath enforces it.
+}
+
+// resolveTaxonomyPath prefers the flag and falls back to config, so generate-workbook reads
+// the same taxonomy_path every other command does. It used to REQUIRE the flag — the one
+// command whose output IS the deliverable was the only one ignoring the configured
+// taxonomy, which the T-42 scout hit as friction mid-close.
+//
+// --entries deliberately does NOT get the same treatment. Omitting it is the documented way
+// to generate an empty skeleton for a new year (TestGenerateWorkbook_Skeleton, the
+// type-routing-cycle Given, and the T-03 rollover plan all rely on that), so defaulting it
+// from config would silently make "give me an empty skeleton" impossible to express.
+func resolveTaxonomyPath(cfg *internalconfig.Config) (string, error) {
+	if generateTaxonomy != "" {
+		return generateTaxonomy, nil
 	}
+	if path := cfg.TaxonomyFilePath(); path != "" {
+		return path, nil
+	}
+	return "", fmt.Errorf("no taxonomy: pass --taxonomy or set taxonomy_path in config.json")
 }
 
 func runGenerateWorkbook(cmd *cobra.Command, args []string) error {
+	cfg, err := internalconfig.Load()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+	taxonomyPath, err := resolveTaxonomyPath(cfg)
+	if err != nil {
+		return err
+	}
+
 	opts := generate.Options{
-		TaxonomyPath:      generateTaxonomy,
+		TaxonomyPath:      taxonomyPath,
 		EntriesPath:       generateEntries,
 		IncomeEntriesPath: generateIncomeEntries,
 		OutPath:           generateOutput,
