@@ -37,7 +37,38 @@ shipped this session. Fix = extend `classified_csv_seam_test.go` with an unparse
 decide the reader's contract (skip the row? carry it as unreviewable?). Do it with T-21/T-54
 follow-up — same reader.
 
-### S2 — `review` requires a workbook, and the configured one does not exist
+### S2 — `review` still sources its TAXONOMY from the workbook, and the two taxonomies have drifted
+**(corrected + upgraded after user review — this is the severe half of S2, not the missing file.)**
+
+`cmd/review.go:52-70` hard-requires a workbook, validates it, loads the Referência sheet and
+builds the picker taxonomy from it. **`review` never reads `config/taxonomy.json` at all.**
+
+**This is NOT covered by WS-E.** WS-E is scoped to the *write* side (`internal/workflow`, the
+`excel` write side, `internal/batch`'s insert path, plain `batch`, `utils.ParseDate`).
+`review`'s use is a **read on the live path**, so deleting the write side leaves
+`excel.LoadReferenceSheet` standing and `review` still calling it. The workbook-as-source
+retirement is therefore **not finished**, and finishing WS-E as written would not finish it.
+
+So the close cycle runs on TWO taxonomies, and they disagree — measured this session
+(104 leaves in `taxonomy.json`, 103 in the workbook, **7 divergent**):
+
+| Workbook (what the human PICKS from) | `taxonomy.json` (what ROUTES the row) |
+|---|---|
+| `IRFF` | `IRRF` — T-13's typo fix landed in taxonomy.json only |
+| `Apoia-se 4i20` | `Apoia-se` — the reading guide's durability warning, confirmed live |
+| `alguma coisa sindicato` | `extra sindicato` |
+| — | `Produtos de casa` |
+
+**Harm:** classifier proposes from A, human picks from B, `apply` writes the pick, and
+`generate-workbook` routes with A. A pick of `IRFF` / `Apoia-se 4i20` / `alguma coisa sindicato`
+hits `scanEntries`' "not in taxonomy" warn-and-skip path — **the row silently vanishes from the
+workbook**. Same silent-loss family as the rest of this session's findings.
+
+**Fix direction:** point `review` at `config/taxonomy.json` (which every other command already
+uses), which also removes the last workbook read from the close cycle and makes S2's dangling
+`workbook_path` irrelevant rather than needing repair.
+
+### S2b — the configured workbook does not exist
 `review` builds its taxonomy from the **workbook's Referência sheet**, not from
 `config/taxonomy.json` that every other command reads. Meanwhile `config.json`'s
 `workbook_path` (`../Planilha_BMeFBovespa_Leandro_OrcamentoPessoal-2025.xlsx`) names a file
@@ -78,11 +109,18 @@ posted in chat, Layer 6) — NOT a bank export:
 | `Café padaria;201/01;13,00` | typo'd day (`201`) |
 | `Anita compra chocolate Ruby 299,00 e cacau 49,90;646,25 4x` | no date at all; `4x` installment form |
 
-**The headline: installment notation in real use is `- 1/4` and `4x`, not the `99,90/3` the
-parser expects.** T-21 threads a count the parser mostly never gets to see. Any T-21 work should
-decide whether the boundary learns these forms — the chat layer will receive exactly these.
-The transposed-fields case fails loudly (good: `109,39` is not a date), but see T-52 — `auto`'s
-argument order is itself transposed relative to `parse.Fields`.
+**CORRECTED after user review.** An earlier draft of this report concluded that `- 1/4` and
+`4x` are real-usage installment forms the parser should learn. **That is wrong.** Per the user:
+these four lines are simply **mistakes in the file**. The accepted installment format is
+`99,90/3` and only that. So all four rows are user input errors, not a missing feature, and
+**T-21 needs no new notation work** — the count is already reachable for correctly-written
+input, which is what T-41 slice 3 established.
+
+What survives as a finding is narrower but still real: **4 bad rows out of 69 (6%) is the
+normal error rate of hand-typed input**, and one such row currently kills the entire `review`
+step (S1). The lesson is about tolerating malformed rows, not about parsing more notations.
+The transposed-fields case fails loudly and correctly (`109,39` is not a date) — though see
+T-52, since `auto`'s own argument order is transposed relative to `parse.Fields`.
 
 ## Friction (not blocking)
 
@@ -109,7 +147,12 @@ argument order is itself transposed relative to `parse.Fields`.
 
 ## Suggested order
 
-1. **S1 + S2** — both are `review`, and S1 shares the reader with T-21/T-54.
-2. **T-21** (+ decide S4's installment forms) — same reader again; do it in the same pass.
-3. **S5** — cheap, and directly in the close path.
-4. Re-run this scout; then the real close.
+1. **S2 — repoint `review` at `config/taxonomy.json`.** Highest severity (silent row loss via
+   taxonomy drift), and it retires the last workbook read in the close cycle. Do it FIRST:
+   it changes what `review` needs, which changes S1's and T-21's context.
+2. **S1 — decide the malformed-row contract in `ReadQueue`**, and extend the T-54 seam test
+   with an unparsed row (a known gap in the guard shipped this session).
+3. **T-21 — thread the installment count.** No new notation work needed (see the S4
+   correction); same reader as 1 and 2, so all three touch `queue.go` once.
+4. **S5** — cheap, directly in the close path.
+5. Re-run this scout; then the real close.
