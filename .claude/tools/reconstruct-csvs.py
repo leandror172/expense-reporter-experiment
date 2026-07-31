@@ -92,7 +92,13 @@ def main(csv_path, log_path, output_dir):
     review_rows = []
     skipped = 0
 
-    headers = ['item', 'date', 'value', 'subcategory', 'category', 'confidence', 'auto_inserted']
+    # This shape is a contract, not a preference: review.ReadQueue requires EXACTLY 8
+    # fields and renders auto_inserted as the Go writer does ('true'/'false'). This tool
+    # emitted 7 fields and 1/0, so its output could never be fed to `expense-reporter
+    # review` at all — it failed on field count before the spelling was even reached.
+    # The type column is empty because the batch-auto text log never recorded a type;
+    # an empty type is valid input and simply leaves Predicted.Type unset.
+    headers = ['item', 'date', 'value', 'subcategory', 'category', 'confidence', 'auto_inserted', 'type']
 
     # Process each row: match by 1-based index
     for idx, (item, date, value) in enumerate(csv_rows, start=1):
@@ -109,9 +115,10 @@ def main(csv_path, log_path, output_dir):
         subcategory = result['subcategory']
         category = infer_category(subcategory)
         confidence = result['confidence']
-        auto_inserted = 1 if result['status'] == 'AUTO' else 0
+        auto_inserted = 'true' if result['status'] == 'AUTO' else 'false'
+        expense_type = ''  # never recorded in the text log this tool reads
 
-        row = (item, date, value, subcategory, category, f"{confidence:.2f}", auto_inserted)
+        row = (item, date, value, subcategory, category, f"{confidence:.2f}", auto_inserted, expense_type)
 
         if result['status'] == 'AUTO':
             classified_rows.append(row)
@@ -119,7 +126,9 @@ def main(csv_path, log_path, output_dir):
             review_rows.append(row)
 
     print(f"\nResults:")
-    print(f"  Classified (auto-inserted): {sum(1 for r in classified_rows if r[6] == 1)}")
+    # Count what the list MEANS, not how its 7th column renders — the old form compared
+    # r[6] == 1 and would silently report 0 the moment the rendering changed.
+    print(f"  Classified (auto-inserted): {len(classified_rows)}")
     print(f"  Review (manual needed): {len(review_rows)}")
     print(f"  Skipped (parse errors): {skipped}")
 

@@ -220,9 +220,20 @@ validated the `sheets`→`types` fix. Design decisions worth reusing:
   become Given preparation. The last test (`_4_…RoutesByType`) seeds the cumulative typed log
   and runs ONLY generate-workbook — its Then is the payoff (ambiguous leaf Dentista ∈
   Variáveis+Extras routes to its chosen sheet, and is ABSENT from the other candidate).
-- **Non-CLI steps fold into fixtures**, documented at the fold point: the true/false→1/0 CSV
-  bridge lives in `review-input.csv`; the browser pick+export lives in `reviewed.json`. The
-  harness can't run a transform or drive a browser, so don't model them as When steps.
+- **Non-CLI steps fold into fixtures**, documented at the fold point: the browser pick+export
+  lives in `reviewed.json`. The harness can't drive a browser, so don't model it as a When step.
+  **CORRECTED T-54 (session 68):** this bullet used to also list a "true/false→1/0 CSV bridge"
+  in `review-input.csv` as a legitimate fold. It was not a fold — it was a **product bug wearing
+  a fixture's clothes**. `review.ReadQueue` accepted only `1`/`0` while the only Go producer
+  emitted `true`/`false`, so `expense-reporter review classified.csv` hard-errored on every real
+  batch-auto file; the hand-conversion in the fixture hid it, and this note made the hiding look
+  intentional. **The lesson generalizes: a fixture that TRANSFORMS producer output before feeding
+  it to a consumer is not bridging a harness limitation — it is asserting a contract neither side
+  implements.** A fold point is legitimate only when the step genuinely cannot run here (a
+  browser, a human). Reformatting is not such a step. When you find yourself writing a converter
+  into a fixture, the producer and consumer disagree — fix them, don't document the gap.
+  Guard: `cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote` now feeds the REAL writer's bytes
+  to the REAL reader, so no fixture has to be kept in step for this to stay honest.
 - **Hermetic skeleton trick:** apply's new-row insert needs a workbook with the target slot.
   Instead of committing a binary `.xlsx`, the Given builds one with `generate-workbook` (no
   `--entries`). So generate-workbook is both the *subject* of the last test and a *setup tool*
