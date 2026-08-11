@@ -1,6 +1,6 @@
 item;date;value;subcategory;category;confidence;auto_inserted;type
-Diarista Letícia;10/05;160,00;Diarista;Habitação;0.87;true;Fixas
+Diarista Letícia;10/05/2026;160,00;Diarista;Habitação;0.87;true;Fixas
 "Anita;Elô ADM;09/01;405,25";;;;;0.0000;false;
-Uber Centro;15/04;35,50;Uber/Taxi;Transporte;0.91;true;Variáveis
+Uber Centro;15/04/2026;35,50;Uber/Taxi;Transporte;0.91;true;Variáveis
 "Café padaria;201/01;13,00";;;;;0.0000;false;
-Academia Smart Fit;05/05;99,90;Academia;Saúde;0.62;false;Variáveis
+Academia Smart Fit;05/05/2026;99,90;Academia;Saúde;0.62;false;Variáveis
