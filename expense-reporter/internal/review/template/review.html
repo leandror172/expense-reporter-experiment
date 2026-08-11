@@ -300,6 +300,14 @@
     color: var(--ink-soft);
     font-weight: 500;
   }
+  .installments {
+    font-variant-numeric: tabular-nums;
+    border: 1px solid var(--ink-mute);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+  }
   .row .confidence {
     grid-area: confidence;
     display: flex; flex-direction: column; gap: 4px;
@@ -869,6 +877,19 @@ function applySavedRows(saved) {
 /* ============================================================================
    4. Helpers
    ========================================================================== */
+// installmentBadge renders the "x3" marker for a purchase split into installments, or
+// null for an ordinary one-off. The row stays SINGLE (UX decided session 62): expanding
+// it into N rows would make the reviewer take the same categorisation decision N times,
+// and the expansion is apply's job, not the reviewer's.
+function installmentBadge(count) {
+  if (!(count > 1)) return null;
+  const badge = document.createElement("span");
+  badge.className = "installments";
+  badge.textContent = "×" + count;
+  badge.title = count + " installments of this amount each";
+  return badge;
+}
+
 function fmtBRL(n) {
   // R$ 1.234,56  — dot thousands, comma decimal
   const s = n.toFixed(2);
@@ -1064,10 +1085,11 @@ function rowEl(s) {
   const mVal = document.createElement("span");
   mVal.className = "value";
   mVal.textContent = fmtBRL(e.value);
+  const mInstallments = installmentBadge(e.installments);
   const mId = document.createElement("span");
   mId.textContent = "#" + e.id.slice(0, 8);
   mId.style.opacity = "0.6";
-  mSub.append(mVal, mId);
+  mSub.append(mVal, ...(mInstallments ? [mInstallments] : []), mId);
   meta.append(mItem, mSub);
   row.appendChild(meta);
 
@@ -1494,6 +1516,10 @@ function exportReviewed() {
         item: s.entry.item,
         date: s.entry.date,
         value: s.entry.value,
+        // Per-installment value plus the count, exactly as ReadQueue parsed them out of
+        // the raw "total/N" token. apply expands the series from this; before T-21 the
+        // count never left the CSV and apply recorded a 3x purchase as a single row.
+        installments: s.entry.installments,
         confidence: s.entry.confidence,
         predicted: Object.assign({}, s.entry.predicted),  // verbatim
         action,

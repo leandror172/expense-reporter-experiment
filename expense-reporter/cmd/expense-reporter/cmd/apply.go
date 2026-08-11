@@ -202,7 +202,7 @@ func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath s
 			continue
 		}
 
-		err = appender.ExpandAndAppend(expensesLogPath, entry.Item, parsedDate, entry.Value, 1, entry.Reviewed.Type, entry.Reviewed.Category, entry.Reviewed.Subcategory)
+		err = appender.ExpandAndAppend(expensesLogPath, entry.Item, parsedDate, entry.Value, entry.Installments, entry.Reviewed.Type, entry.Reviewed.Category, entry.Reviewed.Subcategory)
 		if err != nil {
 			failed = append(failed, entry)
 			continue

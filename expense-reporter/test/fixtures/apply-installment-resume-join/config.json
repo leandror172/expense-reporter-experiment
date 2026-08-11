@@ -1,0 +1,7 @@
+{
+  "command": "batch-auto",
+  "model": "my-classifier-q3",
+  "assertion_type": "hard",
+  "top_n": 3,
+  "extra_args": ["--resume"]
+}

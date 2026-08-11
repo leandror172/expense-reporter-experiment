@@ -254,3 +254,104 @@ func TestApply_StaleReviewedIDIsRecomputedNotTrusted(t *testing.T) {
 		),
 	})
 }
+
+// TestApply_ReviewedInstallmentExpandsToOneRowPerInstallment guards T-21: a reviewed
+// installment purchase must be recorded as one dated row per installment, not as one row.
+//
+// apply was the only caller of appender.ExpandAndAppend passing a literal 1 as the
+// installment count — not because it chose to, but because it had nothing else to pass:
+// the count was discarded two hops upstream in review.ReadQueue and never existed in the
+// reviewed.json contract at all. add, auto and batch-auto all passed the real count.
+//
+// Nothing downstream could notice. A three-installment purchase recorded as a single row
+// is indistinguishable from a legitimate one-off expense of the same per-installment
+// value, so the workbook simply came out short and no check anywhere went red.
+func TestApply_ReviewedInstallmentExpandsToOneRowPerInstallment(t *testing.T) {
+	fixDir := filepath.Join(fixturesDir(), "apply-reviewed-installments")
+
+	harness.Run(t, harness.Scenario{
+		Name:    "apply expands a reviewed installment purchase into one row per installment",
+		Fixture: fixDir,
+		Given:   reviewQueueSubmittedWithNoPriorClassifications(),
+		When:    actions.RunApply(filepath.Join(fixDir, "reviewed.json")),
+		Then: slices.Concat(
+			commandSucceeded(),
+			reviewedInstallmentExpandedToNDatedLogLines(fixDir),
+		),
+	})
+}
+
+// TestApply_AppliedInstallmentSeriesIsRecognisedByResume proves the ids apply writes for
+// an installment series are the ids the rest of the system will look for.
+//
+// Asserting that directly — comparing apply's output against appender.PredictEntryIDs —
+// would be circular: both route through the same expandEntries, so they agree by
+// construction and the test would pass with the arithmetic arbitrarily wrong. (The same
+// circularity got a slice-3 test rejected in session 66: a parser asserted against a
+// second call to itself.)
+//
+// So the claim is expressed as a behavior spanning two independent value-derivation
+// paths. apply takes its per-installment value as an already-typed JSON float out of
+// reviewed.json; batch-auto derives the same value from the raw "100,00/3" token through
+// internal/parse. If the series apply wrote is the series batch-auto predicts, --resume
+// reports the row as already logged. Before T-21 it could not: apply wrote one row under
+// the UNSUFFIXED id while --resume predicts three suffixed ones, so the two shared no id
+// at all and every re-run sent the row back to review.
+//
+// Ollama-free while green — a full resume match is consumed before the model call.
+func TestApply_AppliedInstallmentSeriesIsRecognisedByResume(t *testing.T) {
+	fixDir := filepath.Join(fixturesDir(), "apply-installment-resume-join")
+
+	harness.Run(t, harness.Scenario{
+		Name:    "batch-auto --resume recognises an installment series that apply wrote",
+		Fixture: fixDir,
+		Given:   installmentExpenseReviewedAndApplied(),
+		When:    actions.RunBatchAutoWithFixture(),
+		Then: slices.Concat(
+			commandSucceeded(),
+			exactlyOneRowSkipped(),
+		),
+	})
+}
+
+// Deliberately NOT asserted here: that classifications.jsonl was never created. The
+// seeding apply run writes it — that is what apply does — so the assertion would be
+// checking the Given rather than the When. The skip count is the whole claim: a row is
+// only skipped when every id the resume ladder predicts is already in the expense log.
+
+// installmentExpenseReviewedAndApplied: the expense in this fixture's input.csv was
+// reviewed in the browser and applied, so the expense log already holds its installment
+// series. The seeding runs apply ITSELF rather than calling appender directly — seeding
+// through the library would prove only that appender agrees with appender, which is the
+// circularity this scenario exists to avoid.
+//
+// The apply run is registered as a BeforeWhen hook rather than executed inline, because
+// SetupBinaryConfig does not write config.json when called: it accumulates keys and
+// flushes them from its own BeforeWhen, so during the Given phase the binary still has no
+// config to read (apply fails with "classifications log path is not configured"). Hooks
+// fire in registration order and the canonical Given registers the config flush first, so
+// this ordering is config → seed → When.
+func installmentExpenseReviewedAndApplied() func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		expenseBatchSubmittedForClassification()(ctx)
+		ctx.BeforeWhen(func() { seedExpenseLogByApplying(ctx) })
+	}
+}
+
+// seedExpenseLogByApplying runs apply over the fixture's reviewed.json and fails the
+// scenario if it did not succeed — a silently failed seed would leave the expense log
+// empty, and an empty log skips nothing, which is the very outcome under test.
+func seedExpenseLogByApplying(ctx *harness.Context) {
+	actions.RunApply(filepath.Join(ctx.FixtureDir, "reviewed.json"))(ctx)
+	if ctx.ExitCode != 0 {
+		ctx.T.Fatalf("seeding apply run failed (exit %d): %s", ctx.ExitCode, ctx.Stderr)
+	}
+}
+
+// reviewedInstallmentExpandedToNDatedLogLines asserts the reviewed purchase became one
+// log line per installment, each suffixed (i/N) and dated a month after the last.
+func reviewedInstallmentExpandedToNDatedLogLines(fixDir string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		expect.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
+	}
+}

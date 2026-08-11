@@ -8,11 +8,16 @@ type ReviewData struct {
 }
 
 type QueueEntry struct {
-	ID           string    `json:"id"`
-	Item         string    `json:"item"`
-	Date         string    `json:"date"`
-	RawValue     string    `json:"rawValue"`
-	Value        float64   `json:"value"`
+	ID       string  `json:"id"`
+	Item     string  `json:"item"`
+	Date     string  `json:"date"`
+	RawValue string  `json:"rawValue"`
+	Value    float64 `json:"value"`
+	// Installments is the count parsed out of RawValue ("100,00/3" → 3), 1 for an
+	// ordinary purchase. It rides through to reviewed.json so apply can expand the
+	// series; discarding it here is what made apply record a 3× purchase as one row
+	// while batch-auto's auto route expanded it correctly (T-21).
+	Installments int       `json:"installments"`
 	Confidence   float64   `json:"confidence"`
 	AutoInserted bool      `json:"autoInserted"`
 	Predicted    Predicted `json:"predicted"`

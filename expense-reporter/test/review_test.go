@@ -31,6 +31,7 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 			pendingExpensesQueued(5),
 			expenseTypesOfferedForPicking([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
 			cleanQueueReportsNothingUnreviewable(),
+			installmentCountOfferedToTheReviewer("Financiamento carro", 24),
 		),
 	})
 }
@@ -61,6 +62,39 @@ func reviewDataEmbedded() []func(*harness.Context) {
 
 type reviewQueueOnly struct {
 	Queue []json.RawMessage `json:"queue"`
+}
+
+type reviewQueueInstallments struct {
+	Queue []struct {
+		Item         string `json:"item"`
+		Installments int    `json:"installments"`
+	} `json:"queue"`
+}
+
+// installmentCountOfferedToTheReviewer asserts the count parsed out of the raw "total/N"
+// token reaches the page's embedded data, which is where the export JS reads it from.
+//
+// This is the Go half of the T-21 producer→consumer chain. The remaining half — that
+// exportReviewed() actually copies the field into reviewed.json — runs in the browser and
+// no Go test can reach it; see the note in test/README.md. Without this assertion the
+// whole JS hop would be unguarded, since the only other evidence is a fixture someone
+// hand-authored to contain the field.
+func installmentCountOfferedToTheReviewer(item string, want int) []func(*harness.Context) {
+	return []func(*harness.Context){
+		func(ctx *harness.Context) {
+			ctx.T.Helper()
+			var data reviewQueueInstallments
+			expect.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
+			for _, row := range data.Queue {
+				if row.Item == item {
+					assert.Equal(ctx.T, want, row.Installments,
+						"queue row %q should carry its installment count", item)
+					return
+				}
+			}
+			ctx.T.Errorf("queue has no row for %q", item)
+		},
+	}
 }
 
 func pendingExpensesQueued(expectedCount int) []func(*harness.Context) {
