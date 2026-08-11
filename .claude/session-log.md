@@ -1,49 +1,44 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-07-31 — Session 68: T-54, the T-42 scout on real 2026 data, and the close-cycle repairs (S1/S2/S5)
+**Current Session:** 2026-08-11 — Session 69: T-21 — a reviewed installment recorded as N rows, and the summary that stopped meaning "rows"
 **Current Layer:** Close cycle — unblocking batch-auto → review → apply → generate-workbook (T-42)
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-07-31 - Session 68: T-54, the T-42 scout on real 2026 data, and the close-cycle repairs (S1/S2/S5)
+## 2026-08-11 - Session 69: T-21 — a reviewed installment recorded as N rows, and the summary that stopped meaning "rows"
 
 ### Context
 
-Opened with PRs #59/#60 merged and T-41 complete, intending to discuss next steps. The discussion settled a sequence — fix the cheap blocker, scout the chain on real data to replace a speculative backlog with a measured one, then fix what the scout found in one informed pass.
+Opened with PRs #61/#62 merged and master updated, to discuss next steps. The discussion established that exactly one measured defect stood between the repo and a correct monthly close — T-21, the reviewed-installment under-recording the s68 scout had quantified at 22% of the review queue — and that the work should be scoped to it alone, with the deferred fixture date canonicalization as its mandatory rider.
 
 ### What Was Done
 
-- **T-54 (PR #61)** — `review` could not read real `batch-auto` output: `ReadQueue` accepted only `1`/`0` for `auto_inserted` while the only producer emits `true`/`false`. That spelling had **no producer anywhere in the tree**; it was invented by fixtures. Fixed the reader (strict, not `ParseBool`), re-cut both review fixtures (spelling only), fixed the second producer `.claude/tools/reconstruct-csvs.py` (it emitted 7 columns, failing on field count before the spelling mattered), and corrected the `test/.memories/KNOWLEDGE.md` note that called the fixture's hand-conversion a legitimate "fold point".
-- **Seam test** — feeds the REAL writer's bytes to the REAL reader; pins both that it parses and that `ReadQueue`'s id equals the expense log's `GenerateID` (the T-41 slice-3 join, previously untested). Mutation-verified separately.
-- **T-42 SCOUT** — ran the real 69-row 2026 CSV through the whole chain in a scratch install root; real logs verified byte-identical after. Report: `.claude/t42-scout-report.md`.
-- **S2 (PR #62)** — `review` sourced its picker taxonomy from the WORKBOOK while everything else routed with `config/taxonomy.json`; measured **7 divergent leaves**. Repointed at `config/taxonomy.json`, dropped `--workbook`, deleted both test-only synthetic workbooks (hand-kept duplicates of the fixtures' own taxonomy).
-- **S1** — an unparseable row killed the entire review step (4 of 69 did). `ReadQueue` now returns `(entries, unreviewable, error)` and `cmd/review.go` names each skipped row on stderr.
-- **Closed the seam-test gap the scout found in my own T-54 guard** — it fed only parsed rows, so it passed while the seam stayed broken for unparsed ones.
-- **S5** — `generate-workbook --taxonomy` now falls back to config.
-- **Backfilled 3 drift-corrupted real records** (`IRFF`→`IRRF`, backed up first; exactly 3 records touched, line counts unchanged).
-- Docs synced: README (intro, `review`, `generate-workbook`, test counts 303/69/35), `internal/review` + repo memories, `.claude/index.md`.
+- `test(fixtures)`: canonicalized dates in the review-queue CSVs to match producer output — the rider deferred from s68, landed as its own commit and verified green in isolation (stashed everything else, ran the deterministic group, exit 0) so a bisect cannot land on a red commit
+- `feat(apply)`: recorded a reviewed installment purchase as N rows, not one (T-21) — the count now rides `ReadQueue` → `QueueEntry` → page DATA → `exportReviewed()` → `reviewed.json` → `ReviewedEntry` → `ExpandAndAppend`
+- `fix(apply)`: counted LOG ROWS in the summary, and let the type-routing-cycle see the installments — both found by an advisor review of the finished work
+- `docs`: synced memories, README and index for T-21
+- Opened PR #63 against master from a NEW branch `feat/t21-reviewed-installments` at the same HEAD — the working branch `fix/close-cycle-review-repairs` already carried the merged PRs #61/#62, so a second PR from it would have read as a reopen
+- Two new fixtures with READMEs explaining their deliberate value choices: `apply-reviewed-installments` (clean-dividing `90,00/3`) and `apply-installment-resume-join` (the non-terminating `100,00/3`)
+- Verified: unit green across 20 packages; full acceptance 71 pass / 0 fail / 0 skip
 
 ### Decisions Made
 
-- **Scout before fixing.** The backlog was speculation until the chain ran; one throwaway run converted it into a measured list and reordered the work (S2 ahead of T-21).
-- **`taxonomy.json` is the corrected vocabulary** (user call) — S2 removes `IRFF`, `Apoia-se 4i20`, `alguma coisa sindicato` and adds `Produtos de casa`.
-- **Malformed rows: skip + report (option b).** Carrying them into the review UI for repair (option c) deferred by the user → T-56.
-- **`- 1/4` and `4x` are input ERRORS, not notations to support** (user correction) — `99,90/3` is the only accepted form, which makes T-21 plumbing rather than parser work.
-- **`--entries` deliberately NOT defaulted from config** — omitting it is how you ask for an empty year skeleton; defaulting it would be a silent capability loss.
-- **Reader kept strict** (`true`/`false` only, no `ParseBool`) so a spelling nothing emits cannot creep back in unexercised.
+- **`installments` is REQUIRED in `reviewed.json`, not defaulted to 1.** An absent key decodes to Go's zero, so a default would make "the producer never sent it" indistinguishable from "the producer sent zero" — precisely the T-54 shape, where a spelling no producer emitted was accepted for months. `validateEntries` rejects `< 1` and states that a non-installment row is `1`.
+- **The non-terminating-division test asserts a BEHAVIOR, not an id equality.** Comparing apply's ids to `appender.PredictEntryIDs` would be circular — both call `expandEntries`, so they agree by construction. Instead the series apply writes must be recognised by `batch-auto --resume`, which derives the same per-installment value from the raw `100,00/3` token through `internal/parse`. Two independent derivations, and it also proves the fix CLOSES a resume hole rather than opening one.
+- **The browser pin was dropped to a filed follow-up rather than forced.** The `playwright` npm package is not installed (only browser binaries are, from the MCP plugin) and the Playwright MCP is pinned to an absent system Chrome, so every route to a committed browser test adds a Node or `playwright-go` toolchain to a Go-only repo. Deferred as an explicit user decision.
+- **The review page keeps ONE row with a ×N badge** (UX locked s62): expanding to N rows would make the reviewer take the same categorisation decision N times, and expansion is apply's job.
 
 ### Next
 
-- **T-21 — thread the installment count.** Now pure plumbing: `ReadQueue` → `exportReviewed()` in `review.html` (~line 1504) → `reviewed.json` schema → `apply.ReviewedEntry` → `appender.ExpandAndAppend`. UX locked: 1 row + ×N badge. Measured payoff: 10 of 45 rows, 17 missing log entries. Do the deferred fixture DATE canonicalization in the same pass.
-- Then re-run the scout clean (task 14) — it is now the repeatable pre-close check (T-59 proposes committing it).
-- Then the real T-42 monthly close.
-- PRs #61 and #62 await review; **#62 contains #61**.
+- **T-59** — promote the s68 scout to a committed script, so "the chain works on real data" is a check rather than a claim re-derived each session, and the isolation cannot be got subtly wrong (`--data-dir` does NOT isolate the logs)
+- Then re-run the scout clean on the real 2026 CSV
+- Then the real T-42 monthly close
+- PR #63 awaits review
 
 ### Gotchas
 
-- **The scout found a defect in the guard I had shipped hours earlier.** The T-54 seam test feeds only successfully-parsed rows, so it passed while the seam was still broken for unparsed ones. A guard built from the happy path certifies the happy path — the same "reports success while testing nothing" shape session 67 catalogued, reproduced by me within the same session.
-- **Two sources of truth for one vocabulary is a silent data-loss mechanism, not redundancy.** The workbook/`taxonomy.json` drift had already inverted the feedback loop: the model predicted `IRRF` correctly and the human "corrected" it to `IRFF` because the picker offered that spelling — and corrected entries are the highest-priority few-shot source.
-- **`--data-dir` does NOT isolate the logs.** It is the training-data dir (and owns the 5.R2 embedding cache). Isolation requires a scratch install root, because `config.json` and relative log paths both resolve against `filepath.Dir(os.Executable())`. Always hash the real logs before/after.
-- **Do not `git checkout` a file to revert a mutation when it holds uncommitted work** — it reverts to the last commit, not to the pre-mutation state. Cost me the S1 wiring; restore from a backup copy instead.
-- **When a mutation does NOT go red, record why.** Deleting `dateCell`'s zero-time guard left the seam test green — correctly, since the skip is an OR and the value cell stays empty. That regression is owned by a different test. "The mutation passed" usually means a missing test; this time it did not.
-- Backgrounded MCP calls still inject no verdict template — grep `calls.jsonl` for the call_id and append by hand.
+- **A Given cannot run the binary inline.** `domain.SetupBinaryConfig` does not write `config.json` when called — it accumulates keys and flushes them from its own `ctx.BeforeWhen`, which runs after every Given event. A Given that execs the CLI during the Given phase finds no config at all (apply failed with "classifications log path is not configured"). Register the seeding run as its own `BeforeWhen`; hooks fire in registration order, so the canonical Given's config flush lands first.
+- **rtk reshapes `go test` output, so `grep '^--- FAIL'` silently matches nothing.** A mutation run looked GREEN and was nearly recorded as a coverage gap; the pattern was wrong (rtk renders `[FAIL] TestName`). The **exit code** is the signal no filter can reshape. This is the "reports success while testing nothing" shape the repo keeps cataloguing, hit while doing mutation testing to avoid exactly that.
+- **A mutation must COMPILE to be a test.** The first attempt left an unused variable, so the build failed and no test ran — "not red" meant nothing. The valid mutation is the exact pre-fix code.
+- **`99,90/3` does NOT divide cleanly in float64** (`33.300000000000004`), nor does `100,00/3`. `ExpenseLogMatches` compares `value`, so a log-pinning fixture needs `90,00/3` → `30`. The float-drift trap in `test/.memories/KNOWLEDGE.md` is real and bites immediately.
+- **A count and its label are one edit.** `printSummary` prints "Appended: N rows" and had been truthful only because entries and rows were 1:1; T-21 broke that identity without touching the label, so a `900,00/3` purchase printed "1 rows" and wrote 3. Same defect class as T-21 itself, reintroduced one layer up while fixing it.
