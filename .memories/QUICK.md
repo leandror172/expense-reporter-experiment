@@ -24,8 +24,24 @@ canonical date, repairing a silent `review`→`apply` id divergence. **Slice 4 D
 delegates to it), and `entry.ID` is recomputed from the canonical date — apply had
 been looking up an id it never writes, and that miss is SILENT (unfound → appended →
 duplicate). Fixtures swept off the raw-date ids T-18 had already migrated for
-`correct`; new `apply-stale-id` is the only fixture that discriminates. Next: T-21 →
-T-42 monthly close.** **s65 date/year hardening (merged):** resolved-year
+`correct`; new `apply-stale-id` is the only fixture that discriminates.**
+**T-42 SCOUT RUN (s68) — the chain ran on real 2026 data for the first time**
+(`.claude/t42-scout-report.md`; isolated in a scratch install root, real logs verified
+byte-identical). It found 2 hard blockers in `review`, both now FIXED:
+**T-54** — `ReadQueue` accepted only `1`/`0` for `auto_inserted` while the only producer
+emits `true`/`false`; the `1`/`0` spelling had NO producer and was invented by fixtures
+(PR #61). **S2** — `review` built its picker from the WORKBOOK's Referência sheet while
+everything else routed with `config/taxonomy.json`; the two had drifted **7 leaves**
+(`IRFF`/`IRRF`, `Apoia-se 4i20`/`Apoia-se`, …), so a workbook-only pick vanished silently
+from the generated workbook — and 2 logged "corrections" had been teaching the classifier
+the unroutable spelling (3 real records backfilled). **S1** — an unparseable row is now
+skipped and named on stderr instead of killing the step (4 of 69 rows did). **S5** —
+`generate-workbook` takes `--taxonomy` from config (`--entries` deliberately NOT defaulted:
+omitting it is how you ask for an empty year skeleton).
+**`review` now reads NO workbook — `excel.LoadReferenceSheet` has only WS-E dead callers
+left, so the workbook-as-source retirement is finally done on the live path.**
+Next: **T-21** (measured at 22% of the review queue — 10 of 45 rows recorded as 10 log
+entries where 27 belong), then re-run the scout, then the real T-42 close. **s65 date/year hardening (merged):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.
 WS-D (HELD: gate-to-review) → WS-E after.

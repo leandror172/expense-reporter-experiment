@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -67,15 +68,47 @@ func TestClassifiedCSV_QueueIDJoinsTheExpenseLogID(t *testing.T) {
 		"the review queue and the expense log must name this expense with one id, not two")
 }
 
-// writeThenReadQueue runs rows through the real writer and the real reader, which is the
-// whole point: neither side is simulated, so the bytes under test are the bytes that ship.
+// writeThenReadQueue is the queue-only form, for scenarios with no unparsed rows.
 func writeThenReadQueue(t *testing.T, rows []classifiedRow) []review.QueueEntry {
+	t.Helper()
+	entries, _ := writeThenReadQueueWithUnreviewable(t, rows)
+	return entries
+}
+
+// writeThenReadQueueWithUnreviewable runs rows through the real writer and the real reader,
+// which is the whole point: neither side is simulated, so the bytes under test are the bytes
+// that ship. Returns the unreviewable raw lines alongside the queue.
+func writeThenReadQueueWithUnreviewable(t *testing.T, rows []classifiedRow) ([]review.QueueEntry, []string) {
 	t.Helper()
 
 	csvPath := filepath.Join(t.TempDir(), "classified.csv")
 	require.NoError(t, writeClassifiedCSV(csvPath, rows), "writing classified.csv")
 
-	entries, err := review.ReadQueue(csvPath)
+	entries, unreviewable, err := review.ReadQueue(csvPath)
 	require.NoError(t, err, "review.ReadQueue must accept what writeClassifiedCSV produced")
-	return entries
+	return entries, unreviewable
+}
+
+// TestClassifiedCSV_UnparsedRowSurvivesTheSeam closes the gap the T-42 scout found in this
+// very file. The two tests above feed ONLY successfully-parsed rows, so they passed while
+// the seam was still broken for the row shape batch-auto deliberately writes when a line
+// does not parse — a guard built from the happy path certifies the happy path.
+//
+// The producer's contract is TestWriteClassifiedCSV_UnparsedRowKeepsItsRawLine: raw text in
+// the item column, empty date and value. The consumer's contract (S1) is that such a row is
+// returned as unreviewable rather than failing the read. This pins them TOGETHER, against
+// the real writer's bytes, so neither side can be changed alone.
+func TestClassifiedCSV_UnparsedRowSurvivesTheSeam(t *testing.T) {
+	const badLine = "Anita;Elô ADM;09/01;405,25"
+	rows := []classifiedRow{
+		classifiedRowWithPrediction(t, "Posto Ipiranga;15/04;280,00", "Combustível", "Transporte", 0.95, true),
+		{RawLine: badLine, Error: errors.New("unparseable")},
+	}
+
+	entries, unreviewable := writeThenReadQueueWithUnreviewable(t, rows)
+
+	assert.Len(t, entries, 1, "the parsed row is still queued — one bad row must not cost the good ones")
+	require.Len(t, unreviewable, 1, "the unparsed row is reported, not silently dropped")
+	assert.Equal(t, badLine, unreviewable[0],
+		"the caller gets the original text, which is the only thing that identifies the row")
 }
