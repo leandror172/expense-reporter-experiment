@@ -4,6 +4,20 @@
 col 8 = type) + `BuildTaxonomy` (tree from workbook mappings) + `Render` (inject JSON
 into `template/review.html` via go:embed).
 
+**Input contract — `ReadQueue` must match batch-auto's writers exactly (T-54, s68):**
+exactly 8 semicolon fields, and `auto_inserted` spelled **`true`/`false`** — the inverse of
+`fmt %v` on a bool. `1`/`0` is REJECTED on purpose: it was accepted for months while NO
+producer emitted it, so `review` failed on every real `classified.csv` and no test noticed
+(the reader's only inputs were fixtures authored to satisfy the reader). Do not "soften"
+this back to `strconv.ParseBool` — one producer, one spelling. Guard:
+`cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote`.
+
+**The id is derived, not carried.** `ReadQueue` hashes the CSV's date column into
+`QueueEntry.ID`. Since T-41 slice 3 that column is canonical `DD/MM/YYYY`, so the id equals
+the one both JSONL logs hold — that is what lets `reviewed.json` join them. Guard:
+`cmd.TestClassifiedCSV_QueueIDJoinsTheExpenseLogID` (mutation-verified: revert
+`dateCell()` to a year-less date and ONLY that test goes red).
+
 - Types (types.go): `QueueEntry` with `Predicted{Type,Category,Subcategory}`;
   `Taxonomy{Types[]}` → `Type{Name,Categories}` → `Category{Name,Subcategories}`.
   JSON keys are `types`/`type` (never `sheets`/`sheet`) — the cross-language contract is

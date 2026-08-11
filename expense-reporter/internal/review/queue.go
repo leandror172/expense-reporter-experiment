@@ -70,17 +70,30 @@ func ReadQueue(csvPath string) ([]QueueEntry, error) {
 			return nil, fmt.Errorf("line %d: invalid confidence: %w", lineNumber, err)
 		}
 
+		// "true"/"false" is the exact inverse of what the writers emit (fmt %v on a bool
+		// in writeClassifiedCSV, a literal "false" in writeReviewCSV). This reader used to
+		// accept ONLY "1"/"0" — a spelling no producer in the tree ever wrote — so `review`
+		// hard-errored on every real batch-auto file (T-54). It went unnoticed because the
+		// only inputs this parser ever saw were fixtures hand-authored to satisfy it.
+		//
+		// Deliberately strict rather than strconv.ParseBool: ParseBool would also swallow
+		// "1"/"0"/"T"/"f", re-opening the same gap where the reader accepts spellings
+		// nothing emits and no test covers. One producer, one spelling.
 		var autoInserted bool
 		switch autoInsertedStr {
-		case "1":
+		case "true":
 			autoInserted = true
-		case "0":
+		case "false":
 			autoInserted = false
 		default:
-			return nil, fmt.Errorf("line %d: invalid auto_inserted value %q", lineNumber, autoInsertedStr)
+			return nil, fmt.Errorf("line %d: invalid auto_inserted value %q (want \"true\" or \"false\")", lineNumber, autoInsertedStr)
 		}
 
-		// ID uses DD/MM date (no year) — stable within a review-to-apply cycle only
+		// The id is hashed from the date column exactly as it appears in the CSV. Since
+		// T-41 slice 3 that column is the CANONICAL DD/MM/YYYY (batch-auto's dateCell), so
+		// this id is the SAME one both JSONL logs carry — which is what lets reviewed.json
+		// join them. Before slice 3 the column held the raw input, so a bare-dated row got
+		// a review-only id that apply would look up and never find.
 		entries = append(entries, QueueEntry{
 			ID:           feedback.GenerateID(item, date, perInstallment),
 			Item:         item,
