@@ -30,7 +30,10 @@ field plus the installment count it discarded, which was the ROOT of the 4× re-
 the CANONICAL date, which repairs a live silent divergence — `review.ReadQueue` hashed
 the raw column into `reviewed.json`'s id while both logs hashed the canonical form, so
 `apply` looked up an id it never writes and an id miss there appends silently.
-Next: slice 4 (`apply`, incl. recomputing `entry.ID` alongside the date) → T-21 → T-42 close.
+Slice 4 (`apply`, incl. recomputing `entry.ID` alongside the date) DONE s67; **T-21 DONE
+s69** (installment count threaded to `apply`; `reviewed.json` gained a REQUIRED
+`installments`; apply's summary counts rows, not entries).
+Next: T-59 (script the s68 scout) → re-run it clean → the T-42 close.
 History → KNOWLEDGE.md "Milestone Log".
 
 ## Structure

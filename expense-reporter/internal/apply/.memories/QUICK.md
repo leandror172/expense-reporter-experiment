@@ -28,7 +28,16 @@ is the sole workbook writer (WS-B slice 4). Driven by `cmd/.../apply.go`.
   regression of the above — mutation-verified. `apply-stale-id` is the only
   discriminating fixture; its id is deliberately hashed from the pre-canonical date.
 
-**Open:** T-20 (best-effort idempotency), T-21 (reviewed installments recorded count=1).
+- **Installments ride in `reviewed.json` (T-21, s69).** `ReviewedEntry.Installments` is
+  REQUIRED — `validateEntries` rejects `< 1`, because an absent key decodes to 0 and a
+  default of 1 would hide a producer that stopped emitting it (the T-54 shape). apply
+  passes it to `ExpandAndAppend`, so a reviewed `99,90/3` lands as 3 dated rows; it used
+  to pass a literal `1` and land as one. The summary counts ROWS via `rowsWrittenFor`,
+  not entries — it prints "Appended: N rows" and that must stay literally true.
+
+**Open:** T-20 (best-effort idempotency); **partial installment series** — a mid-append
+failure leaves k of N rows with no classification entry, so a re-run re-appends the whole
+series (new since T-21; apply has NO ledger and cannot even warn). Details → KNOWLEDGE.md.
 Details + rationale → KNOWLEDGE.md.
 
 **Tests:** acceptance `test/apply_test.go` + `type_routing_cycle_test.go` step 3;

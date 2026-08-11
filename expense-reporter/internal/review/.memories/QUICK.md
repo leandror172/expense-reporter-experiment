@@ -34,6 +34,16 @@ producer emitted it, so `review` failed on every real `classified.csv` and no te
 this back to `strconv.ParseBool` — one producer, one spelling. Guard:
 `cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote`.
 
+**`QueueEntry` carries the installment COUNT, not just the raw token (T-21, s69).**
+`ReadQueue` used to discard it (`perInstallment, _, err`) while keeping `RawValue` for
+display, so the count died here and `apply` — the only consumer that needs it — recorded
+every reviewed `99,90/3` as a single row. It now rides `QueueEntry.Installments` → the
+page's embedded DATA → `exportReviewed()` → `reviewed.json`. The page shows ONE row with
+a ×N badge (`installmentBadge`), never N rows: expanding would make the reviewer take the
+same categorisation decision N times, and expansion is `apply`'s job.
+⚠️ **The `exportReviewed()` hop is UNGUARDED** — deleting the field from the export leaves
+the whole Go suite green (measured, not assumed). See `test/.memories/KNOWLEDGE.md`.
+
 **The id is derived, not carried.** `ReadQueue` hashes the CSV's date column into
 `QueueEntry.ID`. Since T-41 slice 3 that column is canonical `DD/MM/YYYY`, so the id equals
 the one both JSONL logs hold — that is what lets `reviewed.json` join them. Guard:

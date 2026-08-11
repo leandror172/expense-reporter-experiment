@@ -40,8 +40,20 @@ skipped and named on stderr instead of killing the step (4 of 69 rows did). **S5
 omitting it is how you ask for an empty year skeleton).
 **`review` now reads NO workbook — `excel.LoadReferenceSheet` has only WS-E dead callers
 left, so the workbook-as-source retirement is finally done on the live path.**
-Next: **T-21** (measured at 22% of the review queue — 10 of 45 rows recorded as 10 log
-entries where 27 belong), then re-run the scout, then the real T-42 close. **s65 date/year hardening (merged):** resolved-year
+**T-21 DONE (s69, PR #63)** — the installment count now rides `ReadQueue` →
+`QueueEntry` → page DATA → `exportReviewed()` → `reviewed.json` → `ReviewedEntry` →
+`ExpandAndAppend`, so a reviewed `99,90/3` lands as 3 rows instead of 1 (was 10 of 45
+real rows, 17 missing entries). `installments` is REQUIRED — an absent key decodes to 0,
+so defaulting to 1 would hide a producer that stopped emitting it (the T-54 shape).
+The apply summary now counts ROWS, not entries: "Appended: N rows" had been true only
+while entries and rows were 1:1. **Measured gap kept open on purpose:** deleting the
+field from `exportReviewed()` leaves the whole Go suite green — the export runs in the
+browser and no Go test reaches it; a committed browser test needs a Node/`playwright-go`
+toolchain in a Go-only repo. Do NOT close it with a hand-authored fixture (that IS T-54).
+Also new: apply can now leave a PARTIAL installment series on a mid-append failure, with
+no ledger to warn.
+Next: **T-59** (script the s68 scout), then re-run it clean, then the real T-42 close.
+**s65 date/year hardening (merged):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.
 WS-D (HELD: gate-to-review) → WS-E after.

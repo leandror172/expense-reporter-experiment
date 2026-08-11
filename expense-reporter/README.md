@@ -191,8 +191,16 @@ In the browser:
 - Accept (`a`) or Skip (`s`) each row; `j`/`k` navigate; `1`–`4` set sheet by hotkey
 - "Accept auto-inserted" bulk-confirms all already-classified rows at once
 - Progress auto-saves to `localStorage` — reloading the file resumes where you left off
+- An installment purchase (`99,90/3`) stays **one** row carrying a `×3` badge — you make
+  one categorisation decision, and `apply` expands it into the three monthly rows
 - **Shift+E** exports `reviewed.json` with every row's final action (`confirmed` /
-  `corrected` / `skipped`) and the resolved Sheet / Category / Subcategory
+  `corrected` / `skipped`), the resolved Sheet / Category / Subcategory, and the row's
+  `installments` count
+
+> `installments` is a **required** field of `reviewed.json`: `apply` refuses a file whose
+> entries lack it (a non-installment row is `1`, not `0`). A missing key would decode to
+> zero and be indistinguishable from an export that silently stopped emitting it, which
+> would quietly record every installment purchase as a single row.
 
 Flags:
 - `--output` / `-o` — output path (default: `review.html`)
