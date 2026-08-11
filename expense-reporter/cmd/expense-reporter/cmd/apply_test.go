@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,60 @@ import (
 
 	"expense-reporter/internal/apply"
 )
+
+// newInstallmentRow builds a confirmed new row for a purchase split into n installments.
+func newInstallmentRow(item string, n int) apply.ReviewedEntry {
+	row := newConfirmedRow(item)
+	row.Installments = n
+	return row
+}
+
+// TestAppendNewRows_CountsRowsWrittenNotEntries pins the UNIT of apply's summary.
+//
+// printSummary prints "Appended: %d rows", and until T-21 that label was true by
+// accident: every entry produced exactly one log row, so counting entries and counting
+// rows were the same number. An installment purchase now produces N, so a per-entry
+// counter reports "1 rows" for a write of three — the same class of defect T-21 itself
+// was, a count that quietly stops meaning what it says.
+func TestAppendNewRows_CountsRowsWrittenNotEntries(t *testing.T) {
+	dir := t.TempDir()
+	classifPath := filepath.Join(dir, "classifications.jsonl")
+	expensesLogPath := filepath.Join(dir, "expenses_log.jsonl")
+
+	confirmed, corrected, failed, err := appendNewRows(
+		[]apply.ReviewedEntry{newInstallmentRow("Tratamento dentário", 3)},
+		classifPath, expensesLogPath, false,
+	)
+
+	require.NoError(t, err)
+	require.Empty(t, failed)
+	assert.Equal(t, 0, corrected)
+	assert.Equal(t, 3, confirmed, "a three-installment purchase writes three rows")
+
+	data, readErr := os.ReadFile(expensesLogPath)
+	require.NoError(t, readErr)
+	assert.Equal(t, 3, strings.Count(string(data), "\n"),
+		"the count must match the lines that actually landed, not the entries processed")
+}
+
+// TestAppendNewRows_DryRunPreviewsTheRowsARealRunWouldWrite is the paired inverse: a
+// preview whose number disagrees with the run it previews is worse than no preview,
+// because the user approves the write on the strength of it.
+func TestAppendNewRows_DryRunPreviewsTheRowsARealRunWouldWrite(t *testing.T) {
+	dir := t.TempDir()
+	expensesLogPath := filepath.Join(dir, "expenses_log.jsonl")
+
+	previewed, _, _, err := appendNewRows(
+		[]apply.ReviewedEntry{newInstallmentRow("Tratamento dentário", 3)},
+		filepath.Join(dir, "classifications.jsonl"), expensesLogPath, true,
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, 3, previewed, "the dry-run must promise the same three rows the real run writes")
+
+	_, statErr := os.Stat(expensesLogPath)
+	assert.True(t, os.IsNotExist(statErr), "a dry run must still write nothing")
+}
 
 // newConfirmedRow builds a confirmed new row with a valid reviewed location.
 func newConfirmedRow(item string) apply.ReviewedEntry {

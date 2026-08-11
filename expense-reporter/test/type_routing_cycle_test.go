@@ -139,6 +139,8 @@ func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 			commandSucceeded(),
 			typedEntryRoutedToSheet(250, "Variáveis"), // Dentista → its chosen type
 			valueAbsentFromSheet(250, "Extras"),       // not the other ambiguous candidate
+			typedEntryRoutedToSheet(300, "Variáveis"), // the expanded installment rows too
+			valueAbsentFromSheet(300, "Extras"),
 		),
 	})
 }

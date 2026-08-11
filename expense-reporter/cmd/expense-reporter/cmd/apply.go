@@ -177,6 +177,17 @@ func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, dryRun boo
 	return nil
 }
 
+// rowsWrittenFor reports how many expense-log rows an entry produces, so the summary's
+// "N rows" stays literally true for installment purchases. It mirrors expandEntries'
+// own rule — a count of 0 or 1 is a single row — because a summary derived from a
+// different rule than the writer is a summary that will eventually disagree with it.
+func rowsWrittenFor(entry apply.ReviewedEntry) int {
+	if entry.Installments < 1 {
+		return 1
+	}
+	return entry.Installments
+}
+
 // appendNewRows takes no year: dates arrive already canonicalized to DD/MM/YYYY by
 // entriesWithCanonicalDates, so ParseDateFlexible reads the year off the string itself
 // and never falls back to time.Now().
@@ -195,9 +206,9 @@ func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath s
 
 		if dryRun {
 			if entry.Action == apply.ActionConfirmed {
-				appendedConfirmed++
+				appendedConfirmed += rowsWrittenFor(entry)
 			} else {
-				appendedCorrected++
+				appendedCorrected += rowsWrittenFor(entry)
 			}
 			continue
 		}
@@ -209,9 +220,9 @@ func appendNewRows(newRows []apply.ReviewedEntry, classifPath, expensesLogPath s
 		}
 
 		if entry.Action == apply.ActionConfirmed {
-			appendedConfirmed++
+			appendedConfirmed += rowsWrittenFor(entry)
 		} else {
-			appendedCorrected++
+			appendedCorrected += rowsWrittenFor(entry)
 		}
 
 		fbEntry, _ := buildFeedbackEntry(entry)
