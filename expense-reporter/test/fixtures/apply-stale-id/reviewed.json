@@ -7,6 +7,7 @@
       "item": "Uber Centro",
       "date": "15/04",
       "value": 35.5,
+      "installments": 1,
       "confidence": 0.91,
       "predicted": {
         "category": "Transporte",

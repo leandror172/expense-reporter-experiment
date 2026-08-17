@@ -19,16 +19,22 @@ type ReviewedFile struct {
 	Entries    []ReviewedEntry `json:"entries"`
 }
 
-// ReviewedEntry represents a single entry from the UI export
+// ReviewedEntry represents a single entry from the UI export.
+//
+// Value is PER INSTALLMENT and Installments is how many of them there are, matching
+// parse.ParsedExpense. Installments is REQUIRED (validateEntries rejects anything below
+// 1): a missing key would decode to 0, which is indistinguishable from a producer that
+// stopped emitting the field — see TestReadReviewed_RejectsEntryWithoutInstallmentCount.
 type ReviewedEntry struct {
-	ID         string            `json:"id"`
-	Item       string            `json:"item"`
-	Date       string            `json:"date"`
-	Value      float64           `json:"value"`
-	Confidence float64           `json:"confidence"`
-	Predicted  ReviewedLocation  `json:"predicted"`
-	Action     string            `json:"action"`
-	Reviewed   *ReviewedLocation `json:"reviewed"`
+	ID           string            `json:"id"`
+	Item         string            `json:"item"`
+	Date         string            `json:"date"`
+	Value        float64           `json:"value"`
+	Installments int               `json:"installments"`
+	Confidence   float64           `json:"confidence"`
+	Predicted    ReviewedLocation  `json:"predicted"`
+	Action       string            `json:"action"`
+	Reviewed     *ReviewedLocation `json:"reviewed"`
 }
 
 // ReviewedLocation represents a type/category/subcategory triple

@@ -3,21 +3,22 @@
   "source": "classified.csv",
   "entries": [
     {
-      "id": "8c434a0b64c0",
-      "item": "Uber Centro",
-      "date": "15/04",
-      "value": 35.5,
-      "installments": 1,
+      "id": "ede4aba315ee",
+      "item": "Posto Ipiranga",
+      "date": "15/04/2026",
+      "value": 33.333333333333336,
+      "installments": 3,
       "confidence": 0.91,
       "predicted": {
+        "type": "Variáveis",
         "category": "Transporte",
-        "subcategory": "Uber/Taxi"
+        "subcategory": "Combustível"
       },
       "action": "confirmed",
       "reviewed": {
-        "sheet": "Variáveis",
+        "type": "Variáveis",
         "category": "Transporte",
-        "subcategory": "Uber/Taxi"
+        "subcategory": "Combustível"
       }
     }
   ]

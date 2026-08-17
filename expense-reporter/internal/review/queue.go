@@ -83,7 +83,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 			continue
 		}
 
-		perInstallment, _, err := utils.ParseCurrencyWithInstallments(valueStr)
+		perInstallment, installments, err := utils.ParseCurrencyWithInstallments(valueStr)
 		if err != nil {
 			return nil, nil, fmt.Errorf("line %d: invalid value: %w", lineNumber, err)
 		}
@@ -123,6 +123,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 			Date:         date,
 			RawValue:     valueStr,
 			Value:        perInstallment,
+			Installments: installments,
 			Confidence:   confidence,
 			AutoInserted: autoInserted,
 			Predicted: Predicted{

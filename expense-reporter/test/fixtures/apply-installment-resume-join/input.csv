@@ -1,0 +1,9 @@
+# The SAME expense the Given already applied through reviewed.json, written the way a bank
+# export writes it: a total plus an installment count. 100,00/3 does NOT divide cleanly —
+# 33.333333333333336 — which is the point. apply reads its per-installment value as an
+# already-typed JSON float; batch-auto derives it here from this raw token through the parse
+# boundary. --resume can only skip this row if BOTH paths produce the same three ids.
+#
+# Explicit DD/MM/YYYY on both sides so nothing depends on the ladder's clock rung. The bare
+# date + --year wiring is a different claim, already covered by batch-auto-resume-year-flag.
+Posto Ipiranga;15/04/2026;100,00/3

@@ -7,6 +7,7 @@
       "item": "Uber Centro",
       "date": "15/04",
       "value": 35.5,
+      "installments": 1,
       "confidence": 0.91,
       "predicted": {
         "category": "Transporte",
@@ -24,6 +25,7 @@
       "item": "Diarista Letícia",
       "date": "10/05",
       "value": 160.0,
+      "installments": 1,
       "confidence": 0.87,
       "predicted": {
         "category": "Habitação",
@@ -41,6 +43,7 @@
       "item": "Academia Smart Fit",
       "date": "05/05",
       "value": 99.9,
+      "installments": 1,
       "confidence": 0.62,
       "predicted": {
         "category": "Saúde",

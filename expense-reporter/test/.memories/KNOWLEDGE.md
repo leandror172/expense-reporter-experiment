@@ -290,6 +290,34 @@ the ambiguous leaf (Dentista ∈ Variáveis+Extras) routes by type. T1 is Ollama
 T2–T4 deterministic (<0.05s). apply's skeleton workbook (pre-slice-4) was built hermetically
 via generate-workbook in the Given — dropped in slice 4.
 
+## The export JS is the one hop no Go test reaches (T-21, session 69)
+
+`exportReviewed()` in `internal/review/template/review.html` builds `reviewed.json` in the
+browser. Nothing in the Go suite can execute it, so the producer→consumer chain is guarded
+in two halves with a **known gap between them**:
+
+| Hop | Guard | Mutation result |
+|---|---|---|
+| `ReadQueue` → embedded page DATA | `installmentCountOfferedToTheReviewer` (`review_test.go`) | RED |
+| page DATA → `reviewed.json` | **none — JS, unreachable from Go** | **NOT red** |
+| `reviewed.json` → `ReviewedEntry` | `TestReadReviewed_RejectsEntryWithoutInstallmentCount` | RED |
+| `ReviewedEntry` → expense log | `TestApply_ReviewedInstallmentExpandsToOneRowPerInstallment` | RED |
+
+Deleting `installments: s.entry.installments` from `exportReviewed()` leaves the whole
+suite green. That was measured, not assumed — and it is recorded here rather than left for
+someone to rediscover, because the shape is exactly T-54's: a hop whose only "evidence" is
+a fixture hand-authored to contain the right field.
+
+**Do not close this gap with a fixture.** A hand-written `reviewed.json` carrying
+`installments` asserts a contract the producer may not implement — which is what made
+`review` unable to read real `batch-auto` output for months. Closing it properly needs a
+browser driver (Playwright), which would put a Node or `playwright-go` toolchain into a
+Go-only repo; deferred as an explicit decision, not an oversight.
+
+The strict `validateEntries` check is the partial compensation: if the JS silently stops
+emitting the field, apply **refuses the file** rather than recording every installment
+purchase as a single row. The failure is loud at the next hop instead of silent forever.
+
 ## Traps That Masked Regressions (sessions 42–43, consolidated from QUICK.md)
 - **Explicit-year time-bomb:** the append path reformats dates to `DD/MM/YYYY`
   (`ParseDateFlexible` fills bare `DD/MM` with `time.Now().Year()`). Non-dry-run

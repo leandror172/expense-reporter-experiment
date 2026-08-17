@@ -26,7 +26,8 @@ func ReadReviewed(path string) (ReviewedFile, error) {
 	return reviewed, nil
 }
 
-// validateEntries checks that each entry has a valid Action.
+// validateEntries checks that each entry has a valid Action and a usable installment
+// count.
 func validateEntries(entries []ReviewedEntry) error {
 	validActions := map[string]bool{
 		ActionConfirmed: true,
@@ -38,6 +39,14 @@ func validateEntries(entries []ReviewedEntry) error {
 	for i, entry := range entries {
 		if !validActions[entry.Action] {
 			return fmt.Errorf("entry %d: unknown action %q", i, entry.Action)
+		}
+		// Deliberately not defaulted to 1. An absent key decodes to 0, so defaulting
+		// would silently accept a producer that stopped emitting the field, and the
+		// only symptom would be installment purchases quietly recorded as one row.
+		if entry.Installments < 1 {
+			return fmt.Errorf(
+				"entry %d: installments is %d; it must be at least 1 (a purchase that is not split into installments is 1, not 0)",
+				i, entry.Installments)
 		}
 	}
 

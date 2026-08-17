@@ -87,12 +87,13 @@ func TestTypeRoutingCycle_2_ReviewRendersTypes(t *testing.T) {
 		Then: slices.Concat(
 			reviewHTMLProduced(),
 			reviewDataEmbedded(),
-			pendingExpensesQueued(3),
+			pendingExpensesQueued(4),
 			expenseTypesOfferedForPicking([]string{"Fixas", "Variáveis", "Extras"}),
 			predictedTypesPrefilled(map[string]string{
-				"Uber Centro":      "Variáveis",
-				"Diarista Letícia": "Fixas",
-				"Dentista Dra Ana": "", // ambiguous → left for the human to pick
+				"Uber Centro":         "Variáveis",
+				"Diarista Letícia":    "Fixas",
+				"Dentista Dra Ana":    "", // ambiguous → left for the human to pick
+				"Tratamento dentário": "", // ambiguous for the same reason: Dentista ∈ Variáveis+Extras
 			}),
 		),
 	})
@@ -138,6 +139,8 @@ func TestTypeRoutingCycle_4_GeneratedWorkbookRoutesByType(t *testing.T) {
 			commandSucceeded(),
 			typedEntryRoutedToSheet(250, "Variáveis"), // Dentista → its chosen type
 			valueAbsentFromSheet(250, "Extras"),       // not the other ambiguous candidate
+			typedEntryRoutedToSheet(300, "Variáveis"), // the expanded installment rows too
+			valueAbsentFromSheet(300, "Extras"),
 		),
 	})
 }

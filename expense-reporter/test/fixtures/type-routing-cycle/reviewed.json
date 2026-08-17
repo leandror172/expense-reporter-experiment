@@ -4,24 +4,31 @@
   "entries": [
     {
       "id": "dentista-ambiguous-1",
-      "item": "Dentista Dra Ana", "date": "12/03", "value": 250.0, "confidence": 0.95,
+      "item": "Dentista Dra Ana", "date": "12/03/2026", "value": 250.0, "installments": 1, "confidence": 0.95,
       "predicted": { "category": "Saúde", "subcategory": "Dentista" },
       "action": "confirmed",
       "reviewed": { "type": "Variáveis", "category": "Saúde", "subcategory": "Dentista" }
     },
     {
       "id": "uber-1",
-      "item": "Uber Centro", "date": "20/03", "value": 38.5, "confidence": 0.98,
+      "item": "Uber Centro", "date": "20/03/2026", "value": 38.5, "installments": 1, "confidence": 0.98,
       "predicted": { "type": "Variáveis", "category": "Transporte", "subcategory": "Uber/Taxi" },
       "action": "pending",
       "reviewed": { "category": "Transporte", "subcategory": "Uber/Taxi" }
     },
     {
       "id": "diarista-1",
-      "item": "Diarista Letícia", "date": "08/03", "value": 180.0, "confidence": 0.95,
+      "item": "Diarista Letícia", "date": "08/03/2026", "value": 180.0, "installments": 1, "confidence": 0.95,
       "predicted": { "type": "Fixas", "category": "Habitação", "subcategory": "Diarista" },
       "action": "pending",
       "reviewed": { "category": "Habitação", "subcategory": "Diarista" }
+    },
+    {
+      "id": "tratamento-installments-1",
+      "item": "Tratamento dentário", "date": "10/03/2026", "value": 300.0, "installments": 3, "confidence": 0.92,
+      "predicted": { "category": "Saúde", "subcategory": "Dentista" },
+      "action": "confirmed",
+      "reviewed": { "type": "Variáveis", "category": "Saúde", "subcategory": "Dentista" }
     }
   ]
 }
