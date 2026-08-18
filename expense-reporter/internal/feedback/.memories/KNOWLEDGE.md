@@ -36,8 +36,33 @@ constraint and the pending "year adaptation".
 `expenses_log-{year}.jsonl` fed to generate via `--year`. WS-A/T-11 (session 37) landed
 "year adaptation": `taxonomy.parseDate` now accepts `DD/MM/YYYY` too and `scanEntries`
 filters by target year, so one merged multi-year log suffices; the append path (WS-B)
-writes explicit `DD/MM/YYYY`. The per-year split is retire-capable — promoting the merged
-log to canonical is still the user's call.
+writes explicit `DD/MM/YYYY`.
+
+**PROMOTION DONE (session 70).** `expenses_log-allyears.jsonl` is now canonical
+`expenses_log.jsonl`: 2073 rows, **every date `DD/MM/YYYY`**, spread 2022:138 / 2023:853 /
+2024:349 / 2025:733. The per-year files are kept on disk as backup, not deleted.
+**Why it had to happen before the first 2026 close:** `scanEntries` keeps an entry iff
+`entryYear==0 || targetYear==0 || entryYear==targetYear` — year-0 legacy is ALWAYS kept, by
+design, so the old per-year files still work with `--year N`. But that made the year-less
+2025 log leak wholesale into any other year. Measured: `generate-workbook --year 2026`
+against the pre-promotion log produced a **107K** workbook — the same size as the 2025 one,
+because it contained all 733 of 2025's expenses labelled 2026. Post-promotion: 83K, the
+empty skeleton. Verify a rollover this way (a check that can FAIL), never by reading a
+success message.
+⚠️ **The merge rewrote `date` and deliberately did NOT rewrite `id` — do not "fix" this.**
+The ids are sha256 of the PRE-merge year-less bytes, so they no longer equal
+`GenerateID(item, date, value)` of the row's own stored date. That looks like a breach of
+"identity is DERIVED, never trusted", but `classifications.jsonl` still stores `DD/MM`, and
+these ids are the ONLY thing that still joins the two logs: measured 347 joined ids before
+the promotion and 347 after. Recomputing them from the new dates would silently drop that
+join to zero. The `date` field serves the generator's year filter; `id` serves the cross-log
+join; they are pinned to different bytes on purpose.
+**Also fixed during the promotion:** the merged log predated the s68 `IRFF`→`IRRF` backfill
+and still carried the drift-corrupted spelling on one 2025 row — promoting it unchecked
+would have reintroduced exactly the S2 bug (unroutable leaf → `generate-workbook`
+warn-skips → row vanishes at exit 0). Caught by diffing the merged file's 2025 subset
+against the live log before copying; validate every typed path against
+`config/taxonomy.json` before promoting anything.
 
 **ID as ledger key (T-20, session 60).** `LoadExpenseIDCounts(path)` (`id_counts.go`)
 returns per-`id` multiplicity from `expenses_log.jsonl`; it is the source-of-truth ledger

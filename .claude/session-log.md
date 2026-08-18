@@ -1,44 +1,48 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-08-11 — Session 69: T-21 — a reviewed installment recorded as N rows, and the summary that stopped meaning "rows"
-**Current Layer:** Close cycle — unblocking batch-auto → review → apply → generate-workbook (T-42)
+**Current Session:** 2026-08-17 — Session 70: T-59 + T-03 — the close-cycle check, and the year-less log that would have relabelled 2025 as 2026
+**Current Layer:** Close cycle — pre-work COMPLETE; next is T-42, the first real monthly close on 2026 data
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-08-11 - Session 69: T-21 — a reviewed installment recorded as N rows, and the summary that stopped meaning "rows"
+## 2026-08-17 - Session 70: T-59 + T-03 — the close-cycle check, and the year-less log that would have relabelled 2025 as 2026
 
 ### Context
 
-Opened with PRs #61/#62 merged and master updated, to discuss next steps. The discussion established that exactly one measured defect stood between the repo and a correct monthly close — T-21, the reviewed-installment under-recording the s68 scout had quantified at 22% of the review queue — and that the work should be scoped to it alone, with the deferred fixture date canonicalization as its mandatory rider.
+Opened on "PRs merged, local master updated — let's discuss next steps", with the handoff's declared next being T-59 (script the s68 scout), then re-run the scout, then the real T-42 close. Both of the two remaining pre-work items turned out to be materially different from their backlog entries, and the second one was invisible until the question "what is the expected output of running for real?" forced the chain to be traced end to end against the ACTUAL log contents rather than against the fixtures.
 
 ### What Was Done
 
-- `test(fixtures)`: canonicalized dates in the review-queue CSVs to match producer output — the rider deferred from s68, landed as its own commit and verified green in isolation (stashed everything else, ran the deterministic group, exit 0) so a bisect cannot land on a red commit
-- `feat(apply)`: recorded a reviewed installment purchase as N rows, not one (T-21) — the count now rides `ReadQueue` → `QueueEntry` → page DATA → `exportReviewed()` → `reviewed.json` → `ReviewedEntry` → `ExpandAndAppend`
-- `fix(apply)`: counted LOG ROWS in the summary, and let the type-routing-cycle see the installments — both found by an advisor review of the finished work
-- `docs`: synced memories, README and index for T-21
-- Opened PR #63 against master from a NEW branch `feat/t21-reviewed-installments` at the same HEAD — the working branch `fix/close-cycle-review-repairs` already carried the merged PRs #61/#62, so a second PR from it would have read as a reopen
-- Two new fixtures with READMEs explaining their deliberate value choices: `apply-reviewed-installments` (clean-dividing `90,00/3`) and `apply-installment-resume-join` (the non-terminating `100,00/3`)
-- Verified: unit green across 20 packages; full acceptance 71 pass / 0 fail / 0 skip
+- **`.claude/tools/close-cycle.sh` (T-59, PR #64)** — commits the close as a repeatable check, but deliberately NOT as the sandboxed scout the task described. Two phases (`prepare` / `finish`) around the human browser review, plus `restore`.
+- **Two assertions, each derived independently of the command it checks:** `rows_in == classified rows`, and `appended rows == Σ installments over entries apply treats as NEW` — the T-21 property on real data, computed from `reviewed.json` rather than restated from apply's own summary.
+- **Every guard mutation-verified:** log grew by 3 instead of 5 (the exact pre-T-21 behaviour) → red; grew by 5 instead of 3 (duplicate append) → red; `installments` deleted from the export (the T-61 mutation) → hard error; stale `reviewed.json` → red; tampered snapshot → restore refused.
+- **T-03 / the canonical-log promotion** — `expenses_log-allyears.jsonl` promoted to `expenses_log.jsonl`: 2073 rows, every date `DD/MM/YYYY`. Built and byte-identical-gated in session 37, then left as "the user's call" ever since. Data change, not in git (logs are gitignored); both files backed up.
+- **Nine scripts were stored `100644`** while being invoked as `./script.sh` — index-only fix. They ran here only because drvfs forces 777, so on any other clone every one was permission-denied.
+- **Three stale claims corrected** in `expense-reporter/.memories/KNOWLEDGE.md` (apply passing `count=1`; `date_year` "still dead for apply"; commands "not-yet-migrated"), with the live T-55 caveat added where the ladder is described.
+- **Gitignore hardened** — backups named `.pre-promote-<stamp>` matched neither the log rules nor the `*.bak-*` convention and sat untracked as real financial data.
+- Local model attempted twice per policy (default persona, then `my-go-g3-12b`); both returned **verdict 0** — each produced jq that does not parse. Escalated per the tier rule.
 
 ### Decisions Made
 
-- **`installments` is REQUIRED in `reviewed.json`, not defaulted to 1.** An absent key decodes to Go's zero, so a default would make "the producer never sent it" indistinguishable from "the producer sent zero" — precisely the T-54 shape, where a spelling no producer emitted was accepted for months. `validateEntries` rejects `< 1` and states that a non-installment row is `1`.
-- **The non-terminating-division test asserts a BEHAVIOR, not an id equality.** Comparing apply's ids to `appender.PredictEntryIDs` would be circular — both call `expandEntries`, so they agree by construction. Instead the series apply writes must be recognised by `batch-auto --resume`, which derives the same per-installment value from the raw `100,00/3` token through `internal/parse`. Two independent derivations, and it also proves the fix CLOSES a resume hole rather than opening one.
-- **The browser pin was dropped to a filed follow-up rather than forced.** The `playwright` npm package is not installed (only browser binaries are, from the MCP plugin) and the Playwright MCP is pinned to an absent system Chrome, so every route to a committed browser test adds a Node or `playwright-go` toolchain to a Go-only repo. Deferred as an explicit user decision.
-- **The review page keeps ONE row with a ×N badge** (UX locked s62): expanding to N rows would make the reviewer take the same categorisation decision N times, and expansion is apply's job.
+- **The sandbox was dropped, and that is the substantive design call.** s68 used a scratch install root because the chain had never run and its failure modes were unknown. They are known now, and both logs are append-only JSONL — so a snapshot is a COMPLETE undo, equivalent insurance. The sandbox version also cost the human 45 hand-reviewed rows twice: review once, discard, review again for the real close. That trade was in the task text and was wrong.
+- **The two phases are permanent.** `exportReviewed()` downloads via a Blob; there is no headless path. Synthesising `reviewed.json` to make this one command would make the script a hand-authored stand-in for a producer it does not implement — the T-54 shape, and the trap T-61 names for this exact file. Recorded in the script header, not just here, because "make it one command" is the obvious future refactor.
+- **TWO snapshots, and they must not be collapsed.** `logs-before/` is the restore point; `logs-after-batch/` is the reconciliation baseline, because apply's dedup set is the classifications log AFTER batch-auto wrote its auto rows. Using one for both mixes two points in time — it cancels out only while the reviewer confirms every auto-inserted row, and fires spuriously the moment one is SKIPPED. Found by advisor review, then mutation-verified both ways.
+- **The merged log's ids are stale ON PURPOSE and must not be "fixed".** The merge rewrote `date` and not `id`, so ids no longer equal `GenerateID` of their own stored date. That reads like a breach of "identity is DERIVED, never trusted", but `classifications.jsonl` still stores `DD/MM` and these ids are the only thing still joining the two logs — measured 347 joined ids before the promotion and 347 after. Recomputing would silently drop that to zero. `date` serves the generator's year filter; `id` serves the cross-log join; different bytes, deliberately.
+- **T-03 itself stays OPEN.** Its text is "generate year N+1 skeleton from taxonomy alone; decide apply/add fate" — the promotion was a separate unnumbered deferred item, not T-03.
+- **Per-year logs kept as backup**, not deleted, so the merge remains re-derivable.
 
 ### Next
 
-- **T-59** — promote the s68 scout to a committed script, so "the chain works on real data" is a check rather than a claim re-derived each session, and the isolation cannot be got subtly wrong (`--data-dir` does NOT isolate the logs)
-- Then re-run the scout clean on the real 2026 CSV
-- Then the real T-42 monthly close
-- PR #63 awaits review
+- **T-42 — the first real monthly close.** `close-cycle.sh prepare ~/workspaces/expenses/expenses-2026-01.csv 2026`, then ~3 min of classification and 65 rows reviewed in the browser, then `finish`. Wants a sitting, not the tail of a session.
+- Expected shape, from the s68 measurements: 69 rows → 20 auto / 45 review / 4 parse errors (known typos in the file); apply appends **62** rows where the pre-T-21 code wrote 45; the 2026 workbook contains ~84 rows and nothing else.
+- The first real `finish` is also the first time `exportReviewed()` runs for real on the installments field (T-61 is still unguarded), so read apply's summary rather than assuming.
+- PR #64 awaits review.
 
 ### Gotchas
 
-- **A Given cannot run the binary inline.** `domain.SetupBinaryConfig` does not write `config.json` when called — it accumulates keys and flushes them from its own `ctx.BeforeWhen`, which runs after every Given event. A Given that execs the CLI during the Given phase finds no config at all (apply failed with "classifications log path is not configured"). Register the seeding run as its own `BeforeWhen`; hooks fire in registration order, so the canonical Given's config flush lands first.
-- **rtk reshapes `go test` output, so `grep '^--- FAIL'` silently matches nothing.** A mutation run looked GREEN and was nearly recorded as a coverage gap; the pattern was wrong (rtk renders `[FAIL] TestName`). The **exit code** is the signal no filter can reshape. This is the "reports success while testing nothing" shape the repo keeps cataloguing, hit while doing mutation testing to avoid exactly that.
-- **A mutation must COMPILE to be a test.** The first attempt left an unused variable, so the build failed and no test ran — "not red" meant nothing. The valid mutation is the exact pre-fix code.
-- **`99,90/3` does NOT divide cleanly in float64** (`33.300000000000004`), nor does `100,00/3`. `ExpenseLogMatches` compares `value`, so a log-pinning fixture needs `90,00/3` → `30`. The float-drift trap in `test/.memories/KNOWLEDGE.md` is real and bites immediately.
-- **A count and its label are one edit.** `printSummary` prints "Appended: N rows" and had been truthful only because entries and rows were 1:1; T-21 broke that identity without touching the label, so a `900,00/3` purchase printed "1 rows" and wrote 3. Same defect class as T-21 itself, reintroduced one layer up while fixing it.
+- **`wc -l` counts NEWLINES, not lines.** It reported 1 for a two-line file whose last line lacked a trailing newline — which an `O_APPEND` JSONL log legitimately can be. The row-delta assertion would have been silently off by one. `awk 'END{print NR}'` is exact.
+- **A broken check is indistinguishable from a working one when failure calls `die()`.** The membership jq indexed the seen-ids ARRAY with `.id`, so all three test cases errored — and every one looked exactly like a caught regression. Only running a case that MUST pass revealed it.
+- **Sourcing a script runs its `main`.** Every isolation test of the assertions failed identically until a `BASH_SOURCE` guard was added; that guard is what makes them testable at all.
+- **`resume.sh` silently truncated `active-decisions`** — it printed a bare `### Parse boundary` heading with no body while `ref-lookup.sh` showed four further sections. Authoring a replace-mode handoff block from that copy would have DELETED them. Re-fetch replace-mode interiors; do not trust the resume rendering. (Filed as T-62.)
+- **A backup named outside the `*.bak-*` convention is not gitignored.** `.pre-promote-<stamp>` matched no rule and left real financial data untracked.
+- **The merged log was 30 sessions stale and carried a bug s68 had already fixed** — one row still spelled `IRFF` where the live log said `IRRF`. Promoting it unchecked would have restored an unroutable leaf that `generate-workbook` warn-skips AT EXIT 0, i.e. the row vanishes silently. Always diff the merged file's overlapping subset against the live log, and validate every typed path against `config/taxonomy.json`, before promoting anything.

@@ -84,6 +84,12 @@ expense-reporter/workbook-inspect
 /expense-reporter/expenses_log.jsonl
 /expense-reporter/expenses_log-*.jsonl
 /expense-reporter/expenses_log.jsonl.bak-*
+# Defence in depth: the rules above cover the log families and the *.bak-* convention, but a
+# backup named with any other suffix (e.g. ".pre-promote-<stamp>") falls outside BOTH and
+# shows up as untracked real financial data — observed session 70 during the log promotion.
+# Match the log families whatever the suffix; name backups *.bak-<stamp> regardless.
+/expense-reporter/expenses_log*
+/expense-reporter/classifications*
 # 5.R2 embedding caches (real expense descriptions — never commit); anchored so
 # test fixtures with fake data stay committable.
 /data/classification/embeddings-*.jsonl
@@ -101,3 +107,7 @@ expense-reporter/workbook-inspect
 # Session B (T2) — raw acceptance run logs (verbose output may echo real expense items)
 .claude/scratch/phase0-baseline.log
 .claude/scratch/phase4-*.log
+
+# Close-cycle runs (close-cycle.sh) — hold the pre-run log snapshot that IS the undo,
+# plus the run's CSVs, review page and generated workbook. All contain real expense data.
+.claude/scratch/close-*/

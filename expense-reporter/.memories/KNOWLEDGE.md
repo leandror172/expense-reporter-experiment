@@ -35,8 +35,10 @@ excel machinery is NOT dead and must not be deleted with the classified variant.
 ## Log-Append Path (WS-B, 2026-06–30)
 `internal/appender.ExpandAndAppend(logPath, item, date time.Time, perInstallment, count, type, category, sub)`
 is the single append-time writer shared by `add`/`auto`/`batch-auto`/**`apply`** (slice 4, session 44).
-`apply` calls it with **count=1** (the reviewed value is a single number; the installment count is lost
-upstream at `review.ReadQueue` — T-21) and flips the write order **log-first, feedback-second** with a
+`apply` passes the entry's **real installment count** (T-21, session 69 — it used to pass a literal
+`1` because the count was discarded at `review.ReadQueue` and absent from the `reviewed.json`
+contract, so a reviewed `99,90/3` was recorded as ONE row; `ReviewedEntry.Installments` is REQUIRED,
+never defaulted) and flips the write order **log-first, feedback-second** with a
 **non-destructive** both-path pre-flight: the classifications log (its dedup index) is probed before
 `processEntries`, the expense log only when there are new rows and WITHOUT `O_CREATE` (an `O_CREATE` probe
 would leave an empty log and break the found-only `ExpenseLogNotCreated` acceptance test). It expands installments into N dated
@@ -131,18 +133,20 @@ history (data queries). The shared hash enables joins without a database.
   landing strictly in the future resolves to LAST year). All three also carry a
   `--year` flag that outranks it. `batch-auto` joined them in slice 3 (session 67),
   where the warning takes a batch shape: ONE line for the run carrying the row count,
-  because per-row would emit one identical line per bare-dated row. **Still dead for
-  `apply`** (slice 4 pending) — its bare dates still get their year from `canonicalDate`
-  /`ParseDateFlexible`; plain `batch` still hardcodes 2025 (`utils.ParseDate`, dies under
-  WS-E). Plan: `.claude/plans/parse-boundary.md`.
+  because per-row would emit one identical line per bare-dated row. `apply` joined in
+  slice 4 (session 67) — **T-41 is COMPLETE, all six parsers route through the boundary**;
+  `canonicalDate` was retired into `parse.Date`. ⚠️ But `apply`'s `--year` flag defaults to
+  `time.Now().Year()` rather than the `0` sentinel every sibling uses, so rung 2 always
+  fires and `date_year` can never reach it (T-55). Plain `batch` still hardcodes 2025
+  (`utils.ParseDate`, dies under WS-E). Plan: `.claude/plans/parse-boundary.md`.
 - `auto_insert_excluded` (["Diversos"]) — subcategories blocked from auto-insert
 - `classifications_path`, `expenses_log_path` — JSONL output locations
 **Rationale:** Runtime behavior that changes between years or users belongs in config,
 not code. The exclusion list was added after discovering "Diversos" false positives.
-**Implication:** Year rollover via `date_year` now works for `add`/`correct` (set it
-while closing a year and bare `DD/MM` resolves right). For the not-yet-migrated
-commands (`auto`/`batch-auto`/`apply`), rollover correctness still depends on
-explicit `DD/MM/YYYY` dates until their T-41 slices land.
+**Implication:** Year rollover via `date_year` works for `add`/`correct`/`auto`/`batch-auto`
+(set it while closing a year and bare `DD/MM` resolves right). `apply` is migrated but
+cannot reach the config rung until T-55 defaults its `--year` to `0` — pass `--year`
+explicitly there. Plain `batch` is unmigrated and hardcodes 2025.
 
 ## Workbook Generator Design (2026-06, sessions 26–27)
 Spec v2 at `.claude/plans/workbook-generator-spec.md` is the single design authority; it is a
