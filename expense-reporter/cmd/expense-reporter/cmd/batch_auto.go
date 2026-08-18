@@ -217,8 +217,16 @@ func runBatchAuto(cmd *cobra.Command, args []string) error {
 	if err := writeReviewCSV(reviewPath, results); err != nil {
 		return fmt.Errorf("writing review.csv: %w", err)
 	}
+	// failed.csv is written only when something was rejected, so its mere existence
+	// is the signal that this run has rows needing a human. Rejected rows reach no
+	// other durable artifact — classified.csv keeps the raw line but review.html
+	// cannot render a row with no date (T-56).
+	failedPath := filepath.Join(outputDir, "failed.csv")
+	if err := batch.WriteFailedRows(failedPath, rejectedRows(results)); err != nil {
+		return fmt.Errorf("writing failed.csv: %w", err)
+	}
 
-	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath, appCfg)
+	printBatchSummary(results, batchAutoDryRun, classifiedPath, reviewPath, failedPath, appCfg)
 	if appendErr != nil {
 		return fmt.Errorf("log append failed (classification CSVs preserved at %s): %w", outputDir, appendErr)
 	}
@@ -439,7 +447,7 @@ func logConfirmedFeedbackForRow(appCfg *config.Config, r classifiedRow, model st
 	logConfirmedFeedback(appCfg, r.Expense.Item, r.Expense.DateString(), r.Expense.Value, predicted, model)
 }
 
-func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath string, appCfg *config.Config) {
+func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, reviewPath, failedPath string, appCfg *config.Config) {
 	autoCount, reviewCount, errorCount, skippedCount := 0, 0, 0, 0
 	for _, r := range results {
 		switch {
@@ -465,7 +473,35 @@ func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, rev
 	fmt.Printf("  Errors        : %d\n", errorCount)
 	fmt.Printf("  classified.csv: %s\n", classifiedPath)
 	fmt.Printf("  review.csv    : %s\n", reviewPath)
+	// Named only when it exists: pointing at a file that was deliberately not written
+	// would read as an empty reject list rather than as no rejects at all.
+	if errorCount > 0 {
+		fmt.Printf("  failed.csv    : %s  <- fix these lines and re-run this file\n", failedPath)
+	}
 	warnIfStaleConfiguredYearInBatch(results, appCfg)
+}
+
+// rejectedRows projects the rows the parse boundary refused, in input order, into the
+// shape failed.csv is written from. The raw line is carried through untouched: it is
+// the text the human typed and will edit, so re-serializing it would hand them back
+// something subtly different from what they wrote.
+func rejectedRows(rows []classifiedRow) []batch.FailedRow {
+	var rejected []batch.FailedRow
+	for _, row := range rows {
+		if row.Error == nil {
+			continue
+		}
+		rejected = append(rejected, batch.FailedRow{
+			// Stripped, not raw: the reason is metadata regenerated on every run, so
+			// carrying the previous one through would append a second copy each time
+			// an unrepaired file is re-run, and the line would grow without bound.
+			// Uses the SAME strip as the re-import rather than a second rule free to
+			// drift from it.
+			OriginalLine: stripTrailingComment(row.RawLine),
+			Reason:       row.Error.Error(),
+		})
+	}
+	return rejected
 }
 
 // parse3FieldLine splits the CSV's "item;DD/MM;value" form and hands the three fields
@@ -477,12 +513,36 @@ func printBatchSummary(results []classifiedRow, dryRun bool, classifiedPath, rev
 // would stop failing at the parse with a field-count message and instead fail later,
 // inside taxonomy resolution, with a message about something else entirely.
 func parse3FieldLine(line string, opts parse.Options) (parse.ParsedExpense, error) {
-	parts := strings.SplitN(line, ";", 3)
+	parts := strings.SplitN(stripTrailingComment(line), ";", 3)
 	if len(parts) != 3 {
 		return parse.ParsedExpense{}, fmt.Errorf("expected 3 fields (item;DD/MM;value), got %d", len(parts))
 	}
 	return parse.Fields(parts[0], parts[1], parts[2], opts)
 }
+
+// stripTrailingComment drops a trailing "# ..." note so failed.csv round-trips: the
+// rejection reason is written onto the row it explains, and the human re-runs that
+// same file once the data is repaired.
+//
+// A '#' only opens a comment when it is whitespace-preceded AND the three data fields
+// are already complete before it. Whitespace alone is not enough — "Mesa #5;15/04;35,50"
+// is an item containing a hash, and stripping there would leave one field. Requiring the
+// separators first also keeps the format from widening: a genuine 4-field line (the
+// add/correct form "item;date;value;subcategory") still fails loudly rather than being
+// truncated to three, so batch-auto can never silently discard a subcategory.
+func stripTrailingComment(line string) string {
+	for i := 1; i < len(line); i++ {
+		if line[i] != '#' || !isSpaceOrTab(line[i-1]) {
+			continue
+		}
+		if strings.Count(line[:i], ";") >= 2 {
+			return strings.TrimRight(line[:i], " \t")
+		}
+	}
+	return line
+}
+
+func isSpaceOrTab(b byte) bool { return b == ' ' || b == '\t' }
 
 // writeClassifiedCSV writes all classified rows to path.
 // Format: item;date;value;subcategory;category;confidence;auto_inserted;type

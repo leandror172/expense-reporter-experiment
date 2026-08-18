@@ -146,6 +146,35 @@ assert_row_accounting() {
 # Commands
 # ---------------------------------------------------------------------------
 
+# An unparsed row is written to classified.csv with EVERY field after the raw line empty
+# (cmd.TestWriteClassifiedCSV_UnparsedRowKeepsItsRawLine pins that shape), so this counts
+# rejects from the CSV rather than from batch-auto's own "Errors: N" line. Deriving it from
+# the summary would make the check a restatement of what the command just claimed.
+count_rejected_rows() { grep -c ';;;;;0\.0000;false;$' "$1" || true; }
+
+# failed.csv must exist EXACTLY when something was rejected: its presence is the signal that
+# this run needs a human, so an empty file would report a problem that did not happen and a
+# missing one would hide rows that reach no other durable artifact.
+assert_failed_file_matches_rejects() {
+  local run_dir="$1"
+  local rejected failed_lines
+  rejected="$(count_rejected_rows "$run_dir/classified.csv")"
+
+  if [ "$rejected" -eq 0 ]; then
+    [ -f "$run_dir/failed.csv" ] \
+      && die "no row was rejected, but failed.csv exists — its presence means 'rows need a human'"
+    printf 'Rejected rows: 0 (no failed.csv, as expected)\n'
+    return 0
+  fi
+
+  [ -f "$run_dir/failed.csv" ] \
+    || die "$rejected row(s) were rejected but failed.csv was not written — they reach no other durable artifact"
+  failed_lines="$(grep -cvE '^[[:space:]]*($|#)' "$run_dir/failed.csv")"
+  printf 'Rejected rows: %d, listed in failed.csv: %d\n' "$rejected" "$failed_lines"
+  [ "$failed_lines" -eq "$rejected" ] \
+    || die "failed.csv lists $failed_lines row(s) but $rejected were rejected"
+}
+
 cmd_prepare() {
   local input_csv="$1" year="$2"
   [ -f "$input_csv" ] || die "no such CSV: $input_csv"
@@ -180,10 +209,15 @@ cmd_prepare() {
   # Baseline for finish's reconciliation: taken AFTER batch-auto's appends, BEFORE apply.
   snapshot_logs "$run_dir/logs-after-batch"
 
+  # Both assertions run BEFORE the review page, because both read only batch-auto's outputs
+  # and `review` exits non-zero when EVERY row was rejected ("no rows to review", T-69).
+  # Ordering them after it meant the reject assertion was skipped in exactly the case it
+  # most needs to check -- found by smoke-testing this script against an all-malformed batch.
+  assert_row_accounting "$input_csv" "$run_dir"
+  assert_failed_file_matches_rejects "$run_dir"
+
   note "Building the review page ..."
   "$BIN" review "$run_dir/classified.csv" --output "$run_dir/review.html" --force
-
-  assert_row_accounting "$input_csv" "$run_dir"
 
   cat >&2 <<EOF
 
@@ -193,8 +227,11 @@ Run dir: $run_dir
 NEXT: open this in a browser, categorise, and click Export:
   $run_dir/review.html
 
-The page downloads reviewed.json to your Downloads folder. Then:
-  $0 finish $run_dir ~/Downloads/reviewed.json
+The page downloads reviewed.json through the browser. Pass the file it actually
+saved -- do NOT assume ~/Downloads: the review runs in a Windows browser, whose
+download folder has been observed on more than one drive (E:\\...\\Downloads =
+/mnt/e/.../Downloads). Then:
+  $0 finish $run_dir /path/to/the/reviewed.json your browser saved
 
 To undo everything batch-auto just appended:
   $0 restore $run_dir
@@ -270,7 +307,14 @@ cmd_finish() {
 
   local year; year="$(cat "$run_dir/YEAR")"
   assert_export_is_from_this_run "$reviewed_json" "$run_dir"
-  cp "$reviewed_json" "$run_dir/reviewed.json"
+  # The run dir is the obvious place to drop the export, and cp refuses to copy a file onto
+  # itself with exit 1 -- which set -e turns into an abort before apply ever runs. Compare
+  # resolved paths rather than the strings, so ./x and $PWD/x are recognised as the same file.
+  local stored="$run_dir/reviewed.json"
+  if [ "$(cd "$(dirname "$reviewed_json")" && pwd)/$(basename "$reviewed_json")" \
+       != "$(cd "$(dirname "$stored")" && pwd)/$(basename "$stored")" ]; then
+    cp "$reviewed_json" "$stored"
+  fi
 
   note "Applying reviewed entries ..."
   "$BIN" apply "$run_dir/reviewed.json" --year "$year"

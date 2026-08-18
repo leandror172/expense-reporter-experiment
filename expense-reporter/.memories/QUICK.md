@@ -36,6 +36,16 @@ s69** (installment count threaded to `apply`; `reviewed.json` gained a REQUIRED
 Next: T-59 (script the s68 scout) → re-run it clean → the T-42 close.
 History → KNOWLEDGE.md "Milestone Log".
 
+**T-63 (s71, PR #65): `batch-auto` writes a THIRD output — `failed.csv`.** Rows the parse
+boundary rejected go there, each with its reason as a trailing `#` comment on the SAME line,
+so the file is edited in place and re-run as-is (`stripTrailingComment` in `parse3FieldLine`
+ignores it, but ONLY when `#` is whitespace-preceded AND the 3 fields are already complete —
+so `Mesa #5` stays data and a 4-field `item;date;value;subcategory` still fails loudly).
+**No file is written when nothing was rejected: its existence IS the signal.** Writer is
+`batch.WriteFailedRows` (new `internal/batch/failed_rows.go`, deliberately independent of the
+WS-E-doomed `FailedWriter`). Before this, a rejected row reached NO durable artifact — it was
+named on stderr and lost, and `review.html` cannot render a row with no date (T-56).
+
 ## Structure
 ```
 cmd/expense-reporter/cmd/  # Cobra subcommands (one file each)
