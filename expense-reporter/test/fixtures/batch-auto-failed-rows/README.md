@@ -13,7 +13,14 @@ Every input line is unparseable **on purpose**. Two consequences, both deliberat
 The first four lines are the real rejects from the first monthly close on 2026 data
 (`expenses-2026-01.csv`, 4 of 69 rows). They are **input errors, not missing parser
 features** — `99,90/3` is the only accepted installment form, so `- 1/4` and `4x` are
-typos. Do not add parser support for them.
+typos.
+
+> **SUPERSEDED IN PART (s71, T-64).** The multiplier form is a real notation the user had
+> planned but never written down: line 19's true shape is `Anita Elô ADM;09/01;405,25 x4`.
+> It is NOT the same as `total/N` — `x4` means the number is PER-INSTALLMENT and must be
+> MULTIPLIED, where `405,25/4` divides. Same digits, 4× apart (101,31/month vs 405,25/month). `- 1/4` remains a typo.
+> The rows stay in this fixture as rejects until T-64 lands; when it does, they must move
+> out or be re-spelled, or this fixture will assert that a supported notation is invalid.
 
 ## Known limitation: a row with fewer than 3 fields absorbs its reason once
 

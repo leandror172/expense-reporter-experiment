@@ -113,8 +113,16 @@ posted in chat, Layer 6) — NOT a bank export:
 `4x` are real-usage installment forms the parser should learn. **That is wrong.** Per the user:
 these four lines are simply **mistakes in the file**. The accepted installment format is
 `99,90/3` and only that. So all four rows are user input errors, not a missing feature, and
-**T-21 needs no new notation work** — the count is already reachable for correctly-written
+**T-21 needs no new notation work**<sup>[superseded s71 — see below]</sup> — the count is already reachable for correctly-written
 input, which is what T-41 slice 3 established.
+
+> **CORRECTION TO THIS CORRECTION (s71, T-64).** The `4x` / `x4` half of the ruling above is
+> wrong. The multiplier form is a notation the user had planned but never recorded; the two
+> rows using it are real installment purchases, not typos. Critically it is NOT a synonym for
+> `total/N`: `x4` means the written value is PER-INSTALLMENT (multiply), while `total/N`
+> divides — `405,25 x4` = 1.621,00 where `405,25/4` = 405,25. Filed as T-64, which must
+> confirm the direction with the user before implementing. The `- 1/4` half of the ruling
+> stands: that one is a typo.
 
 What survives as a finding is narrower but still real: **4 bad rows out of 69 (6%) is the
 normal error rate of hand-typed input**, and one such row currently kills the entire `review`
