@@ -47,11 +47,18 @@ func failedDataLines(ctx *harness.Context, path, artifactKey string) []string {
 	var lines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		trimmed := strings.TrimSpace(scanner.Text())
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
-		lines = append(lines, trimmed)
+		// RIGHT trim only. The raw line is written verbatim, and an input line may
+		// legitimately carry leading whitespace (" Uber ;15/04;35,50" is a covered
+		// case in TestParse3FieldLine). Left-trimming here would break the caller's
+		// HasPrefix/TrimPrefix against the expected raw line, and TrimPrefix fails
+		// SILENTLY — it returns the whole string — so the test would report a
+		// missing '#' instead of the mismatch that actually occurred.
+		lines = append(lines, strings.TrimRight(line, " \t"))
 	}
 	if err := scanner.Err(); err != nil {
 		ctx.T.Fatalf("FailedRowsCarryTheirReason: reading %s: %v", artifactKey, err)

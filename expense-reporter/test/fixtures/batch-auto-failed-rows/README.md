@@ -10,7 +10,7 @@ Every input line is unparseable **on purpose**. Two consequences, both deliberat
    `TestRejectedRows_KeepsOnlyRowsThatFailedToParse`. Do not "improve" this fixture by
    adding a good row: it would drag Ollama in and move the scenario out of the fast group.
 
-The four lines are the real rejects from the first monthly close on 2026 data
+The first four lines are the real rejects from the first monthly close on 2026 data
 (`expenses-2026-01.csv`, 4 of 69 rows). They are **input errors, not missing parser
 features** — `99,90/3` is the only accepted installment form, so `- 1/4` and `4x` are
 typos. Do not add parser support for them.
@@ -31,3 +31,19 @@ This is deliberate. The alternative — stripping at any whitespace-preceded `#`
 of field count — would let a genuine 4-field line (`item;date;value;subcategory`) be
 silently truncated to three, which is the exact silent-acceptance failure T-54 and S2 were.
 A noisy line on a row too broken to parse is the cheaper cost.
+
+## The fifth row is not from the close
+
+`  Anita cafe ;99/99;1,00` was added deliberately. `batch.CSVReader` right-trims only and
+**preserves leading whitespace**, so that row reaches `failed.csv` verbatim. It guards the
+read-back in `expect.FailedRowsCarryTheirReason`: if that helper left-trims, `TrimPrefix`
+returns the whole string SILENTLY and the assertion blames a missing reason rather than the
+prefix mismatch that actually occurred. Mutation-verified.
+
+## A reason can name a stale comment as if it were data
+
+For a row with fewer than 3 fields, `parse3FieldLine` cannot strip a previous run's comment,
+so on a re-run the parser reports the failure against text that still contains it — e.g.
+`got: 646,25 4x   # expected 3 fields (item`. The message looks like the parser is confused;
+it is not. The row is simply too broken for the format to tell data from annotation, and it
+resolves as soon as the line has three fields.

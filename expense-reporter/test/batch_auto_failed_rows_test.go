@@ -46,6 +46,12 @@ func everyRejectedLineListedWithItsReason() []func(*harness.Context) {
 			"Comida cinema;109,39;14/01",
 			"Café padaria;201/01;13,00",
 			"Anita compra chocolate Ruby 299,00 e cacau 49,90;646,25 4x",
+			// Leading whitespace is PRESERVED by batch.CSVReader and written verbatim,
+			// so the file reproduces exactly what the human typed. This row exists to
+			// keep the assertion honest: left-trimming the line when reading it back
+			// makes TrimPrefix silently return the whole string, and the failure then
+			// blames a missing reason instead of the mismatch that really happened.
+			"  Anita cafe ;99/99;1,00",
 		}),
 	}
 }
