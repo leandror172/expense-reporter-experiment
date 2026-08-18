@@ -113,6 +113,18 @@ func TestParse3FieldLine(t *testing.T) {
 		{"empty item", ";15/04;35,50", "", "", "", true},
 		{"invalid value", "Item;15/04;abc", "", "", "", true},
 		{"leading whitespace trimmed", " Uber ;15/04;35,50", "Uber", "15/04/2026", "35,50", false},
+		// failed.csv round-trip: the reason is written onto the row it explains, so a
+		// repaired line must parse with the comment still attached (T-63).
+		{"trailing comment ignored", "Item;15/04;35,50   # invalid date format, expected DD/MM", "Item", "15/04/2026", "35,50", false},
+		{"trailing comment with no reason text", "Item;15/04;35,50 #", "Item", "15/04/2026", "35,50", false},
+		// A '#' that is NOT whitespace-preceded is data, not a comment marker.
+		{"hash inside the item is data", "Mesa #5;15/04;35,50", "Mesa #5", "15/04/2026", "35,50", false},
+		// The strip must not widen the format: the 4-field add/correct form still fails
+		// rather than silently losing its subcategory.
+		{"four fields still rejected", "Item;15/04;35,50;Padaria", "", "", "", true},
+		// A '#' glued to the value is a typo, not a comment: without the whitespace rule
+		// this would be silently truncated to a valid 35,50 instead of being rejected.
+		{"hash glued to the value is rejected", "Item;15/04;35,50#oops", "", "", "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

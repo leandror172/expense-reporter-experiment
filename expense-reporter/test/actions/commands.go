@@ -143,6 +143,10 @@ func runBatchAuto(run batchAutoRun) func(*harness.Context) {
 
 		ctx.Artifacts["classified.csv"] = filepath.Join(outputDir, "classified.csv")
 		ctx.Artifacts["review.csv"] = filepath.Join(outputDir, "review.csv")
+		// Registered even though batch-auto writes it only when a row was rejected:
+		// a scenario asserting its ABSENCE needs the path just as much as one
+		// asserting its contents.
+		ctx.Artifacts["failed.csv"] = filepath.Join(outputDir, "failed.csv")
 	}
 }
 
