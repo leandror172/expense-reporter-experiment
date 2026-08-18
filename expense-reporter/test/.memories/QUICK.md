@@ -7,7 +7,7 @@
 64).** `test/harness/` is gone: Context/Scenario/Run, fixture plumbing and BuildBinary come
 from the module; everything expense-shaped stayed here. Since v1.1 the **engine owns
 scenario plumbing** — `Scenario.Fixture` sets `ctx.FixtureDir`, `harness.UseBinary` (TestMain)
-sets `ctx.BinaryPath`, so no Given wires either or takes a fixture path. 15+ fixture dirs
+sets `ctx.BinaryPath`, so no Given wires either or takes a fixture path. 38 fixture dirs
 cover all commands incl. apply, review, generate-workbook. Details → KNOWLEDGE.md.
 
 ## Structure
@@ -49,6 +49,11 @@ fixtures/   # Test data dirs; results/ gitignored
   silently disables the test rather than breaking it.
 - **Auto-append fixtures need a gate-PASSING item** (T-32) — `Posto Ipiranga`, not `Uber Centro`
 - `requireDataDir(t)` guards gitignored `data/classification` reads (at REPO root)
+- **An all-malformed fixture is deterministic (s71)** — the parse precedes classification, so
+  `batch-auto-failed-rows` calls no model and runs in the `-short` group, same reason
+  `batch-auto-resume-all-seeded` is Ollama-free. It therefore CANNOT prove a parseable row
+  stays out of `failed.csv`; that claim is pinned by a pure-function unit test instead. Do
+  not "improve" it by adding a good row — see the fixture README.
 
 ## Deeper Memory → KNOWLEDGE.md
 Module split · fixture formats · WS-B log retarget · type-routing-cycle ·

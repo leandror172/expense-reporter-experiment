@@ -39,7 +39,7 @@ filters by target year, so one merged multi-year log suffices; the append path (
 writes explicit `DD/MM/YYYY`.
 
 **PROMOTION DONE (session 70).** `expenses_log-allyears.jsonl` is now canonical
-`expenses_log.jsonl`: 2073 rows, **every date `DD/MM/YYYY`**, spread 2022:138 / 2023:853 /
+`expenses_log.jsonl`: **2159** rows after the first real close (s71; 2073 at the s70 promotion, 86 now dated 2026), **every date `DD/MM/YYYY`**, spread 2022:138 / 2023:853 /
 2024:349 / 2025:733. The per-year files are kept on disk as backup, not deleted.
 **Why it had to happen before the first 2026 close:** `scanEntries` keeps an entry iff
 `entryYear==0 || targetYear==0 || entryYear==targetYear` — year-0 legacy is ALWAYS kept, by

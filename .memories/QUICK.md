@@ -52,7 +52,17 @@ browser and no Go test reaches it; a committed browser test needs a Node/`playwr
 toolchain in a Go-only repo. Do NOT close it with a hand-authored fixture (that IS T-54).
 Also new: apply can now leave a PARTIAL installment series on a mid-append failure, with
 no ledger to warn.
-Next: **T-59** (script the s68 scout), then re-run it clean, then the real T-42 close.
+**T-42 DONE (s71) — THE FIRST REAL MONTHLY CLOSE IS APPLIED.** 69 rows → 17 auto /
+48 review / 4 unparsed; 67 rows appended, reconciliation exact, 0 workbook skips; log
+2073 → **2159**, 86 rows dated 2026. T-21 visible in the deliverable (`IPVA 2026 (1/5)…(5/5)`
+is five workbook rows). **T-63 shipped (PR #65):** `batch-auto` writes `failed.csv` — the
+rejected rows' only durable artifact — reason as a trailing `#` comment on the SAME line, so
+the file is repaired in place and re-run as-is. Two findings need decisions, written up in
+`.claude/t42-close-findings.md`: an auto-inserted row **cannot be corrected** (T-65), and
+**38% correction rate / 92% cross-CATEGORY / the keyword layer already held the answer 60%
+of the time** (T-66, which inverts T-27's premise). T-64 filed for the `405,25 x4`
+notation — it MULTIPLIES where `total/N` divides, so confirm the direction first.
+Next: decide T-64/T-65/T-66; PR #65 awaits review.
 **s65 date/year hardening (merged):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.
