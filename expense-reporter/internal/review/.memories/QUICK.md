@@ -33,6 +33,12 @@ producer emitted it, so `review` failed on every real `classified.csv` and no te
 (the reader's only inputs were fixtures authored to satisfy the reader). Do not "soften"
 this back to `strconv.ParseBool` — one producer, one spelling. Guard:
 `cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote`.
+⚠️ **There are TWO producers of that cell, and only the filter keeps them equal (noted s72).**
+`writeClassifiedCSV` renders `fmt.Sprintf("%v", r.AutoInserted)`; `writeReviewCSV` hardcodes
+the literal `"false"`. They agree only because review.csv skips auto-inserted rows, so the
+hardcode is never wrong *today*. No test distinguishes them either — the cross-writer tests
+feed rows that are all `AutoInserted: false`, so the two spellings agree by construction.
+Relax that filter and the literal becomes a lie with nothing to catch it.
 
 **`QueueEntry` carries the installment COUNT, not just the raw token (T-21, s69).**
 `ReadQueue` used to discard it (`perInstallment, _, err`) while keeping `RawValue` for
