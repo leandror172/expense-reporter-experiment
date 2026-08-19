@@ -208,7 +208,7 @@ func confirmedReviewRowRecordedAsTypedLogLine(fixDir string) []func(*harness.Con
 func classifiedCsvCarriesTypeColumn() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.OutputFileExists("classified.csv"),
-		expect.OutputFileHasColumns("classified.csv", 8), // 7 original + type
+		expect.OutputFileHasColumns("classified.csv", 9), // 7 original + type + keyword_hint
 	}
 }
 

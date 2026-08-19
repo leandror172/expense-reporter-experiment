@@ -344,3 +344,26 @@ purchase as a single row. The failure is loud at the next hop instead of silent 
   stdout+stderr), `DuplicateWarningCount` (counts "already in expense log" over stderr).
   The batch-auto summary deliberately says `Skipped       :` (not "already logged") so the
   summary line can't inflate `ResumeSkipCount`.
+
+## The deterministic group cannot see a contract change (A1, session 72)
+
+Widening the classified-CSV contract from 8 to 9 columns passed `./run-acceptance.sh`
+(the `-short` deterministic group) and the whole `go test ./...` unit suite — and then
+failed **six** scenarios under `-full`.
+
+The assertions that broke were `expect.OutputFileHasColumns("classified.csv", 8)` in
+`batch_auto_test.go` (×2) and `type_routing_cycle_test.go` (×1), plus a scenario NAME
+carrying the literal "8 columns". Every one of them sits behind `extern.RequireOllama`,
+because producing a real `classified.csv` means classifying, and classifying means a model.
+
+**Why this is a trap and not a papercut.** T-39 split the suite so the common path is fast,
+and the fast path is the one that runs after every edit. A change to a FORMAT the slow group
+owns is therefore invisible exactly when it is being made. Green here means "nothing
+deterministic broke", never "the contract holds".
+
+**Rule:** any change to the classified/review CSV shape — column count, order, spelling —
+must run `-full` before it is called done, regardless of how green `-short` is. Check
+`curl -s localhost:11434/api/ps` first and unload a foreign resident model
+(`POST /api/generate` with `"prompt":"", "keep_alive":0`) — 8 GB of someone else's model on
+a 12 GB card is what turned a ~110s run into a 3602s timeout in s64. Measured clean here:
+107s, 66 scenarios.

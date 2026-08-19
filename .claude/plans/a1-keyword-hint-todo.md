@@ -23,38 +23,43 @@ narrate domain steps, ~15-line bodies.
 
 ## A1 — ordered
 
-- [ ] **A1.1** `classifier.KeywordHint(signal, modelSubcategory) string` in `decision.go`,
+- [x] **A1.1** `classifier.KeywordHint(signal, modelSubcategory) string` in `decision.go`,
       beside `IsAutoInsertable`. Unit test FIRST (RED), table-driven over the four clauses:
       no match / ambiguous / below 1.00 / agrees-with-model → `""`; unambiguous 1.00 and
       disagrees → the keyword's subcategory.
-- [ ] **A1.2** Point `replay_keyword_hint_test.go` at the production `KeywordHint` and re-run.
+- [x] **A1.2** Point `replay_keyword_hint_test.go` at the production `KeywordHint` and re-run.
       **Expect 14 fired / 10 right / recall 10 of 25 unchanged** — a free equivalence check
       that the shipped predicate is the measured one. A different number means one of them moved.
-- [ ] **A1.3** `classifiedRow.KeywordHint` + both writers emit the 9th column. Unit test first.
+- [x] **A1.3** `classifiedRow.KeywordHint` + both writers emit the 9th column. Unit test first.
       Mutation: drop the field from the writer → must go red.
-- [ ] **A1.4** `review.ReadQueue` field count 8 → 9, read index 8 into `QueueEntry.KeywordHint`.
+- [x] **A1.4** `review.ReadQueue` field count 8 → 9, read index 8 into `QueueEntry.KeywordHint`.
       Corruption tolerance stays narrow (wrong field count still hard-errors).
-- [ ] **A1.5** Extend `classified_csv_seam_test.go` — real writer bytes → real `ReadQueue`,
+- [x] **A1.5** Extend `classified_csv_seam_test.go` — real writer bytes → real `ReadQueue`,
       hint survives. **The test that would have caught T-54.** Mutation-verify separately from
       the existing assertions.
-- [ ] **A1.6** Update the 4 fixtures carrying the header:
+- [x] **A1.6** Update the 4 fixtures carrying the header:
       `batch-auto-basic/expected-classified.csv`, `review-basic/input.csv`,
       `review-malformed-rows/input.csv`, `type-routing-cycle/review-input.csv`.
       `expect/accuracy.go` indexes col 6 and is unaffected — confirm, don't assume.
-- [ ] **A1.7** Template `internal/review/template/review.html` (edit ONLY this file, never a
+- [x] **A1.7** Template `internal/review/template/review.html` (edit ONLY this file, never a
       rendered `review*.html`): show the hint beside the model's suggestion when present.
-- [ ] **A1.8** Acceptance — deterministic: extend the Ollama-free failed-rows scenario to pin
+- [x] **A1.8** Acceptance — deterministic: extend the Ollama-free failed-rows scenario to pin
       the 9-column contract and that `review` still consumes it. **Every row there is unparsed,
       so the hint is empty throughout — this pins the CONTRACT, never the predicate.** Say so in
       the test name/comment so it cannot be mistaken for behavioral coverage.
-- [ ] **A1.9** Acceptance — Ollama-gated (`-full`): the column round-trips to the review page.
+- [~] **A1.9** SUPERSEDED — an Ollama-gated round-trip test was unnecessary. `review` calls no
+      model, so A1.8 became a fully DETERMINISTIC behavioral test. The one genuinely
+      model-only line (the `KeywordHint(signal, top.Subcategory)` wiring) was instead closed
+      by extracting `classifiedRowFromPrediction` and unit-testing it: the self-comparison
+      swap now fails exactly one test, and failed none before.
+      Original text: Acceptance — Ollama-gated (`-full`): the column round-trips to the review page.
       Asserts round-trip only, NOT non-emptiness: if the model happens to agree with the
       keyword the predicate correctly does not fire, and a non-emptiness assertion would fail
       spuriously.
-- [ ] **A1.10** Verify: `go build`, `go vet`, `go vet -tags=replay`, `go test ./...`,
+- [x] **A1.10** Verify: `go build`, `go vet`, `go vet -tags=replay`, `go test ./...`,
       `./run-acceptance.sh`, then `-full` (check `/api/ps` for a foreign resident model first —
       one turned a ~110s run into a 3602s timeout).
-- [ ] **A1.11** Memories + index: `internal/review/.memories/QUICK.md` (contract now 9 fields),
+- [x] **A1.11** Memories + index: `internal/review/.memories/QUICK.md` (contract now 9 fields),
       `internal/classifier/.memories/QUICK.md`, `test/.memories/KNOWLEDGE.md` if a trap was
       found; `.claude/index.md` rows for anything new.
 - [ ] **A1.12** PR against master (no rebase fuss — the user manages review order).

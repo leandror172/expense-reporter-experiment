@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"expense-reporter/internal/classifier"
 )
 
 // Column indices for the classified/review CSVs. itemColumn, dateColumn and valueColumn
@@ -140,4 +142,38 @@ func TestCSVWriters_AppendingTheHintLeavesEveryPriorColumnInPlace(t *testing.T) 
 			assert.Equal(t, "Lilly", row[keywordHintColumn], "keyword_hint is not last")
 		})
 	}
+}
+
+// TestClassifiedRowFromPrediction_HintComparesTheKeywordAgainstTheModel closes the one
+// blind spot in this feature.
+//
+// Everywhere else, the row is built behind classifier.Classify, so the wiring is reachable
+// only with a live model. An argument swap there — comparing the keyword to ITSELF instead
+// of to the model — compiles, returns "" for every row forever, and produces no failure
+// anywhere: the CSVs still have the column, the reader still reads it, the page still
+// renders nothing because there is nothing to render. It would have surfaced only when a
+// human noticed a month of empty hints.
+//
+// Pinning both directions here makes that swap fail immediately: a self-comparison can
+// never disagree, so the first case below could not pass.
+func TestClassifiedRowFromPrediction_HintComparesTheKeywordAgainstTheModel(t *testing.T) {
+	expense := classifiedRowFor(t, "Consulta Lilly nefro;15/04;180,00").Expense
+	unambiguousLilly := classifier.MatchSignal{Matched: true, TopScore: 1.0, TopSubcategory: "Lilly"}
+
+	t.Run("the keyword's answer is offered when it differs from the model's", func(t *testing.T) {
+		model := classifier.Result{Subcategory: "Dentista", Category: "Saúde", Type: "Variáveis", Confidence: 0.95}
+
+		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, false)
+
+		assert.Equal(t, "Lilly", row.KeywordHint, "the keyword disagreed, so its answer must be offered")
+		assert.Equal(t, "Dentista", row.Subcategory, "the MODEL's answer stays the prediction of record")
+	})
+
+	t.Run("nothing is offered when the keyword and the model already agree", func(t *testing.T) {
+		model := classifier.Result{Subcategory: "Lilly", Category: "Saúde", Type: "Variáveis", Confidence: 0.95}
+
+		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, true)
+
+		assert.Empty(t, row.KeywordHint, "agreement is the auto-insert case, and it has no second opinion")
+	})
 }

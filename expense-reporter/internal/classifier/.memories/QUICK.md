@@ -43,6 +43,7 @@ stratum (n=80 unique) full-path 18.8%→52.5% no-think (+33.8pp, 29 fixed/2 brok
 ```
 classifier.go   # Classify() — Ollama client, prompt, response parsing
 decision.go     # IsAutoInsertable() — agreement gate (specificity + model⊕keyword) + exclusion
+keyword_hint.go # KeywordHint() — ADVISORY sibling of the gate: fires on DISAGREEMENT
 examples.go     # SelectExamples() — keyword-based few-shot selection
 loader.go       # Training data, feedback examples, keyword index
 embedding.go    # Embedder + Ollama client + JSONL embedding cache/reconcile (5.R2)
