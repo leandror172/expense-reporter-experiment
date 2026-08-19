@@ -62,7 +62,24 @@ the file is repaired in place and re-run as-is. Two findings need decisions, wri
 **38% correction rate / 92% cross-CATEGORY / the keyword layer already held the answer 60%
 of the time** (T-66, which inverts T-27's premise). T-64 filed for the `405,25 x4`
 notation — it MULTIPLIES where `total/N` divides, so confirm the direction first.
-Next: decide T-64/T-65/T-66; PR #65 awaits review.
+**s72 — THE GATE IS MEASURED AND A1 IS BUILT (PR #66).**
+**Absolute agreement-gate precision = 94.1%** — 1 of 17 gate-passing rows corrected vs
+**50.0%** error on the 48 gate-refused rows, an 8.5× discrimination on a full unselected
+month, from data already on disk (`.claude/b1-gate-precision-measurement.md`). T-32 called
+this unmeasurable because the 649 was a confidence-selected subset; a CLOSE labels
+everything, since `close-cycle.sh:220` feeds `review` the FULL `classified.csv`. **This
+also CORRECTS `t42-close-findings.md`:** the 17 auto rows were NOT unseen — all were
+reviewed, as its own `4x álcool 70` example proves. The defect is persistence (T-65), not
+review coverage, so **B1 (gate-to-review) was dropped** — its two justifications were this
+measurement and removing unrepairable rows, and the first is now free. WS-D still HELD:
+n=17, and confirms on auto rows are weak-positive (the page shows them as already handled).
+**A1 SHIPPED (PR #66):** `classifier.KeywordHint` — the advisory sibling of the gate, firing
+on model⊕keyword DISAGREEMENT at unambiguous specificity 1.00 — rides a NINTH CSV column
+into the review page as an amber badge. Measured: fires on 14 of 65 rows, right 71.4%,
+recovers 10 of 25 corrections. **Advisory only** (auto-applying would inject ~3 errors per
+14) and deliberately NOT round-tripped through `exportReviewed()` (that would be a second
+T-61). **T-64 direction CONFIRMED by the user: `x4` MULTIPLIES** (per-installment value).
+Next: T-65 supersede-by-append — **DESIGN ONLY, no code yet** (user's call); then T-64.
 **s65 date/year hardening (merged):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.

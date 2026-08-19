@@ -142,9 +142,19 @@ Full list in the module's godoc; the ones this suite leans on:
 
 ### Column indices for batch-auto output (classified.csv / review.csv)
 
-| Col | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
-|-----|---|---|---|---|---|---|---|
-| Field | item | date | value | subcategory | category | confidence | auto_inserted |
+| Col | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|-----|---|---|---|---|---|---|---|---|---|
+| Field | item | date | value | subcategory | category | confidence | auto_inserted | type | keyword_hint |
+
+Nine fields; `review.ReadQueue` hard-errors on any other count. New columns are **APPENDED**
+— `NoneWereAutoInserted` and `OutputFileHasColumns` read positionally, so an inserted column
+would silently retarget them rather than fail to compile.
+
+`type` arrived in RUI-4 (s33) and `keyword_hint` in A1 (s72); this table listed neither until
+s72, having gone stale for ~39 sessions without anything breaking — it is documentation, not
+a checked contract. The checked contract is
+`cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote` and its siblings, which run the real
+writer's bytes through the real reader.
 <!-- /ref:acceptance-verify -->
 
 ---

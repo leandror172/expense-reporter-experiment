@@ -231,8 +231,11 @@ Full decision: `.claude/plans/t23-calibration-benchmark.md` "Route decision"; st
   planned `Classify` return-shape change (per advisor: the signal is model-independent, so a pure
   function avoids threading + case-(b) contamination where a high-spec keyword falls to the embedding
   path). Validated on the 649-replay: shipped `top_score` == harness `top_score` on all 649 rows,
-  reproducing FINDINGS 34.2%/86.9% band + 94.9% agreement subcat precision (same-sample relative;
-  absolute production precision still unmeasured → WS-D held).
+  reproducing FINDINGS 34.2%/86.9% band + 94.9% agreement subcat precision (same-sample relative).
+  **Absolute precision MEASURED s72 at 94.1%** (1 of 17 gate-passing rows corrected on the first
+  real close, vs 50.0% error on the 48 gate-refused rows) — see
+  `.claude/b1-gate-precision-measurement.md`. WS-D stays held anyway: n=17, and confirms on
+  auto-inserted rows are weak-positive because the page shows them as already handled.
 - **The recurrence signal is computed then DISCARDED.** `SelectExamples` (`examples.go`) derives
   per-subcategory keyword-specificity, branches on `sorted[0].score >= 0.7`, returns only
   `[]Example`; the score never escapes the function (grep: `subcatScore`/`.score` live only in

@@ -311,10 +311,22 @@ ALL hold:
 Everything else routes to review. Confidence is still emitted per candidate (and shown in
 `--json`) but does NOT gate; `--threshold` on `batch-auto` is deprecated/ignored.
 
-**Precision caveat:** the ~95% subcat precision this gate showed on the 649-replay is a
-same-sample RELATIVE validation (shipped predicate == measured predicate). The 649 is a
-confidence-selected subset, so ABSOLUTE production precision is unmeasured — which is why
-unattended silent auto-insert (WS-D) stays held.
+**Precision — MEASURED ABSOLUTELY (session 72): 94.1%.** On the first real close, 1 of the
+17 gate-passing rows was corrected (5.9% error), against 50.0% for the 48 gate-refused rows —
+an 8.5× discrimination on a full, unselected month. Report:
+`.claude/b1-gate-precision-measurement.md`.
+
+This supersedes the earlier "absolute precision is unmeasured" caveat, which rested on the
+649 being a confidence-selected subset with 378 rows bypassing review UNLABELED. A **close**
+labels everything, because `close-cycle.sh:220` feeds `review` the FULL `classified.csv` —
+so every gate-passing row is in the queue with a recorded reviewer action.
+
+**Read 94.1% as an UPPER bound, and note it does not by itself unblock WS-D.** n = 17, one
+month, one reviewer — a single further error drops it to 88.2%. Confirms on auto-inserted
+rows are weak-positive: `review.go` excludes them from the `needsReview` count and the page
+shows them as already handled, so a reviewer may have skimmed. The 1 correction is a hard
+negative. The ~95% figure from the 649-replay remains a same-sample RELATIVE validation
+(shipped predicate == measured predicate) and is a separate claim.
 
 **Legacy (pre-T-32) confidence scoring** — retained as the classifier's internal scoring,
 no longer a gate. Source `data/classification/algorithm_parameters.json`: HIGH ≥ 0.85,

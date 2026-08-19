@@ -140,6 +140,16 @@ id it carries through to `apply`, and both JSONL logs hash the canonical form. T
 column keeps the ORIGINAL token (`99,90/3`), which is how the installment count reaches
 the review queue.
 
+The `keyword_hint` column carries the keyword layer's **competing** suggestion — filled only
+when an unambiguous, maximum-specificity keyword match *disagrees* with the model. It is the
+mirror of the agreement gate: the gate auto-inserts on agreement, the hint flags
+disagreement for a human. `review` renders it as an amber badge beside the model's answer.
+
+It is **advisory and never applied**. Measured on the first real monthly close, the hint
+fires on 14 of 65 rows and the keyword is right 71.4% of the time — enough to be worth
+showing, not enough to act on: preferring it automatically would introduce errors on roughly
+3 of every 14 rows. Empty means "no second opinion"; there is no placeholder value.
+
 Independently of `--resume`, batch-auto always warns on stderr when an appended entry's
 id already exists in the log (a likely duplicate append).
 

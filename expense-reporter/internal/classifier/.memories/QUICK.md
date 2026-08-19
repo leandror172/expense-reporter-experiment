@@ -18,8 +18,12 @@ confirm deferred.** **T-23 GATE + RETRIEVAL MEASURED on real data (649-replay, s
 `.claude/scratch/replay-649/FINDINGS{,-model}.md`; harness `replay_{retrieval,model}_test.go`
 (`//go:build replay`). SHIP: **confidence DEAD as gate** (52→56% flat); **specificity `top_score`
 replaces it** (monotone, 52→87%); **best gate = AGREEMENT `spec==1.0` ∧ model==keyword-top1 → 95% subcat**;
-gate runs NO-THINK (shape robust, 10× faster). HOLD (649 = confidence-selected review subset, 378/725
-bypassed+unlabeled → absolute levels unmeasurable): "no silent auto-insert" + WS-D scoping. RETRIEVAL:
+gate runs NO-THINK (shape robust, 10× faster). **ABSOLUTE precision MEASURED s72: 94.1%** — 1 of 17
+gate-passing rows corrected on the first real close vs 50.0% error on the 48 gate-refused rows
+(`.claude/b1-gate-precision-measurement.md`). The 649 could not show this (confidence-selected subset,
+378/725 bypassed unlabeled); a CLOSE labels everything because `review` is fed the FULL
+`classified.csv`. WS-D still HELD anyway: n=17, and confirms on auto-inserted rows are weak-positive
+(the page shows them as already handled, so a reviewer may have skimmed). RETRIEVAL:
 miss 24.7% all `no_keyword_match` → **5.R1 ruled out, 5.R2 embeddings is the lever**. **T-31 NN
 precondition (s53): GO for 5.R2** — hit@5 on the 160 misses 62–65% multilingual (arctic-embed2 1.2 GB
 the practical pick, best hit@1 50%; nomic collapses 41%); K=5 mandatory (hit@1 ≤50%); ~35%
