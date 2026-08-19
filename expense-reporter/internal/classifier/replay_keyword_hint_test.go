@@ -250,6 +250,31 @@ func writeHintRows(t *testing.T, path string, rows []hintRow) {
 	}
 }
 
+// assertStrictOutcomeMatchesProduction ties this probe to the SHIPPED predicate.
+//
+// The numbers this probe reports are only worth quoting if the thing measured is the thing
+// that actually runs. hintFires below is the probe's own parameterized form (it sweeps a
+// threshold, which production does not), so at the strict threshold it must agree with
+// classifier.KeywordHint on every row — both on whether to fire and on what to say.
+//
+// A disagreement means one of the two moved. Fail loudly rather than publishing a number
+// measured against code nobody ships.
+func assertStrictOutcomeMatchesProduction(t *testing.T, entry reviewedRow, keywords KeywordIndex, row hintRow) {
+	t.Helper()
+	signal := MatchStrength(entry.Item, keywords)
+	hint := KeywordHint(signal, entry.Predicted.Subcategory)
+	strict := outcomeAt(row, strictThreshold)
+
+	if strict.Fired != (hint != "") {
+		t.Fatalf("probe and production disagree on %q: probe fired=%v but KeywordHint returned %q",
+			entry.Item, strict.Fired, hint)
+	}
+	if hint != "" && hint != row.KeywordSubcategory {
+		t.Fatalf("production hint %q differs from the probe's keyword %q for %q",
+			hint, row.KeywordSubcategory, entry.Item)
+	}
+}
+
 func TestReplayKeywordHint(t *testing.T) {
 	reviewedJSON := replayEnv("REPLAY_REVIEWED_JSON", "../../../.claude/scratch/close-20260818-120248/reviewed.json")
 	dataDir := replayEnv("REPLAY_DATA_DIR", "../../../data/classification")
@@ -261,7 +286,9 @@ func TestReplayKeywordHint(t *testing.T) {
 	thresholds := []float64{strictThreshold, looseThreshold}
 	rows := make([]hintRow, 0, len(export.Entries))
 	for _, entry := range export.Entries {
-		rows = append(rows, buildHintRow(entry, keywords, thresholds))
+		row := buildHintRow(entry, keywords, thresholds)
+		assertStrictOutcomeMatchesProduction(t, entry, keywords, row)
+		rows = append(rows, row)
 	}
 	writeHintRows(t, outPath, rows)
 

@@ -105,6 +105,12 @@ type classifiedRow struct {
 	Confidence   float64
 	AutoInserted bool
 	Type         string // resolved expense type name (empty if not found or ambiguous)
+	// KeywordHint is the keyword layer's competing suggestion, non-empty ONLY when it
+	// unambiguously disagrees with the model (classifier.KeywordHint). It is advisory: it
+	// rides the CSVs so the review page can show the reviewer a second opinion, and
+	// nothing downstream may act on it. Empty on most rows, and empty is the signal for
+	// "no second opinion" — never a placeholder.
+	KeywordHint string
 	// Skipped marks a row that --resume matched entirely against the pre-existing expense
 	// log and therefore did NOT classify or append. Skipped rows land in classified.csv
 	// (with skippedMarker in the subcategory column) but never in review.csv, and are
@@ -332,6 +338,10 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 			Confidence:   top.Confidence,
 			AutoInserted: autoInsert,
 			Type:         top.Type, // T-13: type comes from the predicted full path
+			// The same signal the gate just consulted, read the other way round: the gate
+			// fires on agreement, the hint on disagreement. Computed here because this is
+			// the one place both the signal and the model's answer are in hand.
+			KeywordHint: classifier.KeywordHint(signal, top.Subcategory),
 		})
 	}
 	return results
@@ -545,7 +555,7 @@ func stripTrailingComment(line string) string {
 func isSpaceOrTab(b byte) bool { return b == ' ' || b == '\t' }
 
 // writeClassifiedCSV writes all classified rows to path.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted;type
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
 func writeClassifiedCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -555,7 +565,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -568,6 +578,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 			fmt.Sprintf("%.4f", r.Confidence),
 			fmt.Sprintf("%v", r.AutoInserted),
 			r.Type,
+			r.KeywordHint,
 		})
 	}
 	w.Flush()
@@ -575,7 +586,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 }
 
 // writeReviewCSV writes only rows where auto_inserted == false.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted;type
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
 func writeReviewCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -585,7 +596,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -604,6 +615,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 			fmt.Sprintf("%.4f", r.Confidence),
 			"false",
 			r.Type,
+			r.KeywordHint,
 		})
 	}
 	w.Flush()

@@ -246,15 +246,18 @@ func TestWriteClassifiedCSV_TypeColumn(t *testing.T) {
 		t.Fatalf("got %d lines, want 3", len(lines))
 	}
 
-	// Header must end with ;type
-	if !strings.HasSuffix(lines[0], ";type") {
-		t.Errorf("header missing type column: %q", lines[0])
+	// Type must sit at its established index. Asserted positionally rather than as a
+	// header suffix: type stopped being the LAST column when keyword_hint was appended,
+	// and this test's claim was always about WHERE type is, not what trails it.
+	headerFields := strings.Split(lines[0], ";")
+	if len(headerFields) <= 7 || headerFields[7] != "type" {
+		t.Errorf("header missing type column at index 7: %q", lines[0])
 	}
 
 	// First data row: type = "Fixas"
 	fields0 := strings.Split(lines[1], ";")
-	if len(fields0) != 8 {
-		t.Fatalf("data row has %d fields, want 8: %q", len(fields0), lines[1])
+	if len(fields0) != 9 {
+		t.Fatalf("data row has %d fields, want 9: %q", len(fields0), lines[1])
 	}
 	if fields0[7] != "Fixas" {
 		t.Errorf("type field: got %q, want %q", fields0[7], "Fixas")
@@ -262,8 +265,8 @@ func TestWriteClassifiedCSV_TypeColumn(t *testing.T) {
 
 	// Second data row: type = "" (empty)
 	fields1 := strings.Split(lines[2], ";")
-	if len(fields1) != 8 {
-		t.Fatalf("data row has %d fields, want 8: %q", len(fields1), lines[2])
+	if len(fields1) != 9 {
+		t.Fatalf("data row has %d fields, want 9: %q", len(fields1), lines[2])
 	}
 	if fields1[7] != "" {
 		t.Errorf("type field for unresolved row: got %q, want empty", fields1[7])
@@ -302,13 +305,17 @@ func TestWriteReviewCSV_TypeColumn(t *testing.T) {
 	if len(lines) != 3 {
 		t.Fatalf("got %d lines, want 3", len(lines))
 	}
-	if !strings.HasSuffix(lines[0], ";type") {
-		t.Errorf("header missing type column: %q", lines[0])
+	// Type must sit at its established index. Asserted positionally rather than as a
+	// header suffix: type stopped being the LAST column when keyword_hint was appended,
+	// and this test's claim was always about WHERE type is, not what trails it.
+	headerFields := strings.Split(lines[0], ";")
+	if len(headerFields) <= 7 || headerFields[7] != "type" {
+		t.Errorf("header missing type column at index 7: %q", lines[0])
 	}
 
 	fields := strings.Split(lines[1], ";")
-	if len(fields) != 8 {
-		t.Fatalf("data row has %d fields, want 8: %q", len(fields), lines[1])
+	if len(fields) != 9 {
+		t.Fatalf("data row has %d fields, want 9: %q", len(fields), lines[1])
 	}
 	if fields[7] != "Extras" {
 		t.Errorf("type field: got %q, want %q", fields[7], "Extras")

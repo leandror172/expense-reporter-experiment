@@ -23,7 +23,7 @@ func TestReadQueue(t *testing.T) {
 	}{
 		{
 			name:       "good row without type",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;true;",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;true;;",
 			wantCount:  1,
 			assertions: func(t *testing.T, entries []QueueEntry) {
 				e := entries[0]
@@ -41,7 +41,7 @@ func TestReadQueue(t *testing.T) {
 		},
 		{
 			name:       "good row with type populates Predicted.Type",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nAluguel;05/01;2500,00;Aluguel;Moradia;0.95;false;Fixas",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nAluguel;05/01;2500,00;Aluguel;Moradia;0.95;false;Fixas;",
 			wantCount:  1,
 			assertions: func(t *testing.T, entries []QueueEntry) {
 				e := entries[0]
@@ -52,12 +52,12 @@ func TestReadQueue(t *testing.T) {
 		},
 		{
 			name:       "blank lines skipped",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\n\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;true;\n\nUber Centro 2;16/05;40,00;Taxi;Transporte;0.90;false;\n\nUber Centro 3;17/05;45,00;Taxi;Transporte;0.85;true;",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\n\nUber Centro;15/05;35,50;Taxi;Transporte;0.95;true;;\n\nUber Centro 2;16/05;40,00;Taxi;Transporte;0.90;false;;\n\nUber Centro 3;17/05;45,00;Taxi;Transporte;0.85;true;;",
 			wantCount:  3,
 		},
 		{
 			name:       "installment value parsed",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;250,00/2;Taxi;Transporte;0.95;true;",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;250,00/2;Taxi;Transporte;0.95;true;;",
 			wantCount:  1,
 			assertions: func(t *testing.T, entries []QueueEntry) {
 				assert.Equal(t, "250,00/2", entries[0].RawValue)
@@ -66,7 +66,7 @@ func TestReadQueue(t *testing.T) {
 		},
 		{
 			name:          "malformed confidence value",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte;abc;true;",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;35,50;Taxi;Transporte;abc;true;;",
 			wantError:     true,
 			errorContains: "confidence",
 		},
@@ -76,25 +76,25 @@ func TestReadQueue(t *testing.T) {
 			// (T-54). Pinning the rejection keeps it from creeping back as a second
 			// accepted spelling that nothing emits and nothing covers.
 			name:          "legacy 1/0 spelling is rejected",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte;0.95;1;",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;35,50;Taxi;Transporte;0.95;1;;",
 			wantError:     true,
 			errorContains: `invalid auto_inserted value "1"`,
 		},
 		{
 			name:          "bad auto_inserted",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte;0.95;X;",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;35,50;Taxi;Transporte;0.95;X;;",
 			wantError:     true,
 			errorContains: "auto_inserted",
 		},
 		{
 			name:          "wrong field count",
-			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type\nTest Item;15/05;35,50;Taxi;Transporte",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;35,50;Taxi;Transporte",
 			wantError:     true,
-			errorContains: "expected 8 fields",
+			errorContains: "expected 9 fields",
 		},
 		{
 			name:       "header only returns empty slice",
-			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint",
 			wantCount:  0,
 		},
 		{
@@ -143,10 +143,10 @@ func TestReadQueue(t *testing.T) {
 func TestReadQueue_UnparsedRowsAreReturnedNotFatal(t *testing.T) {
 	t.Parallel()
 
-	const content = "item;date;value;subcategory;category;confidence;auto_inserted;type\n" +
-		"Uber Centro;15/05;35,50;Taxi;Transporte;0.95;true;\n" +
-		`"Anita;Elô ADM;09/01;405,25";;;;;0.0000;false;` + "\n" +
-		"Aluguel;05/01;2500,00;Aluguel;Moradia;0.95;false;Fixas"
+	const content = "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\n" +
+		"Uber Centro;15/05;35,50;Taxi;Transporte;0.95;true;;\n" +
+		`"Anita;Elô ADM;09/01;405,25";;;;;0.0000;false;;` + "\n" +
+		"Aluguel;05/01;2500,00;Aluguel;Moradia;0.95;false;Fixas;"
 
 	csvPath := filepath.Join(t.TempDir(), "classified.csv")
 	require.NoError(t, os.WriteFile(csvPath, []byte(content), 0o644))

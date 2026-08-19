@@ -17,10 +17,16 @@ type QueueEntry struct {
 	// ordinary purchase. It rides through to reviewed.json so apply can expand the
 	// series; discarding it here is what made apply record a 3× purchase as one row
 	// while batch-auto's auto route expanded it correctly (T-21).
-	Installments int       `json:"installments"`
-	Confidence   float64   `json:"confidence"`
-	AutoInserted bool      `json:"autoInserted"`
-	Predicted    Predicted `json:"predicted"`
+	Installments int     `json:"installments"`
+	Confidence   float64 `json:"confidence"`
+	AutoInserted bool    `json:"autoInserted"`
+	// KeywordHint is the keyword layer's competing suggestion, present only when it
+	// unambiguously disagreed with the model. ADVISORY — the page shows it beside the
+	// model's answer so the reviewer can see a second opinion; nothing selects it
+	// automatically, and it is deliberately NOT carried back out through
+	// exportReviewed(). It is input to the human, not part of their decision.
+	KeywordHint string    `json:"keywordHint,omitempty"`
+	Predicted   Predicted `json:"predicted"`
 }
 
 type Predicted struct {

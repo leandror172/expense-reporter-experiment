@@ -112,3 +112,36 @@ func TestClassifiedCSV_UnparsedRowSurvivesTheSeam(t *testing.T) {
 	assert.Equal(t, badLine, unreviewable[0],
 		"the caller gets the original text, which is the only thing that identifies the row")
 }
+
+// TestClassifiedCSV_KeywordHintSurvivesTheSeam pins the ninth column across the same join.
+//
+// The writer's own test proves the column is emitted and the reader's own test proves it is
+// read — but each was verified against its own idea of the format, which is exactly the
+// arrangement that let T-54 ship: a reader accepting a spelling no producer emitted, both
+// halves green. The field count is a hard error in the reader, so the two can only move
+// together, and this is where that is enforced.
+//
+// The data is the real case the feature was built for (session 72): the model routed a pet
+// consultation to Dentista, a HUMAN dental leaf, while `lilly` mapped to Lilly at
+// specificity 1.00 unambiguously. Seven such rows appeared in one month.
+//
+// Both halves matter. Absence must survive as absence — the page treats PRESENCE as the
+// signal for whether to show anything, so a hint that arrived as "none" or "-" would render
+// as a real suggestion by that name.
+//
+// The hint stops here by design: it is input TO the human, not part of their decision, and
+// it is deliberately not carried back out through exportReviewed(). Nothing downstream of
+// the review page should look for it.
+func TestClassifiedCSV_KeywordHintSurvivesTheSeam(t *testing.T) {
+	hinted := classifiedRowWithPrediction(t, "Consulta Lilly nefro;15/04;180,00", "Dentista", "Saúde", 0.95, false)
+	hinted.KeywordHint = "Lilly"
+	unhinted := classifiedRowWithPrediction(t, "Uber Centro;22/06;38,50", "Uber/Taxi", "Transporte", 0.87, false)
+
+	entries := writeThenReadQueue(t, []classifiedRow{hinted, unhinted})
+
+	require.Len(t, entries, 2, "both rows must survive the round trip")
+	assert.Equal(t, "Lilly", entries[0].KeywordHint,
+		"the keyword's competing suggestion must reach the reviewer's page")
+	assert.Empty(t, entries[1].KeywordHint,
+		"no second opinion must arrive as an empty hint, never a placeholder")
+}
