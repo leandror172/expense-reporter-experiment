@@ -33,6 +33,15 @@ no expense-log change` — so this is loud, not silent. But **no command can rep
 
 The only repair available today is hand-editing `expenses_log.jsonl`.
 
+> **CORRECTED session 72 — the claim below that the rows were unseen is FALSE.**
+> `close-cycle.sh:220` feeds `review` the FULL `classified.csv`, so all 17 auto-inserted rows
+> appeared in the review queue and carry recorded reviewer actions — as this finding's own
+> example proves (`4x álcool 70` was auto-inserted *and corrected during review*).
+> Measured: gate-passing rows had **1 correction in 17 = 94.1% precision**, versus 50.0% for
+> gate-refused rows. The defect is that the human's correction cannot reach the expense log —
+> which is this finding, and is worse than an unseen row. See
+> `.claude/b1-gate-precision-measurement.md`.
+
 **Why this is structural, not a papercut.** `batch-auto` auto-appended **17 of 69 rows (25%)**
 in this close without any human seeing them. T-32's ~95% precision is a *same-sample relative*
 validation on a confidence-selected subset — **absolute production precision is unmeasured**,
