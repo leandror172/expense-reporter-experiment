@@ -32,6 +32,8 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 			expenseTypesOfferedForPicking([]string{"Fixas", "Variáveis", "Extras", "Adicionais"}),
 			cleanQueueReportsNothingUnreviewable(),
 			installmentCountOfferedToTheReviewer("Financiamento carro", 24),
+			keywordSuggestionOfferedToTheReviewer("Uber Centro", "Combustível"),
+			noKeywordSuggestionOfferedTo("Diarista Letícia"),
 		),
 	})
 }
@@ -62,6 +64,61 @@ func reviewDataEmbedded() []func(*harness.Context) {
 
 type reviewQueueOnly struct {
 	Queue []json.RawMessage `json:"queue"`
+}
+
+type reviewQueueKeywordHints struct {
+	Queue []struct {
+		Item        string `json:"item"`
+		KeywordHint string `json:"keywordHint"`
+	} `json:"queue"`
+}
+
+// keywordSuggestionOfferedToTheReviewer asserts the keyword layer's COMPETING suggestion
+// reaches the page's embedded data for a row the model answered differently.
+//
+// Scope, stated plainly: this pins the hint reaching the page, NOT the badge being drawn.
+// The badge is built by browser JS (the .kw-hint span) and no Go test can execute it —
+// the same unreachable hop as T-61. Asserting the embedded JSON is the furthest a Go test
+// honestly reaches, so the claim is worded as "offered to the reviewer", not "shown".
+//
+// The fixture value carries an accent on purpose: it travels Go -> JSON -> escapeHtml, and
+// a mangling anywhere on that path is invisible in a plain-ASCII fixture.
+func keywordSuggestionOfferedToTheReviewer(item, want string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		func(ctx *harness.Context) {
+			ctx.T.Helper()
+			assert.Equal(ctx.T, want, keywordHintFor(ctx, item),
+				"queue row %q should carry the keyword's competing suggestion", item)
+		},
+	}
+}
+
+// noKeywordSuggestionOfferedTo is the other half, and it is not redundant: without it a
+// page that showed the same badge on EVERY row would satisfy the positive assertion above.
+// Most rows have no second opinion, and that must survive as an empty string.
+func noKeywordSuggestionOfferedTo(item string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		func(ctx *harness.Context) {
+			ctx.T.Helper()
+			assert.Empty(ctx.T, keywordHintFor(ctx, item),
+				"queue row %q had no competing keyword, so nothing may be offered", item)
+		},
+	}
+}
+
+// keywordHintFor reads one row's hint out of the page's embedded queue, failing the test
+// when the row is absent rather than returning a zero value an assertion would accept.
+func keywordHintFor(ctx *harness.Context, item string) string {
+	ctx.T.Helper()
+	var data reviewQueueKeywordHints
+	expect.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
+	for _, row := range data.Queue {
+		if row.Item == item {
+			return row.KeywordHint
+		}
+	}
+	ctx.T.Fatalf("queue has no row for %q", item)
+	return ""
 }
 
 type reviewQueueInstallments struct {

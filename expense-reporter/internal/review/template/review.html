@@ -339,6 +339,16 @@
   .conf-text .auto {
     text-transform: uppercase;
   }
+  /* The keyword layer's competing suggestion. Amber = "needs attention", never the
+     accent colour, which this page reserves for a CONFIRMED choice — the hint is an
+     annotation the reviewer may ignore, not a selection. */
+  .conf-text .kw-hint {
+    background: var(--warn-soft);
+    color: var(--warn-ink);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    text-transform: none;
+  }
 
   .row .pickers {
     grid-area: pickers;
@@ -1106,8 +1116,15 @@ function rowEl(s) {
   bar.appendChild(fill);
   const text = document.createElement("div");
   text.className = "conf-text";
+  // The keyword layer's second opinion, shown only when it disagreed with the model.
+  // escapeHtml is mandatory here: these are taxonomy leaf names, which in this domain
+  // carry accents and apostrophes ("Delivery brod's").
+  const kwHint = e.keywordHint
+    ? '<span class="kw-hint">keyword: ' + escapeHtml(e.keywordHint) + '</span>'
+    : '';
   text.innerHTML =
     '<span>confidence ' + fmtPct(e.confidence) + '</span>' +
+    kwHint +
     '<span class="auto">' + (e.autoInserted ? "auto" : "review") + '</span>';
   conf.append(bar, text);
   row.appendChild(conf);
