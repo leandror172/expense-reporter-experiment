@@ -60,9 +60,21 @@ AGREES with an unambiguous, maximum-specificity keyword match, and the subcatego
 excluded. Confidence NO LONGER gates — the 649-replay (session 52) proved it uninformative
 (the whole 0.85–0.95 band is a coin flip). All other rows route to review.
 - Excluded subcategories (e.g., "Diversos") are never auto-inserted regardless of the gate.
-- The ~95% subcat precision is a same-sample RELATIVE validation (shipped predicate ==
-  measured predicate), NOT an absolute production guarantee — the 649 is a
-  confidence-selected subset. This is why unattended silent auto-insert (WS-D) stays held.
+- The ~95% subcat precision from the 649 is a same-sample RELATIVE validation (shipped
+  predicate == measured predicate) on a confidence-selected subset — a separate claim from
+  the one below, and still not an absolute guarantee.
+- **ABSOLUTE precision MEASURED (session 72): 94.1%.** On the first real close, 1 of 17
+  gate-passing rows was corrected (5.9% error) against 50.0% for the 48 gate-refused rows —
+  an 8.5× discrimination on a full, unselected month. The 649 could not show this because
+  378 of its 725 rows bypassed review unlabeled; a CLOSE labels everything, since
+  `close-cycle.sh:220` feeds `review` the FULL `classified.csv`, so every gate-passing row
+  carries a recorded reviewer action. Report: `.claude/b1-gate-precision-measurement.md`.
+- **WS-D stays held regardless.** n=17 (one further error → 88.2%), one month, one reviewer,
+  and confirms on auto-inserted rows are weak-positive because the page shows them as
+  already handled and `review.go` omits them from the `needsReview` count — read 94.1% as an
+  UPPER bound. What the measurement DID kill is the "nobody sees 25% of rows" argument: they
+  were all reviewed, so the real defect is that a reviewer's correction cannot reach the
+  expense log (T-65).
 **Rationale:** confidence was measured dead, so the gate switched to keyword agreement
 (specificity + model⊕keyword concurrence). "Diversos" exclusion still guards the vaguest leaf.
 **Implication:** Exclusion list is in `config.json`. `--threshold` on `batch-auto` is deprecated.
@@ -189,3 +201,28 @@ LLM repo; this repo only references model names.
   **Also:** the drift had inverted the feedback loop — 2 logged "corrections" taught the
   classifier `IRFF` over the routable `IRRF`, and corrected entries are the HIGHEST-priority
   few-shot source. 3 real records backfilled. Report: `.claude/t42-scout-report.md`.
+- **Session 72 — the backlog was re-ordered by measurement, not argument (PR #66).**
+  Two numbers, both extracted from data session 71 had already written to disk, no new run.
+  **(1) Absolute gate precision 94.1%** vs 50.0% for gate-refused rows
+  (`.claude/b1-gate-precision-measurement.md`). **(2) The A1 hint predicate** — unambiguous
+  specificity 1.00, keyword ≠ model — fires on 14 of 65 rows at 71.4% precision, recovering
+  10 of 25 corrections (`.claude/a1-keyword-hint-precheck.md`).
+  **Rationale for measuring before building:** the plan of record was A1 + B1 (gate-to-review).
+  B1's two justifications were eliminating unrepairable rows and OBTAINING this measurement.
+  Ten minutes of joining existing files delivered the second for free and dissolved the
+  first — the 17 auto-inserted rows were never unseen, `close-cycle.sh:220` feeds `review`
+  the FULL `classified.csv`. B1 was dropped and T-65 promoted; `t42-close-findings.md` was
+  corrected in place where readers land.
+  **The methodological finding:** the first join keyed on ITEM and reported 26 corrections
+  against a known total of 25. That one-row overshoot was the only visible symptom of
+  duplicate item names (`San michel` ×3) silently collapsing. Had they fallen the other way
+  the arithmetic would have reconciled and the wrong number shipped looking right. Fixed by
+  a POSITIONAL join verified on item AND date across all 65 pairs. **Carry a checksum that
+  can fail, and treat a small unexplained discrepancy as a defect rather than rounding.**
+  **Two coverage traps, both recorded where the reader stands:** a mutation that fails to
+  COMPILE proves nothing (deleting a field made the package unbuildable — red from the
+  compiler, not the test; swapping the source column kept it compiling and then discriminated
+  precisely, failing the seam test while `internal/review` stayed green). And **the `-short`
+  group is structurally blind to format changes** — every assertion about `classified.csv`'s
+  shape sits behind `RequireOllama`, because producing one means classifying, so six wrong
+  assertions stayed green through the whole session until `-full` ran.

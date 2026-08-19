@@ -62,8 +62,8 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 			continue
 		}
 
-		if len(record) != 8 {
-			return nil, nil, fmt.Errorf("line %d: expected 8 fields, got %d", lineNumber, len(record))
+		if len(record) != 9 {
+			return nil, nil, fmt.Errorf("line %d: expected 9 fields, got %d", lineNumber, len(record))
 		}
 
 		item := strings.TrimSpace(record[0])
@@ -74,6 +74,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 		confidenceStr := strings.TrimSpace(record[5])
 		autoInsertedStr := strings.TrimSpace(record[6])
 		expenseType := strings.TrimSpace(record[7])
+		keywordHint := strings.TrimSpace(record[8])
 
 		// The unparsed-row shape batch-auto writes: raw text kept in the item column,
 		// date and value blank. Recognised BEFORE any field parsing, because it is the
@@ -126,6 +127,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 			Installments: installments,
 			Confidence:   confidence,
 			AutoInserted: autoInserted,
+			KeywordHint:  keywordHint,
 			Predicted: Predicted{
 				Category:    category,
 				Subcategory: subcategory,

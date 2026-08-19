@@ -15,8 +15,11 @@ legacy `sheet` read-compat via custom `UnmarshalJSON`.
 "sheet" vocabulary because they read workbook-facing `resolver.SheetName`.
 
 ## Type Column in the Classified CSV (RUI-4, session 33, commit 41afa56)
-Input CSV (`queue.go`) is 8 fields: item, date, value, subcategory, category, confidence,
-auto_inserted, **type**; `ReadQueue` reads `record[7]` into `Predicted.Type`. The page can
+Input CSV (`queue.go`) is **9 fields** since A1/s72: item, date, value, subcategory,
+category, confidence, auto_inserted, **type**, **keyword_hint**; `ReadQueue` reads
+`record[7]` into `Predicted.Type` and `record[8]` into `KeywordHint`. New columns are
+APPENDED — `expect.NoneWereAutoInserted` indexes auto_inserted positionally at 6, so an
+inserted column would silently retarget it rather than fail to compile. The page can
 also re-derive candidate types from the taxonomy (`typeByName`/`SHEETS_FOR`).
 The Go ingest/log loss is fixed (Plan A): apply persists the type; the generator routes
 typed entries by full path ([[taxonomy]] two-tier routing). `exportReviewed()` lives at

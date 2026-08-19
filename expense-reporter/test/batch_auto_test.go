@@ -35,7 +35,7 @@ func TestBatchAuto_MixedConfidence(t *testing.T) {
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-basic")
 
 	harness.Run(t, harness.Scenario{
-		Name:    "batch-auto — classified.csv has 11 rows (1 header + 10 data), 8 columns",
+		Name:    "batch-auto — classified.csv has 11 rows (1 header + 10 data), 9 columns",
 		Fixture: fixDir,
 		Given:   tenMixedExpensesSubmittedForClassification(),
 		When:    actions.RunBatchAutoWithFixture(),
@@ -154,7 +154,7 @@ func classifiedAndReviewFilesProduced() []func(*harness.Context) {
 		verify.OutputFileExists("classified.csv"),
 		verify.OutputFileExists("review.csv"),
 		expect.OutputFileHasAtLeastRows("classified.csv", 1),
-		expect.OutputFileHasColumns("classified.csv", 8),
+		expect.OutputFileHasColumns("classified.csv", 9),
 		expect.AllClassificationScoresValid("classified.csv"),
 	}
 }
@@ -165,7 +165,7 @@ func allInputExpensesClassified(rows int) []func(*harness.Context) {
 		verify.OutputFileExists("classified.csv"),
 		verify.OutputFileExists("review.csv"),
 		expect.OutputFileHasRows("classified.csv", rows),
-		expect.OutputFileHasColumns("classified.csv", 8),
+		expect.OutputFileHasColumns("classified.csv", 9),
 		expect.AllClassificationScoresValid("classified.csv"),
 	}
 }

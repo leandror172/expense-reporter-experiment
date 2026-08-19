@@ -1,7 +1,7 @@
 # review — QUICK
 
-**What:** builds the offline HTML review page. `ReadQueue` (classified CSV, 8 fields —
-col 8 = type) + `BuildTaxonomy` (picker tree from **`config/taxonomy.json`**) + `Render`
+**What:** builds the offline HTML review page. `ReadQueue` (classified CSV, 9 fields —
+col 8 = type, col 9 = keyword_hint) + `BuildTaxonomy` (picker tree from **`config/taxonomy.json`**) + `Render`
 (inject JSON into `template/review.html` via go:embed).
 
 **The picker's taxonomy comes from `config/taxonomy.json` (S2, s68) — NOT the workbook.**
@@ -27,12 +27,18 @@ and still hard-errors. The warning lives in `cmd`, not here — same reason `par
 `YearSource` instead of printing.
 
 **Input contract — `ReadQueue` must match batch-auto's writers exactly (T-54, s68):**
-exactly 8 semicolon fields, and `auto_inserted` spelled **`true`/`false`** — the inverse of
+exactly 9 semicolon fields, and `auto_inserted` spelled **`true`/`false`** — the inverse of
 `fmt %v` on a bool. `1`/`0` is REJECTED on purpose: it was accepted for months while NO
 producer emitted it, so `review` failed on every real `classified.csv` and no test noticed
 (the reader's only inputs were fixtures authored to satisfy the reader). Do not "soften"
 this back to `strconv.ParseBool` — one producer, one spelling. Guard:
 `cmd.TestClassifiedCSV_ReviewReadsWhatBatchAutoWrote`.
+⚠️ **There are TWO producers of that cell, and only the filter keeps them equal (noted s72).**
+`writeClassifiedCSV` renders `fmt.Sprintf("%v", r.AutoInserted)`; `writeReviewCSV` hardcodes
+the literal `"false"`. They agree only because review.csv skips auto-inserted rows, so the
+hardcode is never wrong *today*. No test distinguishes them either — the cross-writer tests
+feed rows that are all `AutoInserted: false`, so the two spellings agree by construction.
+Relax that filter and the literal becomes a lie with nothing to catch it.
 
 **`QueueEntry` carries the installment COUNT, not just the raw token (T-21, s69).**
 `ReadQueue` used to discard it (`perInstallment, _, err`) while keeping `RawValue` for
@@ -60,6 +66,17 @@ the one both JSONL logs hold — that is what lets `reviewed.json` join them. Gu
 - In-progress state persists in browser `localStorage`
   (`expense-review:v1:rows:<source>:<generatedAt>`) → recoverable by reopening the same
   HTML and re-exporting.
+
+**`QueueEntry.KeywordHint` is the keyword layer's COMPETING suggestion (A1, s72).**
+Ninth CSV column, filled by `classifier.KeywordHint` — the advisory sibling of the
+auto-insert gate: the gate fires on model⊕keyword AGREEMENT, the hint on DISAGREEMENT,
+both at unambiguous specificity 1.00. Measured on the first close: fires on 14 of 65 rows,
+right 71.4% of the time, holds the reviewer's answer on 10 of 25 corrections. **Advisory
+ONLY** — at that precision, auto-applying would inject errors on ~3 of every 14 rows, so
+the page renders an amber `.kw-hint` badge beside the model's answer and nothing selects
+it. **It deliberately does NOT round-trip through `exportReviewed()`** — it is input TO the
+human, not part of their decision, and a value crossing that unguarded JS hop would be a
+second T-61. Empty is the signal for "no second opinion"; never a placeholder.
 
 **Gotcha:** edit only `internal/review/template/review.html` (60KB). The rendered
 `review*.html` files at repo root are large — don't read them into context; use a Haiku
