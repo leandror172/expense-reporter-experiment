@@ -21,10 +21,23 @@ slice-3 decisions in §11).
   would have to re-serialize a float purely to have the boundary parse it back.
   `Fields` DELEGATES to it — one ladder, one pair of year validations, whichever
   door a caller comes through.
+- `Value(valueStr)` (s73) — value-only entry point, the mirror of `Date`, for a
+  caller whose other fields are already structured. `review.ReadQueue` is that
+  caller: its date column has been canonical since slice 3 and its flags are
+  typed, so only the value token is still text. **`Fields` DELEGATES to it**, so
+  normalization has exactly ONE call site — verify with
+  `grep -n "normalizeThousands(" internal/parse/parse.go` (one call + the
+  definition, nothing more). Before this, `ReadQueue` called utils directly and
+  therefore never stripped BR thousands, so `writeClassifiedCSV` could emit a
+  `1.234,56` the reader HARD-ERRORED on, killing the whole review step over one
+  row — with both sides' own tests green (T-72). Wraps with the double `%w`, so
+  a consumer gets `errors.Is(err, ErrInvalidValue)`; `ReadQueue` therefore
+  dropped its own "invalid value: " literal and the message stayed byte-identical.
 - `ExpenseString(s, Options)` — 4-field semicolon wrapper; returns subcategory
   ALONGSIDE (classification is not parsing — never add it to the struct).
-- `Value` is PER-INSTALLMENT (total ÷ N for "total/N"); `RawValue` keeps the
-  original token for display/audit.
+- **`ParsedExpense.Value` the FIELD** (not to be confused with the `Value`
+  function above) is PER-INSTALLMENT under BOTH installment notations;
+  `RawValue` keeps the original token for display/audit.
 - `YearSource` (s65) — WHICH rung resolved the year. Zero is
   `YearSourceUnknown`, never a real rung: every error path returns
   `ParsedExpense{}`, so a zero naming a rung would let a failed parse report a
@@ -46,8 +59,26 @@ slice-3 decisions in §11).
   is deliberately unguarded (T-48). Installment expansion never re-enters here,
   so a 24× purchase still writes rows years ahead.
 - **BR thousands:** token with BOTH '.' and ',' → dots stripped ("1.234,56" OK);
-  dot-only tokens keep legacy decimal-dot meaning. Boundary owns ALL input
-  normalization (design Q3).
+  dot-only tokens keep legacy decimal-dot meaning (a hazard the multiplier made
+  reachable in a new position — filed as T-74, NOT introduced by it). Boundary
+  owns ALL input normalization (design Q3). **Q3 is what decided T-72's fix:**
+  the alternative was pushing `normalizeThousands` down into `pkg/utils`, which
+  would have put input normalization outside the boundary.
+- **TWO installment notations, and they are INVERSES (T-64, s73).** `405,25/4`
+  states the TOTAL and DIVIDES; `405,25 x4` states the PER-INSTALLMENT amount and
+  MULTIPLIES. Same digits, 4× apart in the budget. They live together in
+  `utils.ParseCurrencyWithInstallments` and are pinned in ONE test table on
+  purpose — a reader who conflates them must edit adjacent contradictory lines.
+  The mode switch is the PRESENCE of `x`/`X`, never position. The value/count
+  split is then resolved by trying three readings (`value x count`,
+  `value count x`, `count x value`) and requiring **EXACTLY ONE** to hold:
+  two readings means AMBIGUOUS and is an ERROR, never a guess. So `4x5` and
+  `646,254x` are rejected — and rejecting is the cheap side, because T-63 returns
+  the row in `failed.csv` with its reason inline to be repaired in place, while
+  guessing writes a budget row wrong by the installment count and
+  indistinguishable from a legitimate one. Reading helpers report SHAPE match
+  separately from count plausibility, which is what lets `405,25 x0` say "must be
+  positive" instead of degrading to a generic format error.
 - **Field sentinels (s66):** `ErrInvalidDate` / `ErrInvalidValue` name WHICH field
   `Fields` rejected, so a caller branches with `errors.Is` instead of matching
   English message text — required because the eventual consumers are an error log

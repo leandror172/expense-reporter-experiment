@@ -46,6 +46,21 @@ so `Mesa #5` stays data and a 4-field `item;date;value;subcategory` still fails 
 WS-E-doomed `FailedWriter`). Before this, a rejected row reached NO durable artifact — it was
 named on stderr and lost, and `review.html` cannot render a row with no date (T-56).
 
+**T-64 + T-72 (s73, branch `feat/t64-multiplier-notation`): a SECOND installment notation,
+and the seam bug found while shipping it.** `405,25 x4` states the PER-INSTALLMENT amount
+and MULTIPLIES, the inverse of `405,25/4` which states the TOTAL and divides — same digits,
+4× apart. Both orders accepted (`x4`, `4x`, plus retail `4x405,25`), case-insensitive. The
+mode switch is the PRESENCE of `x`/`X`; the value/count split is resolved by trying three
+readings and requiring **exactly one** to hold, so `4x5` and `646,254x` are REJECTED as
+ambiguous rather than guessed. Implemented once, in `utils.ParseCurrencyWithInstallments`.
+**T-72, found the same session and folded in:** `review.ReadQueue` called that function
+directly and so never applied BR thousands normalization, so a `1.234,56` row hard-errored
+and killed the entire review step — the T-54 shape a third time. Fixed by adding
+`parse.Value` (the value-only door, mirror of `parse.Date`), having `Fields` delegate to it,
+and routing `ReadQueue` through it. Normalization now has ONE call site.
+Filed and NOT fixed: T-73 (`classify` still calls `utils.ParseCurrency` directly),
+T-74 (a dot-only token like `1.234` resolves 1000× wrong — pre-existing).
+
 ## Structure
 ```
 cmd/expense-reporter/cmd/  # Cobra subcommands (one file each)

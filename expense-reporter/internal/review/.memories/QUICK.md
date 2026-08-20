@@ -40,6 +40,23 @@ hardcode is never wrong *today*. No test distinguishes them either — the cross
 feed rows that are all `AutoInserted: false`, so the two spellings agree by construction.
 Relax that filter and the literal becomes a lie with nothing to catch it.
 
+**The value column is parsed through `parse.Value`, NOT `utils` directly (T-72, s73).**
+`ReadQueue` used to call `utils.ParseCurrencyWithInstallments` itself, which meant it never
+applied the BR thousands normalization `internal/parse` performs — so `writeClassifiedCSV`
+could emit a `1.234,56` this reader HARD-ERRORED on, killing the whole review step over one
+row, with both sides' own tests green. Same shape as T-54: one function, two callers, and a
+step only one of them applied. Routing through the boundary is also how the T-64 multiplier
+notation (`405,25 x4`, which MULTIPLIES where `total/N` divides) reached this side without
+being taught twice — and a count that died here would be the T-21 bug again, with a 4×
+error instead of a 3× one. The error is deliberately NOT re-labelled: `parse.Value` wraps
+with `ErrInvalidValue` whose text is "invalid value", so the human-facing message is
+byte-identical and callers gain `errors.Is` on the field sentinel.
+⚠️ **Only the THOUSANDS test guards this routing.** Mutation-verified: deleting the
+normalization inside `parse.Value` turns the thousands tests red while both multiplier
+tests stay green, because utils knows the notation either way. Do not delete the thousands
+case as redundant with the multiplier one — it is the only thing that can tell whether this
+reader still goes through the boundary.
+
 **`QueueEntry` carries the installment COUNT, not just the raw token (T-21, s69).**
 `ReadQueue` used to discard it (`perInstallment, _, err`) while keeping `RawValue` for
 display, so the count died here and `apply` — the only consumer that needs it — recorded

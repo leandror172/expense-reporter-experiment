@@ -11,16 +11,33 @@ Every input line is unparseable **on purpose**. Two consequences, both deliberat
    adding a good row: it would drag Ollama in and move the scenario out of the fast group.
 
 The first four lines are the real rejects from the first monthly close on 2026 data
-(`expenses-2026-01.csv`, 4 of 69 rows). They are **input errors, not missing parser
-features** — `99,90/3` is the only accepted installment form, so `- 1/4` and `4x` are
-typos.
+(`expenses-2026-01.csv`, 4 of 69 rows). Each is rejected for a reason that has nothing to
+do with the installment notation: a semicolon inside the item, transposed date and value,
+a typo'd day, and a missing date.
 
-> **SUPERSEDED IN PART (s71, T-64).** The multiplier form is a real notation the user had
-> planned but never written down: line 19's true shape is `Anita Elô ADM;09/01;405,25 x4`.
-> It is NOT the same as `total/N` — `x4` means the number is PER-INSTALLMENT and must be
-> MULTIPLIED, where `405,25/4` divides. Same digits, 4× apart (101,31/month vs 405,25/month). `- 1/4` remains a typo.
-> The rows stay in this fixture as rejects until T-64 lands; when it does, they must move
-> out or be re-spelled, or this fixture will assert that a supported notation is invalid.
+> **T-64 LANDED (s73), and this fixture was NOT affected — which is worth stating, because
+> the s71 note here predicted the opposite.** That note warned these rows would "have to
+> move out or be re-spelled" once the multiplier notation shipped, or the fixture would
+> assert that a supported notation is invalid. It does not, and the reason is worth
+> knowing before anyone edits this file:
+>
+> - `Anita;Elô ADM;09/01;405,25 - 1/4` has **four fields** (the item contains a `;`) and
+>   uses `- 1/4`, which remains a typo. Rejected on both counts, unchanged.
+> - `Anita compra chocolate Ruby 299,00 e cacau 49,90;646,25 4x` uses the now-supported
+>   `4x`, but has **only two fields** — no date at all. It is rejected on field count
+>   **before the value is ever parsed**, which is exactly what the error quoted further
+>   down this file shows: `got: 646,25 4x   # expected 3 fields (item`.
+>
+> So nothing here ever pinned "`x4` is invalid", and there was no guard to unwind.
+> Verified by running the scenario after T-64, not by reading. **The corollary is that
+> this fixture cannot tell you whether the multiplier parses** — that is pinned by the
+> unit table in `pkg/utils/currency_test.go` and by the classified.csv → ReadQueue seam
+> tests. Do not add a well-formed `x4` row here expecting it to be rejected: it would
+> parse, reach the classifier, and drag Ollama into the fast group.
+
+**The notation itself, for reference.** `405,25/4` states the TOTAL and divides;
+`405,25 x4` states the PER-INSTALLMENT amount and multiplies. Same digits, 4× apart
+(101,31/month vs 405,25/month). `- 1/4` is not either of them and remains a typo.
 
 ## Known limitation: a row with fewer than 3 fields absorbs its reason once
 
