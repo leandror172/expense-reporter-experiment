@@ -60,6 +60,19 @@ and killed the entire review step — the T-54 shape a third time. Fixed by addi
 and routing `ReadQueue` through it. Normalization now has ONE call site.
 Filed and NOT fixed: T-73 (`classify` still calls `utils.ParseCurrency` directly),
 T-74 (a dot-only token like `1.234` resolves 1000× wrong — pre-existing).
+⚠️ **`ParseCurrencyWithInstallments` has THREE callers, not two.** The third is
+`models.NewExpense`, reached from plain `batch` — which is retired-but-not-deleted and
+therefore still REGISTERED and reachable (`batch.go:44`). So `batch` silently gained the
+multiplier on a path that writes DIRECTLY to the workbook, unnormalized and untested.
+Behavior is probably right (it expands at insert time); it is simply unexercised, and
+WS-E must delete that caller. Retired ≠ unreachable — check `AddCommand`, not the label.
+
+**The review template does NOT re-derive the installment count** (checked s73, not
+assumed): `installmentBadge(count)` takes the count, the page passes `e.installments`
+from the embedded DATA, and `exportReviewed()` emits `s.entry.installments`. No JS parses
+`rawValue`, so the multiplier needed no template change — which matters because the
+`exportReviewed()` hop is unguarded (T-61) and a JS-side `total/N` re-parse would have
+recorded 1 row where 4 belong, with no Go test able to fail.
 
 ## Structure
 ```

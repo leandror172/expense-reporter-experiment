@@ -172,6 +172,29 @@ not an observation, until asserted.
 - [x] **9. Out-of-scope findings filed** — T-73 (`classify` bypasses the boundary) and T-74
       (dot-only token resolves 1000× wrong, pre-existing). T-72 filed AND fixed.
 
+### Post-completion checks (advisor review, s73)
+
+Two claims were checked rather than assumed. One held, one did not.
+
+**HELD — the review template does not re-derive the count.** `installmentBadge(count)`
+takes a count; the page passes `e.installments` from the embedded DATA and
+`exportReviewed()` emits `s.entry.installments`. Nothing in the 60KB template parses
+`rawValue`. This mattered more than it looks: the export is the UNGUARDED hop (T-61), so a
+JS-side `total/N` re-parse would have shown a multiplier row as x1 and recorded ONE row
+where four belong — T-21 again at 4x — **with no Go test able to fail.**
+
+**DID NOT HOLD — there are THREE callers of `ParseCurrencyWithInstallments`, not two.**
+The T-64 commit message says "both live callers", which is wrong. The third is
+`models.NewExpense`, reached from plain `batch`, which is retired-but-not-deleted and
+therefore still registered (`rootCmd.AddCommand(batchCmd)`, `batch.go:44`) — traced through
+`batch.NewProcessor` → `internal/parser` → `models.NewExpense`, not inferred from the WS-E
+label. So `batch` silently gained the notation on a path that writes DIRECTLY to the
+workbook, unnormalized and untested. Recorded under T-73 and in the module memory rather
+than fixed: adding coverage to a path WS-E will delete is waste. **The general lesson is
+that "retired" is a plan, not a property — check `AddCommand`, not the label.**
+
+---
+
 ### Mutation evidence (the house rule)
 
 Deleting the `normalizeThousands` call inside `parse.Value` — a mutation that still
