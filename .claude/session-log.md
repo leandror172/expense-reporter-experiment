@@ -1,50 +1,49 @@
 # Session Log — Expense Reporter
 
-**Current Session:** 2026-08-19 — Session 72: the auto-insert gate measured at 94.1%, and the keyword's second opinion reaches the reviewer (A1, PR #66)
-**Current Layer:** Close-cycle follow-up — the backlog is now measured rather than argued. A1 shipped (PR #66); T-65 supersede-by-append is next, DESIGN ONLY by the user's call
+**Current Session:** 2026-08-20 — Session 73: a second installment notation that means the opposite of the first (T-64), and the thousands value that was killing review (T-72)
+**Current Layer:** Close-cycle follow-up — T-64 shipped (PR #67, open) along with T-72 found while building it. T-65 supersede-by-append is next, DESIGN ONLY by the user's call; then 5.R6, which now has a measured payoff and a ready-made before/after harness
 Most recent entry first. Run `.claude/tools/rotate-session-log.sh` when this grows beyond ~3 sessions.
 
 ---
-## 2026-08-19 - Session 72: the auto-insert gate measured at 94.1%, and the keyword's second opinion reaches the reviewer (A1, PR #66)
+## 2026-08-20 - Session 73: a second installment notation that means the opposite of the first (T-64), and the thousands value that was killing review (T-72)
 
 ### Context
 
-Opened as a "PRs merged, let's discuss next steps" session against a backlog of three undecided findings from the first real monthly close (T-64/T-65/T-66). It became a measurement session: two numbers extracted from data session 71 had already written to disk reordered the plan before any code was written, and one of them retired a claim WS-D had been argued from since session 52.
+Opened on a clean master with PR #66 (A1) merged, and began as a discussion of what to do next rather than a coding task. Four candidates were laid out with a recommendation; the user picked T-64 over the previously-planned T-65 design doc. Orientation before any code found more than the task file predicted, which changed the shape of the work twice — once from the user's own reframe of the notation, and once from a defect discovered in the same seam.
 
 ### What Was Done
 
-- **Measured the A1 keyword-hint predicate on real data** (`.claude/a1-keyword-hint-precheck.md`) using the PRODUCTION `MatchStrength` rather than the report's approximate Python tokenizer: fires on **14 of 65** rows, keyword right **71.4%**, recovers **10 of 25** corrections, only 2 noise fires. Verdict GO.
-- **Measured ABSOLUTE agreement-gate precision at 94.1%** (`.claude/b1-gate-precision-measurement.md`) — 1 correction in 17 gate-passing rows vs **50.0%** error on the 48 gate-refused rows, an 8.5× discrimination on a full unselected month. This is the number T-32 declared unmeasurable and WS-D has been blocked on since session 52; it was already on disk.
-- **Corrected `t42-close-findings.md` in place**, inside the ref block readers resolve: its claim that the 17 auto-inserted rows were appended "without any human seeing them" is false, and contradicted by its own `4x álcool 70` example.
-- **Shipped A1 (PR #66, 5 commits):** `classifier.KeywordHint` + a ninth `keyword_hint` CSV column + `QueueEntry.KeywordHint` + an amber `.kw-hint` badge on the review page, with deterministic behavioral acceptance coverage.
-- **Closed a model-only blind spot** by extracting `classifiedRowFromPrediction` as a pure function, making the one line that decides what the keyword is compared against unit-testable without Ollama.
-- **Swept the memories and docs**: retired the now-false "absolute precision is unmeasured" claim from four live places, and fixed `test/README.md`'s batch-auto column table, which had listed seven columns and been missing `type` since RUI-4 in session 33 — ~39 sessions stale with nothing breaking.
-- Recorded the T-64 direction (`x4` MULTIPLIES) in agent memory the moment it was confirmed, since a wrong direction there is a silent 4× error.
+- **T-64 shipped** — `405,25 x4` (multiply, per-installment) alongside `405,25/4` (divide, total). Both token orders, case-insensitive, plus the retail `4x405,25`. PR #67 opened against master.
+- **T-72 found and fixed** — `review.ReadQueue` hard-errored on any BR-thousands value, killing the whole review step over one row. Found by feeding the real writer's bytes to the real reader, not by reading code.
+- Added `parse.Value`, the value-only door onto the T-41 boundary and mirror of `parse.Date`; `Fields` delegates to it so normalization has exactly one call site, and `review.ReadQueue` routes through it instead of calling `utils` directly.
+- Verified: `go test ./...` 0, vet + gofmt clean, acceptance `-short` green, **`-full` 72 PASS / 0 FAIL / 0 SKIP**; currency table at **33 subtests** with the pre-existing 13 unmodified.
+- Corrected two false claims rather than leaving them standing: the `batch-auto-failed-rows` README's prediction that its `x`-rows would need to move out (they are rejected on field count, before the value is parsed), and the T-64 commit message's "two live callers" (there are three).
+- Filed T-73 (`classify` bypasses the boundary; also names the third caller) and T-74 (dot-only `1.234` resolves 1000x wrong — pre-existing).
 
 ### Decisions Made
 
-- **B1 (gate-to-review) was DROPPED.** Its two justifications were eliminating unrepairable rows and obtaining the absolute-precision measurement. Ten minutes of joining existing files delivered the second for free and dissolved the first — the rows were never unseen. T-65 was promoted in its place.
-- **The keyword hint is ADVISORY and never applied.** At 71.4% precision, auto-preferring it would inject errors on roughly 3 of every 14 rows; displaying it beside the model's answer cannot.
-- **ONE new column, appended, not two.** No `gate_passed` — without B1's flip, `auto_inserted` still means "the gate passed", so a second column would have had no consumer. Appending keeps `auto_inserted` at index 6 for the positional verifiers.
-- **The hint deliberately does NOT round-trip through `exportReviewed()`** — it is input TO the human, not part of their decision, and a value crossing that unguarded JS hop would be a second T-61.
-- **Strict predicate only** (unambiguous, specificity 1.00). Not because a middle setting is impossible — `MatchStrength` can structurally return unambiguous-at-0.8 — but because `review` loads no keyword index and has no consumer for the extra signal. Measured: every row scoring in [0.70, 1.00) this month was ambiguous, so the 0.70 threshold was inert.
-- **T-64 direction CONFIRMED by the user: `405,25 x4` MULTIPLIES** (the written value is per-installment). Implementation still pending.
-- **T-65 is design-only for now** at the user's direction: build supersede-by-append, but write no code yet.
+- **The mode switch is the PRESENCE of `x`/`X`, not a positional grammar** — the user's reframe, and better than the whitespace rule that was about to ship. It splits "is this a multiplier?" from "where does the value end?", and the second question is then answered by trying three readings and requiring EXACTLY ONE to hold. Two holding is an ambiguity and an ERROR, never a guess.
+- **Ambiguity is detected, not resolved by fiat.** A grammar answers "what does this mean?"; try-all-readings answers "is there more than one thing this could mean?" — the question the hazard actually turns on, since the two readings are 4x apart. `646,254x` falls out as an error without a special rule.
+- **Rejecting is the cheap side here**, which is what justifies the strictness: T-63 returns the row in `failed.csv` with its reason inline, so a rejection costs one edit while a guess writes a silently 4x-wrong budget row indistinguishable from a legitimate one.
+- **Normalization stays in the boundary (design Q3).** An advisor pass recommended moving `normalizeThousands` into `pkg/utils` and withdrew it on seeing Q3 and the "never call utils date/currency parsers" rule — the conflict was surfaced rather than silently resolved.
+- **Reading helpers report shape-match separately from count-plausibility**, so `405,25 x0` can say "must be positive" instead of degrading to a generic format error, and an implausible count can disambiguate (`4x100` resolves rather than becoming ambiguous).
+- **No new acceptance scenario.** An `apply`-level fixture would prove nothing — `apply` reads `reviewed.json`, where value is already a float and installments already an int, so it never parses a value string.
+- Committed as four commits (T-72 fix, T-64 feature, docs, correction) rather than one, so the correction is visible as a correction.
 
 ### Next
 
-- **T-65 supersede-by-append — DESIGN DOCUMENT ONLY, no code.** Two constraints drive it. (1) The supersede record must key off the **STORED** id: `expenses_log.jsonl`'s ids are deliberately stale (hashes of pre-merge year-less dates), the one place this repo's "recompute, never trust" rule is inverted on purpose, and 347 cross-log joins depend on it — recomputing drops them to zero. Getting this backwards makes superseding match nothing, silently, the same shape as the slice-4 bug. (2) A supersede record needs a date that survives `scanEntries`' year filter; a tombstone with no date or a year-0 date leaks into EVERY year, the mechanism behind s70's 107K workbook of 2025 data labelled 2026.
-- Then T-64 implementation (direction now confirmed): `x4` multiplies, in `internal/parse`, with both notations pinned in one test so they can never be conflated.
-- Lines 19 and 45 of `expenses-2026-01.csv` remain unprocessed; 45 also needs a date and a value the user can reconcile (299,00 + 49,90 ≠ 646,25).
-- PR #66 awaits review.
-- Still open and untouched: T-58 (confirmed live — `batch-auto --help` still claims it inserts "into the workbook"), T-69, T-56, T-57, 5.R6.
+- **T-65 supersede-by-append — DESIGN DOCUMENT ONLY, no code** (still the user's explicit call). Two constraints drive it and both invert the obvious: key off the STORED id (the one deliberate exception to "identity is derived", protecting 347 cross-log joins), and give the supersede record a date that survives `scanEntries`' year filter (a year-0 tombstone leaks into EVERY year — the s70 107K-workbook mechanism).
+- Then **5.R6** (regenerate `feature_dictionary_enhanced.json`), which gained a measured payoff in s72: the A1 hint and the auto-insert gate BOTH require a keyword match, and 13 of 81 corpus subcategories have no keyword entry at all. It also arrives with its own before/after harness — the A1 replay probe and the gate-precision join both run over data already on disk. Note that rebuilding the dictionary changes the gate's inputs, so re-running the join is part of the task, not cleanup.
+- PR #67 awaits review.
+- Line 19 of `expenses-2026-01.csv` is now unblocked but needs a HAND repair to `Anita Elô ADM;09/01;405,25 x4` — the stray `;` inside the item is a separate defect from the notation. Line 45 is NOT unblocked: no date at all, and 299,00 + 49,90 = 348,90 != 646,25.
+- Still open and untouched: T-58, T-69, T-56, T-57, T-70, T-71.
 
 ### Gotchas
 
-- **A mutation that fails to COMPILE proves nothing.** Deleting the hint field from `ReadQueue` made the package unbuildable — red from the compiler, not from a test. Swapping the source column to 7 kept it compiling and then discriminated precisely: only the seam test failed, while `internal/review` stayed green, proving its own tests cannot tell where the hint came from.
-- **The `-short` group is structurally blind to CSV format changes.** Widening the contract passed `-short` and the entire unit suite, then failed **six** `-full` scenarios. Every assertion about `classified.csv`'s shape sits behind `RequireOllama`, because producing one means classifying. Green on the fast group means "nothing deterministic broke", never "the contract holds".
-- **A join keyed on item silently collapsed duplicate rows.** The first gate-precision join reported 26 corrections against a known total of 25 — a one-row overshoot that was the only visible symptom of `San michel` ×3 and two other duplicate item names. Had they fallen the other way the arithmetic would have reconciled and the wrong number would have shipped looking right. Fixed with a POSITIONAL join verified on item AND date across all 65 pairs.
-- **Reverting a mutation restored the guard clauses in the WRONG ORDER**, and no test could have caught it because the four clauses are independent guards all returning the same value. Found only by reading the file back after the revert.
-- **`calls.jsonl` DOES exist** at `~/.local/share/ollama-bridge/calls.jsonl` (908 entries) — the session-71 note that it is nowhere on this filesystem is wrong. But a **backgrounded** `generate_code` call silently ignores `output_file` (content returned, nothing written) and injects no verdict template.
-- **A local-model draft used a helper that does not exist** (`esc` instead of `escapeHtml`), which would have thrown a ReferenceError on every hinted row. The prompt told it to assume that helper — the miss was the prompt's, which is exactly why the name needed verifying rather than trusting.
-- **The shell's cwd persisted across tool calls and short-circuited a `cd`**, making a chained `&&` report a test failure that had not happened. Use absolute paths.
+- **"Retired" is a plan, not a property.** Three documents describe the plain-`batch` insert path as dead and all three are accurate about intent; none makes it unreachable. It is still `rootCmd.AddCommand(batchCmd)` at `batch.go:44`, so `batch` silently gained the multiplier on a path writing DIRECTLY to the workbook. `grep -rn AddCommand` settles in a second what prose can only assert.
+- **A mutation can prove two things, and the second may matter more.** Deleting the normalization inside `parse.Value` turned exactly the thousands tests red while both multiplier tests stayed green — proving `ReadQueue` routes through the boundary, AND that the multiplier test is blind to that routing. The case that looks redundant is the only one carrying the guarantee, which is exactly what a tidy-up deletes.
+- **A `grep -c` that returns 2 is not a failed check.** The D8 "one call site" verification counts the function DEFINITION line too; the honest check excludes it. Separately, a `go test ... | grep -E "^(FAIL|ok)" | grep -v "^ok"` pipeline reports exit 1 when the suite PASSES, because the last grep matched nothing — the exit code being read was the grep's, not the test's.
+- **`resume.sh` output is not a safe authoring base for a replace-mode handoff block** (T-62): it can silently truncate a ref block, so re-fetching via `ref-lookup.sh` is what protects against writing back a truncated interior. Checked this session; not truncated, but the check is the point.
+- **A backgrounded `generate_code` call ignores `output_file` silently** (T-71, confirmed again): both qcoder calls exceeded the foreground window. Not passing `output_file` at all sidesteps it — take the content from the notification and write it yourself.
+- **The local model's first attempt failed on the one requirement the task turned on**, and it was structural, not a slip: a single "possible" boolean cannot distinguish "not a value/count pair" from "a pair with an out-of-range count", which made the specific error unreachable. Stubs-then-Ollama fixed exactly that. Verdicts 0 then 1.
+- **A mutation that fails to COMPILE proves nothing** — reconfirmed as a live constraint when choosing which mutation to run; deleting the normalization call keeps the program runnable, which is why it discriminated.
