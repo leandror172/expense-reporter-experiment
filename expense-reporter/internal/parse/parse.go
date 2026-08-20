@@ -100,9 +100,9 @@ func Fields(item, dateStr, valueStr string, opts Options) (ParsedExpense, error)
 		return ParsedExpense{}, err
 	}
 
-	value, installments, err := utils.ParseCurrencyWithInstallments(normalizeThousands(valueStr))
+	value, installments, err := Value(valueStr)
 	if err != nil {
-		return ParsedExpense{}, fmt.Errorf("%w: %w", ErrInvalidValue, err)
+		return ParsedExpense{}, err
 	}
 
 	return ParsedExpense{
@@ -151,6 +151,39 @@ func Date(dateStr string, opts Options) (time.Time, YearSource, error) {
 	}
 
 	return date, yearSource, nil
+}
+
+// Value resolves a value token to its PER-INSTALLMENT amount and its installment
+// count. It is the boundary's value-only entry point, and the mirror of Date.
+//
+// It exists for the same reason Date does: not every consumer arrives holding three
+// strings. review.ReadQueue re-reads the classified CSV, whose date column has been
+// canonical since T-41 slice 3 and whose confidence and flags are already typed — only
+// the value token is still text. Making it call Fields would mean inventing an item and
+// a date purely to have the boundary parse a number.
+//
+// Fields DELEGATES here rather than duplicating the sequence, so normalization happens
+// in exactly one place no matter which door a caller comes through. That is not tidiness:
+// review.ReadQueue previously called utils directly and therefore never stripped BR
+// thousands separators, so writeClassifiedCSV could emit a "1.234,56" that the reader
+// hard-errored on — one such row anywhere in a month killed the entire review step, and
+// both sides' own tests were green throughout (s73). One normalization site is what makes
+// that class of divergence unrepresentable rather than merely fixed.
+//
+// The two installment notations both resolve here, and they are inverses:
+// "405,25/4" states the TOTAL and divides, "405,25 x4" states the per-installment amount
+// and multiplies. Value is per-installment in both cases, which is what every consumer
+// downstream expects — the appender writes N rows of it.
+func Value(valueStr string) (float64, int, error) {
+	value, installments, err := utils.ParseCurrencyWithInstallments(normalizeThousands(strings.TrimSpace(valueStr)))
+	if err != nil {
+		// Two %w verbs, as everywhere on this boundary: the sentinel names WHICH field
+		// was rejected and the cause says WHY. A caller that replaces the cause reports
+		// the wrong reason, and one that drops the sentinel forces the next reader to
+		// match English text.
+		return 0, 0, fmt.Errorf("%w: %w", ErrInvalidValue, err)
+	}
+	return value, installments, nil
 }
 
 // ExpenseString parses the 4-field semicolon CLI form

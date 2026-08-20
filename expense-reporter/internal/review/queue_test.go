@@ -65,6 +65,48 @@ func TestReadQueue(t *testing.T) {
 			},
 		},
 		{
+			// This reader used to hard-error here, killing the whole review step over a
+			// single row, because BR thousands normalization lived only in internal/parse
+			// while this side called utils directly (s73). The value column deliberately
+			// keeps the RAW token, so a "1.234,56" input reaches this reader verbatim.
+			name:       "thousands separator parsed",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;1.234,56;Taxi;Transporte;0.95;true;;",
+			wantCount:  1,
+			assertions: func(t *testing.T, entries []QueueEntry) {
+				assert.Equal(t, "1.234,56", entries[0].RawValue)
+				assert.InDelta(t, 1234.56, entries[0].Value, 0.001)
+				assert.Equal(t, 1, entries[0].Installments)
+			},
+		},
+		{
+			// T-64. The multiplier states the PER-INSTALLMENT value, the inverse of
+			// "total/N" directly above. If the count died here the reviewed row would
+			// reach apply as a single expense — the T-21 bug, with a 4x error instead
+			// of a 3x one.
+			name:       "multiplier notation parsed",
+			csvContent: "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;405,25 x4;Taxi;Transporte;0.95;true;;",
+			wantCount:  1,
+			assertions: func(t *testing.T, entries []QueueEntry) {
+				assert.Equal(t, "405,25 x4", entries[0].RawValue)
+				assert.InDelta(t, 405.25, entries[0].Value, 0.001)
+				assert.Equal(t, 4, entries[0].Installments)
+			},
+		},
+		{
+			// A CHARACTERIZATION pin, green against the code as it stands today. It exists
+			// so that moving the value parse behind internal/parse cannot quietly reword
+			// what a human reads off a broken close. The sentinel supplies the "invalid
+			// value" half afterwards, where this reader supplies it today — the resulting
+			// string must stay byte-identical, and that is a claim until asserted.
+			//
+			// Corruption still hard-errors, deliberately. Only the documented empty
+			// date/value shape is tolerated (S1); a bad number is not.
+			name:          "malformed value names the field and keeps the cause",
+			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;abc;Taxi;Transporte;0.95;true;;",
+			wantError:     true,
+			errorContains: "line 2: invalid value: invalid value format: abc",
+		},
+		{
 			name:          "malformed confidence value",
 			csvContent:    "item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint\nTest Item;15/05;35,50;Taxi;Transporte;abc;true;;",
 			wantError:     true,
