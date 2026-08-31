@@ -120,9 +120,21 @@ input, which is what T-41 slice 3 established.
 > wrong. The multiplier form is a notation the user had planned but never recorded; the two
 > rows using it are real installment purchases, not typos. Critically it is NOT a synonym for
 > `total/N`: `x4` means the written value is PER-INSTALLMENT (multiply), while `total/N`
-> divides — `405,25 x4` = 1.621,00 where `405,25/4` = 405,25. Filed as T-64, which must
-> confirm the direction with the user before implementing. The `- 1/4` half of the ruling
+> divides — `405,25 x4` = 1.621,00 where `405,25/4` = 405,25. The `- 1/4` half of the ruling
 > stands: that one is a typo.
+>
+> **SHIPPED (s73).** Direction confirmed by the user and implemented. Both token orders are
+> accepted (`405,25 x4`, `646,25 4x`, and the retail `4x405,25`), case-insensitively, space
+> optional before `xN`. The mode switch is the PRESENCE of `x`/`X`; the value/count split is
+> then resolved by trying three readings and requiring EXACTLY ONE to hold, so an ambiguous
+> token like `4x5` or `646,254x` is REJECTED rather than guessed. Rejecting is the cheap
+> side here — T-63 returns the row in `failed.csv` with its reason inline, to be repaired in
+> place — while guessing writes a budget row wrong by the installment count and
+> indistinguishable from a legitimate one.
+>
+> Note the two rows in this table are STILL rejects, for their other defects (four fields;
+> no date). Line 19 needs a hand repair to `Anita Elô ADM;09/01;405,25 x4`; line 45 needs a
+> date and a value the user can reconcile (299,00 + 49,90 = 348,90 ≠ 646,25).
 
 What survives as a finding is narrower but still real: **4 bad rows out of 69 (6%) is the
 normal error rate of hand-typed input**, and one such row currently kills the entire `review`

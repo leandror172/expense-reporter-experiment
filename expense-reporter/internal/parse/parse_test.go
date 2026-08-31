@@ -511,3 +511,73 @@ func TestFields_WrappedErrorKeepsTheSpecificCause(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalidDate, "the field must still be identifiable")
 	assert.ErrorContains(t, err, "12345", "the underlying reason must survive the wrap")
 }
+
+// TestValue_AcceptsEveryFormFieldsAccepts pins the date-free door onto the boundary.
+//
+// Value exists for the same reason Date does: a caller may arrive with only ONE field
+// still in string form. review.ReadQueue is that caller for the value — its date column
+// has been canonical since T-41 slice 3, and only the value token is still text. Without
+// this entry point it called utils directly, which is how BR thousands normalization came
+// to exist on one side of the classified.csv seam and not the other (s73).
+//
+// The thousands case is the one that was broken. The multiplier case is T-64.
+func TestValue_AcceptsEveryFormFieldsAccepts(t *testing.T) {
+	cases := []struct {
+		name             string
+		valueStr         string
+		wantValue        float64
+		wantInstallments int
+	}{
+		{name: "plain BR decimal", valueStr: "35,50", wantValue: 35.50, wantInstallments: 1},
+		{name: "thousands separator", valueStr: "1.234,56", wantValue: 1234.56, wantInstallments: 1},
+		{name: "divisor states the total", valueStr: "405,25/4", wantValue: 101.3125, wantInstallments: 4},
+		{name: "multiplier states the per-installment", valueStr: "405,25 x4", wantValue: 405.25, wantInstallments: 4},
+		{name: "thousands and multiplier together", valueStr: "1.234,56 x3", wantValue: 1234.56, wantInstallments: 3},
+		{name: "surrounding whitespace", valueStr: "  35,50  ", wantValue: 35.50, wantInstallments: 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			value, installments, err := Value(tc.valueStr)
+			require.NoError(t, err)
+			assert.InDelta(t, tc.wantValue, value, 0.0001)
+			assert.Equal(t, tc.wantInstallments, installments)
+		})
+	}
+}
+
+// TestValue_AgreesWithFields is the anti-drift guard for the delegation. Two entry points
+// that parse the same token must not be free to disagree — that freedom is exactly what
+// produced the seam bug this refactor closes.
+//
+// It compares Value against Fields rather than against literals on purpose: a literal would
+// pin what the author believed, while this pins that the two doors stay the same door. The
+// dates are irrelevant here and fixed to a full date so no year rung participates.
+func TestValue_AgreesWithFields(t *testing.T) {
+	for _, valueStr := range []string{"35,50", "1.234,56", "405,25/4", "405,25 x4", "646,25 4x"} {
+		t.Run(valueStr, func(t *testing.T) {
+			expense, err := Fields("Posto Ipiranga", "15/04/2026", valueStr, Options{})
+			require.NoError(t, err)
+
+			value, installments, err := Value(valueStr)
+			require.NoError(t, err)
+
+			assert.Equal(t, expense.Value, value, "both doors must read the same value")
+			assert.Equal(t, expense.Installments, installments, "both doors must read the same count")
+		})
+	}
+}
+
+// TestValue_NamesTheFieldAndKeepsTheCause holds Value to the same two-part wrapping
+// contract Fields already meets: errors.Is must identify WHICH field failed, and the
+// specific reason must survive the wrap. A caller that can only read English message text
+// is not a caller this boundary supports — the eventual consumers are an error log keyed
+// by phase and a PT-BR chat layer.
+func TestValue_NamesTheFieldAndKeepsTheCause(t *testing.T) {
+	_, _, err := Value("405,25 x99")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrInvalidValue, "the field must be identifiable")
+	assert.NotErrorIs(t, err, ErrInvalidDate, "and must not be confusable with the other field")
+	assert.ErrorContains(t, err, "99", "the underlying reason must survive the wrap")
+}

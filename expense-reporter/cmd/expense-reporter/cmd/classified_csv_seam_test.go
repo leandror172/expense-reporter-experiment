@@ -145,3 +145,62 @@ func TestClassifiedCSV_KeywordHintSurvivesTheSeam(t *testing.T) {
 	assert.Empty(t, entries[1].KeywordHint,
 		"no second opinion must arrive as an empty hint, never a placeholder")
 }
+
+// TestClassifiedCSV_ThousandsValueSurvivesTheSeam closes a live divergence found in s73,
+// by measurement rather than by reading: writeClassifiedCSV emits "1.234,56" and
+// review.ReadQueue returned a HARD error on it, so ONE such row anywhere in a month's
+// input killed the entire review step.
+//
+// The cause is the T-54 shape a third time — one function, two callers, and a
+// normalization step only one of them applied. internal/parse strips BR thousands dots
+// before calling utils.ParseCurrencyWithInstallments; ReadQueue called that function
+// directly and so never did. Both sides were individually green.
+//
+// It is reachable, not theoretical: the value column deliberately keeps the RAW token so
+// the installment count survives into the queue (s67), and TestAdd_ReadsBrazilianThousandsAmount
+// already pins "1.234,56" as legal CLI input.
+func TestClassifiedCSV_ThousandsValueSurvivesTheSeam(t *testing.T) {
+	row := classifiedRowWithPrediction(t, "Notebook Dell;15/04;1.234,56", "Eletrônicos", "Diversos", 0.95, false)
+
+	entries := writeThenReadQueue(t, []classifiedRow{row})
+
+	require.Len(t, entries, 1, "a thousands-separated value must not cost the whole review step")
+	assert.Equal(t, "1.234,56", entries[0].RawValue,
+		"the raw token round-trips unchanged — it is what the reviewer reads")
+	assert.InDelta(t, 1234.56, entries[0].Value, 0.001,
+		"both sides of the seam must agree that a dot before three digits is a thousands separator")
+	assert.Equal(t, 1, entries[0].Installments, "a plain value is a single installment")
+}
+
+// TestClassifiedCSV_MultiplierNotationSurvivesTheSeam is the T-64 half of the same join,
+// and the reason the notation could not simply be taught to internal/parse alone.
+//
+// The two value notations mean OPPOSITE things — "405,25/4" divides, "405,25 x4"
+// multiplies — so a count that dies at this boundary is not a missing feature, it is a
+// budget wrong by a factor of four. That is precisely the T-21 bug: the auto route
+// expanded a reviewed installment while the review route silently did not, and a 3×
+// purchase recorded as one row is indistinguishable from a legitimate one-off.
+//
+// Both callers therefore have to learn the notation TOGETHER, and this is the only test
+// that can tell whether they did: each side's own tests are written against its own idea
+// of the format.
+func TestClassifiedCSV_MultiplierNotationSurvivesTheSeam(t *testing.T) {
+	multiplied := classifiedRowWithPrediction(t, "Anita Elô ADM;09/01;405,25 x4", "Diversos", "Diversos", 0.95, false)
+	divided := classifiedRowWithPrediction(t, "Geladeira;10/01;405,25/4", "Eletrodomésticos", "Diversos", 0.95, false)
+
+	entries := writeThenReadQueue(t, []classifiedRow{multiplied, divided})
+
+	require.Len(t, entries, 2, "both installment notations must survive the round trip")
+
+	assert.Equal(t, "405,25 x4", entries[0].RawValue, "the raw token is what the reviewer reads")
+	assert.Equal(t, 4, entries[0].Installments, "the count must reach apply, which is the only consumer that expands it")
+	assert.InDelta(t, 405.25, entries[0].Value, 0.001,
+		"the multiplier form states the PER-INSTALLMENT value, so it passes through unchanged")
+
+	// The pair is asserted together on purpose. Identical digits, four times apart: if one
+	// day both notations were read the same way, only a test holding them side by side
+	// would notice.
+	assert.Equal(t, 4, entries[1].Installments, "the divisor form carries the same count")
+	assert.InDelta(t, 101.3125, entries[1].Value, 0.001,
+		"the divisor form states the TOTAL, so the per-installment value is a quarter of it")
+}

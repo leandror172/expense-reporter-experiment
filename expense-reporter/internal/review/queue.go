@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"expense-reporter/internal/feedback"
-	"expense-reporter/pkg/utils"
+	"expense-reporter/internal/parse"
 )
 
 // ReadQueue reads a classified CSV into the review queue, returning the reviewable
@@ -84,9 +84,20 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 			continue
 		}
 
-		perInstallment, installments, err := utils.ParseCurrencyWithInstallments(valueStr)
+		// Through the parse boundary, not utils directly. This reader used to call
+		// utils.ParseCurrencyWithInstallments itself, which meant it never applied the BR
+		// thousands normalization internal/parse performs — so writeClassifiedCSV could
+		// emit a "1.234,56" this side hard-errored on, killing the whole review step over
+		// one row, with both halves' own tests green (s73). One parse site is what makes
+		// that divergence unrepresentable instead of merely fixed; it is also how the
+		// T-64 multiplier notation reaches this side without being taught twice.
+		//
+		// The error is not re-labelled here: parse.Value already wraps with
+		// ErrInvalidValue, whose text is "invalid value", so the message a human reads is
+		// unchanged and callers gain errors.Is on the field sentinel.
+		perInstallment, installments, err := parse.Value(valueStr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("line %d: invalid value: %w", lineNumber, err)
+			return nil, nil, fmt.Errorf("line %d: %w", lineNumber, err)
 		}
 
 		confidence, err := strconv.ParseFloat(confidenceStr, 64)

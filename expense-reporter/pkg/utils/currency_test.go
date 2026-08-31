@@ -209,6 +209,188 @@ func TestParseCurrencyWithInstallments(t *testing.T) {
 			wantCount: 3,
 			wantErr:   false,
 		},
+
+		// ─── T-64: the multiplier notation ────────────────────────────────────────
+		//
+		// THE DISCRIMINATING PAIR. These two lines carry the same digits and mean
+		// things four times apart, in opposite directions:
+		//
+		//   "405,25/4"   the written number is the TOTAL          → 4 × 101,3125
+		//   "405,25 x4"  the written number is PER-INSTALLMENT    → 4 × 405,25
+		//
+		// They are deliberately adjacent. A future reader who conflates the two forms
+		// has to edit two neighbouring lines that contradict each other, rather than
+		// finding one of them alone and "fixing" it. `x4` is Brazilian retail usage
+		// ("4x de R$ 405,25"); `total/N` is how the card statement prints it.
+		{
+			name:      "divisor form: the written number is the total",
+			input:     "405,25/4",
+			wantValue: 101.3125,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			name:      "multiplier form: the written number is per-installment",
+			input:     "405,25 x4",
+			wantValue: 405.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+
+		// The mode switch is the PRESENCE of x/X — not a positional grammar. Where the
+		// value ends and the count begins is a separate question, answered by trying
+		// three readings and requiring EXACTLY ONE to hold:
+		//
+		//   A  "value x count"   left is currency  AND right is a plausible count
+		//   B  "value count x"   right is EMPTY, and left splits on whitespace into both
+		//   C  "count x value"   left is a plausible count AND right is currency
+		//
+		// Two valid readings is an ambiguity, and an ambiguity is an ERROR — never a
+		// guess. That asymmetry is the point of the whole task: rejecting costs the user
+		// one edit in failed.csv, which T-63 built for exactly this, while guessing costs
+		// a silently 4×-wrong budget row that reads as legitimate.
+		{
+			name:      "multiplier without a space",
+			input:     "405,25x4",
+			wantValue: 405.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			name:      "multiplier is case-insensitive",
+			input:     "405,25 X4",
+			wantValue: 405.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			name:      "count before x, reading B",
+			input:     "646,25 4x",
+			wantValue: 646.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			name:      "count before x, uppercase",
+			input:     "646,25 4X",
+			wantValue: 646.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			// Brazilian retail writes the count first ("4x de R$ 405,25"). Reading C
+			// costs nothing to support: A cannot also hold here, because "405,25" is
+			// not an integer, so exactly one reading survives.
+			name:      "count first, reading C",
+			input:     "4x405,25",
+			wantValue: 405.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			// The token this function receives is already normalized — "1.234,56 x4"
+			// has had its thousands dots stripped by internal/parse before arriving
+			// (design Q3: the boundary owns ALL input normalization). This case pins
+			// the POST-normalization shape; the dotted form is covered at the parse
+			// layer and in the classified.csv → ReadQueue seam test.
+			name:      "multiplier on a four-digit value",
+			input:     "1234,56 x4",
+			wantValue: 1234.56,
+			wantCount: 4,
+			wantErr:   false,
+		},
+		{
+			name:      "multiplier of one",
+			input:     "405,25 x1",
+			wantValue: 405.25,
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:      "multiplier tolerates surrounding whitespace",
+			input:     "  405,25 x4  ",
+			wantValue: 405.25,
+			wantCount: 4,
+			wantErr:   false,
+		},
+
+		// ─── T-64 rejections ──────────────────────────────────────────────────────
+		//
+		// Every row below asserts WHY it failed, not merely that it failed. An error
+		// for the right reason and an error for the wrong reason are indistinguishable
+		// from a bare wantErr, so `646,254x` could start failing on a count bound
+		// instead of on ambiguity and this table would stay green while the rule it
+		// documents had quietly stopped holding.
+		{
+			// The ambiguous one, and the reason reading B requires whitespace: with
+			// nothing marking where the value ends, "646,25"×4 and "646,2"×54 are
+			// equally available and a regex would pick one by accident of greediness.
+			name:        "no delimiter between value and count",
+			input:       "646,254x",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
+		{
+			// Both A and C hold: "4 paid 5 times" and "5 paid 4 times" are both
+			// readable. Writing the cents ("4x5,00") collapses it to C and parses.
+			name:        "two bare integers are ambiguous",
+			input:       "4x5",
+			wantErr:     true,
+			errContains: "ambiguous",
+		},
+		{
+			name:        "two bare integers are ambiguous regardless of magnitude",
+			input:       "2x10",
+			wantErr:     true,
+			errContains: "ambiguous",
+		},
+		{
+			// Reading A matches the SHAPE here and fails only the count bound, which is
+			// what lets the error name the real objection instead of degrading to a
+			// generic parse failure.
+			name:        "multiplier count of zero",
+			input:       "405,25 x0",
+			wantErr:     true,
+			errContains: "must be positive",
+		},
+		{
+			name:        "multiplier count above the cap",
+			input:       "405,25 x61",
+			wantErr:     true,
+			errContains: "too large",
+		},
+		{
+			name:        "multiplier count is not a number",
+			input:       "405,25 xabc",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
+		{
+			// Both notations at once. The x branch is entered first (presence of x IS
+			// the mode switch), and "405,25/4" is not currency, so no reading holds.
+			name:        "both notations in one token",
+			input:       "405,25/4 x2",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
+		{
+			name:        "multiplier with no value",
+			input:       "x4",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
+		{
+			name:        "multiplier with no count",
+			input:       "405,25 x",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
+		{
+			name:        "more than one multiplier marker",
+			input:       "4x5x6",
+			wantErr:     true,
+			errContains: "invalid installment format",
+		},
 	}
 
 	for _, tt := range tests {
