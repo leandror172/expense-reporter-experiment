@@ -105,11 +105,46 @@ snapshot_logs() {
   note "Snapshot -> $(basename "$dest"): $(count_lines "$CLASSIF_LOG") classifications, $(count_lines "$EXPENSE_LOG") expense rows"
 }
 
+# Since the s74 id migration (.claude/scratch/migrate_ids.py) every id in both live logs
+# hashes its OWN row.  A snapshot taken before that migration still carries year-less ids,
+# so restoring one silently reverts it: nothing errors and no row is lost — the two logs
+# simply stop joining the way they now do, which is the failure mode this whole codebase
+# keeps paying for.
+#
+# Detected by CONTENT, not by the run dir's timestamp: content is the property that
+# actually matters, and a copied or renamed run dir carries a misleading date.  A file
+# this cannot parse also reports "predates" — the conservative direction, since refusing
+# to restore is recoverable and silently reverting the migration is not.
+snapshot_predates_id_migration() {
+  ! python3 - "$1" <<'PY'
+import hashlib, json, sys
+for line in open(sys.argv[1], encoding="utf-8"):
+    if not line.strip():
+        continue
+    row = json.loads(line)
+    payload = "%s|%s|%.2f" % (row["item"].strip().lower(), row["date"], row["value"])
+    if row["id"] != hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]:
+        sys.exit(1)
+PY
+}
+
 restore_logs() {
   local run_dir="$1"
   [ -d "$run_dir/logs-before" ] || die "no snapshot in $run_dir"
   ( cd "$run_dir/logs-before" && sha256sum -c SHA256SUMS --quiet ) \
     || die "snapshot in $run_dir is itself corrupt — refusing to restore from it"
+  if snapshot_predates_id_migration "$run_dir/logs-before/expenses_log.jsonl"; then
+    [ "${CLOSE_CYCLE_ALLOW_PREMIGRATION_RESTORE:-}" = "1" ] || die \
+"snapshot in $run_dir predates the s74 id migration — refusing to restore.
+
+Its ids are hashes of year-less dates.  Restoring it would put those back into both
+logs and silently undo the migration: no error, no lost row, just a join that quietly
+stops working.
+
+To restore anyway, set CLOSE_CYCLE_ALLOW_PREMIGRATION_RESTORE=1 — then re-run
+  python3 .claude/scratch/migrate_ids.py <exp> <cls> <exp.new> <cls.new>
+afterwards to bring the logs back to a self-consistent state."
+  fi
   cp "$run_dir/logs-before/classifications.jsonl" "$CLASSIF_LOG"
   cp "$run_dir/logs-before/expenses_log.jsonl" "$EXPENSE_LOG"
   note "Restored both logs from $run_dir/logs-before"
