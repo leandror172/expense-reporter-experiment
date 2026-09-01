@@ -49,14 +49,34 @@ against the pre-promotion log produced a **107K** workbook — the same size as 
 because it contained all 733 of 2025's expenses labelled 2026. Post-promotion: 83K, the
 empty skeleton. Verify a rollover this way (a check that can FAIL), never by reading a
 success message.
-⚠️ **The merge rewrote `date` and deliberately did NOT rewrite `id` — do not "fix" this.**
-The ids are sha256 of the PRE-merge year-less bytes, so they no longer equal
-`GenerateID(item, date, value)` of the row's own stored date. That looks like a breach of
-"identity is DERIVED, never trusted", but `classifications.jsonl` still stores `DD/MM`, and
-these ids are the ONLY thing that still joins the two logs: measured 347 joined ids before
-the promotion and 347 after. Recomputing them from the new dates would silently drop that
-join to zero. The `date` field serves the generator's year filter; `id` serves the cross-log
-join; they are pinned to different bytes on purpose.
+✅ **RESOLVED s74 — the logs were migrated and every id now hashes its own row.**
+Measured after migration: **2159/2159** expense rows and **717/717** classification rows
+self-consistent, all dates `DD/MM/YYYY`, join **403 → 403** with every pairing identical.
+"Identity is DERIVED, never trusted" now holds on the live path with no exception, and the
+first post-migration append (4 installment rows, s74) came out canonical unaided — so the
+invariant is maintained by the live writers, not just by the one-off migration.
+Tool: `.claude/scratch/migrate_ids.py` (idempotent). Backup: `backups/id-migration-20260831-181133/`.
+
+**The superseded rule, kept because its reasoning is still instructive.** The s70 merge
+rewrote `date` and deliberately did NOT rewrite `id`, on the measurement that "recomputing
+drops the 347 joins to zero". That is TRUE — of a **one-sided** recompute, which is the only
+one that was tried: rewrite the expense log's ids while `classifications.jsonl` still stores
+`DD/MM`. It is FALSE of a **two-sided** migration — read each classification row's year off
+the join FIRST, rewrite its date, then recompute both sides from the same strings. Same
+inputs, opposite outcome. **A measurement pins down the operation you measured; inheriting
+one means asking which operation produced it, not just whether the number is right.**
+
+⚠️ **What the migration did NOT make safe.** Two ids can still be equal: `GenerateID` hashes
+`item|date|value`, so a genuine same-day duplicate purchase collides by construction.
+Collisions fell 46 → **8** (the 38 removed were same-day/different-YEAR artifacts of the
+year-less hash; the 8 remaining are real, e.g. `Acupuntura 04/10/2025 90,00` ×2).
+**Consistent is not unique** — anything keying on an id must say what it means when the id
+names two rows. This is now the live constraint on T-65.
+⚠️ **`close-cycle.sh restore` on a run dir older than s74** would copy pre-migration logs
+back and silently revert all of this. `restore_logs` now refuses such a snapshot, detected by
+CONTENT (are the ids self-consistent?) rather than by the run dir's date; override with
+`CLOSE_CYCLE_ALLOW_PREMIGRATION_RESTORE=1`. The check also catches row loss incidentally —
+the August snapshot holds 2073 rows against today's 2163.
 **Also fixed during the promotion:** the merged log predated the s68 `IRFF`→`IRRF` backfill
 and still carried the drift-corrupted spelling on one 2025 row — promoting it unchecked
 would have reintroduced exactly the S2 bug (unroutable leaf → `generate-workbook`

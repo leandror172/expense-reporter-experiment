@@ -79,7 +79,40 @@ into the review page as an amber badge. Measured: fires on 14 of 65 rows, right 
 recovers 10 of 25 corrections. **Advisory only** (auto-applying would inject ~3 errors per
 14) and deliberately NOT round-tripped through `exportReviewed()` (that would be a second
 T-61). **T-64 direction CONFIRMED by the user: `x4` MULTIPLIES** (per-installment value).
-Next: T-65 supersede-by-append — **DESIGN ONLY, no code yet** (user's call); then T-64.
+**s73 (PR #67, merged):** T-64 multiplier notation shipped — `405,25 x4` MULTIPLIES where
+`total/N` divides, same digits 4× apart; mode switch is the presence of `x`/`X`, and the
+value/count split requires EXACTLY ONE valid reading so ambiguity is an ERROR, not a guess.
+**T-72:** `review` had been hard-erroring on any BR-thousands value (one `1.234,56` row
+killed the WHOLE step) because `ReadQueue` called `utils` directly and never normalized —
+fixed by `parse.Value`, the value-only door, with `Fields` delegating so normalization has
+ONE call site.
+**s74 — THE ID MIGRATION IS DONE (commit `ce2952a`); the year-less-id exception is RETIRED.**
+Both live logs are now fully self-consistent: every `id` hashes its own row, every date is
+`DD/MM/YYYY`. Measured 2159/2159 + 717/717 at migration, join **403 → 403** with all 717
+pairings identical. **s70 declined this on a measurement that was TRUE but scoped to a
+ONE-SIDED recompute** (rewrite expense ids while classifications still stored `DD/MM` → join
+0); the TWO-SIDED migration — read each classification row's year off the join first, then
+recompute both sides — preserves it. That option was never costed. **A measurement pins down
+the operation you measured.** Verified before writing: 649/649 year-less rows resolved by
+join (0 inferred — the timestamp is useless, all 649 read 2026 from the June backfill); all
+five workbooks 2022–2026 **byte-identical**, on a check first proven to move for a value
+change and not for an id change. **The near-miss:** 38 ids each carried two dates differing
+only by YEAR; a `{id: date}` dict silently keeps the last, and the pairing check was BLIND
+to it (before and after used the same wrong lookup). Zero classification rows referenced
+them; the migrator now hard-fails on ambiguity. Tool `.claude/scratch/migrate_ids.py`
+(idempotent); `close-cycle.sh restore` refuses a pre-s74 snapshot, content-detected.
+⚠️ **Consistent ≠ unique:** collisions fell 46 → **8**, the rest genuine same-day duplicates —
+so an id can name TWO rows. That is now the live constraint on T-65, replacing its old
+"key off the stored id" one, which is moot. **Also s74:** January's last parseable reject
+imported (`Anita Elô ADM` → 4 × R$405,25 = R$1.621,00, `Variáveis/Anita/Empréstimo`) —
+first end-to-end run of T-64 on real data AND first exercise of T-63's repair loop. Log
+2159 → **2163**, 90 dated 2026. The post-migration append came out canonical unaided, so the
+invariant is held by the live writers. The classifier had guessed `Saúde/Acupuntura` at 85%
+with an EMPTY keyword hint — a concrete 5.R6 data point.
+Next: T-65 design doc (DESIGN ONLY, user's call) · the `ChatExport result.json → CSV`
+converter (**the real bottleneck** — expenses are typed into a Telegram group "Gastos" and
+hand-extracted; no tool does this, it is not on the 74-item board, and 7 months of 2026 are
+unprocessed behind it) · 5.R6.
 **s65 date/year hardening (merged):** resolved-year
 validations (renderable; entry beyond the current year refused), `YearSource`
 provenance, stale-`date_year` stderr warning, `date_year` → 2026.

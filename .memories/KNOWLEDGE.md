@@ -226,3 +226,52 @@ LLM repo; this repo only references model names.
   group is structurally blind to format changes** — every assertion about `classified.csv`'s
   shape sits behind `RequireOllama`, because producing one means classifying, so six wrong
   assertions stayed green through the whole session until `-full` ran.
+- **Session 74 — the id migration, and what it says about inheriting a measurement.**
+  Both live logs were migrated so every `id` equals `GenerateID` of its own row and every
+  date is `DD/MM/YYYY` (2159/2159 + 717/717 at migration; join **403 → 403**, all 717
+  pairings identical). The year-less-id exception — recorded as locked in s70 and cited in
+  four places — is retired.
+  **Why it was declined for four sessions, and why that was reasonable.** s70's record said
+  "recomputing drops the joins to zero", with a measurement attached. That is true — **of a
+  one-sided recompute**, rewriting the expense log's ids from its new full dates while
+  `classifications.jsonl` still stored `DD/MM`. It is false of a **two-sided** migration:
+  read each classification row's year off the join FIRST, rewrite its date, then recompute
+  both sides from the same strings. Same inputs, opposite outcome; the second operation was
+  never named as an option.
+  **Rationale:** a decision record carrying its measurement is far better than one that does
+  not, and this repo is unusually good at it. But **a measurement pins down the operation you
+  measured.** Inheriting one means asking "which operation produced this number, and is it
+  the operation I am considering?" — not merely "is the number right?".
+  **Implication:** the exception's justification dissolved, and with it T-65's hardest
+  constraint ("key off the STORED id, never recompute" — now moot). A new one replaced it,
+  which no amount of migration can remove: `GenerateID` hashes `item|date|value`, so
+  collisions fell 46 → **8** and the survivors are genuine same-day duplicate purchases.
+  **Consistent is not unique** — an id can name two rows, and anything keyed on one must say
+  what that means.
+  **The near-miss worth remembering.** 38 expense ids each carried TWO dates differing only
+  by year — inevitable when the id hashes a year-less date. A `{id: date}` lookup silently
+  keeps the last, so those rows would have been assigned a coin-flip year. **The join-pairing
+  check did not catch it**: before and after used the same wrong lookup, so it passed at
+  717/717. It was found by asking whether the lookup was ambiguous — a question no existing
+  check encoded. Zero classification rows referenced those ids, so nothing was harmed, and
+  the migrator now hard-fails rather than choosing. **A check inherits the assumptions of the
+  code it checks; agreement between two runs of the same mistake is not evidence.**
+  **What made it safe to execute:** a byte-comparison of all five workbooks 2022–2026, on a
+  check first proven to MOVE for a value change and NOT for an id change, so "identical"
+  carried information rather than merely being reassuring; surgical in-line field rewriting
+  rather than re-serialising (the two logs mix Go-compact and Python-spaced JSON, so a
+  re-serialise would have churned whichever half did not match and destroyed the comparison);
+  refuse-to-write-anything on any unresolved or ambiguous row; and four-direction mutation of
+  the new `restore` guard, including the must-pass case that separates a working guard from
+  one that refuses everything.
+- **Session 74 (cont.) — the bottleneck is capture, not classification.** Chasing "why is
+  only one month closed?" found that expenses are typed into a Telegram group ("Gastos",
+  exported by hand as `ChatExport/result.json`), and that **no committed tool converts that
+  export into a CSV** — the one manual link in an otherwise mature chain, absent from the
+  74-item task board, with ~7 months of 2026 behind it. Note also what the four rejected rows
+  of the first close actually were: swapped fields, a typo'd day, a stray `;`, and arithmetic
+  that does not reconcile — none a classification problem, all artifacts of free-form typing.
+  **Implication:** validation belongs at capture, where the human still remembers the
+  purchase, not in `batch-auto` months later where `646,25` vs `299,00 + 49,90` is
+  unresolvable. `failed.csv` (T-63) is a good repair mechanism aimed at the latest possible
+  moment to repair.
