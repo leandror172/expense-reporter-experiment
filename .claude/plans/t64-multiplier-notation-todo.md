@@ -162,7 +162,7 @@ not an observation, until asserted.
       scenario asserts all five lines verbatim, so the pass is real evidence and not a
       weaker check quietly succeeding. W2 held: both `x`-notation rows fail on FIELD COUNT
       before the value is parsed, so there was never a guard to unwind.
-- [x] **7. Repair path smoke-checked** — `Anita Elô ADM;09/01;405,25 x4` parses to 4 × 405,25,
+- [x] **7. Repair path smoke-checked** — `<person C> Elô ADM;09/01;405,25 x4` parses to 4 × 405,25,
       and still does with a stale `# <reason>` comment attached, which is the route the user
       actually takes from `failed.csv`.
 - [x] **8. Doc flips** — scout report § S4, fixture README (which carried a PREDICTION the run
@@ -232,8 +232,8 @@ it, and must not be deleted as redundant.
 - **W6 — a mutation that fails to COMPILE proves nothing** (s72). Mutate the SOURCE COLUMN
   or a value, never delete a struct field — the compiler going red is not the test going red.
 - **W7 — neither January row is unblocked by the parser alone.** Line 19 is really
-  `Anita;Elô ADM;09/01;405,25 - 1/4` — a stray semicolon INSIDE the item plus the typo; it
-  needs a hand repair to `Anita Elô ADM;09/01;405,25 x4`. Line 45 has no date at all and does
+  `<person C>;Elô ADM;09/01;405,25 - 1/4` — a stray semicolon INSIDE the item plus the typo; it
+  needs a hand repair to `<person C> Elô ADM;09/01;405,25 x4`. Line 45 has no date at all and does
   not reconcile (299,00 + 49,90 = 348,90 ≠ 646,25) — a data decision for the user.
 - **W8 — tests build values via the real parser, never struct literals** (`internal/parse`
   QUICK). A hand-set field tests the literal rather than the ladder.

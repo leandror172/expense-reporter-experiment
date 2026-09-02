@@ -87,15 +87,15 @@ belong** — 17 missing rows, i.e. the budget is silently under-recorded by that
 
 | Item | Value | Rows written / owed |
 |---|---|---|
-| Consulta Elizabeth cardiologista Lilly | `250,00/3` | 1 / 3 |
-| Exame pressão Lilly | `60,00/3` | 1 / 3 |
-| Exame eletro Lilly | `280,00/3` | 1 / 3 |
+| Consulta Elizabeth cardiologista <person E> | `250,00/3` | 1 / 3 |
+| Exame pressão <person E> | `60,00/3` | 1 / 3 |
+| Exame eletro <person E> | `280,00/3` | 1 / 3 |
 | IPVA 2026 | `323,65/5` | 1 / 5 |
 | Petlove sachês | `204,18/2` | 1 / 2 |
-| Exames Lilly sinplan | `310,00/3` | 1 / 3 |
+| Exames <person E> sinplan | `310,00/3` | 1 / 3 |
 | Consulta Orion nefro Território animal | `40,00/2` | 1 / 2 |
-| Consulta Lilly nefro Território animal | `40,00/2` | 1 / 2 |
-| Consulta Lilly nefro Kelly | `110,00/2` | 1 / 2 |
+| Consulta <person E> nefro Território animal | `40,00/2` | 1 / 2 |
+| Consulta <person E> nefro Kelly | `110,00/2` | 1 / 2 |
 | Consulta Orion nefro Kelly | `110,00/2` | 1 / 2 |
 
 ### S4 — the input formats real usage produces (4/69 = 6% rejected)
@@ -104,10 +104,10 @@ posted in chat, Layer 6) — NOT a bank export:
 
 | Raw line | Why it failed |
 |---|---|
-| `Anita;Elô ADM;09/01;405,25 - 1/4` | semicolon **inside the item** → 4 fields; plus ` - 1/4` installment form |
+| `<person C>;Elô ADM;09/01;405,25 - 1/4` | semicolon **inside the item** → 4 fields; plus ` - 1/4` installment form |
 | `Comida cinema;109,39;14/01` | date and value **transposed** |
 | `Café padaria;201/01;13,00` | typo'd day (`201`) |
-| `Anita compra chocolate Ruby 299,00 e cacau 49,90;646,25 4x` | no date at all; `4x` installment form |
+| `<person C> compra chocolate Ruby 299,00 e cacau 49,90;646,25 4x` | no date at all; `4x` installment form |
 
 **CORRECTED after user review.** An earlier draft of this report concluded that `- 1/4` and
 `4x` are real-usage installment forms the parser should learn. **That is wrong.** Per the user:
@@ -133,7 +133,7 @@ input, which is what T-41 slice 3 established.
 > indistinguishable from a legitimate one.
 >
 > Note the two rows in this table are STILL rejects, for their other defects (four fields;
-> no date). Line 19 needs a hand repair to `Anita Elô ADM;09/01;405,25 x4`; line 45 needs a
+> no date). Line 19 needs a hand repair to `<person C> Elô ADM;09/01;405,25 x4`; line 45 needs a
 > date and a value the user can reconcile (299,00 + 49,90 = 348,90 ≠ 646,25).
 
 What survives as a finding is narrower but still real: **4 bad rows out of 69 (6%) is the

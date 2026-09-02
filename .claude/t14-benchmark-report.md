@@ -214,7 +214,7 @@ right-sheet-wrong-leaf rate + paired McNemar. Same 300-item stratified T-14 samp
 **GBNF property-order confirmed FIRST** (highest-risk assumption): a two-field schema declaring
 `leaf → type → confidence` makes q3 *generate* `leaf` before `type` (schema decl order → GBNF
 generation order is pinned). So D1's two-field design (leaf enum + separate `type` field, the
-latter disambiguating the 5 cross-type collision leaves `Ambos`/`Lilly`/`Orion`/`Dentista`/
+latter disambiguating the 5 cross-type collision leaves `Ambos`/`<person E>`/`Orion`/`Dentista`/
 `Estacionamento`) works — no fallback to a concatenated single-string enum needed.
 
 **Two axes, 4 cells** (both n=300 paired, McNemar exact): **FS** = few-shot OFF (FS-A, enum-isolated

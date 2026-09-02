@@ -40,7 +40,7 @@ WS-D / gate-to-review. It does not survive contact with the data.
 
 Positional join of `classified.csv` (69 rows) against `reviewed.json` (65 entries), which
 preserves `ReadQueue`'s order over that same file. **Not keyed by item** — the month contains
-duplicate item names (`San michel` ×3, `Diarista Letícia` ×2, `Maeda` ×2), and an item-keyed
+duplicate item names (`San michel` ×3, `Diarista <person D>` ×2, `Maeda` ×2), and an item-keyed
 join silently collapsed them, producing 26 corrections against a known total of 25. The
 mismatch is what exposed it.
 

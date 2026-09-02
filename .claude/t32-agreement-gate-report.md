@@ -40,7 +40,7 @@ in `SelectExamples` and then discarded: keyword **specificity** + **model⊕keyw
   (cobra `MarkDeprecated`) so scripts/fixtures don't error, but it no longer gates.
 - **Collision caveat recorded, not fixed** (user-selected). Agreement is verified at subcategory
   level; the appended row carries the model's full path, so the 5 cross-type collision leaves
-  (Estacionamento/Dentista/Orion/Lilly/Ambos) can be subcat-right yet type-wrong and auto-append.
+  (Estacionamento/Dentista/Orion/<person E>/Ambos) can be subcat-right yet type-wrong and auto-append.
   Documented in `decision.go`; revisit if it bites.
 
 ## 3. Implementation

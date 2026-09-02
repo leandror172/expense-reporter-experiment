@@ -30,7 +30,7 @@ same *concept* tracked in different expense buckets or as both expense and incom
 
 | Bare name | Full paths it occurs under | Same sheet? |
 |---|---|---|
-| `Orion` / `Lilly` / `Ambos` | Fixas/Pet, Variáveis/Pets, Extras/Pets (**3×**) | No |
+| `Orion` / `<person E>` / `Ambos` | Fixas/Pet, Variáveis/Pets, Extras/Pets (**3×**) | No |
 | `Dentista` | Variáveis/Saúde, Extras/Saúde | No |
 | `Estacionamento` | Fixas/Transporte, Variáveis/Transporte | No |
 | `Gás` | Variáveis/Alimentação-Limpeza, Variáveis/Cuidados pessoais | **Yes** |
@@ -82,7 +82,7 @@ source (these are product decisions by the user, not mechanical dedup):
 
 Result: **112** expense subcategories (113 source rows − 2 `Gás` + 1 consolidated),
 zero true full-path duplicates, with the expected legal bare-name repeats remaining
-(`Orion`×3, `Lilly`×3, `Ambos`×3, `Dentista`×2, `Estacionamento`×2, plus income
+(`Orion`×3, `<person E>`×3, `Ambos`×3, `Dentista`×2, `Estacionamento`×2, plus income
 `Aluguel` vs expense `Aluguel`).
 
 The real file is **gitignored** (`.gitignore`: `expense-reporter/config/taxonomy.json`)
@@ -106,7 +106,7 @@ because it reveals personal categories; the committed fixture
 
 ### Two traps that bit us (record them)
 
-1. **The 3× re-add trap.** `Orion`/`Lilly`/`Ambos` each appear *three* times. A
+1. **The 3× re-add trap.** `Orion`/`<person E>`/`Ambos` each appear *three* times. A
    naive "delete from map on collision" silently **re-adds** on the third pass
    (absent → add → present → delete → absent → add again) — re-introducing the
    silent misroute. The fix is an explicit `ambiguous` set that is *sticky*: once a

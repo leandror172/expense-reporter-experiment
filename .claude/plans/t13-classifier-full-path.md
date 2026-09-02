@@ -49,7 +49,7 @@ the feature dict (68 subs), and training data (81 distinct subs):
   these strings are never used as authority again.
 - **5 subcategories are unresolvable post-hoc — only prediction-time choice works:**
   `Estacionamento` (Fixas|Variáveis/Transporte), `Dentista` (Extras|Variáveis/Saúde),
-  `Ambos`/`Lilly`/`Orion` (Extras|Fixas|Variáveis/Pets). `LookupType` returns `ErrTypeAmbiguous`
+  `Ambos`/`<person E>`/`Orion` (Extras|Fixas|Variáveis/Pets). `LookupType` returns `ErrTypeAmbiguous`
   for these → `type: ""`. The answer genuinely depends on the expense, not the taxonomy. This is
   the empirical proof the full-path design is **necessary**, not just cleaner.
 - **Few-shot type labels are tractable.** Training data's `source` field ends in the origin

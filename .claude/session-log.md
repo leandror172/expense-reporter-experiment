@@ -16,7 +16,7 @@ Resumed on a clean master with PR #67 merged, intending to discuss next steps. T
 - Migrated both live JSONL logs so every `id` equals `GenerateID` of its own row and every date is `DD/MM/YYYY` (2159/2159 + 717/717; join 403 → 403, all 717 pairings identical), retiring the year-less-id exception. Tool `.claude/scratch/migrate_ids.py`, idempotent, refuses to write on any unresolved or ambiguous row.
 - Retired the now-false stale-id rule everywhere it was asserted — found by grepping for the claim rather than updating remembered files, which surfaced four sites, two of which I would not have thought of.
 - Added a `close-cycle.sh restore` guard refusing a pre-migration snapshot, detected by CONTENT rather than the run dir's date; mutation-verified in four directions including the must-pass case.
-- Imported January's last parseable reject (`Anita Elô ADM` → 4 × R$405,25 = R$1.621,00, `Variáveis/Anita/Empréstimo`): first end-to-end run of T-64 on real data and first exercise of T-63's repair loop. Log 2159 → 2163.
+- Imported January's last parseable reject (`<person C> Elô ADM` → 4 × R$405,25 = R$1.621,00, `Variáveis/<person C>/Empréstimo`): first end-to-end run of T-64 on real data and first exercise of T-63's repair loop. Log 2159 → 2163.
 - Established the capture chain as the real bottleneck: expenses are typed into a Telegram group and hand-exported as `result.json`, and no committed tool converts that to CSV.
 
 ### Decisions Made
@@ -30,7 +30,7 @@ Resumed on a clean master with PR #67 merged, intending to discuss next steps. T
 
 - **T-65 supersede-by-append — DESIGN DOC ONLY, no code** (still the user's explicit call). **Its s72 constraint list is obsolete in both directions — re-read the reading-guide row before reusing it.** "Key off the STORED id" is MOOT; replacing it are three constraints found this session: an id can name TWO rows (8 collisions survive, genuine same-day duplicates); `scanEntries` cannot honour a supersede record at all in its current shape (single streaming pass attaching on sight, while append-only guarantees the supersede line arrives after its target); and `LoadExpenseIDCounts` counts every line by id into a CONSUMABLE budget, so a record carrying its target's id makes `--resume` over-skip and silently swallows a genuine duplicate purchase.
 - **T-75 — the `result.json` → CSV converter.** The capture bottleneck, ~7 months of 2026 behind it, and the natural home for the input validation the four January rejects argue for (all were typing errors, none a classification problem).
-- **5.R6** — gained another concrete data point: `Anita Elô ADM` returned an EMPTY `keyword_hint`, so neither the gate nor the A1 hint could help.
+- **5.R6** — gained another concrete data point: `<person C> Elô ADM` returned an EMPTY `keyword_hint`, so neither the gate nor the A1 hint could help.
 - Line 45 of `expenses-2026-01.csv` still needs the user: no date, and 299,00 + 49,90 = 348,90 does not reconcile with the stated 646,25.
 - Still open and untouched: T-56, T-57, T-58, T-69, T-70, T-71, T-73, T-74.
 

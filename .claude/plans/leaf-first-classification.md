@@ -78,13 +78,13 @@ survives only as the confidence-signal enabler, judged on T-23's terms instead.
   full path for logging/routing exactly as today — nothing downstream of `classifier.Result`
   changes (it still carries `Type/Category/Subcategory`).
 - **Cross-type collisions** — 5 leaf names are ambiguous by bare name (audit-confirmed
-  multiplicity, 13 instances → 112−8=104 unique): `Ambos`/`Lilly`/`Orion` (Pets, ×3 each across
+  multiplicity, 13 instances → 112−8=104 unique): `Ambos`/`<person E>`/`Orion` (Pets, ×3 each across
   Fixas/Variáveis/Extras — pet names), `Dentista` (Saúde ×2), `Estacionamento` (Transporte ×2).
   Bare leaf-first cannot resolve these. **DECISION (D1) — LOCKED = (b), session 49.**
   - **(b) Second `type` field.** Schema emits **`leaf` (104-enum) THEN `type` (3–4 types)** — field
     order is load-bearing: leaf first preserves the leaf-first commitment (the model's strong
     signal), type second is a genuine *recurrence* judgment (the audit showed the collision axis
-    IS Fixas/Variáveis/Extras — not derivable from the leaf name; "Lilly" can't say monthly-vet
+    IS Fixas/Variáveis/Extras — not derivable from the leaf name; "<person E>" can't say monthly-vet
     vs one-off-toy). Same recurrence axis T-23 flags as a better safety signal than confidence.
   - **Always predict `type`** (a static grammar can't make a field conditionally required on the
     leaf value); `ResolveLeaf` uses it ONLY for the 5 collisions and ignores it for the 99 unique

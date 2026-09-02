@@ -65,7 +65,7 @@ with no reachable second setting.
 | noise (confirmed) | Casa | Água | Casa |
 | noise (confirmed) | Exames | Plano de saúde | Exames |
 | wrong (corrected) | Farmácia | Dentista | Exames |
-| wrong (corrected) | Dentista | Orion | Lilly |
+| wrong (corrected) | Dentista | Orion | <person E> |
 
 None are absurd — each is a plausible alternative reading, so the cost of a bad hint is a
 glance, not a misfile. The last is the sharpest: the keyword picked the *wrong pet*.
@@ -73,7 +73,7 @@ glance, not a misfile. The last is the sharpest: the keyword picked the *wrong p
 **This is why the hint must be advisory, not a default.** At 71.4% precision, auto-applying it
 would introduce errors on ~3 of 14 rows; showing it alongside the model's answer cannot.
 
-The 10 recoveries are dominated by the pet cluster the report already named — 7 `Lilly`/`Orion`
+The 10 recoveries are dominated by the pet cluster the report already named — 7 `<person E>`/`Orion`
 rows the model routed to `Dentista`, a human dental leaf.
 
 ## Caveats

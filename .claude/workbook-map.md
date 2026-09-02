@@ -88,7 +88,7 @@ Insira aqui o montante men… |
 | C79:C83 | Educação |
 | C86:C93 | Pet |
 | D86:D87 | Orion |
-| D88:D89 | Lilly |
+| D88:D89 | <person E> |
 | C95:C102 | Impostos |
 | C104:C110 | Outros |
 | C116:C123 | Habitação |
@@ -97,16 +97,16 @@ Insira aqui o montante men… |
 | C143:C150 | Alimentação / Limpeza |
 | C152:C164 | Pet |
 | D152:D154 | Orion |
-| D155:D158 | Lilly |
+| D155:D158 | <person E> |
 | D159:D161 | Ambos |
 | C166:C174 | Saúde |
-| C176:C183 | Anita |
+| C176:C183 | <person C> |
 | C185:C191 | Cuidados pessoais |
 | C197:C202 | Saúde |
 | C204:C209 | Manutenção/ prevenção |
 | C211:C220 | Pets |
 | D211:D212 | Orion |
-| D213:D215 | Lilly |
+| D213:D215 | <person E> |
 | D216:D217 | Ambos |
 | C222:C227 | Advogado  |
 | C229:C234 | Educação |
@@ -226,7 +226,7 @@ Rows: 237
 |-----|---|---|---|---|---|---|---|---|
 | 1 |  |  |  | Janeiro | Janeiro | Janeiro | Fevereiro | Fevereiro |
 | 2 |  |  |  | Item | Data | Valor | Item | Data |
-| 3 | Habitação | Diarista |  | Diarista Letícia | 17/1 | R$ 200.00 | Diarista Letícia | 21/2 |
+| 3 | Habitação | Diarista |  | Diarista <person D> | 17/1 | R$ 200.00 | Diarista <person D> | 21/2 |
 | 4 | Habitação | Diarista |  |  |  |  |  |  |
 | 5 | Habitação | Diarista |  |  |  |  |  |  |
 
@@ -387,12 +387,12 @@ Month header at row 1 (12 month names found):
 | 158 | Orion | 160 | `F160`: `=SUM(F155:F159)` |
 | 159 | Orion | 160 | `F160`: `=SUM(F155:F159)` |
 | 160 | Orion | 0 |  |
-| 162 | Lilly | 167 | `F167`: `=SUM(F162:F166)` |
-| 163 | Lilly | 167 | `F167`: `=SUM(F162:F166)` |
-| 164 | Lilly | 167 | `F167`: `=SUM(F162:F166)` |
-| 165 | Lilly | 167 | `F167`: `=SUM(F162:F166)` |
-| 166 | Lilly | 167 | `F167`: `=SUM(F162:F166)` |
-| 167 | Lilly | 0 |  |
+| 162 | <person E> | 167 | `F167`: `=SUM(F162:F166)` |
+| 163 | <person E> | 167 | `F167`: `=SUM(F162:F166)` |
+| 164 | <person E> | 167 | `F167`: `=SUM(F162:F166)` |
+| 165 | <person E> | 167 | `F167`: `=SUM(F162:F166)` |
+| 166 | <person E> | 167 | `F167`: `=SUM(F162:F166)` |
+| 167 | <person E> | 0 |  |
 | 169 | Ambos | 174 | `F174`: `=SUM(F169:F173)` |
 | 170 | Ambos | 174 | `F174`: `=SUM(F169:F173)` |
 | 171 | Ambos | 174 | `F174`: `=SUM(F169:F173)` |
@@ -555,12 +555,12 @@ Month header at row 1 (12 month names found):
 | 68 | Orion | 70 | `F70`: `=SUM(F68:F69)` |
 | 69 | Orion | 70 | `F70`: `=SUM(F68:F69)` |
 | 70 | Orion | 73 | `F73`: `=SUM(F71:F72)` |
-| 71 | Lilly | 73 | `F73`: `=SUM(F71:F72)` |
-| 72 | Lilly | 73 | `F73`: `=SUM(F71:F72)` |
-| 73 | Lilly | 76 | `F76`: `=SUM(F74:F75)` |
-| 74 | Lilly | 76 | `F76`: `=SUM(F74:F75)` |
-| 75 | Lilly | 76 | `F76`: `=SUM(F74:F75)` |
-| 76 | Lilly | 79 | `F79`: `=SUM(F77:F78)` |
+| 71 | <person E> | 73 | `F73`: `=SUM(F71:F72)` |
+| 72 | <person E> | 73 | `F73`: `=SUM(F71:F72)` |
+| 73 | <person E> | 76 | `F76`: `=SUM(F74:F75)` |
+| 74 | <person E> | 76 | `F76`: `=SUM(F74:F75)` |
+| 75 | <person E> | 76 | `F76`: `=SUM(F74:F75)` |
+| 76 | <person E> | 79 | `F79`: `=SUM(F77:F78)` |
 | 77 | Ambos | 79 | `F79`: `=SUM(F77:F78)` |
 | 78 | Ambos | 79 | `F79`: `=SUM(F77:F78)` |
 | 79 | Ambos | 84 | `F84`: `=SUM(F80:F83)` |
@@ -836,12 +836,12 @@ Month header at row 1 (12 month names found):
 | 89 | Orion | 91 | `F91`: `=SUM(F90)` |
 | 90 | Orion | 91 | `F91`: `=SUM(F90)` |
 | 91 | Orion | 0 |  |
-| 92 | Lilly | 97 | `F97`: `=SUM(F96)` |
-| 93 | Lilly | 97 | `F97`: `=SUM(F96)` |
-| 94 | Lilly | 97 | `F97`: `=SUM(F96)` |
-| 95 | Lilly | 97 | `F97`: `=SUM(F96)` |
-| 96 | Lilly | 97 | `F97`: `=SUM(F96)` |
-| 97 | Lilly | 0 |  |
+| 92 | <person E> | 97 | `F97`: `=SUM(F96)` |
+| 93 | <person E> | 97 | `F97`: `=SUM(F96)` |
+| 94 | <person E> | 97 | `F97`: `=SUM(F96)` |
+| 95 | <person E> | 97 | `F97`: `=SUM(F96)` |
+| 96 | <person E> | 97 | `F97`: `=SUM(F96)` |
+| 97 | <person E> | 0 |  |
 | 98 | Ambos | 103 | `F103`: `=SUM(F102)` |
 | 99 | Ambos | 103 | `F103`: `=SUM(F102)` |
 | 100 | Ambos | 103 | `F103`: `=SUM(F102)` |
@@ -1149,7 +1149,7 @@ Rows: 117
 | 30 | Fixas | Saúde | Plano de saúde | 192 | 74 | 134 |
 | 31 | Fixas | Educação | Bateria | 206 | 80 | 150 |
 | 32 | Fixas | Pet | Orion | 213 | 86 | 157 |
-| 33 | Fixas | Pet | Lilly | 220 | 88 | 164 |
+| 33 | Fixas | Pet | <person E> | 220 | 88 | 164 |
 | 34 | Fixas | Pet | Ambos | 227 | 90 | 171 |
 | 35 | Fixas | Impostos | IPTU | 234 | 95 | 178 |
 | 36 | Fixas | Impostos | Licenciamento | 241 | 96 | 185 |
@@ -1167,7 +1167,7 @@ Rows: 117
 | 48 | Variáveis | Alimentação / Limpeza | Açougue | 41 | 146 | 44 |
 | 49 | Variáveis | Alimentação / Limpeza | Padaria | 45 | 147 | 61 |
 | 50 | Variáveis | Pets | Orion | 65 | 152 | 70 |
-| 51 | Variáveis | Pets | Lilly | 71 | 155 | 76 |
+| 51 | Variáveis | Pets | <person E> | 71 | 155 | 76 |
 | 52 | Variáveis | Pets | Ambos | 77 | 159 | 84 |
 | 53 | Variáveis | Transporte | Metrô | 88 | 133 | 90 |
 | 54 | Variáveis | Transporte | Ônibus | 91 | 134 | 96 |
@@ -1180,10 +1180,10 @@ Rows: 117
 | 61 | Variáveis | Saúde | Óleo/flor cannabis | 163 | 169 | 167 |
 | 62 | Variáveis | Saúde | Dentista | 168 | 170 | 172 |
 | 63 | Variáveis | Saúde | Farmácia | 173 | 171 | 182 |
-| 64 | Variáveis | Anita | Terpenos | 185 | 176 | 187 |
-| 65 | Variáveis | Anita | Ingredientes | 188 | 177 | 198 |
-| 66 | Variáveis | Anita | Ingrediente chocolate | 199 | 178 | 203 |
-| 67 | Variáveis | Anita | Empréstimo | 204 | 179 | 221 |
+| 64 | Variáveis | <person C> | Terpenos | 185 | 176 | 187 |
+| 65 | Variáveis | <person C> | Ingredientes | 188 | 177 | 198 |
+| 66 | Variáveis | <person C> | Ingrediente chocolate | 199 | 178 | 203 |
+| 67 | Variáveis | <person C> | Empréstimo | 204 | 179 | 221 |
 | 68 | Variáveis | Cuidados pessoais | Cabelereiro | 225 | 185 | 229 |
 | 69 | Variáveis | Cuidados pessoais | Produtos | 230 | 187 | 248 |
 | 70 | Variáveis | Cuidados pessoais | Gás | 243 | 120 | 8 |
@@ -1202,7 +1202,7 @@ Rows: 117
 | 83 | Extras | Manutenção / prevenção | Mudança | 54 | 206 | 65 |
 | 84 | Extras | Educação | Material escolar | 69 | 229 | 75 |
 | 85 | Extras | Pets | Orion | 85 | 211 | 91 |
-| 86 | Extras | Pets | Lilly | 92 | 213 | 97 |
+| 86 | Extras | Pets | <person E> | 92 | 213 | 97 |
 | 87 | Extras | Pets | Ambos | 98 | 216 | 103 |
 | 88 | Extras | Advogado | HC grow | 306 | 222 | 311 |
 | 89 | Extras | Educação | Rematrícula faculdade | 313 | 230 | 318 |

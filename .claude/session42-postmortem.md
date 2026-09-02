@@ -15,7 +15,7 @@ one cascaded into a much larger (and more interesting) investigation.
 - **Finding 1 — predicted `type` dropped at the JSON boundary.** T-13 made the model predict `type`, but
   `toCandidates`/`CandidateOutput` (classify/auto `--json`) and `runAddDryRun`/`AddOutput` discarded it.
   Harmless for 99/104 leaves (`add` re-derives type from the unique owner) but breaks the MCP round-trip for
-  the 5 cross-type ambiguous leaves (`Estacionamento`/`Dentista`/`Orion`/`Lilly`/`Ambos`).
+  the 5 cross-type ambiguous leaves (`Estacionamento`/`Dentista`/`Orion`/`<person E>`/`Ambos`).
 - **Finding 2 — `classify` default model diverged.** `auto`/`batch-auto` defaulted to `qcoder`,
   `classify` to `q3`. Filed as T-16 with the (then-assumed) fix "move classify to qcoder."
 
