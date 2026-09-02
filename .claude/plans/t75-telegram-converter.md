@@ -97,14 +97,16 @@ which is what T-63 reaches for from the other end.
 
 ## Contract
 
+**Language: Go. Home: a SUBCOMMAND of the existing binary** (decided s75 — rationale below).
+
 ```
-.claude/tools/telegram-to-csv.py <result.json> [--out-dir DIR] [--dry-run]
+expense-reporter telegram-import <result.json> [--out-dir DIR] [--dry-run] [--force]
 ```
 
 No model, no network, no workbook. Deterministic and idempotent.
 
 - **`--dry-run`** — bucket report only, writes nothing. This IS the committed bucket
-  classifier; one tool with two modes rather than two tools that drift.
+  classifier; one command with two modes rather than two tools that drift.
 - **default** — writes `expenses-YYYY-MM.csv` per month plus a rejects file to
   `/mnt/i/workspaces/expenses/` (**outside the git repo**, where `expenses-2026-01.csv`
   already lives). Real expense data therefore needs no gitignore rule — it is not in the
@@ -113,34 +115,89 @@ No model, no network, no workbook. Deterministic and idempotent.
 Output line shape is `item;DD/MM/YYYY;value` — three fields, matching
 `batch_auto.go:537`'s `strings.SplitN(line, ";", 3)`.
 
+### Why Go, and why not Python
+
+**The decisive fact, verified not assumed:** `internal/parse` already exports exactly the
+two predicates the exactly-one-reading rule needs —
+
+```go
+func Date(dateStr string, opts Options) (time.Time, YearSource, error)
+func Value(valueStr string) (float64, int, error)
+```
+
+— and its imports are clean (`errors, fmt, strings, time, pkg/utils`; **no `config`**), so a
+new command can call them directly. D4's rule *is* "for each candidate: does `Date` accept
+field 2 and `Value` accept field 3?", which in Go is two calls to the PRODUCTION boundary.
+
+**In Python every one of those becomes a port** — `currency.go`'s three readings,
+`normalizeThousands`, the year ladder. One concept, two implementations, kept in step by
+nobody: the T-54 / T-72 / T-73 shape this repo has been bitten by three times. It also
+breaks the correctness property this plan is built on — **the same message arriving via
+export or via the bot must be interpreted identically** — which Go gives by construction and
+Python gives only by vigilance. Concretely: when T-79 teaches the parser `*`, a Go converter
+gains it for free while a Python one silently keeps rejecting `89,90*3`.
+
+Subcommand rather than a second binary (`cmd/workbook-inspect/` is the precedent for the
+latter) because this is Phase 4's offline half — a live feature, not an inspection tool.
+
+**The `.claude/tools/` Python convention does not apply**: those four are one-off analysis
+and maintenance scripts. **`t75_oracle_probe.py` STAYS Python**, and that is now a feature —
+it carries its own independent port of the parser, so at step 4 it cross-checks the Go
+implementation instead of sharing its bugs. It is the only thing in the validation path not
+built on the Go parser's assumptions.
+
+**MTProto (route B) being Python-first does not flip this.** That client is a *source
+adapter*: it fetches messages and hands records to the Go validator. The parser stays in one
+place, which is the whole point of the adapter split.
+
 ## Decisions
 
-### D1 — Emit the RESOLVED full date, not bare `DD/MM`
+### D1 — Emit the RESOLVED full date, and own the resolution explicitly
 
-The converter holds strictly better year evidence than anything downstream: the message's
-own timestamp. `internal/parse`'s ladder ranks an explicit year above `--year`, so this is
-well defined and deliberately outranks the flag.
+The converter holds year evidence nothing downstream has: the message's own timestamp. But
+"call the boundary" does not by itself say whether that evidence *overrides* a year the
+human typed. It must not. **Resolution order, and it deliberately mirrors the T-41 ladder:**
 
-It matters at the year boundary. A message sent 02/01/2026 reporting `31/12` is a 2025
-purchase; under `--year 2026` it becomes 31/12/2026, which `validateYearNotBeyondCurrent`
-then refuses — loud, but for the wrong reason.
+1. **The date field already carries an explicit year** (`DD/MM/YYYY`) → use it verbatim.
+   The human outranks the timestamp, exactly as ladder rung 1 outranks rung 2.
+2. **Otherwise** → resolve by proximity to the message timestamp (window below) and format
+   `DD/MM/YYYY`.
+3. **Either way, validate by calling `parse.Date(resolved, parse.Options{})`.**
 
-**Resolution rule:** take the candidate `(day, month, message_year)` and step the year
-until the date lands inside an acceptance window; **if no year fits, REJECT with "cannot
-resolve year"** rather than picking one.
+**This is option (a): the converter OWNS resolution and the boundary acts as VALIDATOR.**
+The rejected alternative (b) was to pass the message year as `Options.Year` and let the
+ladder resolve. It reuses more code and is WRONG at the year boundary: rung 2 fires
+unconditionally for a bare date, so a message sent 02/01/2026 reporting `31/12` becomes
+**31/12/2026** — and because that is not beyond the *current* year,
+`validateYearNotBeyondCurrent` passes it and the row is **silently wrong**. Precisely the
+failure D1 exists to prevent. Pre-adjusting the year to avoid it is doing (a)'s work anyway.
 
-**Window = `[-180, +7]` days, and it is derived from the data, not chosen.** Measured over
-all 354 date-bearing messages in the 2025 export: **min −131 days, max +3, 279 of 354 on
-the message's own day.** So the past side must be generous — people do report a purchase
-months later — while the future side has NO support beyond +3 (+7 leaves headroom for a
-scheduled bill, the `Unimed vencimento` shape).
+`Options{}` is correct at step 3 because the string carries a year by then, so no rung
+fires — while both resolved-year validations still run.
 
-**The load-bearing invariant is that the window is narrower than 365 days** (187 here), which
-is what makes at most ONE year-candidate fit and the resolution unique. An earlier draft of
-this plan said `[-300, +60]` — 361 days, technically inside the bound with almost no margin,
-and loose enough that a mistyped month (`19/01` for `19/10`) resolves silently to the same
-year instead of being questioned. **The converter is the last place where "did you mean last
-year?" is still answerable**, so an unresolvable date belongs in rejects.
+This does not violate design Q3 ("the boundary owns ALL input normalization"): the year
+comes from message METADATA the boundary never sees, and the value token still passes
+through `parse.Value` untouched.
+
+**Window = `[-180, +7]` days, derived from the data.** Measured over all 354 date-bearing
+messages in the 2025 export: **min −131 days, max +3, and 279 of 354 on the message's own
+day.** The past side must be generous — people report a purchase months later — while the
+future side has no support beyond +3 (+7 leaves headroom for a scheduled bill, the
+`Unimed vencimento` shape). **The load-bearing invariant is that the window is narrower than
+365 days** (187 here), which is what makes at most ONE year-candidate fit. An earlier draft
+said `[-300, +60]` — 361 days, and loose enough that a mistyped month (`19/01` for `19/10`)
+resolves silently to the same year instead of being questioned. **An unresolvable date
+REJECTS**; the converter is the last place where "did you mean last year?" is answerable.
+
+⚠️ **The window and `validateYearNotBeyondCurrent` interact, and the result is a rejection.
+REQUIRED TEST.** A message sent 2026-12-28 reporting `03/01`: the 2026 candidate is −359
+days (outside the window), the 2027 candidate is **+6** (inside), so it resolves to
+**2027-01-03** — which the boundary then REFUSES as beyond the current year. Computed, not
+reasoned: an earlier read of this case put it at 2026-01-03, which the arithmetic
+contradicts. The outcome (reject, loudly) is acceptable under T-47's provisional policy and
+is **unreachable for the 2025 backlog** — only a late-December message referencing early
+next year trips it. Pin it with a test so the two rules cannot drift apart unnoticed; note
+that narrowing the future window to `+0` would also reject it, only with a clearer reason.
 
 ### D2 — Do NOT expand installments; pass the RAW token through
 
@@ -257,46 +314,51 @@ conversion would silently destroy them. Refuse, name the file that blocked it, a
 ## Build sequence / PROGRESS TRACKER
 
 **This section is the live tracker — tick boxes here as work lands. Deliberately the ONLY
-list of steps in the repo: a separate todo file would duplicate the gates and drift from
-them.** Branch: `feat/t75-telegram-converter`.
+list of steps: a separate todo file would duplicate the gates and drift from them.**
+Branch: `feat/t75-telegram-converter`. Local model: this repo's **Go** tier list
+(`my-go-qcoder` primary) — ⚠️ 20.7 GB on a 12 GB card, so it CPU-offloads, runs ~7 min per
+bounded file and **will background**, and T-71 says a backgrounded call silently ignores
+`output_file` and injects no verdict template. Scope each call to one bounded file.
 
 - [ ] **1 — source adapter + message stream + `--dry-run` bucket report**
   **Gate:** reproduces the known 2025 buckets exactly — 352 / 20 / 12 / 4 / 2 / 2 / 1 —
   asserted **PER MESSAGE ID, not as totals**. A bug moving one message from `bad value` to
-  `bad date` leaves every count identical; the ids are already in hand. This is the s74
-  shape exactly: the pairing check passed 717/717 over a lookup that coin-flipped a year
-  for 38 ids.
-  **Structure it as the adapter split from the start** — retrofitting it after step 2 means
-  re-testing the parser through a second door.
+  `bad date` leaves every count identical; the ids are already in hand. The s74 shape
+  exactly: the pairing check passed 717/717 over a lookup that coin-flipped a year for 38 ids.
+  **Build the adapter split from the start** — retrofitting it after step 2 means re-testing
+  the parser through a second door.
 
-- [ ] **2 — repairs (D4 / D5 / D6)**
-  **Gate:** the 12 comma rows + the `/` row recovered, and the 8 genuinely ambiguous ones
-  still rejected.
-  **Mutation (both directions, and each must still RUN):** remove the C0-first rule → a
-  valid `900,00/3` gets "repaired" → RED. Remove the exactly-one rule → an ambiguous
-  message is silently accepted → RED.
+- [ ] **2 — repairs (D4 / D5 / D6) + D1 resolution**
+  **Gate:** the 12 comma rows + the `/` row recovered; the 8 genuinely ambiguous ones still
+  rejected; an explicit `DD/MM/YYYY` in the text is honored, not overwritten by the message
+  year; and the 2026-12-28 → `03/01` → 2027 case rejects.
+  **Mutation, both directions, each must still COMPILE:** remove the C0-first rule → a valid
+  `900,00/3` gets "repaired" → RED. Remove the exactly-one rule → an ambiguous message is
+  silently accepted → RED.
 
 - [ ] **3 — writers: month CSVs + rejects + summary**
   **Gate:** a produced CSV runs clean through `batch-auto --dry-run`; a rejects line, once
-  its fields are repaired, re-runs as-is. D8's overwrite refusal proven by pointing it at
-  the existing `expenses-2026-01.csv` and confirming it declines and names the file.
+  its fields are repaired, re-runs as-is. D8's overwrite refusal proven by pointing it at the
+  existing `expenses-2026-01.csv` and confirming it declines and names the file.
 
 - [ ] **4 — repoint `t75_oracle_probe.py` at real converter output**
   **Gate: unexplained == 0.** NOT a match rate — see the validation section.
-  ⚠️ **`characterize-first` applies here and nowhere else in this plan.** The probe is
-  committed code with NO tests of its own, so pin its current output (the s75 numbers)
-  green BEFORE swapping its conversion source. Tests written after the swap would encode
-  what the new code does — circular, and worthless as a regression check.
+  ⚠️ **`characterize-first` applies HERE AND NOWHERE ELSE in this plan.** The probe is
+  committed code with no tests of its own, and its conversion source changes from an internal
+  throwaway to "read the Go command's CSV". **Characterization baseline, to hold green before
+  the swap** (measured s75 on the 2025 export): `352` conforming messages → `383` rows;
+  **346 matched, 37 side-A residue** (24 installment tails / 9 outside window / 3 never
+  entered / 1 count mismatch), `153` side-B residue; buckets `20 / 12 / 4 / 2 / 2 / 1`; both
+  perturbations move the residue by exactly 1.
 
-- [ ] **5 — `index.md` row; `git ls-files -s` → `100755`**
-  **Convention verified, not assumed:** all four existing `.claude/tools/*.py`
-  (`backfill-type`, `check-ref-integrity`, `lookup-category`, `reconstruct-csvs`) are
-  `100755`. Contrast the s75 probe at `100644` in `.claude/scratch/`, run via `python3`.
-  drvfs forces 777 locally, so only git's copy is evidence.
+- [ ] **5 — `go build ./... && go vet ./... && go test ./...` clean; `index.md` row; `-full` acceptance if a scenario is added**
+  ⚠️ **`-short` is structurally blind to CSV-shape changes** (s72): every
+  `OutputFileHasColumns` assertion sits behind `RequireOllama`. If this touches the CSV
+  contract at all, `-full` must run before calling it done.
 
 - [ ] **6 — run it, hand the output to a real close**
   Not a coding step, and the one that actually validates T-75: convert a month, run
-  `close-cycle.sh prepare`, and see the rows arrive. Needs the 2026 export from the user.
+  `close-cycle.sh prepare`, watch the rows arrive. Needs the 2026 export from the user.
 
 ### Conventions that govern this work
 
@@ -304,42 +366,48 @@ Read at the start of session 75; recorded so the next session does not re-derive
 
 - **`test-executable-spec` rule 5 — the SUT is a PURE FUNCTION, so the DSL COLLAPSES.**
   The diagnostic is "does the SUT consume a sequence?" `message text → CSV line | reject`
-  does not: no sequence, no state. So there is **no `given/when/then` skeleton here** —
-  the vocabulary reduces to **builder-nouns** (`a_message(text=…, sent=…)`) plus
-  **verdict-verbs** (`converts_to(…)`, `rejects_with(reason=…)`). The doc names
-  over-DSLing a pure-function test as *"the most common way to violate rule 3"* and says
-  explicitly to resist a mutation mini-language — so an exotic malformation reads as one
-  inline line of data, not as a new combinator.
-  (The aggregate bucket report is a fold over independent messages, not a sequence — it
-  does not change this.)
-- **`function-decomposition` — split on DECISION COUNT, not line count.** A long linear
-  path is fine. The repair resolver is the decision-dense part: extract each candidate
-  reading as a **pure function returning a value**, unit-testable without the file reader.
-  Helper names must narrate an algorithm step; if a name does not describe a step of the
-  domain algorithm, do not extract it.
-- **`patterns-code-value-or-error`** — internal helpers return `(value, error)`; a human
-  readable sentinel string belongs only at the boundary (the rejects file), never as an
-  internal return.
+  does not: no sequence, no state. So there is **no given/when/then skeleton here** — the
+  vocabulary reduces to **builder-nouns** plus **verdict-verbs**. The doc names over-DSLing a
+  pure-function test as *"the most common way to violate rule 3"*: resist a mutation
+  mini-language, and let an exotic malformation read as one inline line of data.
+  **How that expresses in Go, since the pattern was written for pytest:** the repo's
+  `[ref:testing]` requires table-driven subtests with testify, and lists "Skip table-driven
+  approach for new commands" under **Do NOT**. The two conventions AGREE rather than compete —
+  **a table row IS the builder-noun, and the shared assert helper IS the verdict-verb.** Say
+  it that way; do not import pytest-shaped `given_/when_/then_` names into Go.
+  (The aggregate bucket report is a fold over independent messages, not a sequence.)
+- **`function-decomposition` — split on DECISION COUNT, not line count.** A long linear path
+  is fine. The repair resolver is the decision-dense part: extract each candidate reading as a
+  **pure function returning a value**, unit-testable without the file reader. Helper names
+  must narrate an algorithm step.
+- **`patterns-code-value-or-error`** — internal helpers return `(value, error)`; a
+  human-readable sentinel string belongs only at the boundary (the rejects file).
 - **`patterns-code-return-not-mutate`** — each stage returns its contribution; no shared
   mutable accumulator threaded through the parse path.
-- **`characterize-first`** — does NOT apply to the new tool (no existing behavior to
-  preserve). It applies to step 4 only. Noted so it is not cargo-culted onto steps 1–3.
+- **Repo Go conventions** — one `.go` file per subcommand; `fmt.Errorf("context: %w", err)`;
+  method extraction so a multi-step body reads as named delegated steps (≤ ~15 lines).
+- **`characterize-first`** — does NOT apply to the new command (no existing behavior to
+  preserve). Step 4 only. Noted so it is not cargo-culted onto steps 1–3.
 
 ## Testing
 
-Python, so stdlib `unittest` — no new dependency in a Go repo.
+Go, testify, table-driven subtests — the repo's existing convention, so no new toolchain and
+`go test ./...` covers it. See the conventions block above for how that reconciles with
+`test-executable-spec` (it does: a table row is the builder-noun, the assert helper is the
+verdict-verb).
 
-**The fixture is SYNTHETIC.** The real export is personal data and must never be committed,
+**Fixtures are SYNTHETIC.** The real export is personal data and must never be committed —
 the same reasoning that gitignores the training JSONs. One case per defect class, plus each
-repair rule's counterexample — a repair rule with only positive tests is the shape that
+repair rule's **counterexample**: a repair rule with only positive tests is the shape that
 produced T-54.
 
-Real-data bucket counts are asserted in a test that **SKIPS when the export is absent**,
-mirroring how `extern.RequireOllama` gates the Ollama scenarios: drift in the real file is
-caught locally without making the suite depend on private data.
+**The real-export bucket assertion lives outside the unit suite.** It needs a private file,
+so it belongs in the `--dry-run` gate run by hand (step 1), not in `go test ./...` — a unit
+test that silently skips when a file is absent is a check that reports success while testing
+nothing, which is the exact failure mode this repo keeps finding.
 
-Every guard broken and confirmed red, and **the mutation must leave the program runnable** —
-s72's deleted field produced a build failure, which is the interpreter talking, not the test.
+Every guard broken and confirmed red, and **the mutation must still COMPILE** — s72's deleted
+field produced a build failure, which is the compiler talking, not the test.
 
 ## Validation — and the criterion that is deliberately NOT a match rate
 
