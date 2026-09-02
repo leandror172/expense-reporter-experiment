@@ -50,6 +50,32 @@ always-on (Phase 5 contemplates Docker) or if capture moves to an MTProto user c
 which reads real history and has no 24h window — neither is needed now, and neither removes
 the parser built here.
 
+### The shape, end to end
+
+```
+  Telegram group "Gastos"
+        |
+        +-- live, bot online -----------> [Phase 4 bot] --+
+        |                                                 |
+        +-- history / >24h outage --> [export] --> [converter] --+
+                                                                 |
+                                              +------------------+
+                                              v
+                              batch-auto --> classified.csv
+                                              |
+                        +---------------------+------------------------+
+                        v                                              v
+              review.html (bulk, backfill)          inline keyboard (per-expense, Phase 4)
+                        +---------------------+------------------------+
+                                              v
+                                 apply --> logs --> generate-workbook
+```
+
+**Both capture routes converge on the same CSV, and both confirm surfaces converge on
+`apply`.** The converter and the bot are the two halves of CAPTURE, not alternatives; the
+review page and the inline keyboard are two surfaces onto CONFIRM. Reading them as
+competitors is what made the converter look like a detour.
+
 ### What this requires of the design
 
 **Structure the tool as `source adapter → message stream → parse/repair → sink`.** The
@@ -228,15 +254,76 @@ The default output directory holds `expenses-2026-01.csv` and its `-repairs` /
 conversion would silently destroy them. Refuse, name the file that blocked it, and require
 `--force` — the same shape as `close-cycle.sh restore` refusing a pre-s74 snapshot.
 
-## Build sequence — a gate on every step
+## Build sequence / PROGRESS TRACKER
 
-| # | Step | Gate |
-|---|------|------|
-| 1 | read + classify + `--dry-run` report | reproduces the known 2025 buckets exactly — **352 / 20 / 12 / 4 / 2 / 2 / 1** — asserted **PER MESSAGE ID, not as totals**: a bug moving one message from `bad value` to `bad date` leaves every count identical. The ids are already in hand. This is the s74 lesson exactly — the pairing check passed 717/717 while the lookup underneath it coin-flipped a year for 38 ids |
-| 2 | repairs (D4/D5/D6) | the 12 comma rows + the `/` row recovered; **mutation:** drop the C0-first rule → a valid `900,00/3` is repaired → RED |
-| 3 | writers: month CSVs + rejects + summary | a produced CSV runs clean through `batch-auto --dry-run`; a rejects line, once field-repaired, re-runs as-is |
-| 4 | repoint `t75_oracle_probe.py` at real converter output | **unexplained == 0** |
-| 5 | `index.md` row; `git ls-files -s` → `100755` | **Convention verified, not assumed:** all four existing `.claude/tools/*.py` (`backfill-type`, `check-ref-integrity`, `lookup-category`, `reconstruct-csvs`) are `100755`. Contrast the s75 probe at `100644` in `.claude/scratch/`, run via `python3`. drvfs forces 777 locally, so only git's copy is evidence |
+**This section is the live tracker — tick boxes here as work lands. Deliberately the ONLY
+list of steps in the repo: a separate todo file would duplicate the gates and drift from
+them.** Branch: `feat/t75-telegram-converter`.
+
+- [ ] **1 — source adapter + message stream + `--dry-run` bucket report**
+  **Gate:** reproduces the known 2025 buckets exactly — 352 / 20 / 12 / 4 / 2 / 2 / 1 —
+  asserted **PER MESSAGE ID, not as totals**. A bug moving one message from `bad value` to
+  `bad date` leaves every count identical; the ids are already in hand. This is the s74
+  shape exactly: the pairing check passed 717/717 over a lookup that coin-flipped a year
+  for 38 ids.
+  **Structure it as the adapter split from the start** — retrofitting it after step 2 means
+  re-testing the parser through a second door.
+
+- [ ] **2 — repairs (D4 / D5 / D6)**
+  **Gate:** the 12 comma rows + the `/` row recovered, and the 8 genuinely ambiguous ones
+  still rejected.
+  **Mutation (both directions, and each must still RUN):** remove the C0-first rule → a
+  valid `900,00/3` gets "repaired" → RED. Remove the exactly-one rule → an ambiguous
+  message is silently accepted → RED.
+
+- [ ] **3 — writers: month CSVs + rejects + summary**
+  **Gate:** a produced CSV runs clean through `batch-auto --dry-run`; a rejects line, once
+  its fields are repaired, re-runs as-is. D8's overwrite refusal proven by pointing it at
+  the existing `expenses-2026-01.csv` and confirming it declines and names the file.
+
+- [ ] **4 — repoint `t75_oracle_probe.py` at real converter output**
+  **Gate: unexplained == 0.** NOT a match rate — see the validation section.
+  ⚠️ **`characterize-first` applies here and nowhere else in this plan.** The probe is
+  committed code with NO tests of its own, so pin its current output (the s75 numbers)
+  green BEFORE swapping its conversion source. Tests written after the swap would encode
+  what the new code does — circular, and worthless as a regression check.
+
+- [ ] **5 — `index.md` row; `git ls-files -s` → `100755`**
+  **Convention verified, not assumed:** all four existing `.claude/tools/*.py`
+  (`backfill-type`, `check-ref-integrity`, `lookup-category`, `reconstruct-csvs`) are
+  `100755`. Contrast the s75 probe at `100644` in `.claude/scratch/`, run via `python3`.
+  drvfs forces 777 locally, so only git's copy is evidence.
+
+- [ ] **6 — run it, hand the output to a real close**
+  Not a coding step, and the one that actually validates T-75: convert a month, run
+  `close-cycle.sh prepare`, and see the rows arrive. Needs the 2026 export from the user.
+
+### Conventions that govern this work
+
+Read at the start of session 75; recorded so the next session does not re-derive them.
+
+- **`test-executable-spec` rule 5 — the SUT is a PURE FUNCTION, so the DSL COLLAPSES.**
+  The diagnostic is "does the SUT consume a sequence?" `message text → CSV line | reject`
+  does not: no sequence, no state. So there is **no `given/when/then` skeleton here** —
+  the vocabulary reduces to **builder-nouns** (`a_message(text=…, sent=…)`) plus
+  **verdict-verbs** (`converts_to(…)`, `rejects_with(reason=…)`). The doc names
+  over-DSLing a pure-function test as *"the most common way to violate rule 3"* and says
+  explicitly to resist a mutation mini-language — so an exotic malformation reads as one
+  inline line of data, not as a new combinator.
+  (The aggregate bucket report is a fold over independent messages, not a sequence — it
+  does not change this.)
+- **`function-decomposition` — split on DECISION COUNT, not line count.** A long linear
+  path is fine. The repair resolver is the decision-dense part: extract each candidate
+  reading as a **pure function returning a value**, unit-testable without the file reader.
+  Helper names must narrate an algorithm step; if a name does not describe a step of the
+  domain algorithm, do not extract it.
+- **`patterns-code-value-or-error`** — internal helpers return `(value, error)`; a human
+  readable sentinel string belongs only at the boundary (the rejects file), never as an
+  internal return.
+- **`patterns-code-return-not-mutate`** — each stage returns its contribution; no shared
+  mutable accumulator threaded through the parse path.
+- **`characterize-first`** — does NOT apply to the new tool (no existing behavior to
+  preserve). It applies to step 4 only. Noted so it is not cargo-culted onto steps 1–3.
 
 ## Testing
 
