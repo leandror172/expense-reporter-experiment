@@ -17,6 +17,58 @@ being asked to. This is a strict parser plus six named defect classes, not an NL
 
 ---
 
+## Relationship to the vision — settled, session 75
+
+Re-read `docs/expense-classifier-vision.md` because the converter looked like it might be a
+detour around the Phase 4 queue. It is not, and the reasoning is worth keeping.
+
+**The vision's own offline design IS this CSV+batch path**, verbatim: *"Since we have a
+list of expenses, instead of directly sending each after being classified, they can be
+stored in CSV, and sent using the batch functionality"*, and Phase 4's *"Batch
+accumulation: collect classified expenses in CSV, batch-insert periodically."* The
+converter is the offline-backlog half of Phase 4 built first, not an alternative to it.
+
+**USER RULING (s75): the per-expense conversational flow remains the END GOAL** (subject to
+change). `review.html` is the surface for bulk work and for what is already reported — the
+two are different entry points onto one pipeline, not competitors. **The bot does not need
+pre-join history; the export route covers that.**
+
+**Two Telegram API facts that shape this, both verified rather than assumed:**
+
+1. A **bot cannot read messages sent before it joined** a chat. Permanent architectural
+   restriction, not a retention setting. So a listener built today would not process the
+   Feb–Aug 2026 backlog at all.
+2. Undelivered updates are retained **at most 24 HOURS**. A bot offline for less than a day
+   drains its backlog on reconnect exactly as the vision describes; **a bot offline longer
+   loses those messages permanently**, with no error and no retry.
+
+**Consequence, and the reason this tool is not scaffolding:** on a personal desktop that is
+off overnight, for a weekend, or during a trip, fact 2 fires routinely. **The export route
+is therefore the PERMANENT recovery path for any outage over 24 hours**, not a one-time
+catch-up to be deleted when the bot ships. Exposure shrinks if the bot ever runs somewhere
+always-on (Phase 5 contemplates Docker) or if capture moves to an MTProto user client,
+which reads real history and has no 24h window — neither is needed now, and neither removes
+the parser built here.
+
+### What this requires of the design
+
+**Structure the tool as `source adapter → message stream → parse/repair → sink`.** The
+`result.json` reader is one adapter (~30 lines); a live-update or MTProto source is
+another. **This is a CORRECTNESS property, not tidiness:** the same message typed on a good
+day and recovered from an export on a bad one must be interpreted identically, which only
+holds if both routes share one parser. It also makes the MTProto/bot question a later,
+cheap decision instead of a rewrite.
+
+Note the rejects mechanism has two audiences on the two routes: the converter writes a bad
+line to a file for the human to edit, while the bot can **reply to the message in the chat
+with the reason** — the same rule delivered at the earliest possible moment to repair,
+which is what T-63 reaches for from the other end.
+
+**Out of scope here, and NOT decided:** whether the confirm step becomes an inline keyboard
+(Phase 4) or stays in `review.html` for bulk. Both consume the same `classified.csv`.
+
+---
+
 ## Contract
 
 ```
@@ -93,14 +145,19 @@ expense if it contains a `;` or a currency-shaped token.** On 2025 that puts
 
 **The `receipts` class is NOT a subdivision of chatter — it was measured.** All 20
 empty-text messages in the export carry an attachment: **13 `application/pdf` and 7
-photos, ZERO with neither.** Not one is a sticker. Every one is a receipt or boleto posted
-INSTEAD of typing the expense, which makes each an attempted expense carrying no
-convertible text — roughly **2.5 a month of spend that never reaches the CSV at all.**
-Folding them into a silent "ignored" count would hide that. They cannot be converted (no
-tool here reads a PDF), so the correct handling is to name them: `N receipts posted as
-files/images — not convertible, see message ids …`. Whether the same expense was ALSO
-typed in a separate message is not determinable from the export and is a question for the
-user.
+photos, ZERO with neither.** Not one is a sticker — each is a receipt or boleto.
+
+**USER RULING (s75): these are receipts FOR AN EXPENSE THAT WAS ALSO TYPED, and nothing
+is to be done with them for now.** So they are NOT missing spend and NOT an attempted
+expense — the expense itself arrives as its own text message and converts normally.
+An earlier draft of this plan claimed they represented "~2.5 a month of spend that never
+reaches the CSV"; that was **wrong** and is corrected here rather than quietly dropped,
+because the measurement (13 PDF + 7 photo) was right while the inference from it was not.
+
+Handling: report them as a one-line count so the reader can see the export was fully
+accounted for (`N attachments — receipts for typed expenses, skipped`), and do NOT route
+them to rejects. Revisit only if a future export shows an attachment with no matching
+text message.
 
 Following T-63 exactly: **no rejects file is written when nothing was rejected — its
 existence IS the signal.**
