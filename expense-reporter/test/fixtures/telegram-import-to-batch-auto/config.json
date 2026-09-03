@@ -1,0 +1,9 @@
+{
+  "command": "batch-auto",
+  "model": "my-classifier-q3",
+  "threshold": 0.85,
+  "assertion_type": "soft",
+  "accuracy_floor": 0.5,
+  "top_n": 3,
+  "extra_args": ["--dry-run"]
+}

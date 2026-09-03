@@ -107,10 +107,12 @@ No model, no network, no workbook. Deterministic and idempotent.
 
 - **`--dry-run`** — bucket report only, writes nothing. This IS the committed bucket
   classifier; one command with two modes rather than two tools that drift.
-- **default** — writes `expenses-YYYY-MM.csv` per month plus a rejects file to
-  `/mnt/i/workspaces/expenses/` (**outside the git repo**, where `expenses-2026-01.csv`
-  already lives). Real expense data therefore needs no gitignore rule — it is not in the
-  tree at all.
+- **default** — writes `expenses-YYYY-MM.csv` per month plus `telegram-rejects.csv` to
+  **`--out-dir`, which is REQUIRED when writing** (D9, s75 — an earlier draft defaulted
+  to `/mnt/i/workspaces/expenses/`; the destination is now always the human's explicit
+  choice). In practice that is `/mnt/i/workspaces/expenses/`, **outside the git repo**,
+  where `expenses-2026-01.csv` already lives, so real expense data needs no gitignore
+  rule — it is not in the tree at all.
 
 Output line shape is `item;DD/MM/YYYY;value` — three fields, matching
 `batch_auto.go:537`'s `strings.SplitN(line, ";", 3)`.
@@ -346,6 +348,30 @@ The default output directory holds `expenses-2026-01.csv` and its `-repairs` /
 conversion would silently destroy them. Refuse, name the file that blocked it, and require
 `--force` — the same shape as `close-cycle.sh restore` refusing a pre-s74 snapshot.
 
+### D9 — Step-3 writer decisions (s75), taken while building
+
+- **`--out-dir` is REQUIRED when writing** (dry-run needs none). The contract above said
+  the default was `/mnt/i/workspaces/expenses/`; baking that path into the binary, or
+  defaulting to the working directory, are both ways to write real expense files
+  somewhere nobody chose. An explicit destination costs one flag and removes both.
+- **Rejects file: `telegram-rejects.csv`** in the same directory — deliberately NOT
+  `expenses-*.csv`, so a glob over the month files never picks up rows that still need a
+  human. Written through `batch.WriteFailedRows`, so the T-63 shape has exactly ONE
+  producer (its header says "batch-auto could not parse" — the predicate IS batch-auto's
+  parse, so the sentence stays true). Each reason carries provenance the human needs to
+  fix a year by hand: `<boundary error> (message <id>, sent <YYYY-MM-DD>)`.
+- **All-or-nothing (D8, sharpened):** every target file is checked BEFORE the first
+  write, the directory must already exist, and a refusal names every blocking file.
+  Half an export that looks complete is worse than none.
+- **Repaired lines carry their origin INSIDE the month file:** `<line>   # repaired
+  from: <text as typed> (message <id>)`. `batch.CSVReader` skips `#` lines and
+  `stripTrailingComment` strips a whitespace-preceded `#` after three complete fields
+  (T-63), so the audit trail rides in the very file batch-auto reads and costs nothing
+  downstream. Each month file also opens with one `#` provenance line.
+- **Line breaks inside a message are flattened to spaces** before a text reaches any
+  line-oriented file. Zero occurrences in the 2025 export (measured); the rule exists so
+  the first one cannot split a row in two.
+
 ## Build sequence / PROGRESS TRACKER
 
 **This section is the live tracker — tick boxes here as work lands. Deliberately the ONLY
@@ -404,10 +430,28 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   `900,00/3` gets "repaired" → RED. Remove the exactly-one rule → an ambiguous message is
   silently accepted → RED.
 
-- [ ] **3 — writers: month CSVs + rejects + summary**
-  **Gate:** a produced CSV runs clean through `batch-auto --dry-run`; a rejects line, once
-  its fields are repaired, re-runs as-is. D8's overwrite refusal proven by pointing it at the
-  existing `expenses-2026-01.csv` and confirming it declines and names the file.
+- [x] **3 — writers: month CSVs + rejects + summary** — **DONE s75** (decisions in D9).
+  **Gate MET.** `TestTelegramImport_MonthFileIsAcceptedByBatchAuto` (Ollama-gated): the
+  converter writes `expenses-2025-05.csv` into the work dir and the REAL `batch-auto
+  --dry-run` reads it — 9 s, no `failed.csv`, the repaired line with its trailing audit
+  comment included. Deterministic half: `TestMonthFileLines_RoundTripThroughBatchAutoReader`
+  feeds every produced line to `parse3FieldLine` and gets the same item, date and raw value
+  back. Rejects file is `batch.WriteFailedRows`' own T-63 shape (one producer), each reason
+  suffixed `(message <id>, sent <date>)`; `expect.FailedRowsCarryTheirReason` pins exactly
+  the four attempted expenses of the fixture, so a receipt or a chat line leaking in fails
+  the length check; a clean export leaves NO rejects file. **D8 proven three ways:** the
+  acceptance scenario (pre-existing May file → refused, named, `--force` offered, and the
+  other three month files plus the rejects file NOT written — all-or-nothing), the unit
+  table (every blocker named, not only the first), and the real export written twice into a
+  scratch dir — the second run refused naming all ten files, `--force` then replaced them.
+  The literal "`expenses-2026-01.csv`" collision cannot be produced by the 2025 export (no
+  2026 month); the 2026 export will exercise it. **Real 2025 run:** 9 month files
+  (2025-04 … 2025-12), 358 body lines = 352 converted + 6 repaired, 6 `# repaired from:`
+  comments, `telegram-rejects.csv` with 14 rows.
+  **Original gate text:** a produced CSV runs clean through `batch-auto --dry-run`; a rejects
+  line, once its fields are repaired, re-runs as-is. D8's overwrite refusal proven by
+  pointing it at the existing `expenses-2026-01.csv` and confirming it declines and names
+  the file.
 
 - [ ] **4 — repoint `t75_oracle_probe.py` at real converter output**
   **Gate: unexplained == 0.** NOT a match rate — see the validation section.

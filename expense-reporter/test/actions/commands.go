@@ -274,3 +274,16 @@ func RunTelegramImport(exportFile string, extraFlags ...string) func(*harness.Co
 		runCommand(ctx, append(args, extraFlags...)...)
 	}
 }
+
+// RunTelegramImportWriting runs telegram-import over a named export file in the
+// scenario fixture with --out-dir set to the WorkDir, so every month file and the
+// rejects file land where the scenario can read them. Extra flags (--force) are
+// appended last. The rejects file is registered even though it is written only when
+// something was rejected: a scenario asserting its ABSENCE needs the path too.
+func RunTelegramImportWriting(exportFile string, extraFlags ...string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"telegram-import", filepath.Join(ctx.FixtureDir, exportFile), "--out-dir", ctx.WorkDir}
+		runCommand(ctx, append(args, extraFlags...)...)
+		ctx.Artifacts["telegram-rejects.csv"] = filepath.Join(ctx.WorkDir, "telegram-rejects.csv")
+	}
+}

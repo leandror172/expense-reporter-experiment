@@ -106,7 +106,7 @@ func TestWriteBucketReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			writeBucketReport(&buf, tt.summary)
+			writeBucketReport(&buf, "telegram-import: dry run, nothing written", tt.summary)
 			got := buf.String()
 			want := joinedLines(tt.wantLines) + "\n"
 			assert.Equal(t, want, got)

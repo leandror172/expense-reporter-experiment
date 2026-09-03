@@ -1,0 +1,9 @@
+{
+  "name": "Gastos",
+  "type": "private_group",
+  "id": 2,
+  "messages": [
+    {"id": 1, "type": "message", "date": "2025-05-03T12:00:00", "from": "A", "from_id": "user1", "text": "Padaria; 03/05; 12,50", "text_entities": []},
+    {"id": 2, "type": "message", "date": "2025-05-04T09:30:00", "from": "A", "from_id": "user1", "text": "Posto Ipiranga; 04/05; 200,00", "text_entities": []}
+  ]
+}
