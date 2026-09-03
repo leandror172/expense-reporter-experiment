@@ -80,7 +80,7 @@ cmd/expense-reporter/cmd/  # Cobra subcommands (one file each)
 cmd/workbook-inspect/      # Thin wrapper over internal/inspect
 internal/                  # batch classifier cli config excel feedback generate
                            # taxonomy inspect logger models parse parser resolver
-                           # review apply appender workflow
+                           # review apply appender workflow capture telegram
 pkg/utils/  config/config.json
 ```
 

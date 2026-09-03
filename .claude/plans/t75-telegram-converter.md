@@ -330,7 +330,19 @@ Branch: `feat/t75-telegram-converter`. Local model: this repo's **Go** tier list
 bounded file and **will background**, and T-71 says a backgrounded call silently ignores
 `output_file` and injects no verdict template. Scope each call to one bounded file.
 
-- [ ] **1 — source adapter + message stream + `--dry-run` bucket report**
+- [x] **1 — source adapter + message stream + `--dry-run` bucket report** — **DONE s75.**
+  **Gate MET, per id.** `telegram-import <2025 export> --dry-run` → 393 messages / 352
+  converted / 20 receipts / rejected 1 + 12 + 1 (1, 2, 4 fields) + 4 bad date + 2 bad value /
+  1 ignored — and **every one of the 393 ids sits in the bucket the probe assigned it**:
+  `.claude/scratch/t75_expected_buckets.py` writes the probe's per-id TSV,
+  `t75_gate_compare.py` diffs the report against it (0 differences), and its `--perturb` run
+  flips one expected id and reports exactly 1, so the comparison is proven able to fail.
+  Acceptance `TestTelegramImport_DryRunAccountsForEveryMessage` green in the `-short` group
+  (synthetic 13-entry export, ids asserted per line); unit suite green — `internal/capture`
+  41 subtests including the required 2027 case, `internal/telegram` 26, `cmd` report writer 4.
+  **Without `--dry-run` the command currently returns an error naming step 3** — deliberate,
+  so a run that would write cannot silently do nothing. Re-run the same gate on the 2026
+  export the moment it exists: bucket drift there is the signal, not a failure of this step.
   **Gate:** reproduces the known 2025 buckets exactly — 352 / 20 / 12 / 4 / 2 / 2 / 1 —
   asserted **PER MESSAGE ID, not as totals**. A bug moving one message from `bad value` to
   `bad date` leaves every count identical; the ids are already in hand. The s74 shape
