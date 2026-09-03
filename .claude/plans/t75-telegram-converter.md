@@ -769,8 +769,18 @@ ground truth, so it cannot adjudicate a mismatch.**
   cleanly into both logs and is then never routed by `generate-workbook --year`. Not fixed
   here: the converter expands its own input (D1), and the boundary rule — reject, or expand
   as the converter does — is a parse-boundary decision to take with its own tests.
-  **Updated s75 step 5:** the D1 amendment means T-75 is no longer EXPOSED to the unguarded
-  past side, but the defect is unchanged and still live for `add` and `batch`.
+  **Updated s75 step 5:** the D1 amendment means the CONVERTER is no longer exposed to the
+  unguarded past side, but the defect is unchanged and still live for `add` and `batch`.
+  ⚠️ **Updated s76 — IT FIRED ON REAL DATA, and on a T-75 path.** The rejects file goes back
+  through **`batch-auto`**, which is the raw boundary and does NOT have D1's 2-digit
+  expansion. The human repaired the two `29/12/26` lines to `29/12/25` — the right year,
+  the notation they always use — and `parse.Date("29/12/25")` returns **29/12/0025 with no
+  error**. Measured, not reasoned: run through `parse.Date`/`parse.Value` directly, those two
+  rows came back as year 0025 while every other line resolved correctly. Rewritten to
+  `29/12/2025` by hand for this close. **This raises the boundary defect from "filed for
+  later" to "blocks the documented rejects workflow": T-63 tells the human to fix the file
+  and re-import, and the natural 2-digit fix is silently wrong.** The converter protects one
+  door; this is the other one.
 - **TO FILE AT HANDOFF — `batch-auto` WARNS on a duplicate and appends it anyway, and an
   auto-appended row never reaches the review page (found s76, in the first real close).**
   The 2026-02 close printed `⚠ duplicate: "<redacted item>" already in expense log (id
