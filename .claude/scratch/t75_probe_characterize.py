@@ -18,6 +18,19 @@ PROBE = os.path.join(HERE, "t75_oracle_probe.py")
 # ---- the pinned numbers -----------------------------------------------------------
 # naive: the probe's own throwaway conversion of the 352 conforming messages, exactly
 # as measured s75 and written into the report. These must NEVER drift silently.
+#
+# One DELIBERATE change since the baseline commit (0626c3b), recorded here so the diff is
+# a decision and not a drift: the residue catch-all "message never entered in the
+# workbook" (3) was tautological and was split by item lookup into "unknown to the log"
+# (2) and "item recurs, this date/value absent (omission)" (1 — `Cartão <person C>`, which
+# recurs as `<person C> boleto cartão`). Every other number is the baseline's.
+TAIL = "installment tail absent from the log"
+OUTSIDE = "expanded outside the comparison window"
+UNKNOWN = "message never entered in the workbook (item unknown to the log)"
+OMISSION = "item recurs in the log, this date/value absent (omission)"
+DUP = "count mismatch on the same (date,value)"
+PERTURBED = [("shift ONE value by 1 centavo", 346, 345, "OK"),
+             ("shift ONE date by 1 day", 346, 345, "OK")]
 EXPECT = {
     "naive": {
         "converted": 352,
@@ -26,14 +39,25 @@ EXPECT = {
                     "bad date field": 4, "field count 1": 2, "bad value field": 2,
                     "field count 4": 1},
         "matched": 346, "a_unmatched": 37, "b_unmatched": 153,
-        "residue": {"installment tail absent from the log": 24,
-                    "expanded outside the comparison window": 9,
-                    "message never entered in the workbook": 3,
-                    "count mismatch on the same (date,value)": 1},
+        "residue": {TAIL: 24, OUTSIDE: 9, UNKNOWN: 2, OMISSION: 1, DUP: 1},
         "series": {"PARTIAL": 14},
         "missing": Decimal("7309.43"),
-        "perturbation": [("shift ONE value by 1 centavo", 346, 345, "OK"),
-                         ("shift ONE date by 1 day", 346, 345, "OK")],
+        "perturbation": PERTURBED,
+        "exit": 0,
+    },
+    # converter: the REAL command's month files (step 4). Side A grows by exactly the 6
+    # repaired lines and matched does NOT move — none of the six is in the log (five items
+    # unknown, one — `Almoço <redacted>` 19/05 — an omission). SUSPECT must stay absent.
+    "converter": {
+        "converted": 358,
+        "repaired": 6,
+        "rows": 389,
+        "skipped": {"rejected by the converter (telegram-rejects.csv)": 14},
+        "matched": 346, "a_unmatched": 43, "b_unmatched": 153,
+        "residue": {TAIL: 24, OUTSIDE: 9, UNKNOWN: 7, OMISSION: 2, DUP: 1},
+        "series": {"PARTIAL": 14},
+        "missing": Decimal("7309.43"),
+        "perturbation": PERTURBED,
         "exit": 0,
     },
 }
@@ -56,6 +80,8 @@ def parse(out):
             section = "perturbation"; continue
         m = re.match(r"\s+(conforming messages|converted lines)\s*: (\d+)", line)
         if m: got["converted"] = int(m.group(2)); continue
+        m = re.match(r"\s+of which repaired\s*: (\d+)", line)
+        if m: got["repaired"] = int(m.group(1)); continue
         m = re.match(r"\s+rows after expand\s*: (\d+)", line)
         if m: got["rows"] = int(m.group(1)); continue
         m = re.match(r"\s+(\d+) skipped: (.+)$", line)

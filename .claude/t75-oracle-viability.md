@@ -1,7 +1,10 @@
 # T-75 step 1 — is the 2025 Telegram export a usable oracle?
 
 **Session 75, 2026-09-02. Read-only measurement; nothing was written to either log.**
-Reproduce every number here with `python3 .claude/scratch/t75_oracle_probe.py`.
+Reproduce every number in the step-1 sections with
+`python3 .claude/scratch/t75_oracle_probe.py --source naive`; the probe's default since
+step 4 (see the last section) reads the real converter instead. Both sets of numbers are
+pinned by `.claude/scratch/t75_probe_characterize.py`.
 
 **Verdict: the oracle is USABLE, with an asymmetric acceptance criterion.** And the
 residue turned out to sit on the LOG's side, not the converter's — in every explained
@@ -170,3 +173,62 @@ push the converter toward reproducing the log's own omissions.
   vocabulary is evolving — `89,90*3` appears in 2025-11, and T-64 only taught the
   parser `x4` in s73 — so the 2026 export must be re-bucketed before the converter is
   trusted on it.
+
+---
+
+## Step 4 (session 75, 2026-09-03) — the probe now reads the REAL converter
+
+Characterize-first, literally: `t75_probe_characterize.py` pinned the eleven numbers above
+black-box (the probe run as a subprocess, its report parsed) and went green on the
+unmodified probe — and red when one pinned number was flipped — before a line of the probe
+changed. Then the swap: `--source converter` (the default) runs `expense-reporter
+telegram-import` into a temp dir and reads its month files, expanding each line's
+installments with the Python port; `--source naive` is the step-1 conversion, kept so the
+numbers above stay reproducible. The exit code is now the gate.
+
+```
+SIDE A  converter output   358 lines (352 as typed + 6 repaired) -> 389 rows
+                           14 rejected (telegram-rejects.csv)
+MATCH   matched 346 | A unmatched 43 | B unmatched 153
+RESIDUE 24 installment tails absent | 9 outside the window | 7 never entered (item
+        unknown to the log) | 2 item recurs, this date/value absent | 1 count mismatch
+        0 SUSPECT
+GATE    PASS — unexplained == 0; perturbations 346 -> 345 in both directions
+```
+
+**Finding: not one of the six repaired messages is in the log.** Matched stayed at 346
+while side A grew by exactly the six lines D4 recovered, and the item lookup says why:
+
+| date | value | item | log |
+|------|------:|------|-----|
+| 15/05/2025 | 216,00 | `Gás 2 bujões` | item unknown |
+| 19/05/2025 | 50,00 | `Almoço <redacted>` | item recurs (`Almoço pizza na roça` 03/05, `Delivery almoço na roça` 03/06), this instance absent |
+| 30/05/2025 | 78,00 | `Almoço <redacted> 3 pessoas` | item unknown |
+| 25/07/2025 | 90,00 | `Tela celular` | item unknown |
+| 21/08/2025 | 1.200,00 | `Dentista <person A> canal` | item unknown |
+| 28/08/2025 | 194,96 | `Mensalidade agosto faculdade Ana` | item unknown |
+
+**R$ 1.828,96 typed into the group in 2025 that the workbook never received — and the
+common factor is the typo.** Whatever entered the other 352 (a hand, an earlier import)
+skipped exactly the messages that did not parse. That is the converter's case in one
+table: the repairs are not cosmetic, they are the lines that were being lost. Not a T-75
+concern to backfill; it is the second omission list beside T-78's installment tails.
+
+**"Never entered" is now verified, not assumed.** The step-1 residue classification had a
+catch-all: every leftover row that was not an installment tail, not outside the window and
+not a same-day duplicate was labelled "never entered", so `unexplained == 0` could not
+fail. `leftover_cause` now consults the log for the same ITEM (every token of the export
+item inside one log item — "all but one token" was tried first and called `Cartão <person C>`
+present because some log item contains `anita`):
+
+- **unknown** — no log item carries the export item: never entered;
+- **omission** — the item recurs in the log but nothing sits near this date/value: the
+  human skipped this one, a named cause the lossy log allows;
+- **SUSPECT** — the item is in the log with the same value within 7 days, or on the same
+  date with another value: a converter error or a human edit. Fails the gate.
+
+Under that split the step-1 "3 never entered" reads 2 unknown (`Compra martminas`,
+`Associação Regera`) + 1 omission (`Cartão <person C>` 18/08 R$ 1.034,39 — the item recurs as
+`<person C> boleto cartão`, so that month's bill was skipped, not an unknown item). Every other
+number above is unchanged, and SUSPECT is 0 in both modes — which is the sentence step 4
+existed to be able to write.

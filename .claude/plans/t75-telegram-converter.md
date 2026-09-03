@@ -455,7 +455,19 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   pointing it at the existing `expenses-2026-01.csv` and confirming it declines and names
   the file.
 
-- [ ] **4 — repoint `t75_oracle_probe.py` at real converter output**
+- [x] **4 — repoint `t75_oracle_probe.py` at real converter output** — **DONE s75.**
+  **Characterized first:** `t75_probe_characterize.py` pinned eleven numbers black-box,
+  green on the unmodified probe, red when one was flipped, committed (`0626c3b`) BEFORE
+  the swap. **Then:** `--source converter` (default) runs the Go command into a temp dir
+  and reads its month files; `--source naive` keeps step 1 reproducible; the gate is the
+  exit code. **Measured:** 358 lines → 389 rows; matched **346 — unchanged**, because not
+  one of the 6 repaired lines has a partner; residue 43 = 24 tails + 9 outside + 7 unknown
+  + 2 omission + 1 count mismatch; **SUSPECT 0 → GATE PASS**, perturbations 346 → 345 both
+  ways. **The catch-all was tautological and is gone:** "never entered" is now verified
+  by item lookup (unknown / omission / SUSPECT — only SUSPECT fails), and step 1's "3
+  never entered" reads 2 unknown + 1 omission. **Finding:** the six repaired messages
+  (R$ 1.828,96) are absent from the 2025 log — the typo was what kept them out. Written up
+  in `.claude/t75-oracle-viability.md` § "Step 4"; to file beside T-78 at handoff.
   **Gate: unexplained == 0.** NOT a match rate — see the validation section.
   ⚠️ **`characterize-first` applies HERE AND NOWHERE ELSE in this plan.** The probe is
   committed code with no tests of its own, and its conversion source changes from an internal

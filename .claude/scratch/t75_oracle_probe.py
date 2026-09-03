@@ -1,26 +1,33 @@
 #!/usr/bin/env python3
-"""T-75 step 1 — is the 2025 Telegram export a usable oracle for the converter?
+"""T-75 — the 2025 Telegram export as a validation oracle for the converter.
 
-Read-only. Regenerates every number quoted in `.claude/t75-oracle-viability.md`.
+Read-only. Side A has two sources, chosen with --source:
+
+  converter  (default; step 4)  the REAL converter's output — the expenses-YYYY-MM.csv
+             files `expense-reporter telegram-import` writes, run into a temp dir unless
+             --out-dir names an existing one. Each line's installments are expanded with
+             the Python port below, which shares no code with the Go parser: a divergence
+             shows up as residue (or as a "DIVERGENCE" skip), the safe direction.
+  naive      (step 1)  the probe's own DELIBERATELY DUMB conversion of the 352 conforming
+             messages — no repair, no converter — kept so every number quoted in
+             `.claude/t75-oracle-viability.md` stays reproducible, and as a second opinion
+             beside the converter. Pinned by t75_probe_characterize.py.
 
 The question is NOT "do the two sides reconcile" — they cannot, and that is known
 before running: 352 messages against 499 log rows, where the log side came from the
 hand-maintained workbook via 5.R4 (alias table + dedup + merge) and holds recurring
 bills nobody types into the chat group.
 
-The question is: of the rows a naive conversion produces, how many find a
-(date, value) partner in the log — and does every miss have a NAMED cause?
+The question is: of the rows side A produces, how many find a (date, value) partner in
+the log — and does every miss have a NAMED cause? The log is a second lossy record, not
+ground truth, so the criterion is never a match rate. THE GATE IS THE EXIT CODE: 1 when a
+residue row's cause could not be named (UNEXPLAINED — its item IS in the log under another
+date or value) or when the perturbation stops discriminating; 0 otherwise.
 
-The conversion here is DELIBERATELY DUMB and thrown away. It touches only messages
-that already conform and attempts no repair, so its residue is a noise floor rather
-than a converter's accuracy. Building the converter first and then testing the oracle
-would be circular — the ambiguous rows would become an invitation to tune the
-converter until the number looked good (the characterize-first rule, s67 slice 4).
-
-Usage:  python3 .claude/scratch/t75_oracle_probe.py
+Usage:  python3 .claude/scratch/t75_oracle_probe.py [--source converter|naive] [--out-dir DIR]
 Env:    EXPORT_JSON, EXPENSE_LOG override the defaults below.
 """
-import json, os, re, sys, unicodedata
+import json, os, re, subprocess, sys, tempfile, unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -144,7 +151,80 @@ def parse_date_field(s, msg_d):
 
 # ------------------------------------------------------------------- the two sides
 
-def load_side_a():
+def parse_args(argv):
+    source, out_dir = "converter", None
+    it = iter(argv)
+    for a in it:
+        if a == "--source":
+            source = next(it, "")
+        elif a == "--out-dir":
+            out_dir = Path(next(it, ""))
+        else:
+            raise SystemExit("unknown argument: %s (see the module docstring)" % a)
+    if source not in ("naive", "converter"):
+        raise SystemExit("--source must be naive or converter")
+    return source, out_dir
+
+def load_side_a(source, out_dir):
+    return load_side_a_naive() if source == "naive" else load_side_a_converter(out_dir)
+
+def strip_trailing_comment(line):
+    """Port of cmd.stripTrailingComment (T-63): a '#' preceded by whitespace, once three
+    fields are complete, starts a comment. Returns (data, comment)."""
+    for i in range(1, len(line)):
+        if line[i] == "#" and line[i - 1] in " \t" and line[:i].count(";") >= 2:
+            return line[:i].rstrip(" \t"), line[i:]
+    return line, ""
+
+def converter_output(out_dir):
+    """The directory holding the converter's files: the one given, or a fresh temp dir the
+    Go command is run into right now — so the probe always reads THE converter, never a
+    stale copy of its output."""
+    if out_dir is not None:
+        return out_dir
+    tmp = Path(tempfile.mkdtemp(prefix="t75-probe-"))
+    cmd = ["go", "run", "./cmd/expense-reporter", "telegram-import", str(EXPORT),
+           "--out-dir", str(tmp)]
+    p = subprocess.run(cmd, cwd=REPO / "expense-reporter", capture_output=True, text=True)
+    if p.returncode != 0:
+        raise SystemExit("converter failed (%d):\n%s%s" % (p.returncode, p.stdout, p.stderr))
+    return tmp
+
+def load_side_a_converter(out_dir):
+    """Side A from the converter's month files. Every data line is item;DD/MM/YYYY;value,
+    the year already resolved by the converter (plan D1), so only the VALUE goes through
+    the Python port — that is the cross-check. A repaired line's "(message N)" comment
+    supplies its id; other lines are keyed by file:line, which is enough for the series
+    check (one line is one message's expense)."""
+    out_dir = converter_output(out_dir)
+    rows, skipped = [], Counter()
+    for f in sorted(out_dir.glob("expenses-*.csv")):
+        for n, raw in enumerate(f.read_text().splitlines(), 1):
+            line = raw.rstrip(" \t")
+            if not line or line.startswith("#"):
+                continue
+            data, comment = strip_trailing_comment(line)
+            item, dstr, vstr = (p.strip() for p in data.split(";"))
+            dd, mm, yy = dstr.split("/")
+            d = date(int(yy), int(mm), int(dd))
+            try:
+                per, count = parse_with_installments(vstr)
+            except (ValueError, ZeroDivisionError):
+                skipped["value the Go parser took but the Python port rejects (DIVERGENCE)"] += 1
+                continue
+            m = re.search(r"\(message (\d+)\)", comment)
+            msg_id = int(m.group(1)) if m else "%s:%d" % (f.name, n)
+            for i in range(count):
+                rows.append({"date": add_months(d, i), "cents": round(per * 100),
+                             "item": item, "msg_id": msg_id, "n": count, "seq": i + 1,
+                             "repaired": bool(comment)})
+    rejects = out_dir / "telegram-rejects.csv"
+    if rejects.exists():
+        skipped["rejected by the converter (telegram-rejects.csv)"] = sum(
+            1 for l in rejects.read_text().splitlines() if l.strip() and not l.startswith("#"))
+    return rows, skipped
+
+def load_side_a_naive():
     msgs = json.loads(EXPORT.read_text())["messages"]
     rows, skipped = [], Counter()
     for x in msgs:
@@ -206,10 +286,39 @@ def norm_tokens(s):
     s = "".join(c for c in s if not unicodedata.combining(c))
     return set(re.findall(r"[a-z0-9]{3,}", s))
 
+NEAR_DAYS = 7
+
+def leftover_cause(item, d, cents, log_index):
+    """Why a single-row residue entry has no partner — decided by what the log holds for
+    the SAME item (every token of the export item inside one log item; 'all but one' was
+    tried first and called 'Cartão <person C>' present because some log item contains 'anita').
+
+      SUSPECT   the item is in the log with the same value within NEAR_DAYS days, or on the
+                same date with another value: a converter error or a human edit. Someone
+                must look, so this FAILS the gate.
+      omission  the item recurs in the log but nothing is near this date/value: the human
+                did not enter this one. A named cause; the log is lossy by construction.
+      unknown   no log item carries the export item at all: never entered.
+    """
+    toks = norm_tokens(item)
+    same = [r for r in log_index if toks and toks <= r["toks"]]
+    if not same:
+        return "message never entered in the workbook (item unknown to the log)"
+    for r in same:
+        if r["cents"] == cents and abs((r["date"] - d).days) <= NEAR_DAYS:
+            return SUSPECT
+        if r["date"] == d:
+            return SUSPECT
+    return "item recurs in the log, this date/value absent (omission)"
+
+SUSPECT = ("SUSPECT: same item in the log with the same value within %d days, or on the same "
+           "date with another value — converter error or human edit, INSPECT" % NEAR_DAYS)
+
 # ------------------------------------------------------------------------- report
 
-def main():
-    a_rows, skipped = load_side_a()
+def main(argv=None):
+    source, out_dir = parse_args(sys.argv[1:] if argv is None else argv)
+    a_rows, skipped = load_side_a(source, out_dir)
     b_rows = load_side_b()
     matched, a_only, b_only = match(a_rows, b_rows)
     by_key = defaultdict(list)
@@ -217,9 +326,13 @@ def main():
         by_key[key(r)].append(r)
 
     print("=" * 70)
-    print("SIDE A  Telegram export, naive conversion")
+    print("SIDE A  %s" % ("Telegram export, naive conversion" if source == "naive"
+                          else "converter output (expense-reporter telegram-import)"))
     print("=" * 70)
-    print("  conforming messages : %d" % len({r["msg_id"] for r in a_rows}))
+    label = "conforming messages" if source == "naive" else "converted lines    "
+    print("  %s : %d" % (label, len({r["msg_id"] for r in a_rows})))
+    if source == "converter":
+        print("  of which repaired   : %d" % len({r["msg_id"] for r in a_rows if r["repaired"]}))
     print("  rows after expand   : %d" % len(a_rows))
     for b, c in skipped.most_common():
         print("      %3d skipped: %s" % (c, b))
@@ -245,6 +358,11 @@ def main():
     by_date = defaultdict(list)
     for r in b_rows:
         by_date[r["date"]].append(r["cents"])
+    # "never entered" is VERIFIED, not assumed: the catch-all used to be tautological
+    # (every leftover row got that label, so "unexplained == 0" could not fail). Now the
+    # log is consulted for the same ITEM — see leftover_cause — and a row the log holds
+    # nearby is SUSPECT, which fails the run.
+    log_index = [dict(r, toks=norm_tokens(r["item"])) for r in b_rows]
     buckets, detail = Counter(), defaultdict(list)
     for k, n in a_only.items():
         d, c = k
@@ -256,17 +374,20 @@ def main():
         elif sample["n"] > 1:
             b = "installment tail absent from the log"
         else:
-            b = "message never entered in the workbook"
+            b = leftover_cause(sample["item"], d, c, log_index)
         buckets[b] += n
         if len(detail[b]) < 3:
-            detail[b].append("%s %9.2f  %s"
-                             % (d.strftime("%d/%m/%Y"), c / 100, sample["item"][:36]))
+            detail[b].append("%s %9.2f  %s%s"
+                             % (d.strftime("%d/%m/%Y"), c / 100, sample["item"][:36],
+                                "  [repaired]" if sample.get("repaired") else ""))
+    unexplained = buckets.get(SUSPECT, 0)
     print()
     print("  --- side A residue, by cause (every row must have one) ---")
     for b, c in buckets.most_common():
         print("      %3d  %s" % (c, b))
         for line in detail[b]:
             print("             %s" % line)
+    print("  unexplained      : %d   <- the gate; must be 0" % unexplained)
 
     # --- are installment series complete in the log? ------------------------------
     # The decisive check. An earlier cut asked "does this value appear elsewhere in
@@ -326,7 +447,11 @@ def main():
         ok &= good
         print("  %-31s %d -> %d   %s"
               % (label, matched, m2, "OK" if good else "*** NOT SENSITIVE ***"))
-    return 0 if ok else 1
+    print()
+    print("GATE: %s" % ("PASS — every residue row has a named cause and the comparison can fail"
+                        if ok and unexplained == 0 else
+                        "FAIL — %d unexplained row(s)%s" % (unexplained, "" if ok else ", perturbation not sensitive")))
+    return 0 if ok and unexplained == 0 else 1
 
 if __name__ == "__main__":
     sys.exit(main())
