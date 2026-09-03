@@ -1,0 +1,171 @@
+package capture
+
+// Outcomes in these tests are built through the real Classify function, never as
+// struct literals: the parse boundary is what fills Line, Date and Err, so a literal
+// would test the literal and could describe a combination production cannot produce.
+
+import (
+	"errors"
+	"testing"
+	"time"
+
+	"expense-reporter/internal/parse"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// defaultNow is the clock Classify tests run against unless a row needs its own.
+var defaultNow = day(2026, time.September, 3)
+
+// day returns midnight UTC on the given date.
+func day(y int, m time.Month, d int) time.Time {
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+func TestResolveDateField(t *testing.T) {
+	tests := []struct {
+		name    string
+		field   string
+		sentAt  time.Time
+		want    string
+		wantErr bool
+	}{
+		{"same day", "03/05", day(2025, time.May, 3), "03/05/2025", false},
+		{"reported four days later", "30/04", day(2025, time.May, 4), "30/04/2025", false},
+		{"previous year across new year", "31/12", day(2026, time.January, 2), "31/12/2025", false},
+		{"next year within the future allowance", "03/01", day(2026, time.December, 28), "03/01/2027", false},
+		{"mistyped month is questioned, not resolved", "19/01", day(2025, time.October, 19), "", true},
+		{"too far in the future", "05/07", day(2025, time.May, 7), "", true},
+		{"not a calendar date", "31/02", day(2025, time.July, 6), "", true},
+		{"explicit four-digit year verbatim", "08/07/2025", day(2025, time.July, 9), "08/07/2025", false},
+		{"explicit year outranks the timestamp even far outside the window", "12/03/2024", day(2025, time.May, 1), "12/03/2024", false},
+		{"two-digit year expands to this century", "25/07/25", day(2025, time.July, 25), "25/07/2025", false},
+		{"single-digit day and month are padded", "3/5", day(2025, time.May, 3), "03/05/2025", false},
+		{"surrounding spaces are trimmed", " 03/05 ", day(2025, time.May, 3), "03/05/2025", false},
+		{"clock time is not a date", "16:20", day(2025, time.July, 5), "", true},
+		{"empty", "", day(2025, time.July, 5), "", true},
+		{"three-digit year", "25/07/025", day(2025, time.July, 25), "", true},
+		{"four parts", "1/2/3/4", day(2025, time.July, 25), "", true},
+		{"letters", "a/b", day(2025, time.July, 25), "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveDateField(tt.field, tt.sentAt)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, parse.ErrInvalidDate)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestClassify(t *testing.T) {
+	tests := []struct {
+		name           string
+		text           string
+		attachment     Attachment
+		sentAt         time.Time
+		now            time.Time
+		wantClass      Class
+		wantBucket     Bucket
+		wantLine       string
+		wantDate       time.Time
+		wantErrIs      error
+		wantFieldCount int
+	}{
+		{"typed expense, same day", "Padaria; 03/05; 12,50", NoAttachment, day(2025, time.May, 3), defaultNow, Converted, BucketConverted, "Padaria;03/05/2025;12,50", day(2025, time.May, 3), nil, 0},
+		{"no spaces around separators", "Padaria;03/05;12,50", NoAttachment, day(2025, time.May, 3), defaultNow, Converted, BucketConverted, "Padaria;03/05/2025;12,50", day(2025, time.May, 3), nil, 0},
+		{"thousands separator kept raw in the line", "Mercado; 30/04; 1.234,56", NoAttachment, day(2025, time.May, 4), defaultNow, Converted, BucketConverted, "Mercado;30/04/2025;1.234,56", day(2025, time.April, 30), nil, 0},
+		{"divisor installments pass through unexpanded", "Compras; 15/05; 900,00/3", NoAttachment, day(2025, time.May, 15), defaultNow, Converted, BucketConverted, "Compras;15/05/2025;900,00/3", day(2025, time.May, 15), nil, 0},
+		{"multiplier installments pass through unexpanded", "Cartao Teste; 09/01; 405,25 x4", NoAttachment, day(2025, time.January, 9), defaultNow, Converted, BucketConverted, "Cartao Teste;09/01/2025;405,25 x4", day(2025, time.January, 9), nil, 0},
+		{"explicit year", "Cinema; 08/07/2025; 45,00", NoAttachment, day(2025, time.July, 9), defaultNow, Converted, BucketConverted, "Cinema;08/07/2025;45,00", day(2025, time.July, 8), nil, 0},
+		{"comma instead of the first semicolon", "Almoço teste, 06/05; 50,00", NoAttachment, day(2025, time.May, 6), defaultNow, Rejected, "rejected: 2 fields", "", time.Time{}, nil, 2},
+		{"stray semicolon inside the item", "Cartao Teste; ADM; 09/01; 405,25 x4", NoAttachment, day(2025, time.July, 6), defaultNow, Rejected, "rejected: 4 fields", "", time.Time{}, nil, 4},
+		{"one field that talks about money is an attempted expense", "É 450,00 três meses, tá?", NoAttachment, day(2025, time.July, 9), defaultNow, Rejected, "rejected: 1 field", "", time.Time{}, nil, 1},
+		{"conversation is ignored", "Não quer mais?", NoAttachment, day(2025, time.May, 6), defaultNow, Ignored, BucketIgnored, "", time.Time{}, nil, 0},
+		{"clock time as value", "Uber; 05/07; 16:20", NoAttachment, day(2025, time.July, 5), defaultNow, Rejected, BucketBadValue, "", time.Time{}, parse.ErrInvalidValue, 0},
+		{"impossible date", "Café; 31/02; 8,00", NoAttachment, day(2025, time.July, 6), defaultNow, Rejected, BucketBadDate, "", time.Time{}, parse.ErrInvalidDate, 0},
+		{"REQUIRED (plan D1): resolves into next year, then refused as beyond the current year", "Bolo; 03/01; 20,00", NoAttachment, day(2026, time.December, 28), day(2026, time.December, 28), Rejected, BucketBadDate, "", time.Time{}, parse.ErrInvalidDate, 0},
+		{"bare date too far back", "Bolo; 19/01; 20,00", NoAttachment, day(2025, time.October, 19), defaultNow, Rejected, BucketBadDate, "", time.Time{}, parse.ErrInvalidDate, 0},
+		{"empty item", "; 03/05; 10,00", NoAttachment, day(2025, time.May, 3), defaultNow, Rejected, BucketRejectedOther, "", time.Time{}, nil, 0},
+		{"photo with no text is a receipt", "", PhotoAttachment, day(2025, time.May, 4), defaultNow, Receipt, BucketReceipts, "", time.Time{}, nil, 0},
+		{"pdf with no text is a receipt", "", FileAttachment, day(2025, time.May, 5), defaultNow, Receipt, BucketReceipts, "", time.Time{}, nil, 0},
+		{"empty text and no attachment is ignored", "", NoAttachment, day(2025, time.May, 5), defaultNow, Ignored, BucketIgnored, "", time.Time{}, nil, 0},
+		{"whitespace-only text is ignored", "   ", NoAttachment, day(2025, time.May, 5), defaultNow, Ignored, BucketIgnored, "", time.Time{}, nil, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := Message{
+				ID:         1,
+				SentAt:     tt.sentAt,
+				Text:       tt.text,
+				Attachment: tt.attachment,
+			}
+			if tt.now.IsZero() {
+				tt.now = defaultNow
+			}
+			outcome := Classify(m, tt.now)
+
+			assert.Equal(t, tt.wantClass, outcome.Class)
+			if tt.wantBucket != "" {
+				assert.Equal(t, tt.wantBucket, outcome.Bucket())
+			}
+
+			switch tt.wantClass {
+			case Converted:
+				assert.Equal(t, tt.wantLine, outcome.Line)
+				assert.Equal(t, tt.wantDate, outcome.Date)
+				assert.NoError(t, outcome.Err)
+			case Rejected:
+				assert.Error(t, outcome.Err)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(t, outcome.Err, tt.wantErrIs)
+				}
+				if tt.wantFieldCount != 0 {
+					var fce FieldCountError
+					require.True(t, errors.As(outcome.Err, &fce))
+					assert.Equal(t, tt.wantFieldCount, fce.Got)
+				}
+			case Receipt, Ignored:
+				assert.NoError(t, outcome.Err)
+				assert.Empty(t, outcome.Line)
+			}
+		})
+	}
+}
+
+func TestSummarize(t *testing.T) {
+	t.Run("basic summary", func(t *testing.T) {
+		outcomes := []Outcome{
+			Classify(Message{ID: 1, Text: "Padaria; 03/05; 12,50", SentAt: day(2025, time.May, 3)}, defaultNow),
+			Classify(Message{ID: 2, Text: "", Attachment: PhotoAttachment, SentAt: day(2025, time.May, 4)}, defaultNow),
+			Classify(Message{ID: 3, Text: "Não quer mais?", SentAt: day(2025, time.May, 6)}, defaultNow),
+			Classify(Message{ID: 4, Text: "Uber; 05/07; 16:20", SentAt: day(2025, time.July, 5)}, defaultNow),
+		}
+
+		sum := Summarize(outcomes)
+		assert.Equal(t, 4, sum.Total)
+		assert.Equal(t, map[Bucket][]int{
+			BucketConverted: {1},
+			BucketReceipts:  {2},
+			BucketIgnored:   {3},
+			BucketBadValue:  {4},
+		}, sum.IDs)
+	})
+
+	t.Run("stream order preserved", func(t *testing.T) {
+		outcomes := []Outcome{
+			Classify(Message{ID: 7, Text: "Padaria; 03/05; 12,50", SentAt: day(2025, time.May, 3)}, defaultNow),
+			Classify(Message{ID: 3, Text: "Mercado; 30/04; 1.234,56", SentAt: day(2025, time.May, 4)}, defaultNow),
+		}
+
+		sum := Summarize(outcomes)
+		assert.Equal(t, []int{7, 3}, sum.IDs[BucketConverted])
+	})
+}

@@ -262,3 +262,15 @@ func runCommand(ctx *harness.Context, args ...string) {
 		ctx.T.Fatalf("runCommand %v: unexpected error: %v", args, err)
 	}
 }
+
+// --- Telegram import ------------------------------------------------------------
+
+// RunTelegramImport runs telegram-import over a named export file in the scenario
+// fixture. The export is read, never written, so it stays in the fixture dir. Extra
+// flags (--dry-run) are appended last.
+func RunTelegramImport(exportFile string, extraFlags ...string) func(*harness.Context) {
+	return func(ctx *harness.Context) {
+		args := []string{"telegram-import", filepath.Join(ctx.FixtureDir, exportFile)}
+		runCommand(ctx, append(args, extraFlags...)...)
+	}
+}

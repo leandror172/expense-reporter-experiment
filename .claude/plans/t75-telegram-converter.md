@@ -189,6 +189,16 @@ said `[-300, +60]` — 361 days, and loose enough that a mistyped month (`19/01`
 resolves silently to the same year instead of being questioned. **An unresolvable date
 REJECTS**; the converter is the last place where "did you mean last year?" is answerable.
 
+**Two-digit years are expanded to this century BEFORE validation (added s75, step 1).**
+The census of the 2025 export found 2 conforming messages written `DD/MM/25`. Handing that
+to the boundary "verbatim" is not neutral: **`parse.Date("25/07/25")` returns 25/07/0025
+with NO error** — probed s75, `YearFromDateString`, both year validations pass (25 is
+renderable and not beyond the current year). That is the boundary's quietest failure shape
+in its own words, and it is live today for `add`; it is filed for the boundary separately
+(see Risks). The converter therefore reads a 2-digit year as `20YY` — still the human's
+year, in the notation they used — and rejects any other year length. Rule 1 above stays
+"the human outranks the timestamp"; this only fixes which century the human meant.
+
 ⚠️ **The window and `validateYearNotBeyondCurrent` interact, and the result is a rejection.
 REQUIRED TEST.** A message sent 2026-12-28 reporting `03/01`: the 2026 candidate is −359
 days (outside the window), the 2027 candidate is **+6** (inside), so it resolves to
@@ -327,6 +337,13 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   exactly: the pairing check passed 717/717 over a lookup that coin-flipped a year for 38 ids.
   **Build the adapter split from the start** — retrofitting it after step 2 means re-testing
   the parser through a second door.
+  **Scope note (s75):** D1's date resolution is BUILT in this step, not step 2 — "does C0
+  parse?" cannot be answered without it, and a placeholder would only be deleted. Step 2's
+  gate still owns the D1 assertions; step 1 pins them early in `capture/classify_test.go`.
+  Layout: `internal/capture` (source-agnostic: `Message`, `Classify`, `ResolveDateField`,
+  `Summarize`) ← `internal/telegram` (adapter: `ReadExport` → `[]capture.Message`) ←
+  `cmd/.../telegram_import.go` (flags + report rendering). The adapter imports the core,
+  never the reverse.
 
 - [ ] **2 — repairs (D4 / D5 / D6) + D1 resolution**
   **Gate:** the 12 comma rows + the `/` row recovered; the 8 genuinely ambiguous ones still
@@ -440,3 +457,10 @@ ground truth, so it cannot adjudicate a mismatch.**
   export has 2 replies and NEITHER contains expense syntax; 19 messages were edited and the
   export carries final text, so edits resolve themselves. Re-check on the 2026 export.
 - **Two people type into the group** (290 / 103 messages), so habits may differ per author.
+- **TO FILE AT HANDOFF — boundary accepts `DD/MM/YY` as year 00YY (found s75).**
+  `parse.Date("25/07/25")` → `25/07/0025`, no error: `ParseDateFlexible` takes any integer
+  as the year, `validateRenderableYear` allows 1..9999, and `validateYearNotBeyondCurrent`
+  only looks forward. An `add` with a 2-digit year therefore writes a row that hashes
+  cleanly into both logs and is then never routed by `generate-workbook --year`. Not fixed
+  here: the converter expands its own input (D1), and the boundary rule — reject, or expand
+  as the converter does — is a parse-boundary decision to take with its own tests.

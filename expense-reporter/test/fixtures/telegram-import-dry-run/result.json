@@ -1,0 +1,20 @@
+{
+  "name": "Gastos",
+  "type": "private_group",
+  "id": 1,
+  "messages": [
+    {"id": 13, "type": "service", "date": "2025-05-01T00:00:00", "actor": "A", "actor_id": "user1", "action": "create_group", "title": "Gastos", "members": ["A", "B"], "text": "", "text_entities": []},
+    {"id": 1, "type": "message", "date": "2025-05-03T12:00:00", "date_unixtime": "1746273600", "from": "A", "from_id": "user1", "text": "Padaria; 03/05; 12,50", "text_entities": [{"type": "plain", "text": "Padaria; 03/05; 12,50"}]},
+    {"id": 2, "type": "message", "date": "2025-05-04T09:30:00", "from": "A", "from_id": "user1", "text": "Mercado; 30/04; 1.234,56", "text_entities": []},
+    {"id": 3, "type": "message", "date": "2025-05-04T09:31:00", "from": "A", "from_id": "user1", "photo": "photos/photo_1@04-05-2025_09-31-00.jpg", "photo_file_size": 1024, "width": 10, "height": 10, "text": "", "text_entities": []},
+    {"id": 4, "type": "message", "date": "2025-05-05T10:00:00", "from": "B", "from_id": "user2", "file": "(File not included. Change data exporting settings to download.)", "file_name": "boleto.pdf", "file_size": 2048, "mime_type": "application/pdf", "text": "", "text_entities": []},
+    {"id": 5, "type": "message", "date": "2025-05-06T10:00:00", "from": "B", "from_id": "user2", "text": "Almoço teste, 06/05; 50,00", "text_entities": []},
+    {"id": 6, "type": "message", "date": "2025-05-06T10:05:00", "from": "A", "from_id": "user1", "text": "Não quer mais?", "text_entities": []},
+    {"id": 7, "type": "message", "date": "2025-07-05T18:00:00", "from": "A", "from_id": "user1", "text": "Uber; 05/07; 16:20", "text_entities": []},
+    {"id": 8, "type": "message", "date": "2025-07-06T18:00:00", "from": "A", "from_id": "user1", "text": "Café; 31/02; 8,00", "text_entities": []},
+    {"id": 9, "type": "message", "date": "2025-07-06T18:01:00", "from": "B", "from_id": "user2", "text": "Cartao Teste; ADM; 09/01; 405,25 x4", "text_entities": []},
+    {"id": 10, "type": "message", "date": "2025-07-08T18:00:00", "from": "A", "from_id": "user1", "text": ["Tela celular; ", {"type": "bold", "text": "08/07"}, "; 90,00"], "text_entities": []},
+    {"id": 11, "type": "message", "date": "2025-07-09T08:00:00", "from": "A", "from_id": "user1", "text": "Cinema; 08/07/2025; 45,00", "text_entities": []},
+    {"id": 12, "type": "message", "date": "2025-07-09T08:01:00", "from": "B", "from_id": "user2", "text": "É 450,00 três meses, tá?", "text_entities": []}
+  ]
+}
