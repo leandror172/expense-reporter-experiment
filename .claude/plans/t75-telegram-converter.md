@@ -1,6 +1,7 @@
 # T-75 — Telegram export → batch-auto CSV converter
 
-**Status: PLAN, session 75 (2026-09-02). Not implemented.**
+**Status: BUILT, session 75 (2026-09-03). Steps 1–5 DONE on `feat/t75-telegram-converter`;
+step 6 — the real close — is the only one left and needs the 2026 export from the user.**
 Prerequisite DONE: `.claude/t75-oracle-viability.md` [ref:t75-oracle] — the 2025 export
 validated as an oracle (90.3% A-coverage, 37/37 misses explained, perturbation-checked).
 
@@ -477,10 +478,28 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   entered / 1 count mismatch), `153` side-B residue; buckets `20 / 12 / 4 / 2 / 2 / 1`; both
   perturbations move the residue by exactly 1.
 
-- [ ] **5 — `go build ./... && go vet ./... && go test ./...` clean; `index.md` row; `-full` acceptance if a scenario is added**
+- [x] **5 — `go build ./... && go vet ./... && go test ./...` clean; `index.md` row; `-full` acceptance if a scenario is added** — **DONE s75.**
   ⚠️ **`-short` is structurally blind to CSV-shape changes** (s72): every
   `OutputFileHasColumns` assertion sits behind `RequireOllama`. If this touches the CSV
   contract at all, `-full` must run before calling it done.
+  **Measured:** build clean, vet clean, `go test ./...` **exit 0 — 22 packages `ok`, 948
+  tests**, re-run through `command go test` so the verdict is an exit code and a raw log,
+  not rtk's summary line. **`./run-acceptance.sh -full`: 78 passed / 0 failed / 0 skipped
+  in 108 s** — unchanged from the post-step-3 run, which is the expected result since step 4
+  touched only the probe. **0 skipped is the load-bearing number, not 78:** it is what says
+  the Ollama gate actually ran rather than quietly opting out, and
+  `TestTelegramImport_MonthFileIsAcceptedByBatchAuto` took **3.26 s** — a skip costs 0.00 s,
+  so the duration is the corroborating evidence that the real model was called.
+  **`index.md`:** the `internal/capture` package row described only steps 1–2; it now carries
+  step 3's `output.go` (pure sink, month grouping by resolved date, T-63 rejects with
+  provenance, every `os` call left in the command) and the corrected subtest count —
+  **62 → 74**, the 12 new ones being `output_test.go`; `internal/telegram` holds at 26. The
+  plan row's status prefix and this file's header were both stale ("steps 1–2 DONE",
+  "Status: PLAN … Not implemented") and were corrected in the same pass.
+  **Not done here, deliberately:** the probe's two characterization modes were left alone.
+  They are step 4's gate, they were green and committed there, and re-running them touches
+  the private export for no new information — step 6 re-runs the whole gate on the 2026 file
+  anyway.
 
 - [ ] **6 — run it, hand the output to a real close**
   Not a coding step, and the one that actually validates T-75: convert a month, run
