@@ -55,9 +55,22 @@ slice-3 decisions in §11).
   rung:** `validateRenderableYear` (permanent — outside 1..9999 `DateString()`
   emits malformed identity bytes) and `validateYearNotBeyondCurrent`
   (PROVISIONAL policy, T-47 — year-scale, so later-this-year is fine). Kept
-  separate so the policy can be relaxed without touching the contract. Past side
-  is deliberately unguarded (T-48). Installment expansion never re-enters here,
-  so a 24× purchase still writes rows years ahead.
+  separate so the policy can be relaxed without touching the contract. Installment
+  expansion never re-enters here, so a 24× purchase still writes rows years ahead.
+- ⚠️ **Past side unguarded (T-48) is NOT just a policy footnote — it is a LIVE
+  DEFECT, measured twice on real data (s75/s76).** `Date("29/12/25")` returns
+  **29/12/0025 with NO error**: `ParseDateFlexible` takes any integer year and
+  only `validateYearNotBeyondCurrent` looks, forward. The row then hashes cleanly
+  into both logs and is never routed by `generate-workbook --year`, so the failure
+  is invisible — no error, no lost row. **It BLOCKS T-63's documented recovery
+  workflow:** the rejects file is re-imported through `batch-auto` (the raw
+  boundary, no expansion), T-63 tells the human to fix the file, and the natural
+  fix for a wrong year is to correct the digits in the `DD/MM/YY` notation they
+  already use. Hit for real in s76. Likewise `Date("21/08/1200")` → year 1200.
+  `internal/capture` guards its own door (D1 amendment: the resolved date must sit
+  in `[-180,+7]` of the message, explicit year or not) — **that fix is the
+  CONVERTER's and does not protect `add`, `batch` or the rejects re-import.**
+  Filed for a boundary decision of its own: reject a 2-digit year, or expand it.
 - **BR thousands:** token with BOTH '.' and ',' → dots stripped ("1.234,56" OK);
   dot-only tokens keep legacy decimal-dot meaning (a hazard the multiplier made
   reachable in a new position — filed as T-74, NOT introduced by it). Boundary

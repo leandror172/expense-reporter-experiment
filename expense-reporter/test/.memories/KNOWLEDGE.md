@@ -366,4 +366,8 @@ must run `-full` before it is called done, regardless of how green `-short` is. 
 `curl -s localhost:11434/api/ps` first and unload a foreign resident model
 (`POST /api/generate` with `"prompt":"", "keep_alive":0`) — 8 GB of someone else's model on
 a 12 GB card is what turned a ~110s run into a 3602s timeout in s64. Measured clean here:
-107s, 66 scenarios.
+107s, 66 scenarios; **s76: 116s, 79 scenarios, 0 skipped.**
+**`0 skipped` is the load-bearing number, not the scenario count** — a skipped scenario
+reports as a pass at the suite level, so "79 passed" alone cannot tell "the Ollama gate ran"
+from "the gate quietly opted out". Corroborate with a duration: `TestTelegramImport_MonthFileIsAcceptedByBatchAuto`
+takes ~3.3s when the model is really called and 0.00s when it is skipped.

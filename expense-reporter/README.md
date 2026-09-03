@@ -255,6 +255,51 @@ into** — rerun the command after the log changes.
 Entries whose subcategory is not in the taxonomy are skipped with a warning
 (exit stays 0). On category disagreement the taxonomy wins.
 
+### `telegram-import` — Convert a Telegram export into batch-auto CSVs
+
+```bash
+expense-reporter telegram-import ChatExport/result.json --dry-run
+expense-reporter telegram-import ChatExport/result.json --out-dir /path/to/expenses
+```
+
+Reads Telegram Desktop's `result.json` and writes one `expenses-YYYY-MM.csv` per
+month plus `telegram-rejects.csv`. No model, no network, no workbook — deterministic
+and idempotent.
+
+| Flag | Required | Meaning |
+|---|---|---|
+| `--dry-run` | no | classify every message, print the per-bucket report with ids, write nothing |
+| `--out-dir` | **yes when writing** | destination for the month files and the rejects file |
+| `--force` | no | replace month/rejects files that already exist (refused otherwise) |
+
+**Months are split by the RESOLVED expense date, not the message date** — a January
+expense reported in July belongs to January's file. Year resolution belongs to the
+converter, not the boundary: an explicit year wins the selection, a 2-digit year
+expands to `20YY`, and a bare `DD/MM` resolves by proximity to the message's own
+day. Either way the resolved date must land within **[-180, +7] days** of the
+message, which is what stops a mistyped `21/08/1200` opening its own month file.
+
+**A message holding several `item; date; value` lines is imported as one expense per
+line**, provided *every* non-empty line has that shape — so a backlog catch-up list
+is split while one expense followed by a chatty line is not.
+
+**Installment tokens pass through raw** (`900,00/3`, `405,25 x4`): expansion happens
+once, at append time, and a second site computing installment dates is how T-35
+happened.
+
+**Writes are all-or-nothing.** Every target is checked before the first byte is
+written, and an existing file is refused by name unless `--force` — a month you
+already closed cannot be silently replaced.
+
+Messages that do not parse go to `telegram-rejects.csv` in the T-63 shape, with the
+reason as a trailing `#` comment and the message id and send date for provenance.
+Fix them in place and run that file through `batch-auto`. **No rejects file is
+written when nothing was rejected — its absence is the signal.**
+
+⚠️ The rejects file re-imports through `batch-auto`, which is the raw parse boundary
+and does *not* have the converter's 2-digit year expansion. Write a repaired year as
+`29/12/2025`, not `29/12/25` — the latter parses to year **0025** with no error.
+
 ### `version` — Print version
 
 ```bash
