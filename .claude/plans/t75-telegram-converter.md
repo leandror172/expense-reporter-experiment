@@ -447,7 +447,9 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   The literal "`expenses-2026-01.csv`" collision cannot be produced by the 2025 export (no
   2026 month); the 2026 export will exercise it. **Real 2025 run:** 9 month files
   (2025-04 … 2025-12), 358 body lines = 352 converted + 6 repaired, 6 `# repaired from:`
-  comments, `telegram-rejects.csv` with 14 rows.
+  comments, `telegram-rejects.csv` with 14 rows. **`./run-acceptance.sh -full` after step 3:
+  78 passed / 0 failed / 0 skipped in 105 s** — step 5's "-full if a scenario is added"
+  requirement is met for this state; it re-runs at the end because step 4 touches the probe.
   **Original gate text:** a produced CSV runs clean through `batch-auto --dry-run`; a rejects
   line, once its fields are repaired, re-runs as-is. D8's overwrite refusal proven by
   pointing it at the existing `expenses-2026-01.csv` and confirming it declines and names
