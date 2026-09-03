@@ -573,6 +573,29 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   unguarded past side. That defect is still live for `add` and `batch` and still needs
   filing; T-75 is simply no longer exposed to it.
 
+  ⚠️ **THEN the SECOND implementation of D1 had to be amended too — and none of the six
+  checks above could see that it hadn't been.** `t75_expected_buckets.py` is an INDEPENDENT
+  re-implementation of D1+D4+D5 from this plan's text; that independence is what caught the
+  D4 defect, and it means **every D1 amendment has two code sites, not one** — the D4
+  discipline was "fix the plan, then BOTH implementations", and step 5 initially fixed only
+  the Go. Why the gap was invisible: `go test` and `-full` are Go-only; `--source converter`
+  measures the binary against pinned numbers, not against the oracle; `--source naive` never
+  touches the Go path; and the two-half gate had **not been re-run**, which on 2025 would
+  have reported 393/393 anyway because zero messages exercise the changed branch. **The
+  corpus that hid the defect also hides the drift.** Left alone, the first 2026 run would
+  have shown the independent oracle disagreeing with a correct binary — and the natural
+  reading of that is "the Go is wrong", i.e. pressure to revert a correct fix at the one
+  moment there is no other adjudicator. **Fixed and re-run on 2025: `GATE PASS — every one
+  of 393 ids in the probe's bucket`, and `--perturb` still moves it by exactly 1.** That
+  re-proves the GATE, not the amendment.
+  **Also corrected while in there:** `validRepairs`' window check (Go) and `candidate_ok`'s
+  (Python) are now SUBSUMED — `parseLine`/`resolve_date` refuse an out-of-window candidate
+  before either is reached — and both carried a comment claiming "the as-typed line honours
+  an explicit year verbatim", which the amendment had just falsified. Both checks are KEPT,
+  with the comment saying why: D1's rule ("a date belongs near its message") and D4's ("a
+  guess needs more evidence than a statement") have different justifications and merely
+  share a threshold today.
+
 - [ ] **6 — run it, hand the output to a real close**
   Not a coding step, and the one that actually validates T-75: convert a month, run
   `close-cycle.sh prepare`, watch the rows arrive. Needs the 2026 export from the user.
@@ -664,3 +687,17 @@ ground truth, so it cannot adjudicate a mismatch.**
   cleanly into both logs and is then never routed by `generate-workbook --year`. Not fixed
   here: the converter expands its own input (D1), and the boundary rule — reject, or expand
   as the converter does — is a parse-boundary decision to take with its own tests.
+  **Updated s75 step 5:** the D1 amendment means T-75 is no longer EXPOSED to the unguarded
+  past side, but the defect is unchanged and still live for `add` and `batch`.
+- **OPEN QUESTION for the 2026 census — a zero-value row converts silently.** The same
+  composition shape as the D1 defect, one field over: `parse.Value("00")` returns 0 with no
+  error (verified s75, step 2), and the as-typed path runs `parse.Value` unguarded.
+  **Reproduced s75:** `Zero token; 21/08/2025; 00` and `Zero comma; 21/08/2025; 0,00` both
+  CONVERT, and the month file carries `Zero token;21/08/2025;00` with no rejects file.
+  **Deliberately NOT fixed, and it is a DECISION rather than a regression:** the harm is far
+  lower than a misfiled month — a R$ 0,00 row is visible in the month file, survives
+  `batch-auto` and reaches `review.html` where a human sees it — and "is a zero-value
+  expense ever legitimate?" is a question for the user, not an inference. **Add it to the
+  2026 census alongside the explicit-year check** (`.claude/scratch/` census, s75, already
+  does the date half): count zero-value lines before deciding. Only refuse if the count is
+  greater than zero and the user says they are never intentional.

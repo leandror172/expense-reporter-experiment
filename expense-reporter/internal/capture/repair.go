@@ -70,12 +70,18 @@ func mergedFirstTwoFields(text string) (string, bool) {
 
 // validRepairs runs the line predicate over each candidate and returns the ones the
 // boundary accepted WHOSE RESOLVED DATE LIES INSIDE THE D1 WINDOW of the message day
-// (daysFrom in [-windowPast, +windowFuture]), in candidate order. The window applies
-// here even to an explicit year, which the as-typed line honours verbatim: a candidate
-// is the tool's guess, not the human's statement, and it needs the extra evidence.
+// (daysFrom in [-windowPast, +windowFuture]), in candidate order.
 // Measured s75 — "Dentista …; 21/08/ 1200,00": the comma edit reads the value's
 // integer part as the year 1200, which the boundary ACCEPTS (1..9999, and the past side
 // is unguarded by design, T-48), so without this rule a plain slash typo was ambiguous.
+//
+// SUBSUMED by the s75 step-5 D1 amendment, which applies the same window to EVERY
+// resolved date: parseLine now refuses an out-of-window candidate itself, so the check
+// below can no longer be the thing that rejects one. It is kept because the two rules
+// have different justifications that merely share a threshold — D1's is "a date belongs
+// near its message", D4's is "a guess needs more evidence than a statement" — and if D1's
+// window were ever relaxed, D4 would still want its own. Delete it only together with a
+// test that pins D4's rule at the D1 site.
 func validRepairs(text string, sentAt, now time.Time) []repair {
 	var valid []repair
 

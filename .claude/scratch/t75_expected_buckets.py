@@ -6,8 +6,9 @@ Writes `id <TAB> label <TAB> detail` where label is the Go report's bucket strin
 rejected: bad value / rejected: ambiguous). Ids and labels only — never message text.
 
 Value parsing comes from the probe's port of pkg/utils/currency.go; the date rule (plan
-D1: explicit year verbatim, 2-digit year → 20YY, bare DD/MM within [-180,+7] days of the
-message day, year never beyond the current one) and the repair rule (plan D4: single
+D1: explicit year wins the SELECTION, 2-digit year → 20YY, and — since the s75 step-5
+amendment — the resolved date must land within [-180,+7] days of the message day on BOTH
+branches, explicit or bare; year never beyond the current one) and the repair rule (plan D4: single
 edits — each ',' → ';', each '/' → ';', four fields → merge the first two — accepted only
 when EXACTLY ONE parses with a date inside the window; D5: never for a line that already parses) are re-implemented
 here from the plan text, so a bug shared with the Go side would have to be a bug in the
@@ -48,7 +49,15 @@ def resolve_date(field, msg_d):
         y = parts[2]
         if len(y) == 2: y = "20" + y
         elif len(y) != 4: raise ValueError("year length")
-        return validated(date(int(y), int(parts[1]), int(parts[0])))
+        d = date(int(y), int(parts[1]), int(parts[0]))
+        # D1 AMENDMENT (s75, step 5): the window validates BOTH branches, not just the
+        # bare one. The explicit year still wins the SELECTION — nothing here re-resolves
+        # which year the human meant — but the resolved date must still land near the
+        # message, because the boundary's past side is unguarded (1..9999, forward-only)
+        # and '21/08/1200' would otherwise convert into its own month file.
+        if not (-WINDOW_PAST <= (d - msg_d).days <= WINDOW_FUTURE):
+            raise ValueError("explicit year outside the window")
+        return validated(d)
     raise ValueError("shape")
 
 
@@ -82,9 +91,13 @@ def candidate_ok(text, msg_d):
     """A repair candidate must parse AND its resolved date must lie inside the D1 window of
     the message day, explicit year or not (D4 amendment, s75): the comma edit on a slash
     typo reads the value's integer part as a year — '21/08/ 1200' → year 1200 — which the
-    boundary accepts because the past side is deliberately unguarded (T-48). The as-typed
-    line keeps D1 rule 1 (an explicit year the human wrote wins verbatim); a candidate is
-    the tool's guess and needs the extra evidence."""
+    boundary accepts because the past side is deliberately unguarded (T-48).
+    SUBSUMED since the s75 step-5 D1 amendment, which applies the same window to every
+    resolved date — so resolve_date already refuses this and the check below can no longer
+    fail. Kept because the two rules have DIFFERENT justifications that merely share a
+    threshold: D1's is "a date belongs near its message", D4's is "a guess needs more
+    evidence than a statement". If D1's window were ever relaxed, D4 would still want its
+    own."""
     if line_ok(text, msg_d) is not None:
         return False
     d = resolve_date(text.split(";")[1], msg_d)
