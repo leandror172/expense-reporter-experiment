@@ -246,22 +246,42 @@ func writeMonthFiles(dir string, months []capture.MonthFile) ([]writtenFile, err
 func writeBucketReport(w io.Writer, headline string, s capture.Summary) {
 	fmt.Fprintln(w, headline)
 	fmt.Fprintf(w, "%4d messages\n", s.Total)
-	fmt.Fprintf(w, "%4d converted\n", len(s.IDs[capture.BucketConverted]))
-	writeBucketLine(w, "repaired (one edit made the line parse)", s.IDs[capture.BucketRepaired])
-	writeBucketLine(w, "receipts (attachments beside typed expenses, skipped)", s.IDs[capture.BucketReceipts])
+	writeSplitLine(w, s)
+	fmt.Fprintf(w, "%4d converted\n", s.Counts[capture.BucketConverted])
+	writeBucketLine(w, "repaired (one edit made the line parse)", s.Counts[capture.BucketRepaired], s.IDs[capture.BucketRepaired])
+	writeBucketLine(w, "receipts (attachments beside typed expenses, skipped)", s.Counts[capture.BucketReceipts], s.IDs[capture.BucketReceipts])
 	for _, bucket := range sortedRejectedBuckets(s.IDs) {
-		writeBucketLine(w, string(bucket), s.IDs[bucket])
+		writeBucketLine(w, string(bucket), s.Counts[bucket], s.IDs[bucket])
 	}
-	writeBucketLine(w, "ignored (conversation)", s.IDs[capture.BucketIgnored])
+	writeBucketLine(w, "ignored (conversation)", s.Counts[capture.BucketIgnored], s.IDs[capture.BucketIgnored])
 }
 
-// writeBucketLine writes "%4d label" followed by ": id id …" when there are ids.
-func writeBucketLine(w io.Writer, label string, ids []int) {
+// writeSplitLine reports the message/line gap D10 opens, and ONLY when something split —
+// otherwise every report in the repo would grow a line saying nothing happened, and the
+// counts below already equal the message count.
+func writeSplitLine(w io.Writer, s capture.Summary) {
+	if s.Splits == 0 {
+		return
+	}
+	fmt.Fprintf(w, "%4d expense lines (%d multi-line %s split)\n", s.Lines, s.Splits, pluralLists(s.Splits))
+}
+
+func pluralLists(n int) string {
+	if n == 1 {
+		return "list"
+	}
+	return "lists"
+}
+
+// writeBucketLine writes "%4d label" followed by ": id id …" when there are ids. The
+// count is LINES and the ids are MESSAGES, so the two need not agree (D10): a list whose
+// lines disagree contributes several lines under one id.
+func writeBucketLine(w io.Writer, label string, lines int, ids []int) {
 	if len(ids) == 0 {
 		fmt.Fprintf(w, "%4d %s\n", 0, label)
 		return
 	}
-	fmt.Fprintf(w, "%4d %s: %s\n", len(ids), label, joinIDs(ids))
+	fmt.Fprintf(w, "%4d %s: %s\n", lines, label, joinIDs(ids))
 }
 
 // sortedRejectedBuckets lists the "rejected: …" buckets present in a summary, by

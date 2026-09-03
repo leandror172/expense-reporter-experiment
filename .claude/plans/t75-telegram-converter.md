@@ -415,7 +415,45 @@ conversion would silently destroy them. Refuse, name the file that blocked it, a
   downstream. Each month file also opens with one `#` provenance line.
 - **Line breaks inside a message are flattened to spaces** before a text reaches any
   line-oriented file. Zero occurrences in the 2025 export (measured); the rule exists so
-  the first one cannot split a row in two.
+  the first one cannot split a row in two. **Still true as a WRITER rule, but it is no
+  longer the whole story — see D10, which reads line breaks BEFORE this point.**
+
+### D10 — A multi-line message of 3-field lines is N messages (s76, USER RULING)
+
+**The trigger was real data, not foresight.** The 2026-02 export's very first run produced
+a bucket the 2025 corpus never had: `rejected: 21 fields`. It is one message holding **ten
+well-formed `item; date; value` lines** — a backlog catch-up list spanning 2025-10 to
+2026-01. Flattened by D9 it becomes one 21-field line and **all ten expenses are lost at
+once**. This is exactly the risk the plan named ("the 2026 vocabulary may differ from
+2025's… bucket drift is the signal"); the signal worked.
+
+**The rule: when a message has more than one non-empty line and EVERY non-empty line is
+3-field-shaped (exactly two `;`), it is N messages, one per line. Otherwise nothing
+changes and the message is judged whole, as today.**
+
+⚠️ **The test is SHAPE, not parseability, and the difference is load-bearing.** "Every line
+parses" would have refused to split this very message, because two of its ten lines carry
+`29/12/26` and fail D1's window. Shape is the structural evidence that the human typed a
+LIST; whether each line's date and value are any good is then judged per line, by exactly
+the same predicate as every other message. All-or-nothing on shape is what keeps a
+one-expense message with a chatty second line from being torn in half.
+
+**It lives in `internal/capture`, NOT in the adapter.** A bot receives multi-line text too,
+and the property the whole plan rests on is that the same message reaches the same verdict
+by either route. `internal/telegram` keeps knowing nothing about expenses.
+
+**Split lines keep the PARENT message id.** They are one human act, the rejects file already
+carries each offending line's own text, and a synthetic id would not survive back to
+anything the human can look up. The consequence is that one id can now appear in **two
+buckets** (this message: converted AND rejected: bad date), so `Summarize` de-duplicates
+ids per bucket and **`t75_gate_compare.py` compares a SET of labels per id** instead of one.
+
+**Bucket counts therefore count LINES while the ids list counts MESSAGES**, and the report
+says both rather than pretending they are the same number.
+
+**Measured:** 2025 export — **0** multi-line messages of any kind, so the 2025 gate and both
+probe characterizations are untouched by this rule. 2026-02 — 1 multi-line message, all
+lines 3-field, 34 → 42 converted.
 
 ## Build sequence / PROGRESS TRACKER
 
@@ -596,9 +634,36 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   guess needs more evidence than a statement") have different justifications and merely
   share a threshold today.
 
-- [ ] **6 — run it, hand the output to a real close**
-  Not a coding step, and the one that actually validates T-75: convert a month, run
-  `close-cycle.sh prepare`, watch the rows arrive. Needs the 2026 export from the user.
+- [ ] **6 — run it, hand the output to a real close** — **IN PROGRESS s76.** The export
+  arrived: `../export/2026-02/result.json`, 39 messages, 2026-02-01..27, **three** authors
+  where 2025 had two.
+  **It was never going to be "not a coding step", and that is the finding.** The first real
+  2026 run produced a bucket the 2025 corpus never had, which is exactly what the Risks
+  entry said to watch for — *"bucket drift is the signal"*. It fired, and it was worth
+  acting on: `rejected: 21 fields` was ten well-formed expenses in one message.
+  **What the first run proved, in order of how much it was worth:**
+  1. **The step-1 gate passed on data neither implementation was fitted to** — 39/39 per id,
+     perturbation moves it by exactly 1. First genuine cross-validation for either side.
+  2. **The D1 amendment caught a LIVE misfile, verified against the pre-amendment binary
+     built in a throwaway worktree.** Two lines written `29/12/26` in a message sent
+     2026-02-12: the 2-digit rule expands to **2026**, and `validateYearNotBeyondCurrent`
+     waves it through because 2026 IS the current year, so `355535f` wrote
+     `expenses-2026-12.csv` — two real expenses filed into a month that has not happened.
+     After the amendment that file is gone and both lines are legible rejections. **The
+     defect and the evidence for it arrived seven months apart, and the 2025 corpus could
+     not have shown either.**
+  3. **D8 refused to clobber a closed month.** A February export legitimately contains
+     January-dated expenses (D7), and `expenses-2026-01.csv` already exists WITH hand
+     repairs beside it. The all-or-nothing refusal fired on the first write attempt; the
+     output went to a fresh directory instead and `--force` was NOT used.
+  4. **D10 was written** (see D10) — 34 → 42 converted lines.
+  **Still open at this point:** the close itself. Note `close-cycle.sh prepare` takes ONE
+  input CSV and ONE year, while the converted output now spans **2025-10 … 2026-02** — the
+  user ruled "include every month in this close", so the year argument needs resolving
+  before `prepare` runs.
+  **Deliberately not spent yet:** the human review pass. It is the expensive step in the
+  chain and the one thing no Go test reaches, so it must not be spent on a month that is
+  about to gain eight more rows.
 
 ### Conventions that govern this work
 

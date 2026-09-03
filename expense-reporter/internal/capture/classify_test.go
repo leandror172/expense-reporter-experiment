@@ -171,4 +171,67 @@ func TestSummarize(t *testing.T) {
 		sum := Summarize(outcomes)
 		assert.Equal(t, []int{7, 3}, sum.IDs[BucketConverted])
 	})
+
+	// D10: three lines of one message, one of them unparseable. The id must appear once
+	// per bucket and in BOTH, the counts must follow lines, and Total must still say one
+	// message — the four numbers that stop "messages" and "lines" being conflated.
+	t.Run("a split list is many lines under one message id", func(t *testing.T) {
+		list := Message{
+			ID:     9,
+			Text:   "Mercado; 05/05; 100,00\nFarmacia; 06/05; 20,00\nPosto; 99/99; 50,00",
+			SentAt: day(2025, time.May, 10),
+		}
+
+		sum := Summarize(ClassifyAll([]Message{list}, defaultNow))
+
+		assert.Equal(t, 1, sum.Total, "one message was read")
+		assert.Equal(t, 3, sum.Lines, "three expense lines were classified")
+		assert.Equal(t, 1, sum.Splits, "one multi-line list was split")
+		assert.Equal(t, map[Bucket]int{BucketConverted: 2, BucketBadDate: 1}, sum.Counts)
+		assert.Equal(t, map[Bucket][]int{BucketConverted: {9}, BucketBadDate: {9}}, sum.IDs,
+			"the parent id lands in both buckets, once each")
+	})
+}
+
+// TestExpandLists pins plan D10's SHAPE test. The rows that matter most are the two that
+// must NOT split: a chatty second line means one expense plus a note, and a four-field
+// line means the message is not a clean list — in both cases tearing it apart would lose
+// or invent an expense. The "one line fails to parse" row is the reason the test counts
+// semicolons instead of parsing: the real message that forced this rule has two bad lines
+// among ten good ones.
+func TestExpandLists(t *testing.T) {
+	tests := []struct {
+		name  string
+		text  string
+		want  []string
+		split bool
+	}{
+		{"single line is itself", "a; 03/05; 1,00", []string{"a; 03/05; 1,00"}, false},
+		{"two 3-field lines split", "a; 03/05; 1,00\nb; 04/05; 2,00", []string{"a; 03/05; 1,00", "b; 04/05; 2,00"}, true},
+		{"blank lines are ignored", "a; 03/05; 1,00\n\n  \nb; 04/05; 2,00", []string{"a; 03/05; 1,00", "b; 04/05; 2,00"}, true},
+		{"lines are trimmed", "  a; 03/05; 1,00  \n  b; 04/05; 2,00", []string{"a; 03/05; 1,00", "b; 04/05; 2,00"}, true},
+		{"a line that fails to parse still splits", "a; 03/05; 1,00\nb; 99/99; 2,00", []string{"a; 03/05; 1,00", "b; 99/99; 2,00"}, true},
+		{"a chatty line blocks the split", "a; 03/05; 1,00\nvou pagar amanha", []string{"a; 03/05; 1,00\nvou pagar amanha"}, false},
+		{"a four-field line blocks the split", "a; 03/05; 1,00\nb; 04/05; 2,00; x", []string{"a; 03/05; 1,00\nb; 04/05; 2,00; x"}, false},
+		{"empty text is itself", "", []string{""}, false},
+		{"whitespace only is itself", "  \n  ", []string{"  \n  "}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parent := Message{ID: 42, Text: tt.text, SentAt: day(2025, time.May, 10), Attachment: PhotoAttachment}
+
+			got := expandLists(parent)
+
+			texts := make([]string, len(got))
+			for i, m := range got {
+				texts[i] = m.Text
+				assert.Equal(t, parent.ID, m.ID, "a line keeps the parent id")
+				assert.Equal(t, parent.SentAt, m.SentAt, "a line keeps the parent timestamp")
+				assert.Equal(t, parent.Attachment, m.Attachment, "a line keeps the parent attachment")
+			}
+			assert.Equal(t, tt.want, texts)
+			assert.Equal(t, tt.split, len(got) > 1)
+		})
+	}
 }

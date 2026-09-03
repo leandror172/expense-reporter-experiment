@@ -85,6 +85,36 @@ func TestWriteBucketReport(t *testing.T) {
 			},
 		},
 		{
+			// D10: one message was a ten-line list whose lines disagreed, so id 42 is in
+			// TWO buckets and the converted count (9 lines) exceeds the ids behind it.
+			// This is the row that makes writeBucketLine's count/ids split observable —
+			// with len(ids) it would print "2 converted" and "1 rejected: bad date".
+			name: "a split list counts lines while the ids stay messages",
+			summary: capture.Summary{
+				Total:  2,
+				Lines:  11,
+				Splits: 1,
+				Counts: map[capture.Bucket]int{
+					capture.BucketConverted: 9,
+					capture.BucketBadDate:   2,
+				},
+				IDs: map[capture.Bucket][]int{
+					capture.BucketConverted: {41, 42},
+					capture.BucketBadDate:   {42},
+				},
+			},
+			wantLines: []string{
+				"telegram-import: dry run, nothing written",
+				"   2 messages",
+				"  11 expense lines (1 multi-line list split)",
+				"   9 converted",
+				"   0 repaired (one edit made the line parse)",
+				"   0 receipts (attachments beside typed expenses, skipped)",
+				"   2 rejected: bad date: 42",
+				"   0 ignored (conversation)",
+			},
+		},
+		{
 			name: "converted never lists ids",
 			summary: capture.Summary{
 				Total: 3,
@@ -106,7 +136,7 @@ func TestWriteBucketReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			writeBucketReport(&buf, "telegram-import: dry run, nothing written", tt.summary)
+			writeBucketReport(&buf, "telegram-import: dry run, nothing written", oneLinePerMessage(tt.summary))
 			got := buf.String()
 			want := joinedLines(tt.wantLines) + "\n"
 			assert.Equal(t, want, got)
@@ -116,4 +146,18 @@ func TestWriteBucketReport(t *testing.T) {
 
 func joinedLines(lines []string) string {
 	return strings.Join(lines, "\n")
+}
+
+// oneLinePerMessage fills in the line counts a row left out, as one line per message —
+// the world before plan D10, which is what every row above describes. A row that means to
+// exercise D10 sets Counts itself and is passed through untouched.
+func oneLinePerMessage(s capture.Summary) capture.Summary {
+	if s.Counts != nil {
+		return s
+	}
+	s.Counts = make(map[capture.Bucket]int, len(s.IDs))
+	for bucket, ids := range s.IDs {
+		s.Counts[bucket] = len(ids)
+	}
+	return s
 }

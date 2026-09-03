@@ -123,9 +123,23 @@ const (
 )
 
 // Summary is the fold over a stream's outcomes that the dry-run report prints.
+//
+// MESSAGES AND LINES ARE DIFFERENT NUMBERS since plan D10, and conflating them is the
+// easy mistake here: one message can be a list of ten expenses, so ten outcomes carry
+// one id. Counts are about LINES (an outcome each), ids are about MESSAGES (a human act
+// each), and the report says both rather than pretending they agree.
 type Summary struct {
+	// Total is how many MESSAGES were read — a split list counts once.
 	Total int
-	// IDs lists the message ids that landed in each bucket, in stream order, so the
-	// report can be checked per id and not only per count.
+	// Lines is how many expense lines were classified — a split list counts N.
+	Lines int
+	// Splits is how many messages turned out to be multi-line lists (D10).
+	Splits int
+	// Counts is LINES per bucket. It is not len(IDs[bucket]): a list whose lines
+	// disagree puts one id in two buckets, and several lines in one.
+	Counts map[Bucket]int
+	// IDs lists the message ids that landed in each bucket, first-seen order, with no
+	// repeat inside a bucket, so the report can be checked per id and not only per
+	// count. An id in TWO buckets means a list whose lines disagreed.
 	IDs map[Bucket][]int
 }

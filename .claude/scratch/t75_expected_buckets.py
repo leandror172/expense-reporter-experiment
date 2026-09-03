@@ -138,6 +138,18 @@ def classify(text, att, msg_d):
     return as_typed_label(reason), reason
 
 
+def expand_lists(text):
+    """Plan D10, re-implemented: a message with more than one non-empty line, EVERY one of
+    them 3-field-shaped (exactly two ';'), is N messages — one per line. Anything else is
+    returned whole. The test is the SEMICOLON COUNT and deliberately not whether the line
+    parses: the message that forced this rule carries two `29/12/26` typos among ten good
+    lines, and 'every line parses' would have thrown all ten away."""
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    if len(lines) < 2 or any(l.count(";") != 2 for l in lines):
+        return [text]
+    return lines
+
+
 msgs = json.load(open(EXPORT, encoding="utf-8"))["messages"]
 rows = []
 for x in msgs:
@@ -148,8 +160,11 @@ for x in msgs:
         text = "".join(t if isinstance(t, str) else t.get("text", "") for t in text)
     msg_d = date.fromisoformat(x["date"][:10])
     att = "pdf" if x.get("file") else ("photo" if x.get("photo") else "none")
-    label, detail = classify(text or "", att, msg_d)
-    rows.append((x["id"], label, detail))
+    # One row per LINE since D10, all under the parent id — so an id may occur several
+    # times, and in more than one bucket when its lines disagree.
+    for line in expand_lists(text or ""):
+        label, detail = classify(line, att, msg_d)
+        rows.append((x["id"], label, detail))
 with open(OUT, "w") as f:
     for r in rows:
         f.write("\t".join(map(str, r)) + "\n")

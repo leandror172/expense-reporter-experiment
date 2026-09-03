@@ -228,13 +228,52 @@ func convertedOutcome(m Message, parsed parse.ParsedExpense) Outcome {
 	}
 }
 
-// ClassifyAll runs Classify on each message, in stream order.
+// ClassifyAll expands each message into its expense lines (D10) and runs Classify on
+// each, in stream order. A message that is not a multi-line list expands to itself, so
+// this stays 1:1 for everything the 2025 corpus ever contained.
 func ClassifyAll(msgs []Message, now time.Time) []Outcome {
-	outcomes := make([]Outcome, len(msgs))
-	for i, msg := range msgs {
-		outcomes[i] = Classify(msg, now)
+	var outcomes []Outcome
+	for _, msg := range msgs {
+		for _, line := range expandLists(msg) {
+			outcomes = append(outcomes, Classify(line, now))
+		}
 	}
 	return outcomes
+}
+
+// expandLists is plan D10: a message with more than one non-empty line, EVERY one of
+// them 3-field-shaped (exactly two ';'), is N messages — one per line, each keeping the
+// parent's id, timestamp and attachment. Anything else is returned untouched.
+//
+// The test is the SEMICOLON COUNT and deliberately NOT whether the line parses. The
+// message that forced this rule — a ten-line backlog list in the 2026-02 export — has two
+// lines carrying a `29/12/26` year typo, so "every line parses" would have refused to
+// split it and lost all ten expenses. Shape is the evidence that a human typed a LIST;
+// each line's date and value are then judged by the same predicate as any other message.
+//
+// All-or-nothing is what stops a one-expense message with a chatty second line from being
+// torn in half: that second line has no semicolons, so nothing splits.
+func expandLists(m Message) []Message {
+	var lines []string
+	for _, line := range strings.Split(m.Text, "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			lines = append(lines, trimmed)
+		}
+	}
+	if len(lines) < 2 {
+		return []Message{m}
+	}
+	for _, line := range lines {
+		if strings.Count(line, ";") != 2 {
+			return []Message{m}
+		}
+	}
+
+	expanded := make([]Message, len(lines))
+	for i, line := range lines {
+		expanded[i] = Message{ID: m.ID, SentAt: m.SentAt, Text: line, Attachment: m.Attachment}
+	}
+	return expanded
 }
 
 // Bucket is the report line the outcome lands on. A rejection is refined by which
@@ -279,13 +318,38 @@ func fieldCountBucket(got int) Bucket {
 	return Bucket(fmt.Sprintf("rejected: %d fields", got))
 }
 
-// Summarize folds outcomes into per-bucket id lists in stream order. Buckets
-// nobody landed in are absent, so the report prints only what happened.
+// Summarize folds outcomes into per-bucket LINE counts and per-bucket MESSAGE ids, both
+// in first-seen order. Buckets nobody landed in are absent, so the report prints only
+// what happened.
+//
+// Since D10 an outcome is a LINE, not a message, and the two counts diverge: a list whose
+// lines disagree puts its one id in two buckets, and several of its lines in one bucket.
+// Total counts distinct ids, Splits counts the ids that produced more than one line.
 func Summarize(outcomes []Outcome) Summary {
-	sum := Summary{Total: len(outcomes), IDs: make(map[Bucket][]int)}
+	sum := Summary{Lines: len(outcomes), Counts: make(map[Bucket]int), IDs: make(map[Bucket][]int)}
+
+	linesPerID := make(map[int]int)
+	inBucket := make(map[Bucket]map[int]bool)
 	for _, outcome := range outcomes {
 		bucket := outcome.Bucket()
-		sum.IDs[bucket] = append(sum.IDs[bucket], outcome.Message.ID)
+		id := outcome.Message.ID
+		sum.Counts[bucket]++
+		linesPerID[id]++
+
+		if inBucket[bucket] == nil {
+			inBucket[bucket] = make(map[int]bool)
+		}
+		if !inBucket[bucket][id] {
+			inBucket[bucket][id] = true
+			sum.IDs[bucket] = append(sum.IDs[bucket], id)
+		}
+	}
+
+	sum.Total = len(linesPerID)
+	for _, lines := range linesPerID {
+		if lines > 1 {
+			sum.Splits++
+		}
 	}
 	return sum
 }
