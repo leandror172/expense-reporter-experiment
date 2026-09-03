@@ -1,7 +1,10 @@
 # T-75 — Telegram export → batch-auto CSV converter
 
-**Status: BUILT, session 75 (2026-09-03). Steps 1–5 DONE on `feat/t75-telegram-converter`;
-step 6 — the real close — is the only one left and needs the 2026 export from the user.**
+**Status: COMPLETE, session 76 (2026-09-03). All six steps DONE on `feat/t75-telegram-converter`;
+the 2026-02 export was converted and closed for real — 46 reviewed entries applied, expense
+log 2163 → 2216, both workbooks written with no warn-skips. Steps 4, 5 and 6 each found a
+defect the 2025 corpus could not have shown: D1's unguarded past year, the stale second
+implementation of D1, and D10's multi-line lists.**
 Prerequisite DONE: `.claude/t75-oracle-viability.md` [ref:t75-oracle] — the 2025 export
 validated as an oracle (90.3% A-coverage, 37/37 misses explained, perturbation-checked).
 
@@ -634,7 +637,33 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   guess needs more evidence than a statement") have different justifications and merely
   share a threshold today.
 
-- [ ] **6 — run it, hand the output to a real close** — **IN PROGRESS s76.** The export
+- [x] **6 — run it, hand the output to a real close** — **DONE s76. T-75 IS COMPLETE.**
+  **The close landed:** 46 reviewed entries applied, **34 rows appended (15 confirmed, 19
+  corrected), 0 failed, 0 skipped, 0 pending**; installment reconciliation `expected 34
+  rows, log grew by 34`; `workbook-2026.xlsx` and `workbook-2025.xlsx` both written with
+  **empty stderr — no warn-skips**, which matters because `generate-workbook` warn-skips an
+  unknown subcategory and still exits 0 (how the S2 taxonomy drift stayed invisible).
+  Expense log **2163 → 2216 (+53)**: 19 auto-appended by `batch-auto`, 34 by `apply`,
+  **R$ 12.081,48**, 8 rows dated 2025 and 45 dated 2026.
+  **Verified after the fact, because two silent-failure modes had already fired on this
+  data:** 0 appended rows duplicate a prior row, **0 rows anywhere carrying year 0025**,
+  repeated ids still 8 (all pre-dating this work). Those are the shapes that leave no error
+  behind, so they are checked by reading the log, not by trusting an exit code.
+  **The human caught one the tooling could not:** a cancelled `Academia <redacted>` at
+  `1617,00/12` — removed during review, verified `auto_inserted=false` in `classified.csv`
+  and absent from the log before `apply` ran, so the removal was real. **12 phantom
+  installment rows avoided by a human looking at a page.** That is the argument for the
+  browser pass existing, and it is why `close-cycle.sh` refuses to synthesise `reviewed.json`.
+  **The year ruling paid off exactly as analysed:** one review pass over five months, then a
+  second `generate-workbook --year 2025` for the eight backlog rows the 2026 workbook cannot
+  hold by construction.
+  ⚠️ **Three runs were needed and none of the reruns was waste** — run 1 found the duplicate
+  double-count, run 2 was clean but predated the repaired rejects, run 3 folded them in.
+  Restoring twice cost ~15 minutes of machine time and **zero human time**, because the
+  review pass was deliberately held back until the input was final. Holding the expensive
+  human step until the cheap machine steps agree is the whole lesson of this step.
+
+  Original entry, for the record — the export
   arrived: `../export/2026-02/result.json`, 39 messages, 2026-02-01..27, **three** authors
   where 2025 had two.
   **It was never going to be "not a coding step", and that is the finding.** The first real
