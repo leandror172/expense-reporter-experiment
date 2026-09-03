@@ -202,6 +202,50 @@ in its own words, and it is live today for `add`; it is filed for the boundary s
 year, in the notation they used — and rejects any other year length. Rule 1 above stays
 "the human outranks the timestamp"; this only fixes which century the human meant.
 
+**AMENDMENT (s75, step 5, USER RULING): the window validates the RESOLVED date on BOTH
+branches — explicit year or not.** As first written, rule 1 handed an explicit year to the
+boundary with no distance check, and the boundary's past side is unguarded
+(`validateRenderableYear` allows 1..9999; `validateYearNotBeyondCurrent` only looks
+forward). **Reproduced, not reasoned:** a message sent 2025-08-21 reading
+`Item; 21/08/1200; 50,00` CONVERTS, and the converter writes `expenses-1200-08.csv` — exit
+0, nothing in the rejects file, the expense silently out of its month. This is the same
+pair of boundary facts that forced the D4 amendment, arriving by the one path D4 does not
+cover: **D5 means a line that parses as typed is never repaired, so it never meets D4's
+window check.**
+
+**Neither T-75 gate can catch it, which is why it had to be found by reading rather than by
+running.** In `t75_oracle_probe.py` the window test is the FIRST branch of the residue
+split and yields `"expanded outside the comparison window"` — a *named* cause, and only
+`SUSPECT` increments `unexplained`. So the gate PASSES on a misfiled row.
+`t75_gate_compare.py` agrees too: both sides bucket the message `converted`. A green gate
+and a misfiled expense in the same run, with an odd filename in the files report as the
+only signal.
+
+**Why this does not contradict rule 1.** Explicit year still wins the SELECTION — the
+converter never overrules which year the human typed, and there is no re-resolution. The
+window is now a VALIDITY check on the outcome, which is what rule 3 always was; it simply
+stops being weaker on the branch that skips resolution. Bare dates use the window to
+*choose* among three candidate years, explicit years use it to *reject*. One invariant,
+uniformly enforced: **every emitted date lies within `[-180,+7]` of its own message.**
+
+**The asymmetry that settles the trade-off.** The cost is real: a deliberate backfill typed
+with an explicit year more than 180 days back is now refused. That is acceptable because a
+rejection is VISIBLE — it lands in `telegram-rejects.csv` with its reason and a human fixes
+it — while a misfile is SILENT and looks like success. T-63's whole shape is built on that
+asymmetry, and it is the same reason "an unresolvable date REJECTS" above.
+
+**Measured before deciding, on the real 2025 export (ids and deltas only):** of 358
+converted lines, **2** carry an explicit year, **both 2-digit (`/25`), zero 4-digit**, and
+**0** resolve outside the window. So the amendment rejects nothing that has ever been
+validated — and the reason the defect survived five sessions is visible in those numbers:
+**the unguarded branch is the one branch the corpus never exercises.**
+
+⚠️ **This INVERTS an existing test.** `classify_test.go` carried
+`"explicit year outranks the timestamp even far outside the window"` (`12/03/2024` sent
+2025-05-01 → accepted), written to pin rule 1 as originally stated. It now expects a
+rejection and is renamed. A behavior change with a test asserting the old behavior is a
+decision, never a broken test to fix quietly.
+
 ⚠️ **The window and `validateYearNotBeyondCurrent` interact, and the result is a rejection.
 REQUIRED TEST.** A message sent 2026-12-28 reporting `03/01`: the 2026 candidate is −359
 days (outside the window), the 2027 candidate is **+6** (inside), so it resolves to
@@ -500,6 +544,34 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   They are step 4's gate, they were green and committed there, and re-running them touches
   the private export for no new information — step 6 re-runs the whole gate on the 2026 file
   anyway.
+
+  **THEN the D1 amendment landed inside step 5** (see D1 for the reasoning; USER RULING).
+  Order was plan first, code second — the D4 discipline, because this changes a decision
+  rather than fixing a slip. Reproduced end to end before touching anything: the same
+  two-message export wrote `expenses-1200-08.csv` with exit 0 and no rejects file; after,
+  the message lands in `telegram-rejects.csv` reading *"invalid date: 21/08/1200 is not
+  within 180 days before or 7 days after 2025-08-21 (message 1, sent 2025-08-21)"*.
+  **TDD, RED first:** 3 rows failed and now pass; a 4th — the `+7` future edge — was written
+  to pass in BOTH directions on purpose, because `+7` accepted next to `+8` refused is what
+  proves the guard has a LOCATED boundary rather than refusing everything. One existing row
+  was INVERTED, which D1 records as a decision.
+  **Implementation from `my-go-qcoder`, verdict 1:** all eight worked cases satisfied and
+  both existing helpers (`parseDayMonth`, `calendarDate`, `daysFrom`) reused rather than
+  reimplemented; it errored early on a non-integer day/month instead of passing through
+  (kept — bucket-equivalent `BucketBadDate`, more specific message) and left the
+  "validation is NOT done here" doc comment that the change had just falsified (fixed).
+  **Re-verified after the amendment:** build + vet clean; `go test ./...` exit 0, 22
+  packages; `internal/capture` 74 → **77** subtests; `./run-acceptance.sh -full` **78 / 0 /
+  0 in 112 s** with the Ollama gate again at 3.24 s; **probe characterization GREEN in BOTH
+  modes — converter 12/12, naive 11/11 (control)**. The converter-mode green is the
+  load-bearing one: every pinned number on the real 2025 export is unchanged, which confirms
+  the pre-decision census empirically — the amendment rejects nothing ever validated.
+  **Fixtures were audited against the new rule BEFORE running:** the only explicit-year
+  fixture line is `08/07/2025` at −1 day, and the `<person C> Elô ADM` repair resolves to −178,
+  inside `[-180,+7]` by two days — a fair measure of how tight that window is.
+  **Consequence for the Risks entry:** the converter no longer depends on the boundary's
+  unguarded past side. That defect is still live for `add` and `batch` and still needs
+  filing; T-75 is simply no longer exposed to it.
 
 - [ ] **6 — run it, hand the output to a real close**
   Not a coding step, and the one that actually validates T-75: convert a month, run

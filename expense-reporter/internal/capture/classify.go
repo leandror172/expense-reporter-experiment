@@ -31,16 +31,18 @@ var moneyToken = regexp.MustCompile(`(\d+[.,]\d{2}(\D|$))|R\$`)
 // ResolveDateField turns a message's date field into "DD/MM/YYYY" (plan D1). The
 // converter OWNS the year: an explicit year in the text is the human's and wins
 // outright; a bare DD/MM is resolved by proximity to the message's own send time.
-// Validation is NOT done here — the boundary (parse.Fields / parse.Date) does that
-// on the returned string, so there is one set of year rules. Every error wraps
-// parse.ErrInvalidDate.
+// The DATE itself is validated by the boundary (parse.Fields / parse.Date) on the
+// returned string, so there is one set of year rules. What is validated HERE is the
+// DISTANCE from the message, on both branches (D1 amendment, s75): the boundary's
+// past side is unguarded, so an explicit `21/08/1200` would otherwise convert and
+// open its own month file. Every error wraps parse.ErrInvalidDate.
 func ResolveDateField(field string, sentAt time.Time) (string, error) {
 	parts := strings.Split(strings.TrimSpace(field), "/")
 	switch len(parts) {
 	case 2:
 		return resolveBareDate(parts[0], parts[1], sentAt)
 	case 3:
-		return resolveExplicitYear(parts[0], parts[1], parts[2])
+		return resolveExplicitYear(parts[0], parts[1], parts[2], sentAt)
 	default:
 		return "", fmt.Errorf("%w: expected DD/MM or DD/MM/YYYY, got %q", parse.ErrInvalidDate, field)
 	}
@@ -81,10 +83,22 @@ func resolveBareDate(dayStr, monthStr string, sentAt time.Time) (string, error) 
 }
 
 // resolveExplicitYear returns "day/month/year" as the human wrote day and month
-// (each trimmed), with a 2-digit year expanded to 20YY and a 4-digit year kept.
-// Any other year length is an error wrapping parse.ErrInvalidDate. No calendar
-// check here — the boundary validates the returned string.
-func resolveExplicitYear(dayStr, monthStr, yearStr string) (string, error) {
+// (each trimmed, NOT zero-padded — that differs from the bare branch on purpose),
+// with a 2-digit year expanded to 20YY and a 4-digit year kept. Any other year
+// length is an error wrapping parse.ErrInvalidDate.
+//
+// The explicit year still WINS THE SELECTION — nothing here re-resolves which year
+// the human meant. What was added by the s75 D1 amendment is the same window the
+// bare branch already applies, used here to REJECT rather than to choose: the
+// boundary allows years 1..9999 and only looks forward, so without this an absurd
+// `21/08/1200` converts and the expense silently leaves its month. D5 means a line
+// that parses as typed is never repaired, so it never meets D4's window check —
+// this is the only place that gap can be closed.
+//
+// When day, month and year are not all integers forming a real calendar date, the
+// window is SKIPPED: there is no date to measure, and the boundary owns that
+// rejection. The distance is only meaningful once the date exists.
+func resolveExplicitYear(dayStr, monthStr, yearStr string, sentAt time.Time) (string, error) {
 	dayStr = strings.TrimSpace(dayStr)
 	monthStr = strings.TrimSpace(monthStr)
 	yearStr = strings.TrimSpace(yearStr)
@@ -94,8 +108,26 @@ func resolveExplicitYear(dayStr, monthStr, yearStr string) (string, error) {
 	} else if len(yearStr) != 4 {
 		return "", fmt.Errorf("%w: year %q must have 2 or 4 digits", parse.ErrInvalidDate, yearStr)
 	}
+	resolved := fmt.Sprintf("%s/%s/%s", dayStr, monthStr, yearStr)
 
-	return fmt.Sprintf("%s/%s/%s", dayStr, monthStr, yearStr), nil
+	day, month, err := parseDayMonth(dayStr, monthStr)
+	if err != nil {
+		return "", err
+	}
+	year, err := strconv.Atoi(yearStr)
+	if err != nil {
+		return "", fmt.Errorf("%w: year %q is not an integer", parse.ErrInvalidDate, yearStr)
+	}
+
+	date, exists := calendarDate(year, month, day)
+	if !exists {
+		return resolved, nil
+	}
+	if days := daysFrom(sentAt, date); days < -windowPast || days > windowFuture {
+		midnight := time.Date(sentAt.Year(), sentAt.Month(), sentAt.Day(), 0, 0, 0, 0, time.UTC)
+		return "", fmt.Errorf("%w: %s is not within %d days before or %d days after %s", parse.ErrInvalidDate, resolved, windowPast, windowFuture, midnight.Format("2006-01-02"))
+	}
+	return resolved, nil
 }
 
 // parseDayMonth reads the two integers of a bare date; a non-integer wraps
