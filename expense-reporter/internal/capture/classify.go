@@ -128,30 +128,43 @@ func daysFrom(sentAt, candidate time.Time) int {
 	return int(candidate.Sub(midnight).Hours() / 24)
 }
 
-// Classify decides what one message is (plan D3). Empty text is a Receipt when
-// an attachment rode along, otherwise Ignored. Text that does not split into
-// exactly three fields is Rejected only if it is an attempted expense; otherwise
-// it is conversation and Ignored. Three fields go through ResolveDateField (D1)
-// and then the production boundary; whatever the boundary says stands, and its
-// error is kept untouched so the reason survives.
+// Classify decides what one message is (plan D3). Empty text is a Receipt when an
+// attachment rode along, otherwise Ignored. Otherwise the text is tried AS TYPED
+// first, and a line that parses is Converted and NEVER repaired — plan D5, the hard
+// precondition that keeps a well-formed "900,00/3" from ever being "repaired" into
+// something else. Only a text that fails as typed is a candidate for repair, and only
+// if it is an attempted expense at all; conversation is Ignored before any repair is
+// tried, so chatter never reaches the repair queue.
 func Classify(m Message, now time.Time) Outcome {
 	text := strings.TrimSpace(m.Text)
 	if text == "" {
 		return textlessOutcome(m)
 	}
+	parsed, err := parseLine(text, m.SentAt, now)
+	if err == nil {
+		return convertedOutcome(m, parsed)
+	}
+	if !isAttemptedExpense(text) {
+		return Outcome{Message: m, Class: Ignored}
+	}
+	return repairedOrRejected(m, text, err, now)
+}
+
+// parseLine is THE predicate for a line: exactly three fields, a date the message
+// can resolve (D1), a value the boundary accepts. The line as typed and every repair
+// candidate go through this one function, so a repair can never be accepted on
+// looser terms than the original, and the boundary's error comes back untouched so
+// the reason survives into the rejects file.
+func parseLine(text string, sentAt, now time.Time) (parse.ParsedExpense, error) {
 	fields := strings.Split(text, ";")
 	if len(fields) != 3 {
-		return wrongFieldCountOutcome(m, text, len(fields))
+		return parse.ParsedExpense{}, FieldCountError{Got: len(fields)}
 	}
-	resolvedDate, err := ResolveDateField(fields[1], m.SentAt)
+	resolvedDate, err := ResolveDateField(fields[1], sentAt)
 	if err != nil {
-		return rejectedOutcome(m, err)
+		return parse.ParsedExpense{}, err
 	}
-	parsed, err := parse.Fields(fields[0], resolvedDate, fields[2], parse.Options{Now: now})
-	if err != nil {
-		return rejectedOutcome(m, err)
-	}
-	return convertedOutcome(m, parsed)
+	return parse.Fields(fields[0], resolvedDate, fields[2], parse.Options{Now: now})
 }
 
 // textlessOutcome: an attachment with nothing typed is a receipt for an expense
@@ -159,15 +172,6 @@ func Classify(m Message, now time.Time) Outcome {
 func textlessOutcome(m Message) Outcome {
 	if m.Attachment != NoAttachment {
 		return Outcome{Message: m, Class: Receipt}
-	}
-	return Outcome{Message: m, Class: Ignored}
-}
-
-// wrongFieldCountOutcome rejects an attempted expense with the field count as the
-// reason, and ignores anything else — the count, not the content, is the diagnosis.
-func wrongFieldCountOutcome(m Message, text string, got int) Outcome {
-	if isAttemptedExpense(text) {
-		return rejectedOutcome(m, FieldCountError{Got: got})
 	}
 	return Outcome{Message: m, Class: Ignored}
 }
@@ -206,6 +210,9 @@ func ClassifyAll(msgs []Message, now time.Time) []Outcome {
 func (o Outcome) Bucket() Bucket {
 	switch o.Class {
 	case Converted:
+		if o.Repair != "" {
+			return BucketRepaired
+		}
 		return BucketConverted
 	case Receipt:
 		return BucketReceipts
@@ -218,7 +225,10 @@ func (o Outcome) Bucket() Bucket {
 
 func rejectionBucket(err error) Bucket {
 	var fce FieldCountError
+	var ambiguous AmbiguousRepairError
 	switch {
+	case errors.As(err, &ambiguous):
+		return BucketAmbiguous
 	case errors.As(err, &fce):
 		return fieldCountBucket(fce.Got)
 	case errors.Is(err, parse.ErrInvalidDate):

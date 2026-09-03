@@ -289,6 +289,31 @@ Worked against the real defects in the export:
 This is T-64's machinery lifted one layer up, deliberately: the converter and the parser
 then reject for the SAME reason, so the human learns one rule instead of two.
 
+**AMENDMENT (s75, step 2, measured): a candidate's resolved date must ALSO lie inside the
+D1 window of the message day — explicit year or not.** As first written, "valid = parses"
+made a plain slash typo ambiguous. The real message `Dentista <person A> canal; 21/08/ 1200,00`
+has two single edits: `/`→`;` gives 21/08/2025 + 1200,00, and `,`→`;` gives the date field
+`21/08/ 1200` + the value `00` — and the boundary ACCEPTS both: year 1200 is inside 1..9999,
+the past side is deliberately unguarded (T-48), and **`parse.Value("00")` returns 0 with no
+error** (probed). Two readings → rejected, for a message a human reads instantly. The rule
+that resolves it is the one already used for a bare date: a repair is the tool's GUESS, not
+the human's statement, so it needs the extra evidence, and the window is that evidence. The
+as-typed line keeps rule 1 of D1 untouched (an explicit year the human wrote still wins
+verbatim). What ambiguity survives the amendment: only a value whose integer part spells an
+in-window year — `Bar; 15/05/ 2025,50` — pinned in the fixture and the unit table, and
+absent from the 2025 export. **Measured after the amendment, independently on both sides
+(Python oracle re-implementing D1+D4 from this text; Go): 6 repaired, 0 ambiguous.**
+
+**What D4 deliberately does NOT repair, with the 2025 counts (6 two-field messages stay
+rejected):** no date at all (×3: `Tabacaria, seda…; 25,50`, `Dme vencimento 2025-12; …`,
+`Cartão <person C> novembro 2025; …`), a colon where the second `;` belongs (×1), and a SPACE
+where the first `;` belongs (×2: `Crédito Tim 02/10; 60,00`, `San michel 22/12; 69,83`).
+The last shape is repairable in principle ("the last space before a date-shaped token"),
+but it is a NEW candidate rule, not a single-byte substitution, and two messages in eight
+months do not justify widening the search. Revisit only if the 2026 export shows the shape
+is common. The earlier estimate in the tracker — "12 comma rows + the `/` row recovered; 8
+ambiguous" — was arithmetic on the bucket totals, not a measurement, and is retracted.
+
 ⚠️ **The `/`-substitution candidate and the divisor installment notation coexist ONLY
 because of D5.** A well-formed `Compras; 15/05; 900,00/3` never enters this path, so the
 substitution can never split a legitimate `total/N` token. State the dependency here
@@ -357,10 +382,24 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   `cmd/.../telegram_import.go` (flags + report rendering). The adapter imports the core,
   never the reverse.
 
-- [ ] **2 — repairs (D4 / D5 / D6) + D1 resolution**
-  **Gate:** the 12 comma rows + the `/` row recovered; the 8 genuinely ambiguous ones still
-  rejected; an explicit `DD/MM/YYYY` in the text is honored, not overwritten by the message
-  year; and the 2026-12-28 → `03/01` → 2027 case rejects.
+- [x] **2 — repairs (D4 / D5 / D6) + D1 resolution** — **DONE s75.**
+  **Gate MET, per id — with the numbers CORRECTED by measurement.** On the 2025 export:
+  **6 repaired** (five comma rows and the `Dentista …; 21/08/ 1200,00` slash row), **0
+  ambiguous**, **6 two-field messages still rejected** for shapes D4 does not cover (listed
+  under the D4 amendment). Two implementations agree id for id — `t75_expected_buckets.py`,
+  which now re-implements D1 + D4 from this plan's text, against the Go command: 393/393,
+  `--perturb` moves it by 1. An explicit `DD/MM/YYYY` is honoured and the 2026-12-28 →
+  `03/01` → 2027 case rejects (both pinned in step 1). **Both mutations run; each COMPILED
+  and went RED on exactly its REQUIRED row:** `if false && err == nil` in `Classify` (repairs
+  instead of the as-typed parse) fails the D5 row; `case 1, 2, 3…` in `repairedOrRejected`
+  (first valid candidate wins) fails the D4 row. The report gained a `repaired` line (ids
+  listed — the lines the tool touched deserve a glance) and a `rejected: ambiguous` bucket;
+  the fixture gained ids 14 (ambiguous) and 15 (slash repair), and ids 5 / 9 moved from
+  `rejected: N fields` to `repaired`. D1 itself landed in step 1 (scope note above).
+  **Original gate text, kept for the record:** the 12 comma rows + the `/` row recovered;
+  the 8 genuinely ambiguous ones still rejected; an explicit `DD/MM/YYYY` in the text is
+  honored, not overwritten by the message year; and the 2026-12-28 → `03/01` → 2027 case
+  rejects. (The 12 / 8 split was an estimate from bucket totals — retracted in D4.)
   **Mutation, both directions, each must still COMPILE:** remove the C0-first rule → a valid
   `900,00/3` gets "repaired" → RED. Remove the exactly-one rule → an ambiguous message is
   silently accepted → RED.

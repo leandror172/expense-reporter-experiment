@@ -15,6 +15,8 @@
     {"id": 9, "type": "message", "date": "2025-07-06T18:01:00", "from": "B", "from_id": "user2", "text": "Cartao Teste; ADM; 09/01; 405,25 x4", "text_entities": []},
     {"id": 10, "type": "message", "date": "2025-07-08T18:00:00", "from": "A", "from_id": "user1", "text": ["Tela celular; ", {"type": "bold", "text": "08/07"}, "; 90,00"], "text_entities": []},
     {"id": 11, "type": "message", "date": "2025-07-09T08:00:00", "from": "A", "from_id": "user1", "text": "Cinema; 08/07/2025; 45,00", "text_entities": []},
-    {"id": 12, "type": "message", "date": "2025-07-09T08:01:00", "from": "B", "from_id": "user2", "text": "É 450,00 três meses, tá?", "text_entities": []}
+    {"id": 12, "type": "message", "date": "2025-07-09T08:01:00", "from": "B", "from_id": "user2", "text": "É 450,00 três meses, tá?", "text_entities": []},
+    {"id": 14, "type": "message", "date": "2025-05-15T20:00:00", "from": "A", "from_id": "user1", "text": "Bar; 15/05/ 2025,50", "text_entities": []},
+    {"id": 15, "type": "message", "date": "2025-07-25T19:00:00", "from": "B", "from_id": "user2", "text": "Tela celular; 25/07/ 90,00", "text_entities": []}
   ]
 }

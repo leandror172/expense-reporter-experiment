@@ -16,6 +16,7 @@ package capture
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -70,6 +71,23 @@ type Outcome struct {
 	// Date is set for Converted only: the resolved expense date, which decides the
 	// month file the line belongs to (plan D7) — not the day the message was sent.
 	Date time.Time
+	// Repair is set when the line came from a single-edit repair (plan D4): the
+	// repaired text that parsed. Empty for a line that parsed exactly as typed, which
+	// is what lets the report show repaired lines on their own — they deserve a glance.
+	Repair string
+}
+
+// AmbiguousRepairError reports a text that MORE THAN ONE single edit would make
+// parse (plan D4). Two readings means the tool would be guessing, and a wrong guess
+// writes a budget row indistinguishable from a right one; a rejection costs one edit
+// because the row comes back with this reason inline. Same asymmetry as T-64.
+type AmbiguousRepairError struct {
+	Readings []string
+}
+
+func (e AmbiguousRepairError) Error() string {
+	return fmt.Sprintf("ambiguous: %d different single-edit repairs would parse: %s",
+		len(e.Readings), strings.Join(e.Readings, " | "))
 }
 
 // FieldCountError reports a text that did not split into the three fields
@@ -91,8 +109,12 @@ type Bucket string
 
 const (
 	BucketConverted Bucket = "converted"
+	// BucketRepaired: Converted, but only after one edit (plan D4). Reported apart
+	// from converted so a human can look at exactly the lines the tool touched.
+	BucketRepaired  Bucket = "repaired"
 	BucketReceipts  Bucket = "receipts"
 	BucketIgnored   Bucket = "ignored"
+	BucketAmbiguous Bucket = "rejected: ambiguous"
 	BucketBadDate   Bucket = "rejected: bad date"
 	BucketBadValue  Bucket = "rejected: bad value"
 	// BucketRejectedOther is the fallback for a rejection that names neither field —

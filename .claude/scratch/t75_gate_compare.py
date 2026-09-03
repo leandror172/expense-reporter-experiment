@@ -9,18 +9,10 @@ from collections import Counter
 TSV, REPORT = sys.argv[1], sys.argv[2]
 perturb = "--perturb" in sys.argv
 
-def probe_label(cls, bucket):
-    if cls in ("converted", "ignored"): return cls
-    if cls == "receipt": return "receipts"
-    m = re.match(r"field count (\d+)", bucket)
-    if m:
-        n = int(m.group(1)); return "rejected: %d field%s" % (n, "" if n == 1 else "s")
-    return {"bad date field": "rejected: bad date", "bad value field": "rejected: bad value"}.get(bucket, "rejected: ?")
-
 expected = {}
 for line in open(TSV):
-    id_, cls, bucket, _ = line.rstrip("\n").split("\t")
-    expected[int(id_)] = probe_label(cls, bucket)
+    id_, label, _detail = line.rstrip("\n").split("\t")
+    expected[int(id_)] = label
 if perturb:
     first = min(expected); expected[first] = "rejected: bad value" if expected[first] != "rejected: bad value" else "converted"
 
@@ -35,7 +27,7 @@ for line in open(REPORT):
         label, ids = rest.rsplit(": ", 1); ids = [int(x) for x in ids.split()]
     else:
         label, ids = rest, []
-    if label.startswith(("receipts", "ignored")): label = label.split(" (")[0]
+    if label.startswith(("receipts", "ignored", "repaired")): label = label.split(" (")[0]
     assert len(ids) == n, "count/id mismatch on: " + line
     for i in ids:
         assert i not in got, "id %d listed twice" % i

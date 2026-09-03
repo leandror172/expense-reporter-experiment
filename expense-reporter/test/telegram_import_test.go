@@ -44,12 +44,12 @@ func TestTelegramImport_DryRunAccountsForEveryMessage(t *testing.T) {
 func everyMessageLandsInExactlyOneBucket() []func(*harness.Context) {
 	return []func(*harness.Context){
 		verify.OutputContains("telegram-import: dry run, nothing written"),
-		verify.OutputContains("  12 messages"),
+		verify.OutputContains("  14 messages"),
 		verify.OutputContains("   4 converted"),
+		verify.OutputContains("   3 repaired (one edit made the line parse): 5 9 15"),
 		verify.OutputContains("   2 receipts (attachments beside typed expenses, skipped): 3 4"),
 		verify.OutputContains("   1 rejected: 1 field: 12"),
-		verify.OutputContains("   1 rejected: 2 fields: 5"),
-		verify.OutputContains("   1 rejected: 4 fields: 9"),
+		verify.OutputContains("   1 rejected: ambiguous: 14"),
 		verify.OutputContains("   1 rejected: bad date: 8"),
 		verify.OutputContains("   1 rejected: bad value: 7"),
 		verify.OutputContains("   1 ignored (conversation): 6"),

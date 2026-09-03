@@ -1,62 +1,144 @@
-"""T-75 step-1 gate, half 1: per-message-id EXPECTED buckets from the probe.
+"""T-75 gate, half 1: per-message-id EXPECTED bucket, computed INDEPENDENTLY of the Go code.
 Usage: python3 t75_expected_buckets.py OUT.tsv   (EXPORT_JSON env overrides the export path)
-Per-message-id expected buckets for the step-1 gate. Reuses the probe's own
-parsers so the TSV is the probe's verdict, not a second opinion. Writes ids and
-labels only — never message text."""
+
+Writes `id <TAB> label <TAB> detail` where label is the Go report's bucket string
+(converted / repaired / receipts / ignored / rejected: N fields / rejected: bad date /
+rejected: bad value / rejected: ambiguous). Ids and labels only — never message text.
+
+Value parsing comes from the probe's port of pkg/utils/currency.go; the date rule (plan
+D1: explicit year verbatim, 2-digit year → 20YY, bare DD/MM within [-180,+7] days of the
+message day, year never beyond the current one) and the repair rule (plan D4: single
+edits — each ',' → ';', each '/' → ';', four fields → merge the first two — accepted only
+when EXACTLY ONE parses with a date inside the window; D5: never for a line that already parses) are re-implemented
+here from the plan text, so a bug shared with the Go side would have to be a bug in the
+plan itself.
+"""
 import importlib.util, json, os, re, sys
-from collections import Counter, defaultdict
-from datetime import date
+from collections import Counter
+from datetime import date, datetime
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROBE = os.path.join(HERE, "t75_oracle_probe.py")
 EXPORT = os.environ.get("EXPORT_JSON", os.path.join(HERE, "..", "..", "..", "ChatExport_2026-04-20", "result.json"))
 OUT = sys.argv[1]
+WINDOW_PAST, WINDOW_FUTURE = 180, 7
+CURRENT_YEAR = datetime.now().year
+
 spec = importlib.util.spec_from_file_location("probe", PROBE)
 probe = importlib.util.module_from_spec(spec); spec.loader.exec_module(probe)
-msgs = json.load(open(EXPORT, encoding="utf-8"))["messages"]
 CUR = re.compile(r"(\d+[.,]\d{2}(?!\d)|R\$)")
-rows, shapes, vshapes = [], Counter(), Counter()
+
+
+def resolve_date(field, msg_d):
+    """Plan D1, re-implemented. Returns a date or raises ValueError."""
+    parts = [p.strip() for p in field.strip().split("/")]
+    if len(parts) == 2:
+        day, month = int(parts[0]), int(parts[1])
+        seen_calendar = False
+        for y in (msg_d.year - 1, msg_d.year, msg_d.year + 1):
+            try:
+                cand = date(y, month, day)
+            except ValueError:
+                continue
+            seen_calendar = True
+            if -WINDOW_PAST <= (cand - msg_d).days <= WINDOW_FUTURE:
+                return validated(cand)
+        raise ValueError("not a calendar date" if not seen_calendar else "no year in window")
+    if len(parts) == 3:
+        y = parts[2]
+        if len(y) == 2: y = "20" + y
+        elif len(y) != 4: raise ValueError("year length")
+        return validated(date(int(y), int(parts[1]), int(parts[0])))
+    raise ValueError("shape")
+
+
+def validated(d):
+    """The boundary's two resolved-year checks."""
+    if d.year < 1 or d.year > 9999 or d.year > CURRENT_YEAR:
+        raise ValueError("year refused")
+    return d
+
+
+def line_ok(text, msg_d):
+    """parseLine: three fields, a resolvable date, a value the port accepts, non-empty item."""
+    parts = text.split(";")
+    if len(parts) != 3:
+        return "field count %d" % len(parts)
+    item, dstr, vstr = (p.strip() for p in parts)
+    if not item:
+        return "empty item"
+    try:
+        resolve_date(dstr, msg_d)
+    except (ValueError, OverflowError):
+        return "bad date"
+    try:
+        probe.parse_with_installments(vstr)
+    except (ValueError, ZeroDivisionError):
+        return "bad value"
+    return None
+
+
+def candidate_ok(text, msg_d):
+    """A repair candidate must parse AND its resolved date must lie inside the D1 window of
+    the message day, explicit year or not (D4 amendment, s75): the comma edit on a slash
+    typo reads the value's integer part as a year — '21/08/ 1200' → year 1200 — which the
+    boundary accepts because the past side is deliberately unguarded (T-48). The as-typed
+    line keeps D1 rule 1 (an explicit year the human wrote wins verbatim); a candidate is
+    the tool's guess and needs the extra evidence."""
+    if line_ok(text, msg_d) is not None:
+        return False
+    d = resolve_date(text.split(";")[1], msg_d)
+    return -WINDOW_PAST <= (d - msg_d).days <= WINDOW_FUTURE
+
+
+def candidates(text):
+    """Plan D4's single edits, in the Go order: commas, slashes, then the four-field merge."""
+    out = [text[:i] + ";" + text[i + 1:] for i, c in enumerate(text) if c == ","]
+    out += [text[:i] + ";" + text[i + 1:] for i, c in enumerate(text) if c == "/"]
+    f = text.split(";")
+    if len(f) == 4:
+        out.append(f[0].strip() + " " + f[1].strip() + ";" + ";".join(f[2:]))
+    return out
+
+
+def as_typed_label(reason):
+    m = re.match(r"field count (\d+)", reason)
+    if m:
+        n = int(m.group(1)); return "rejected: %d field%s" % (n, "" if n == 1 else "s")
+    return {"bad date": "rejected: bad date", "bad value": "rejected: bad value"}.get(reason, "rejected: other")
+
+
+def classify(text, att, msg_d):
+    text = text.strip()
+    if not text:
+        return ("receipts" if att != "none" else "ignored"), att
+    reason = line_ok(text, msg_d)
+    if reason is None:
+        return "converted", ""
+    if ";" not in text and not CUR.search(text):
+        return "ignored", ""
+    valid = [c for c in candidates(text) if candidate_ok(c, msg_d)]
+    if len(valid) == 1:
+        return "repaired", "edit"
+    if len(valid) > 1:
+        return "rejected: ambiguous", "%d readings" % len(valid)
+    return as_typed_label(reason), reason
+
+
+msgs = json.load(open(EXPORT, encoding="utf-8"))["messages"]
+rows = []
 for x in msgs:
+    if x.get("type") != "message":
+        continue
     text = x.get("text")
     if isinstance(text, list):
         text = "".join(t if isinstance(t, str) else t.get("text", "") for t in text)
-    text = (text or "").strip()
     msg_d = date.fromisoformat(x["date"][:10])
-    att = "pdf" if "file" in x else ("photo" if "photo" in x else "none")
-    reason = ""
-    if not text:
-        b = "attachment" if att != "none" else "empty"; reason = att
-    else:
-        parts = [p.strip() for p in text.split(";")]
-        if len(parts) != 3:
-            b = "field count %d" % len(parts)
-        else:
-            item, dstr, vstr = parts
-            try:
-                probe.parse_date_field(dstr, msg_d)
-            except ValueError as e:
-                b, reason = "bad date field", str(e)
-            else:
-                try:
-                    probe.parse_with_installments(vstr); b = "conforming"
-                except (ValueError, ZeroDivisionError) as e:
-                    b, reason = "bad value field", str(e)
-            if b == "conforming":
-                m = probe.DATE_RE.match(dstr)
-                shapes[("D" if len(m.group(1)) == 1 else "DD") + "/" + ("M" if len(m.group(2)) == 1 else "MM")
-                       + ("/Y%d" % len(m.group(3)) if m.group(3) else "")] += 1
-                vs = re.sub(r"\d", "9", vstr)
-                vshapes[vs] += 1
-    attempted = (";" in text) or bool(CUR.search(text))
-    cls = ("converted" if b == "conforming" else "receipt" if b in ("attachment", "empty")
-           else "rejected" if attempted else "ignored")
-    rows.append((x["id"], cls, b, reason))
+    att = "pdf" if x.get("file") else ("photo" if x.get("photo") else "none")
+    label, detail = classify(text or "", att, msg_d)
+    rows.append((x["id"], label, detail))
 with open(OUT, "w") as f:
-    for r in rows: f.write("\t".join(map(str, r)) + "\n")
-print("buckets:", Counter(r[2] for r in rows).most_common())
-print("classes:", Counter(r[1] for r in rows).most_common())
-xt = defaultdict(Counter)
-for r in rows: xt[r[2]][r[1]] += 1
-for b, c in xt.items(): print("  %-16s %s" % (b, dict(c)))
-print("date shapes (conforming):", dict(shapes))
-print("value shapes (conforming):", vshapes.most_common())
+    for r in rows:
+        f.write("\t".join(map(str, r)) + "\n")
+print("labels:", sorted(Counter(r[1] for r in rows).items()))
 print("non-converted ids:", [r[0] for r in rows if r[1] != "converted"])

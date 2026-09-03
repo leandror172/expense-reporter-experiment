@@ -71,6 +71,7 @@ func writeBucketReport(w io.Writer, s capture.Summary) {
 	fmt.Fprintln(w, "telegram-import: dry run, nothing written")
 	fmt.Fprintf(w, "%4d messages\n", s.Total)
 	fmt.Fprintf(w, "%4d converted\n", len(s.IDs[capture.BucketConverted]))
+	writeBucketLine(w, "repaired (one edit made the line parse)", s.IDs[capture.BucketRepaired])
 	writeBucketLine(w, "receipts (attachments beside typed expenses, skipped)", s.IDs[capture.BucketReceipts])
 	for _, bucket := range sortedRejectedBuckets(s.IDs) {
 		writeBucketLine(w, string(bucket), s.IDs[bucket])
