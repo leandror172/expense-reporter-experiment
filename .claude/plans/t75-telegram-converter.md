@@ -661,9 +661,26 @@ bounded file and **will background**, and T-71 says a backgrounded call silently
   input CSV and ONE year, while the converted output now spans **2025-10 … 2026-02** — the
   user ruled "include every month in this close", so the year argument needs resolving
   before `prepare` runs.
-  **Deliberately not spent yet:** the human review pass. It is the expensive step in the
-  chain and the one thing no Go test reaches, so it must not be spent on a month that is
-  about to gain eight more rows.
+  **The close itself, s76.** `close-cycle.sh prepare` takes ONE csv and ONE year while the
+  output spans 2025-10..2026-02, so the year was checked rather than assumed: `batch-auto
+  --year` and `apply --year` are only the ladder's FALLBACK for a bare `DD/MM`, and every
+  converted line carries `DD/MM/YYYY`, so the year is inert for this input. Only
+  `generate-workbook --year` really selects rows. That is what makes ONE review pass over
+  all five months legitimate (user ruling: include every month) — with the consequence, to
+  remember at `finish`, that **the six 2025 rows will reach the LOGS but not
+  `workbook-2026.xlsx`**; a separate `generate-workbook --year 2025` is needed for those.
+  **Run 1 found a double-count and was rolled back.** 43 rows in, 12 auto, 31 for review,
+  0 errors — and `⚠ duplicate: "<redacted item>" already in expense log`, appended anyway
+  (see Risks). Restored both logs from the run snapshot (verified back to 2163/718),
+  excluded that one line from `close-input.csv` with the reason recorded IN the file, and
+  left the converted month file faithful to the message — curation belongs to the close,
+  not the conversion.
+  **Run 2 is the clean one:** 42 in → 42 classified, **11 auto, 31 for review, 0 errors, no
+  `failed.csv`**, logs 2163 → 2180 (+17 rows: 11 entries, expanded by installments), **0
+  exact duplicates of a prior row**. Review page:
+  `.claude/scratch/close-20260903-174132/review.html`, 42 rows, 31 needing a human.
+  **Not spent yet, and the last thing standing between T-75 and DONE:** the browser review
+  pass, then `close-cycle.sh finish`. It is the one hop no Go test reaches.
 
 ### Conventions that govern this work
 
@@ -754,6 +771,23 @@ ground truth, so it cannot adjudicate a mismatch.**
   as the converter does — is a parse-boundary decision to take with its own tests.
   **Updated s75 step 5:** the D1 amendment means T-75 is no longer EXPOSED to the unguarded
   past side, but the defect is unchanged and still live for `add` and `batch`.
+- **TO FILE AT HANDOFF — `batch-auto` WARNS on a duplicate and appends it anyway, and an
+  auto-appended row never reaches the review page (found s76, in the first real close).**
+  The 2026-02 close printed `⚠ duplicate: "<redacted item>" already in expense log (id
+  4f1d167f9e55)` and wrote the row regardless: verified by reading the log, where that id
+  then appeared **twice** with identical date and value. **The two halves compound.** The
+  warning is only in scrollback, and because the row classified at 95% it was AUTO-appended,
+  so the human never sees it among the rows they review — the one place a person would
+  catch it is the one place it does not appear. 1 of 18 appended rows on that run.
+  ⚠️ **A repeated id is NOT by itself proof of a double-count and must not be auto-deduped:**
+  the id is a hash of `item|date|value`, so two genuinely separate identical purchases
+  collide by construction — s72's `San michel` ×3 and s74's 8 same-day duplicates are real,
+  and the log already carried 9 repeated ids before this run. That is why the oracle matches
+  on a MULTISET. So the fix is not "skip duplicates"; the candidates are to route a warned
+  row to REVIEW instead of auto-appending it, or to write the warning somewhere durable.
+  **Handled for this close by hand** (user ruling: one expense, not two) — restored both logs
+  from the run snapshot, excluded the single line from `close-input.csv` with the reason
+  recorded in the file, and re-ran. The converted month file is left faithful to the message.
 - **OPEN QUESTION for the 2026 census — a zero-value row converts silently.** The same
   composition shape as the D1 defect, one field over: `parse.Value("00")` returns 0 with no
   error (verified s75, step 2), and the as-typed path runs `parse.Value` unguarded.
