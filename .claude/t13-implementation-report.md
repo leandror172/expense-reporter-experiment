@@ -10,7 +10,7 @@ path against `config/taxonomy.json` (single source of truth) via an atomic 112-p
 enum, instead of free-text `(subcategory, category)` resolved from the feature
 dictionary with type bolted on by a separate `(category,subcategory)` lookup. Type-less
 log lines are now impossible by construction on the model path, and the 5 multi-type
-leaves (`Estacionamento`/`Dentista`/`Orion`/`Lilly`/`Ambos`) resolve at prediction time.
+leaves (`Estacionamento`/`Dentista`/`Orion`/`<person E>`/`Ambos`) resolve at prediction time.
 
 `go build ./...`, `go vet ./...`, `go test ./...` all pass. Acceptance build-tag
 compiles; deterministic type-routing-cycle acceptance (apply→generate-workbook) passes.

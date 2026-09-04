@@ -27,6 +27,6 @@ Resumed with PR #45 (5.R2) merged to master. User picked T-32 (agreement gate �
 
 ### Gotchas
 
-- `Uber Centro` FAILS the agreement gate (keyword `uber` spec 0.8, ambiguous across Viagens/Uber-Taxi). Use `Posto Ipiranga` / `Netflix` / `Diarista Letícia` for any test that must auto-append.
+- `Uber Centro` FAILS the agreement gate (keyword `uber` spec 0.8, ambiguous across Viagens/Uber-Taxi). Use `Posto Ipiranga` / `Netflix` / `Diarista <person D>` for any test that must auto-append.
 - `FeedbackMatchesExpected` used to false-pass on an empty log (batch-auto's preflight `O_CREATE`s one) — fixed; watch for the same early-return-on-nil pattern elsewhere.
 - The interactive `auto` append-on-pass path has no running test (`TestAuto_FeedbackLoggedOnInsert` is workbook-gated → skips here).

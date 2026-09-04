@@ -28,7 +28,7 @@ Opened on a clean master with PR #66 (A1) merged, and began as a discussion of w
 - **T-65 supersede-by-append — DESIGN DOCUMENT ONLY, no code** (still the user's explicit call). Two constraints drive it and both invert the obvious: key off the STORED id (the one deliberate exception to "identity is derived", protecting 347 cross-log joins), and give the supersede record a date that survives `scanEntries`' year filter (a year-0 tombstone leaks into EVERY year — the s70 107K-workbook mechanism).
 - Then **5.R6** (regenerate `feature_dictionary_enhanced.json`), which gained a measured payoff in s72: the A1 hint and the auto-insert gate BOTH require a keyword match, and 13 of 81 corpus subcategories have no keyword entry at all. It also arrives with its own before/after harness — the A1 replay probe and the gate-precision join both run over data already on disk. Note that rebuilding the dictionary changes the gate's inputs, so re-running the join is part of the task, not cleanup.
 - PR #67 awaits review.
-- Line 19 of `expenses-2026-01.csv` is now unblocked but needs a HAND repair to `Anita Elô ADM;09/01;405,25 x4` — the stray `;` inside the item is a separate defect from the notation. Line 45 is NOT unblocked: no date at all, and 299,00 + 49,90 = 348,90 != 646,25.
+- Line 19 of `expenses-2026-01.csv` is now unblocked but needs a HAND repair to `<person C> Elô ADM;09/01;405,25 x4` — the stray `;` inside the item is a separate defect from the notation. Line 45 is NOT unblocked: no date at all, and 299,00 + 49,90 = 348,90 != 646,25.
 - Still open and untouched: T-58, T-69, T-56, T-57, T-70, T-71.
 
 ### Gotchas

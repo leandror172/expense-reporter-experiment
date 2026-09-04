@@ -1,0 +1,10 @@
+{
+  "name": "Gastos",
+  "type": "private_group",
+  "id": 2,
+  "messages": [
+    {"id": 1, "type": "message", "date": "2025-05-03T12:00:00", "from": "A", "from_id": "user1", "text": "Padaria; 03/05; 12,50", "text_entities": []},
+    {"id": 2, "type": "message", "date": "2025-05-10T20:15:00", "from": "A", "from_id": "user1", "text": "Mercado; 05/05; 100,00\nFarmacia; 06/05; 20,00\nPosto; 99/99; 50,00", "text_entities": []},
+    {"id": 3, "type": "message", "date": "2025-05-12T13:00:00", "from": "A", "from_id": "user1", "text": "Almoco; 12/05; 25,00\nvou pagar amanha", "text_entities": []}
+  ]
+}

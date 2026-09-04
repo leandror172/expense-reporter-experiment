@@ -80,7 +80,7 @@ cmd/expense-reporter/cmd/  # Cobra subcommands (one file each)
 cmd/workbook-inspect/      # Thin wrapper over internal/inspect
 internal/                  # batch classifier cli config excel feedback generate
                            # taxonomy inspect logger models parse parser resolver
-                           # review apply appender workflow
+                           # review apply appender workflow capture telegram
 pkg/utils/  config/config.json
 ```
 
@@ -95,8 +95,10 @@ pkg/utils/  config/config.json
   plain `batch` still expands at insert
 - **Parse boundary (T-41)** — commands parse input ONLY via `internal/parse`
   (`ParsedExpense`; `DateString()` = the identity bytes); never call utils
-  date/currency parsers from command code. Migrated: add/correct/auto; pending:
-  batch-auto/apply. Command-layer helpers live in `cmd/parse_boundary.go`
+  date/currency parsers from command code. **All six parsers migrated (s67 slice 4);
+  `cmd.canonicalDate` is retired.** ⚠️ Its past-year side is UNGUARDED and that is a
+  live defect, not a footnote — `Date("29/12/25")` → year 0025, no error; see
+  `internal/parse/.memories/QUICK.md`. Command-layer helpers live in `cmd/parse_boundary.go`
   (`parseOptions`, `warnIfStaleConfiguredYear`, `describeParseFailure`) — `parse`
   must not import `config`. `internal/parser` (no "e") is the DYING pre-pivot one
 

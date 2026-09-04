@@ -122,11 +122,11 @@ Use `"review"` as model name. `classifier.Result{Subcategory: entry.Reviewed.Sub
 
 The fixture (`test/fixtures/apply-basic/reviewed.json`) has:
 - Uber Centro (id: `f0c3bf1293f3`): action=confirmed, already in seed-classifications.jsonl → no-op
-- Diarista Letícia (id: `733224d39e01`): action=corrected, already in seed → write corrected feedback
+- Diarista <person D> (id: `733224d39e01`): action=corrected, already in seed → write corrected feedback
 - Academia Smart Fit (id: `24c75fff9223`): action=pending → no-op
 
 Expected after apply runs:
-- `classifications.jsonl` = 3 lines: 2 seed entries + 1 new corrected entry for Diarista Letícia
+- `classifications.jsonl` = 3 lines: 2 seed entries + 1 new corrected entry for Diarista <person D>
 - `expenses_log.jsonl` NOT created (no new rows inserted — all were already-inserted or pending)
 - stdout contains `"workbook not updated"`
 - exit code 0

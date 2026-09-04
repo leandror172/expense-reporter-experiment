@@ -83,20 +83,20 @@ a category eventually, and today that costs hand-editing a JSONL file.
 | …of those, at maximum specificity (1.00, unambiguous) | **9** |
 
 **The model overrode a correct, maximally-specific keyword.** The clearest case is the pet
-leaves. `Lilly` and `Orion` are subcategories in `config/taxonomy.json`
+leaves. `<person E>` and `Orion` are subcategories in `config/taxonomy.json`
 (`types[].categories[].subcategories[]`), have 10 and 14 labelled training examples, and the
-keyword dictionary maps `lilly → Lilly` and `orion → Orion` at **specificity 1.00,
+keyword dictionary maps `lilly → <person E>` and `orion → Orion` at **specificity 1.00,
 unambiguous**. Yet:
 
 ```
-Consulta Elizabeth cardiologista Lilly   model=Dentista   keyword=Lilly   spec=1.00
-Exame pressão Lilly                      model=Dentista   keyword=Lilly   spec=1.00
-Exame ecocardio Lilly                    model=Dentista   keyword=Lilly   spec=1.00
-Exame eletro Lilly                       model=Exames     keyword=Lilly   spec=1.00
-Exames Lilly sinplan                     model=Exames     keyword=Lilly   spec=1.00
+Consulta Elizabeth cardiologista <person E>   model=Dentista   keyword=<person E>   spec=1.00
+Exame pressão <person E>                      model=Dentista   keyword=<person E>   spec=1.00
+Exame ecocardio <person E>                    model=Dentista   keyword=<person E>   spec=1.00
+Exame eletro <person E>                       model=Exames     keyword=<person E>   spec=1.00
+Exames <person E> sinplan                     model=Exames     keyword=<person E>   spec=1.00
 Consulta Orion nefro Território animal   model=Dentista   keyword=Orion   spec=1.00
-Consulta Lilly nefro Território animal   model=Dentista   keyword=Lilly   spec=1.00
-Consulta Lilly nefro Kelly               model=Dentista   keyword=Lilly   spec=1.00
+Consulta <person E> nefro Território animal   model=Dentista   keyword=<person E>   spec=1.00
+Consulta <person E> nefro Kelly               model=Dentista   keyword=<person E>   spec=1.00
 Veterinário Bruno cannábico Orion        model=Óleo/flor  keyword=Orion   spec=1.00
 ```
 
