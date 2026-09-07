@@ -154,7 +154,7 @@ func classifiedAndReviewFilesProduced() []func(*harness.Context) {
 		verify.OutputFileExists("classified.csv"),
 		verify.OutputFileExists("review.csv"),
 		expect.OutputFileHasAtLeastRows("classified.csv", 1),
-		expect.OutputFileHasColumns("classified.csv", 9),
+		expect.OutputFileHasColumns("classified.csv", 10),
 		expect.AllClassificationScoresValid("classified.csv"),
 	}
 }
@@ -165,7 +165,7 @@ func allInputExpensesClassified(rows int) []func(*harness.Context) {
 		verify.OutputFileExists("classified.csv"),
 		verify.OutputFileExists("review.csv"),
 		expect.OutputFileHasRows("classified.csv", rows),
-		expect.OutputFileHasColumns("classified.csv", 9),
+		expect.OutputFileHasColumns("classified.csv", 10),
 		expect.AllClassificationScoresValid("classified.csv"),
 	}
 }

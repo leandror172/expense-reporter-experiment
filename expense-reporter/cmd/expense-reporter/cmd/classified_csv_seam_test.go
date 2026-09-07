@@ -146,6 +146,50 @@ func TestClassifiedCSV_KeywordHintSurvivesTheSeam(t *testing.T) {
 		"no second opinion must arrive as an empty hint, never a placeholder")
 }
 
+// TestClassifiedCSV_AlreadyLoggedMarkerSurvivesTheSeam pins the tenth column across the
+// same join.
+//
+// The writer's own test proves the column is emitted and the reader's own test proves it is
+// read — but each was verified against its own idea of the format, which is exactly the
+// arrangement that let T-54 ship: a reader accepting a spelling no producer emitted, both
+// halves green. The field count is a hard error in the reader, so the two can only move
+// together, and this is where that is enforced.
+//
+// The two markers must stay DISTINGUISHABLE, which is why this is a marker string and not a
+// bool. They demand different things of the human who acts on them: a fully-logged row is
+// already recorded, so the reviewer has to decide whether this is a genuinely separate
+// purchase (same-day duplicates hash alike by construction, and the live log holds eight
+// legitimate pairs); a partially-logged row has some installments recorded and some not, and
+// is the only one of the two that can be legitimately completed. Collapse them into one flag
+// and the page can no longer say which question it is asking.
+//
+// Absence must survive as absence — the page treats PRESENCE as the signal for whether to
+// show anything, so a marker arriving as "none" or "-" would render as a real state by that
+// name. Same rule the keyword hint above follows.
+//
+// The marker stops here by design: it is input TO the human, not part of their decision, and
+// it is deliberately not carried back out through exportReviewed(). Nothing downstream of
+// the review page should look for it.
+func TestClassifiedCSV_AlreadyLoggedMarkerSurvivesTheSeam(t *testing.T) {
+	full := classifiedRowWithPrediction(t, "Posto Ipiranga;15/04;280,00", "Combustível", "Transporte", 0.95, false)
+	full.AlreadyLogged = alreadyLoggedFull
+
+	partial := classifiedRowWithPrediction(t, "Anita Elô ADM;09/01;405,25 x4", "Empréstimo", "Anita", 0.91, false)
+	partial.AlreadyLogged = alreadyLoggedPartial
+
+	none := classifiedRowWithPrediction(t, "Uber Centro;22/06;38,50", "Uber/Taxi", "Transporte", 0.87, false)
+
+	entries := writeThenReadQueue(t, []classifiedRow{full, partial, none})
+
+	require.Len(t, entries, 3, "every written row must survive into the review queue")
+	assert.Equal(t, alreadyLoggedFull, entries[0].AlreadyLogged,
+		"a row already recorded in full must reach the reviewer saying so")
+	assert.Equal(t, alreadyLoggedPartial, entries[1].AlreadyLogged,
+		"a partially-logged series must stay distinguishable from a full duplicate — they ask the reviewer different questions")
+	assert.Empty(t, entries[2].AlreadyLogged,
+		"a row that is not in the log must arrive as an empty marker, never a placeholder")
+}
+
 // TestClassifiedCSV_ThousandsValueSurvivesTheSeam closes a live divergence found in s73,
 // by measurement rather than by reading: writeClassifiedCSV emits "1.234,56" and
 // review.ReadQueue returned a HARD error on it, so ONE such row anywhere in a month's

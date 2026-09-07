@@ -34,6 +34,9 @@ func TestReview_ProducesHTMLWithQueueAndTaxonomy(t *testing.T) {
 			installmentCountOfferedToTheReviewer("Financiamento carro", 24),
 			keywordSuggestionOfferedToTheReviewer("Uber Centro", "Combustível"),
 			noKeywordSuggestionOfferedTo("Diarista Letícia"),
+			alreadyLoggedStateOfferedToTheReviewer("Delivery brod's", "logged"),
+			alreadyLoggedStateOfferedToTheReviewer("Academia Smart Fit", "partial"),
+			noAlreadyLoggedStateOfferedTo("Uber Centro"),
 		),
 	})
 }
@@ -115,6 +118,66 @@ func keywordHintFor(ctx *harness.Context, item string) string {
 	for _, row := range data.Queue {
 		if row.Item == item {
 			return row.KeywordHint
+		}
+	}
+	ctx.T.Fatalf("queue has no row for %q", item)
+	return ""
+}
+
+type reviewQueueAlreadyLogged struct {
+	Queue []struct {
+		Item          string `json:"item"`
+		AlreadyLogged string `json:"alreadyLogged"`
+	} `json:"queue"`
+}
+
+// alreadyLoggedStateOfferedToTheReviewer asserts the marker saying a row is already in the
+// expense log reaches the page's embedded data, carrying WHICH of the two states it is.
+//
+// Both states are asserted by the scenario because they ask the reviewer different
+// questions — one row is already recorded in full and needs a ruling on whether this is a
+// genuinely separate purchase, the other is a part-logged instalment series and is the only
+// one of the two that can be legitimately completed. A single flag could not tell them
+// apart, so a test that only checked "some marker arrived" would pass on a page that had
+// collapsed them.
+//
+// Scope, stated plainly, exactly as for the keyword hint above: this pins the marker
+// reaching the page, NOT the badge being drawn. The badge is built by browser JS and no Go
+// test can execute it (T-61). Asserting the embedded JSON is the furthest a Go test
+// honestly reaches, which is why this is worded "offered to", never "shown to".
+func alreadyLoggedStateOfferedToTheReviewer(item, want string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		func(ctx *harness.Context) {
+			ctx.T.Helper()
+			assert.Equal(ctx.T, want, alreadyLoggedFor(ctx, item),
+				"queue row %q should say which already-logged state it is in", item)
+		},
+	}
+}
+
+// noAlreadyLoggedStateOfferedTo is the other half, and it is not redundant: without it a
+// page that marked EVERY row would satisfy the positive assertions above. Most rows are not
+// in the log, and that must survive as an empty string rather than a placeholder — the page
+// treats presence as the signal.
+func noAlreadyLoggedStateOfferedTo(item string) []func(*harness.Context) {
+	return []func(*harness.Context){
+		func(ctx *harness.Context) {
+			ctx.T.Helper()
+			assert.Empty(ctx.T, alreadyLoggedFor(ctx, item),
+				"queue row %q is not in the expense log, so nothing may be marked", item)
+		},
+	}
+}
+
+// alreadyLoggedFor reads one row's marker out of the page's embedded queue, failing the
+// test when the row is absent rather than returning a zero value an assertion would accept.
+func alreadyLoggedFor(ctx *harness.Context, item string) string {
+	ctx.T.Helper()
+	var data reviewQueueAlreadyLogged
+	expect.HTMLFileEmbeddedJSON("review.html", "review-data", &data)(ctx)
+	for _, row := range data.Queue {
+		if row.Item == item {
+			return row.AlreadyLogged
 		}
 	}
 	ctx.T.Fatalf("queue has no row for %q", item)

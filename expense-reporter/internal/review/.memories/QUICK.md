@@ -1,7 +1,7 @@
 # review — QUICK
 
-**What:** builds the offline HTML review page. `ReadQueue` (classified CSV, 9 fields —
-col 8 = type, col 9 = keyword_hint) + `BuildTaxonomy` (picker tree from **`config/taxonomy.json`**) + `Render`
+**What:** builds the offline HTML review page. `ReadQueue` (classified CSV, 10 fields —
+col 8 = type, col 9 = keyword_hint, col 10 = already_logged) + `BuildTaxonomy` (picker tree from **`config/taxonomy.json`**) + `Render`
 (inject JSON into `template/review.html` via go:embed).
 
 **The picker's taxonomy comes from `config/taxonomy.json` (S2, s68) — NOT the workbook.**
@@ -27,7 +27,7 @@ and still hard-errors. The warning lives in `cmd`, not here — same reason `par
 `YearSource` instead of printing.
 
 **Input contract — `ReadQueue` must match batch-auto's writers exactly (T-54, s68):**
-exactly 9 semicolon fields, and `auto_inserted` spelled **`true`/`false`** — the inverse of
+exactly 10 semicolon fields since T-80/s77, and `auto_inserted` spelled **`true`/`false`** — the inverse of
 `fmt %v` on a bool. `1`/`0` is REJECTED on purpose: it was accepted for months while NO
 producer emitted it, so `review` failed on every real `classified.csv` and no test noticed
 (the reader's only inputs were fixtures authored to satisfy the reader). Do not "soften"
@@ -94,6 +94,20 @@ the page renders an amber `.kw-hint` badge beside the model's answer and nothing
 it. **It deliberately does NOT round-trip through `exportReviewed()`** — it is input TO the
 human, not part of their decision, and a value crossing that unguarded JS hop would be a
 second T-61. Empty is the signal for "no second opinion"; never a placeholder.
+
+**`QueueEntry.AlreadyLogged` says why the row is already in the expense log (T-80, s77).**
+Tenth CSV column; `logged` = every id this row would write is in the log, `partial` = some
+are, empty = none. `batch-auto` holds such a row back from auto-insert WHATEVER the gate
+decided, so the reviewer adjudicates it with the model's suggestion in hand. The page draws
+two DISTINCT amber badges — "already in log" (solid rule) and "partly logged" — because the
+two ask different questions: a full duplicate needs a ruling on whether this is a genuinely
+separate purchase (same-day duplicates hash alike, 8 legitimate pairs live in the log),
+while a partial series is the one of the two that can legitimately be completed.
+Advisory, and like `KeywordHint` it deliberately does NOT round-trip through
+`exportReviewed()`. Empty is the signal; never a placeholder.
+⚠️ **`TestReadQueue` cannot discriminate columns 8 and 9** — mutation-verified s77: reading
+`record[8]` into `AlreadyLogged` leaves the whole reader suite green. The seam tests and
+`TestReview_ProducesHTMLWithQueueAndTaxonomy` are what catch it.
 
 **Gotcha:** edit only `internal/review/template/review.html` (60KB). The rendered
 `review*.html` files at repo root are large — don't read them into context; use a Haiku

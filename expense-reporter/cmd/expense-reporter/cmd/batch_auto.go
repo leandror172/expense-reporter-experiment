@@ -54,8 +54,10 @@ series across categories. Year note: bare DD/MM dates infer the current year, so
 crossing a year boundary (run started in December, resumed in January) may not match — pass
 DD/MM/YYYY inputs for December batches.
 
-Independently of --resume, an always-on warning is printed to stderr whenever an appended
-entry's id already exists in the log, flagging a likely duplicate append.
+Independently of --resume, a row whose id already exists in the expense log is never
+auto-inserted: it is still classified, so the review page can show you the model's
+suggestion, then held back for you to judge with an "already in log" badge. Appending it a
+second time is undoable only by discarding the whole close, so the call is yours.
 
 Examples:
   expense-reporter batch-auto expenses.csv
@@ -111,6 +113,15 @@ type classifiedRow struct {
 	// nothing downstream may act on it. Empty on most rows, and empty is the signal for
 	// "no second opinion" — never a placeholder.
 	KeywordHint string
+	// AlreadyLogged says why this row's id is already in the expense log, or is empty when
+	// it is not. Sibling of KeywordHint above and read the same way: empty is the SIGNAL for
+	// "nothing to say", never a placeholder. A marker string rather than a bool because
+	// "already recorded" and "some installments recorded" are different facts a reviewer
+	// must act on differently, and a second field would let them drift apart.
+	//
+	// A non-empty value forces the row out of auto-insert regardless of the gate's verdict
+	// (T-80), which is why it is not derived from AutoInserted.
+	AlreadyLogged string
 	// Skipped marks a row that --resume matched entirely against the pre-existing expense
 	// log and therefore did NOT classify or append. Skipped rows land in classified.csv
 	// (with skippedMarker in the subcategory column) but never in review.csv, and are
@@ -297,16 +308,14 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 			continue
 		}
 
-		// --resume: predict this row's entry ids from the already-parsed expense and
-		// consult the ledger BEFORE the model call. A full match skips (consuming the
-		// ledger); a partial match forces review below.
-		partial := false
-		if resume {
-			handled, forceReview := applyResumeDecision(ledger, pe, i, total, &results)
-			if handled {
-				continue
-			}
-			partial = forceReview
+		// Predict this row's entry ids from the already-parsed expense and consult the
+		// ledger BEFORE the model call — on every run, not only under --resume. The flag
+		// decides only whether a FULL match is dropped or handed to a human; see
+		// ledgerOutcomeFor for why looking is unconditional.
+		alreadyLogged, abandon := ledgerOutcomeFor(resume, ledger, pe)
+		if abandon {
+			recordSkippedRow(pe, i, total, &results)
+			continue
 		}
 
 		classResults, err := classifier.Classify(pe.Item, pe.Value, pe.DateString(), sheets, cfg)
@@ -319,11 +328,13 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 		top := classResults[0]
 		signal := classifier.MatchStrength(pe.Item, keywords)
 		autoInsert := classifier.IsAutoInsertable(top, signal, appCfg.AutoInsertExcluded)
-		if partial {
-			// A partially-logged series must be resolved by hand, never auto-completed:
-			// a divergent re-classification would split the series across categories.
+		if alreadyLogged != "" {
+			// Held back whatever the gate returned, and assigned independently of it: a
+			// duplicate the gate ALSO refused must still carry its marker, or the reviewer
+			// sees an ordinary review row and re-confirms the very duplicate this check
+			// exists to stop.
 			autoInsert = false
-			fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: partially logged — resolve manually\n", i+1, total, pe.Item)
+			reportAlreadyLogged(alreadyLogged, i, total, pe.Item)
 		}
 		status := "REVIEW"
 		if autoInsert {
@@ -331,7 +342,7 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 		}
 		fmt.Printf("[%d/%d] %s %s → %s (%.0f%%)\n", i+1, total, status, pe.Item, top.Subcategory, top.Confidence*100)
 
-		results = append(results, classifiedRowFromPrediction(pe, top, signal, autoInsert))
+		results = append(results, classifiedRowFromPrediction(pe, top, signal, autoInsert, alreadyLogged))
 	}
 	return results
 }
@@ -343,7 +354,7 @@ func classifyLines(lines []string, sheets []taxonomy.ExpenseType, appCfg *config
 // own subcategory as the model's, say — would compile, silently disable the hint for every
 // row, and stay invisible until someone read a month of output. It is a pure function of
 // what the classifier returned, so a unit test pins it directly.
-func classifiedRowFromPrediction(pe parse.ParsedExpense, top classifier.Result, signal classifier.MatchSignal, autoInsert bool) classifiedRow {
+func classifiedRowFromPrediction(pe parse.ParsedExpense, top classifier.Result, signal classifier.MatchSignal, autoInsert bool, alreadyLogged string) classifiedRow {
 	return classifiedRow{
 		Expense:      pe,
 		Subcategory:  top.Subcategory,
@@ -354,27 +365,34 @@ func classifiedRowFromPrediction(pe parse.ParsedExpense, top classifier.Result, 
 		// The same signal the gate just consulted, read the other way round: the gate fires
 		// on agreement, the hint on disagreement. Both take the MODEL's subcategory as the
 		// thing being agreed or disagreed with.
-		KeywordHint: classifier.KeywordHint(signal, top.Subcategory),
+		KeywordHint:   classifier.KeywordHint(signal, top.Subcategory),
+		AlreadyLogged: alreadyLogged,
 	}
 }
 
-// applyResumeDecision runs the --resume pre-check for one row and records any terminal outcome
-// directly into results. It returns handled=true when the row is fully resolved here (skipped)
-// so the caller must `continue`; when handled=false the row proceeds to classification, and
-// forceReview=true means it is partially logged and must go to review.
+// recordSkippedRow records the terminal outcome for a row --resume matched entirely against
+// the pre-existing log: never classified, never appended, marked with skippedMarker in the
+// subcategory column so classified.csv still accounts for it.
+func recordSkippedRow(pe parse.ParsedExpense, i, total int, results *[]classifiedRow) {
+	fmt.Printf("[%d/%d] SKIP  %s (already logged)\n", i+1, total, pe.Item)
+	*results = append(*results, classifiedRow{Expense: pe, Subcategory: skippedMarker, Skipped: true})
+}
+
+// reportAlreadyLogged names on stderr why one row was held back from auto-insert.
 //
-// There is no parse-failure branch any more: the line is parsed once before this is reached,
-// so a row that could not be parsed never arrives here.
-func applyResumeDecision(ledger map[string]int, pe parse.ParsedExpense, i, total int, results *[]classifiedRow) (handled, forceReview bool) {
-	switch classifyResumeDecision(ledger, pe) {
-	case resumeSkipFull:
-		fmt.Printf("[%d/%d] SKIP  %s (already logged)\n", i+1, total, pe.Item)
-		*results = append(*results, classifiedRow{Expense: pe, Subcategory: skippedMarker, Skipped: true})
-		return true, false
-	case resumePartial:
-		return false, true
-	default:
-		return false, false
+// The two cases keep DISTINCT wording because they mean different things to the human who
+// has to act on them: one row is already recorded in full, the other has some installments
+// recorded and some not, and only the second can be legitimately completed. The
+// fully-logged phrasing keeps the exact substring "already in expense log" that the
+// warning it replaces used, so the assertion counting it still means something.
+func reportAlreadyLogged(marker string, i, total int, item string) {
+	switch marker {
+	case alreadyLoggedFull:
+		fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: already in expense log — confirm it is a separate purchase\n", i+1, total, item)
+	case alreadyLoggedPartial:
+		// A partially-logged series must be resolved by hand, never auto-completed: a
+		// divergent re-classification would split the series across categories.
+		fmt.Fprintf(os.Stderr, "[%d/%d] REVIEW %q: partially logged — resolve manually\n", i+1, total, item)
 	}
 }
 
@@ -437,15 +455,17 @@ func appendClassified(results []classifiedRow, appCfg *config.Config, model stri
 
 // appendOneRow expands installments and appends a single classified row to the
 // expense log. Returns an error if the append fails, which means the row was not
-// persisted. Before appending, it emits the always-on duplicate warning for any entry
-// id already present in the ledger (consuming that count), so a re-append over a
-// pre-existing log line is flagged.
+// persisted. Before appending it refuses outright when the ledger still holds one of this
+// row's ids — see refuseDuplicateAppend for why that is an error rather than the warning
+// it replaced (T-80).
 //
 // It no longer re-parses anything: the row carries the expense parsed at read time, so
 // the ids predicted here and the entries written below are derived from one value.
 func appendOneRow(logPath string, r classifiedRow, ledger map[string]int) error {
 	pe := r.Expense
-	warnDuplicateEntries(ledger, pe.Item, appender.PredictEntryIDs(pe.Item, pe.Date, pe.Value, pe.Installments))
+	if err := refuseDuplicateAppend(ledger, pe.Item, appender.PredictEntryIDs(pe.Item, pe.Date, pe.Value, pe.Installments)); err != nil {
+		return err
+	}
 	return appender.ExpandAndAppend(logPath, pe.Item, pe.Date, pe.Value, pe.Installments, r.Type, r.Category, r.Subcategory)
 }
 
@@ -566,7 +586,7 @@ func stripTrailingComment(line string) string {
 func isSpaceOrTab(b byte) bool { return b == ' ' || b == '\t' }
 
 // writeClassifiedCSV writes all classified rows to path.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint;already_logged
 func writeClassifiedCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -576,7 +596,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint", "already_logged"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -590,6 +610,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 			fmt.Sprintf("%v", r.AutoInserted),
 			r.Type,
 			r.KeywordHint,
+			r.AlreadyLogged,
 		})
 	}
 	w.Flush()
@@ -597,7 +618,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 }
 
 // writeReviewCSV writes only rows where auto_inserted == false.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint;already_logged
 func writeReviewCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -607,7 +628,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint", "already_logged"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -627,6 +648,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 			"false",
 			r.Type,
 			r.KeywordHint,
+			r.AlreadyLogged,
 		})
 	}
 	w.Flush()

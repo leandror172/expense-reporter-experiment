@@ -62,8 +62,8 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 			continue
 		}
 
-		if len(record) != 9 {
-			return nil, nil, fmt.Errorf("line %d: expected 9 fields, got %d", lineNumber, len(record))
+		if len(record) != 10 {
+			return nil, nil, fmt.Errorf("line %d: expected 10 fields, got %d", lineNumber, len(record))
 		}
 
 		item := strings.TrimSpace(record[0])
@@ -75,6 +75,7 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 		autoInsertedStr := strings.TrimSpace(record[6])
 		expenseType := strings.TrimSpace(record[7])
 		keywordHint := strings.TrimSpace(record[8])
+		alreadyLogged := strings.TrimSpace(record[9])
 
 		// The unparsed-row shape batch-auto writes: raw text kept in the item column,
 		// date and value blank. Recognised BEFORE any field parsing, because it is the
@@ -130,15 +131,16 @@ func ReadQueue(csvPath string) ([]QueueEntry, []string, error) {
 		// join them. Before slice 3 the column held the raw input, so a bare-dated row got
 		// a review-only id that apply would look up and never find.
 		entries = append(entries, QueueEntry{
-			ID:           feedback.GenerateID(item, date, perInstallment),
-			Item:         item,
-			Date:         date,
-			RawValue:     valueStr,
-			Value:        perInstallment,
-			Installments: installments,
-			Confidence:   confidence,
-			AutoInserted: autoInserted,
-			KeywordHint:  keywordHint,
+			ID:            feedback.GenerateID(item, date, perInstallment),
+			Item:          item,
+			Date:          date,
+			RawValue:      valueStr,
+			Value:         perInstallment,
+			Installments:  installments,
+			Confidence:    confidence,
+			AutoInserted:  autoInserted,
+			KeywordHint:   keywordHint,
+			AlreadyLogged: alreadyLogged,
 			Predicted: Predicted{
 				Category:    category,
 				Subcategory: subcategory,

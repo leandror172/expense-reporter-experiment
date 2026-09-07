@@ -256,8 +256,8 @@ func TestWriteClassifiedCSV_TypeColumn(t *testing.T) {
 
 	// First data row: type = "Fixas"
 	fields0 := strings.Split(lines[1], ";")
-	if len(fields0) != 9 {
-		t.Fatalf("data row has %d fields, want 9: %q", len(fields0), lines[1])
+	if len(fields0) != 10 {
+		t.Fatalf("data row has %d fields, want 10: %q", len(fields0), lines[1])
 	}
 	if fields0[7] != "Fixas" {
 		t.Errorf("type field: got %q, want %q", fields0[7], "Fixas")
@@ -265,8 +265,8 @@ func TestWriteClassifiedCSV_TypeColumn(t *testing.T) {
 
 	// Second data row: type = "" (empty)
 	fields1 := strings.Split(lines[2], ";")
-	if len(fields1) != 9 {
-		t.Fatalf("data row has %d fields, want 9: %q", len(fields1), lines[2])
+	if len(fields1) != 10 {
+		t.Fatalf("data row has %d fields, want 10: %q", len(fields1), lines[2])
 	}
 	if fields1[7] != "" {
 		t.Errorf("type field for unresolved row: got %q, want empty", fields1[7])
@@ -314,8 +314,8 @@ func TestWriteReviewCSV_TypeColumn(t *testing.T) {
 	}
 
 	fields := strings.Split(lines[1], ";")
-	if len(fields) != 9 {
-		t.Fatalf("data row has %d fields, want 9: %q", len(fields), lines[1])
+	if len(fields) != 10 {
+		t.Fatalf("data row has %d fields, want 10: %q", len(fields), lines[1])
 	}
 	if fields[7] != "Extras" {
 		t.Errorf("type field: got %q, want %q", fields[7], "Extras")

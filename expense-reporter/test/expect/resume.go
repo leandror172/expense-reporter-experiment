@@ -14,8 +14,11 @@ import (
 // (e.g. "[1/2] SKIP  Netflix (already logged)").
 const skipMarker = "already logged"
 
-// duplicateWarningMarker is the stable substring of the always-on duplicate-append warning,
-// emitted once per appended entry whose id already existed in the expense log.
+// duplicateWarningMarker is the stable substring of the always-on duplicate notice. Since
+// T-80 it is emitted once per row HELD BACK from auto-insert because its id already existed
+// in the expense log — not, as before, once per entry appended over one. The substring was
+// kept across that behavior change on purpose, so the assertion counting it went on meaning
+// something instead of silently counting a string nothing emits any more.
 const duplicateWarningMarker = "already in expense log"
 
 // ResumeSkipCount asserts that exactly n rows were reported as already logged (skipped) by
@@ -32,9 +35,11 @@ func ResumeSkipCount(n int) func(*harness.Context) {
 	}
 }
 
-// DuplicateWarningCount asserts the always-on duplicate-append warning appears exactly n
-// times on stderr — one per appended entry whose id was already present in the log. It must
-// fire for a pre-existing log duplicate but NOT for a second in-CSV legitimate duplicate.
+// DuplicateWarningCount asserts the always-on duplicate notice appears exactly n times on
+// stderr — one per row routed to review because its id was already present in the log. It
+// must fire for a pre-existing log duplicate but NOT for a second in-CSV legitimate
+// duplicate: the ledger models what is IN THE LOG, not what this run wrote, so intra-batch
+// duplicates are deliberately invisible to it (out of T-80 scope, filed separately).
 func DuplicateWarningCount(n int) func(*harness.Context) {
 	return func(ctx *harness.Context) {
 		ctx.T.Helper()

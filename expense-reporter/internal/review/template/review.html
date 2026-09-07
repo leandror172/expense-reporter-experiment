@@ -349,6 +349,24 @@
     border-radius: 4px;
     text-transform: none;
   }
+  /* The already-logged badge. Amber for the same reason as the hint above — it means
+     "needs attention" — and NOT the accent colour, which this page reserves for a
+     CONFIRMED choice. This badge is a question put to the reviewer, never an answer
+     already given on their behalf. */
+  .conf-text .log-badge {
+    background: var(--warn-soft);
+    color: var(--warn-ink);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    text-transform: none;
+  }
+  /* A full duplicate carries a solid rule the partial case does not: confirming it
+     double-counts real money, while a partly-logged series is merely incomplete and is
+     the one of the two that can legitimately be completed. */
+  .conf-text .log-badge.is-full {
+    border: 1px solid var(--warn);
+    font-weight: 600;
+  }
 
   .row .pickers {
     grid-area: pickers;
@@ -1122,9 +1140,23 @@ function rowEl(s) {
   const kwHint = e.keywordHint
     ? '<span class="kw-hint">keyword: ' + escapeHtml(e.keywordHint) + '</span>'
     : '';
+  // The already-logged badge. A lookup rather than a chain of conditionals, because the
+  // marker is a CLOSED vocabulary: anything outside it — the empty string most of all —
+  // must produce nothing, since this page treats PRESENCE as the signal and a placeholder
+  // would render as a real state by that name.
+  //
+  // The two texts deliberately do not read alike: they ask the reviewer different
+  // questions. No escapeHtml here, unlike the keyword hint above — that carries taxonomy
+  // leaf names with accents and apostrophes, while these are literals chosen by this file.
+  const LOG_BADGES = {
+    logged: '<span class="log-badge is-full">already in log</span>',
+    partial: '<span class="log-badge">partly logged</span>',
+  };
+  const logBadge = LOG_BADGES[e.alreadyLogged] || '';
   text.innerHTML =
     '<span>confidence ' + fmtPct(e.confidence) + '</span>' +
     kwHint +
+    logBadge +
     '<span class="auto">' + (e.autoInserted ? "auto" : "review") + '</span>';
   conf.append(bar, text);
   row.appendChild(conf);

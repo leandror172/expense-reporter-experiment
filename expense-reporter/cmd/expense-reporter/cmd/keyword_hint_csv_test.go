@@ -15,20 +15,23 @@ import (
 // already live in batch_auto_test.go; these complete the row so no assertion below has to
 // spell a bare integer.
 const (
-	subcategoryColumn  = 3
-	categoryColumn     = 4
-	confidenceColumn   = 5
-	autoInsertedColumn = 6
-	typeColumn         = 7
-	keywordHintColumn  = 8
+	subcategoryColumn   = 3
+	categoryColumn      = 4
+	confidenceColumn    = 5
+	autoInsertedColumn  = 6
+	typeColumn          = 7
+	keywordHintColumn   = 8
+	alreadyLoggedColumn = 9
 )
 
-// expectedCSVHeader is the full contract, stated once. keyword_hint is APPENDED — every
-// prior column keeps its index, which is what lets expect.NoneWereAutoInserted go on
-// reading auto_inserted positionally at 6.
+// expectedCSVHeader is the full contract, stated once. Both keyword_hint and already_logged
+// are APPENDED — every prior column keeps its index, which is what lets
+// expect.NoneWereAutoInserted go on reading auto_inserted positionally at 6. Inserting a
+// column instead of appending one would retarget that assertion silently, leaving it green
+// while checking the wrong field.
 var expectedCSVHeader = []string{
 	"item", "date", "value", "subcategory", "category",
-	"confidence", "auto_inserted", "type", "keyword_hint",
+	"confidence", "auto_inserted", "type", "keyword_hint", "already_logged",
 }
 
 type csvWriter struct {
@@ -88,7 +91,7 @@ func TestCSVWriters_KeywordHintIsAppendedAsTheNinthColumn(t *testing.T) {
 	for _, w := range bothCSVWriters() {
 		t.Run(w.name, func(t *testing.T) {
 			assert.Equal(t, expectedCSVHeader, csvHeaderRow(t, w.write),
-				"%s must append keyword_hint without disturbing the eight columns before it", w.name)
+				"%s must append keyword_hint and already_logged without disturbing the columns before them", w.name)
 		})
 	}
 }
@@ -139,7 +142,9 @@ func TestCSVWriters_AppendingTheHintLeavesEveryPriorColumnInPlace(t *testing.T) 
 			assert.Equal(t, "Transporte", row[categoryColumn], "category column moved")
 			assert.Equal(t, "0.9500", row[confidenceColumn], "confidence column moved")
 			assert.Equal(t, "false", row[autoInsertedColumn], "auto_inserted column moved")
-			assert.Equal(t, "Lilly", row[keywordHintColumn], "keyword_hint is not last")
+			assert.Equal(t, "Lilly", row[keywordHintColumn], "keyword_hint moved off column 8")
+			assert.Empty(t, row[alreadyLoggedColumn],
+				"already_logged sits after keyword_hint, and an unmarked row leaves it empty")
 		})
 	}
 }
@@ -163,7 +168,7 @@ func TestClassifiedRowFromPrediction_HintComparesTheKeywordAgainstTheModel(t *te
 	t.Run("the keyword's answer is offered when it differs from the model's", func(t *testing.T) {
 		model := classifier.Result{Subcategory: "Dentista", Category: "Saúde", Type: "Variáveis", Confidence: 0.95}
 
-		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, false)
+		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, false, "")
 
 		assert.Equal(t, "Lilly", row.KeywordHint, "the keyword disagreed, so its answer must be offered")
 		assert.Equal(t, "Dentista", row.Subcategory, "the MODEL's answer stays the prediction of record")
@@ -172,7 +177,7 @@ func TestClassifiedRowFromPrediction_HintComparesTheKeywordAgainstTheModel(t *te
 	t.Run("nothing is offered when the keyword and the model already agree", func(t *testing.T) {
 		model := classifier.Result{Subcategory: "Lilly", Category: "Saúde", Type: "Variáveis", Confidence: 0.95}
 
-		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, true)
+		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, true, "")
 
 		assert.Empty(t, row.KeywordHint, "agreement is the auto-insert case, and it has no second opinion")
 	})

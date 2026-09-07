@@ -1,6 +1,6 @@
-item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
-Delivery brod's;01/05/2026;53,98;Delivery;Alimentação;0.95;true;Variáveis;
-Uber Centro;15/04/2026;35,50;Uber/Taxi;Transporte;0.91;true;Variáveis;Combustível
-Diarista Letícia;10/05/2026;160,00;Diarista;Habitação;0.87;true;Fixas;
-Academia Smart Fit;05/05/2026;99,90;Academia;Saúde;0.62;false;Variáveis;
-Financiamento carro;15/06/2026;2400,00/24;Empréstimos;Habitação;0.88;true;Extras;
+item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint;already_logged
+Delivery brod's;01/05/2026;53,98;Delivery;Alimentação;0.95;true;Variáveis;;logged
+Uber Centro;15/04/2026;35,50;Uber/Taxi;Transporte;0.91;true;Variáveis;Combustível;
+Diarista Letícia;10/05/2026;160,00;Diarista;Habitação;0.87;true;Fixas;;
+Academia Smart Fit;05/05/2026;99,90;Academia;Saúde;0.62;false;Variáveis;;partial
+Financiamento carro;15/06/2026;2400,00/24;Empréstimos;Habitação;0.88;true;Extras;;

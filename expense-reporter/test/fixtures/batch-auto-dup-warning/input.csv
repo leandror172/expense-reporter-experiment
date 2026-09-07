@@ -1,4 +1,7 @@
-# NO --resume. The row is already in the log (seeded by the Given). The append-only default
-# re-appends it, and the always-on duplicate warning fires exactly once on stderr.
-# "Posto Ipiranga" is gate-passing so it reaches the append path.
+# NO --resume. The row is already in the log (seeded by the Given). T-80: it is classified, then
+# forced OUT of auto-insert and routed to review — the log is left untouched. It used to be
+# appended a second time, which no human ever saw: an auto-inserted row shows on the review page
+# as already handled, and append-only logs made it undoable only by rolling back the whole close.
+# "Posto Ipiranga" is gate-passing, so the scenario proves the duplicate check overrides a gate
+# PASS rather than merely observing a low-confidence row route to review.
 Posto Ipiranga;15/04/2026;35,50

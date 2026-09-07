@@ -74,6 +74,27 @@ from the embedded DATA, and `exportReviewed()` emits `s.entry.installments`. No 
 `exportReviewed()` hop is unguarded (T-61) and a JS-side `total/N` re-parse would have
 recorded 1 row where 4 belong, with no Go test able to fail.
 
+**T-80 (s77, branch `feat/t80-duplicate-routing`): a duplicate no longer appends itself.**
+The ledger is consulted on EVERY run — `--resume` decides only what a FULL match does (drop
+it, or hand it to a human), never whether to look. A row whose id is already in the log is
+classified and then held back from auto-insert WHATEVER the gate returned, carrying a marker
+(`classifiedRow.AlreadyLogged`, tenth CSV column) into the review page as one of two badges.
+Before this it was appended a second time behind a stderr warning nobody saw, because an
+auto-inserted row shows on the review page as already handled — and append-only logs made it
+undoable only by discarding the whole close. Measured s75: 1 of 18 appended rows.
+⚠️ **The predicate is ANY predicted id present, not ALL.** A full-match-only test would have
+NARROWED coverage while removing the warning that covered it: `99,90/3` with 1 of 3 ids
+logged is not a full match, so the gate would pass and three more rows would land.
+`refuseDuplicateAppend` replaced the append-phase warning — the classify phase consumes the
+ledger now, so a hit at append time means the earlier check MISSED, and a call that can only
+print nothing is not a guard. It does NOT consume: spending the count would hide the miss.
+⚠️ **Still open (T-61 territory):** a reviewer who confirms a duplicate as a genuine separate
+purchase still cannot get it appended — `apply` finds the prior classification and no-ops.
+Slice 3 made that VISIBLE (`Already applied:` in the summary); honouring it needs a new
+reviewer action crossing the unguarded `exportReviewed()` hop. Intra-batch duplicates (the
+same purchase typed twice in one input file) remain invisible — the ledger models what is in
+the LOG, not what this run wrote. Plan + decisions D1–D10: `.claude/plans/t80-duplicate-routing.md`.
+
 ## Structure
 ```
 cmd/expense-reporter/cmd/  # Cobra subcommands (one file each)
