@@ -28,6 +28,7 @@ func TestApply_IdempotencyAndFeedback(t *testing.T) {
 			correctionsLoggedForAlreadyInserted(fixDir),
 			noNewExpensesInserted(),
 			summaryMentionsCorrections(),
+			confirmedRowAlreadyAppliedIsAccountedFor(),
 		),
 	})
 }
@@ -174,6 +175,28 @@ func noNewExpensesInserted() []func(*harness.Context) {
 func dryRunLeftClassificationsUnchanged(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		expect.ClassificationsMatch(filepath.Join(fixDir, "seed-classifications.jsonl")),
+	}
+}
+
+// confirmedRowAlreadyAppliedIsAccountedFor asserts the summary NAMES the confirmed entry
+// apply found already in classifications.jsonl and therefore did not append.
+//
+// apply-basic entry 1 (Uber Centro, confirmed) has taken that branch since the fixture was
+// written, and the run reported it in NO bucket at all: not appended, not failed, not
+// skipped, not pending, and not among the corrections — which cover only the CORRECTED half
+// of already-applied. `total` counted it, so the buckets never summed to total and nothing
+// said why.
+//
+// It matters because of T-80. A duplicate now reaches the review page carrying a badge, so a
+// reviewer who rules "yes, this really is a separate purchase" confirms it — landing exactly
+// here, where their ruling produced no row and no message. Silence is the one outcome that
+// must not follow an explicit human decision.
+//
+// The wording is deliberately NOT "no expense-log change": summaryMentionsCorrections above
+// already matches that phrase, and reusing it would let either line satisfy both assertions.
+func confirmedRowAlreadyAppliedIsAccountedFor() []func(*harness.Context) {
+	return []func(*harness.Context){
+		verify.OutputContains("Already applied:  1 (nothing appended)"),
 	}
 }
 

@@ -76,7 +76,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	newRows, corrections, pendingEntries, skippedEntries, err := processEntries(rf.Entries, classifPath, applyDryRun)
+	newRows, corrections, alreadyApplied, pendingEntries, skippedEntries, err := processEntries(rf.Entries, classifPath, applyDryRun)
 	if err != nil {
 		return fmt.Errorf("processing entries: %w", err)
 	}
@@ -95,7 +95,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 
 	appendedConfirmed, appendedCorrected, failed, appendErr := appendNewRows(newRows, classifPath, expensesLogPath, applyDryRun)
 
-	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pendingEntries, skippedEntries, appendedConfirmed, appendedCorrected, corrections, failed, applyDryRun)
+	printSummary(cmd.OutOrStdout(), rf.Source, len(rf.Entries), pendingEntries, skippedEntries, appendedConfirmed, appendedCorrected, corrections, alreadyApplied, failed, applyDryRun)
 	if appendErr != nil {
 		return appendErr
 	}
@@ -124,7 +124,7 @@ func ensureLogWritable(path string, allowCreate bool) error {
 	return f.Close()
 }
 
-func processEntries(entries []apply.ReviewedEntry, classifPath string, dryRun bool) (newRows, corrections, pendingEntries, skippedEntries []apply.ReviewedEntry, err error) {
+func processEntries(entries []apply.ReviewedEntry, classifPath string, dryRun bool) (newRows, corrections, alreadyApplied, pendingEntries, skippedEntries []apply.ReviewedEntry, err error) {
 	for _, entry := range entries {
 		switch entry.Action {
 		case apply.ActionPending:
@@ -132,15 +132,15 @@ func processEntries(entries []apply.ReviewedEntry, classifPath string, dryRun bo
 		case apply.ActionSkipped:
 			skippedEntries = append(skippedEntries, entry)
 		case apply.ActionConfirmed, apply.ActionCorrected:
-			if hErr := handleActiveEntry(entry, classifPath, dryRun, &newRows, &corrections); hErr != nil {
-				return nil, nil, nil, nil, hErr
+			if hErr := handleActiveEntry(entry, classifPath, dryRun, &newRows, &corrections, &alreadyApplied); hErr != nil {
+				return nil, nil, nil, nil, nil, hErr
 			}
 		}
 	}
-	return newRows, corrections, pendingEntries, skippedEntries, nil
+	return newRows, corrections, alreadyApplied, pendingEntries, skippedEntries, nil
 }
 
-func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, dryRun bool, newRows, corrections *[]apply.ReviewedEntry) error {
+func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, dryRun bool, newRows, corrections, alreadyApplied *[]apply.ReviewedEntry) error {
 	prior, found, err := feedback.FindLatestEntry(classifPath, entry.ID)
 	if err != nil {
 		return fmt.Errorf("finding prior entry for %q: %w", entry.ID, err)
@@ -172,8 +172,19 @@ func handleActiveEntry(entry apply.ReviewedEntry, classifPath string, dryRun boo
 			}
 		}
 		*corrections = append(*corrections, entry)
+		return nil
 	}
-	// confirmed+found: no-op (already applied)
+
+	// confirmed + found. Nothing is written — the row is already in both logs — but it is
+	// RECORDED here so the summary can name it. It used to fall out of the function
+	// counted by nothing: not appended, not failed, not skipped, not pending, and not a
+	// correction, so the buckets never summed to total and the run said nothing at all.
+	//
+	// Silence is the wrong outcome now that T-80 routes a duplicate to the review page.
+	// A reviewer who rules "yes, this is a separate purchase" confirms it and lands
+	// exactly here, and an explicit human decision that changes nothing must still be
+	// reported back to the human who made it.
+	*alreadyApplied = append(*alreadyApplied, entry)
 	return nil
 }
 
@@ -304,7 +315,7 @@ func buildFeedbackEntry(entry apply.ReviewedEntry) (feedback.Entry, bool) {
 	return fbEntry, false
 }
 
-func printSummary(w io.Writer, source string, total int, pendingEntries, skippedEntries []apply.ReviewedEntry, appendedConfirmed, appendedCorrected int, corrections, failed []apply.ReviewedEntry, dryRun bool) {
+func printSummary(w io.Writer, source string, total int, pendingEntries, skippedEntries []apply.ReviewedEntry, appendedConfirmed, appendedCorrected int, corrections, alreadyApplied, failed []apply.ReviewedEntry, dryRun bool) {
 	appended := appendedConfirmed + appendedCorrected
 	tag, appendedLabel := "", "Appended:    "
 	if dryRun {
@@ -312,6 +323,15 @@ func printSummary(w io.Writer, source string, total int, pendingEntries, skipped
 	}
 	fmt.Fprintf(w, "Applied %s (%d entries)%s\n\n", source, total, tag)
 	fmt.Fprintf(w, "%s %d rows (%d confirmed, %d corrected)\n", appendedLabel, appended, appendedConfirmed, appendedCorrected)
+	// Deliberately carries no unit word. The lines around it say "rows" while counting
+	// ENTRIES — loose since T-21 made the two stop being 1:1 — and these entries produced
+	// exactly zero rows, so borrowing that label would be wrong in a new way rather than
+	// merely imprecise.
+	//
+	// The phrasing also avoids "no expense-log change", which the corrections block below
+	// already uses: sharing it would let either line satisfy an assertion aimed at the
+	// other, which is the assertion-satisfied-by-many-causes trap.
+	fmt.Fprintf(w, "Already applied:  %d (nothing appended)\n", len(alreadyApplied))
 	fmt.Fprintf(w, "Failed:       %d rows\n", len(failed))
 	fmt.Fprintf(w, "Skipped:      %d rows\n", len(skippedEntries))
 	fmt.Fprintf(w, "Pending:      %d rows\n", len(pendingEntries))
@@ -326,6 +346,18 @@ func printSummary(w io.Writer, source string, total int, pendingEntries, skipped
 		if len(pendingEntries) > 0 {
 			fmt.Fprintf(w, "\nPending:\n")
 			for _, e := range pendingEntries {
+				fmt.Fprintf(w, "   %s (%s, R$%.2f)\n", e.Item, e.Date, e.Value)
+			}
+		}
+		// Verbose-gated like Skipped and Pending above, NOT unconditional like the
+		// corrections block below. The distinction is what the run did: a correction WRITES
+		// a feedback line, so the user must be told without asking; an already-applied
+		// confirm changes nothing at all, exactly like a skip. It also keeps a legitimate
+		// re-run — where every confirmed entry lands here — from printing a wall of
+		// warnings that would train the reader to ignore the block.
+		if len(alreadyApplied) > 0 {
+			fmt.Fprintf(w, "\nAlready applied:\n")
+			for _, e := range alreadyApplied {
 				fmt.Fprintf(w, "   %s (%s, R$%.2f)\n", e.Item, e.Date, e.Value)
 			}
 		}
