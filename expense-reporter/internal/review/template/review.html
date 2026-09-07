@@ -778,21 +778,21 @@ function prefillFor(entry) {
   const p = entry.predicted;
   // case 1
   if (p.type && categoryHasSub(p.type, p.category, p.subcategory)) {
-    return { sheet: p.type, category: p.category, subcategory: p.subcategory,
+    return { type: p.type, category: p.category, subcategory: p.subcategory,
              needsSheet: false, noMatch: false, typeOptions: [] };
   }
   // case 2: search
   const k = p.category + "||" + p.subcategory;
   const matches = SHEETS_FOR.get(k) || [];
   if (matches.length === 1) {
-    return { sheet: matches[0], category: p.category, subcategory: p.subcategory,
+    return { type: matches[0], category: p.category, subcategory: p.subcategory,
              needsSheet: false, noMatch: false, typeOptions: [] };
   }
   if (matches.length > 1) {
-    return { sheet: null, category: p.category, subcategory: p.subcategory,
+    return { type: null, category: p.category, subcategory: p.subcategory,
              needsSheet: true, noMatch: false, typeOptions: matches.slice() };
   }
-  return { sheet: null, category: null, subcategory: null,
+  return { type: null, category: null, subcategory: null,
            needsSheet: false, noMatch: true, typeOptions: [] };
 }
 
@@ -800,7 +800,7 @@ const STATE = DATA.queue.map(entry => {
   const pre = prefillFor(entry);
   return {
     entry,
-    sheet: pre.type,
+    type: pre.type,
     category: pre.category,
     subcategory: pre.subcategory,
     initialAmbiguousSheet: pre.needsSheet,   // ambiguous sheet at load
@@ -860,7 +860,7 @@ function scheduleSaveRows() {
       const payload = {
         savedAt: new Date().toISOString(),
         rows: Object.fromEntries(STATE.map(s => [s.entry.id, {
-          sheet: s.type, category: s.category, subcategory: s.subcategory, status: s.status,
+          type: s.type, category: s.category, subcategory: s.subcategory, status: s.status,
         }])),
       };
       localStorage.setItem(storageKey(), JSON.stringify(payload));
@@ -888,12 +888,16 @@ function applySavedRows(saved) {
   for (const s of STATE) {
     const r = saved.rows[s.entry.id];
     if (!r) continue;
-    // validate sheet/cat/sub: drop downstream if any link is now invalid
-    let sheet = r.type, category = r.category, subcategory = r.subcategory;
-    if (sheet && !typeByName(sheet)) sheet = category = subcategory = null;
-    if (sheet && category && !sheetHasCategory(sheet, category)) category = subcategory = null;
-    if (sheet && category && subcategory && !categoryHasSub(sheet, category, subcategory)) subcategory = null;
-    s.type = sheet;
+    // validate type/cat/sub: drop downstream if any link is now invalid.
+    // These three guards were DEAD until session 77: the payload was written under the key
+    // `sheet` while this read `r.type`, so `type` was always undefined and every `if (type
+    // && ...)` was skipped — a saved pick the taxonomy no longer hosts (the S2 drift shape)
+    // was restored unvalidated. They only do their job while the two spellings agree.
+    let type = r.type, category = r.category, subcategory = r.subcategory;
+    if (type && !typeByName(type)) type = category = subcategory = null;
+    if (type && category && !sheetHasCategory(type, category)) category = subcategory = null;
+    if (type && category && subcategory && !categoryHasSub(type, category, subcategory)) subcategory = null;
+    s.type = type;
     s.category = category;
     s.subcategory = subcategory;
     s.status = (r.status === "reviewed" || r.status === "skipped") ? r.status : "pending";
@@ -1749,7 +1753,7 @@ function replaceData(newData) {
     const pre = prefillFor(entry);
     STATE.push({
       entry,
-      sheet: pre.type, category: pre.category, subcategory: pre.subcategory,
+      type: pre.type, category: pre.category, subcategory: pre.subcategory,
       initialAmbiguousSheet: pre.needsSheet,
       initialNoMatch: pre.noMatch,
       ambiguousSheetOptions: pre.typeOptions,
