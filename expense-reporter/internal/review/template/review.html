@@ -500,14 +500,29 @@
   }
 
   /* ---------- shortcuts footer ---------- */
+  /* The legend used to sit in flow at the BOTTOM of the list. With a 200+ row queue
+     that put it past every row, so in practice it was never seen (session 77). It is now
+     a panel toggled from the toolbar and by "?", with the markup kept as the single
+     source of truth — there is exactly one copy of these bindings in the document. */
   .shortcuts {
-    margin-top: 30px;
-    padding-top: 16px;
-    border-top: 1px dashed var(--rule);
-    display: flex; flex-wrap: wrap; gap: 14px 22px;
+    position: fixed;
+    top: 186px; right: 20px;   /* fallback only — setLegend measures the header at open time */
+    z-index: 70;                 /* above rows, below the drop overlay (80) */
+    display: none;
+    flex-direction: column; gap: 7px;
+    padding: 14px 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    box-shadow: 0 6px 24px oklch(0.22 0.012 260 / 0.13);
     font-size: 11.5px;
     color: var(--ink-mute);
     font-family: var(--mono);
+  }
+  .shortcuts.open { display: flex; }
+  .shortcuts .legend-title {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink); margin-bottom: 2px;
   }
   .shortcuts span kbd {
     background: var(--bg-elev);
@@ -702,6 +717,7 @@
 
     <div class="grow"></div>
 
+    <button class="btn" id="help-btn" title="Keyboard shortcuts (?)" aria-expanded="false" aria-controls="shortcuts">?</button>
     <button class="btn" id="reset-btn" title="Reset all classifications to the pre-fill state and clear any saved progress">Reset</button>
     <button class="btn primary" id="export-btn">Export reviewed file <span class="kbd">⇧E</span></button>
   </div>
@@ -710,9 +726,10 @@
 <main class="shell">
   <div class="list" id="list"></div>
 
-  <div class="shortcuts" aria-label="keyboard shortcuts">
+  <div class="shortcuts" id="shortcuts" aria-label="keyboard shortcuts">
+    <span class="legend-title">Keyboard shortcuts</span>
     <span><kbd>j</kbd><kbd>k</kbd> move</span>
-    <span><kbd>1</kbd>–<kbd>4</kbd> set sheet</span>
+    <span><kbd>1</kbd>–<kbd>4</kbd> set type</span>
     <span><kbd>a</kbd> accept</span>
     <span><kbd>s</kbd> skip</span>
     <span><kbd>e</kbd> edit category</span>
@@ -1173,7 +1190,7 @@ function rowEl(s) {
   const typeNames = TAX.types.map(x => x.name);
   const sheetWrap = document.createElement("div");
   sheetWrap.className = "sel";
-  const sheetSel = buildSelect(typeNames, s.type, "Sheet…", false);
+  const sheetSel = buildSelect(typeNames, s.type, "Type…", false);
   if (!s.type && s.initialAmbiguousSheet) sheetWrap.classList.add("needs");
   else if (!s.type) sheetWrap.classList.add("empty");
   sheetWrap.appendChild(sheetSel);
@@ -1467,6 +1484,21 @@ function focusCategoryOfSelected() {
 /* ============================================================================
    7. Keyboard
    ========================================================================== */
+// The legend panel. setLegend is the ONLY writer of the .open class and of the button's
+// aria-expanded, so the two cannot drift out of step.
+function setLegend(open) {
+  const panel = document.getElementById("shortcuts");
+  panel.classList.toggle("open", open);
+  // Anchor under the real header rather than a constant: the toolbar wraps to a second
+  // line at narrow widths, and a hardcoded offset put the panel on top of Export.
+  if (open) {
+    const header = document.querySelector("header");
+    if (header) panel.style.top = (header.getBoundingClientRect().bottom + 8) + "px";
+  }
+  document.getElementById("help-btn").setAttribute("aria-expanded", open ? "true" : "false");
+}
+function legendOpen() { return document.getElementById("shortcuts").classList.contains("open"); }
+
 function isTypingTarget(t) {
   if (!t) return false;
   const tag = t.tagName;
@@ -1484,6 +1516,11 @@ document.addEventListener("keydown", (ev) => {
     return;
   }
   if (isTypingTarget(ev.target)) return;
+
+  // Legend: "?" toggles, Escape closes it first — checked ahead of the select-blur branch
+  // below so a focused picker cannot swallow the close.
+  if (ev.key === "?") { ev.preventDefault(); setLegend(!legendOpen()); return; }
+  if (ev.key === "Escape" && legendOpen()) { ev.preventDefault(); setLegend(false); return; }
 
   // (#7) Esc on a focused <select> blurs it so j/k work again.
   if (ev.target && ev.target.tagName === "SELECT" && ev.key === "Escape") {
@@ -1661,6 +1698,14 @@ document.getElementById("bulk-accept").addEventListener("click", () => {
   renderList();
   renderCounts();
   toast("Accepted " + cands.length + " auto-inserted row" + (cands.length === 1 ? "" : "s") + ".");
+});
+
+document.getElementById("help-btn").addEventListener("click", (ev) => {
+  ev.stopPropagation();          // so the outside-click handler does not immediately close it
+  setLegend(!legendOpen());
+});
+document.addEventListener("click", (ev) => {
+  if (legendOpen() && !document.getElementById("shortcuts").contains(ev.target)) setLegend(false);
 });
 
 document.getElementById("export-btn").addEventListener("click", exportReviewed);

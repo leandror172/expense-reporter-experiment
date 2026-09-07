@@ -109,6 +109,38 @@ Advisory, and like `KeywordHint` it deliberately does NOT round-trip through
 `record[8]` into `AlreadyLogged` leaves the whole reader suite green. The seam tests and
 `TestReview_ProducesHTMLWithQueueAndTaxonomy` are what catch it.
 
+**The page's state vocabulary is `type`, and it drifted for 44 sessions (s77).**
+T-05 (`47a6dff`) renamed the expense-type concept from `sheet`, but only in the template's
+JS READERS. `prefillFor` kept returning `{sheet: ...}` while all three consumers read
+`pre.type`; `scheduleSaveRows` persisted `{sheet: ...}` while `applySavedRows` read
+`r.type`. Both read **undefined**, silently, from session 33 through two real monthly
+closes. Consequences measured in a browser, not reasoned: the Type picker was empty on
+EVERY row (so Category/Subcategory rendered `disabled`, holding the model's correct answer
+where nobody could use it), "Accept auto-inserted" was permanently `0`/disabled, group-by-type
+bucketed everything as `(no type)`, and a page reload downgraded finished "Confirmed" rows to
+"Skipped (incomplete)" while the header still counted them as reviewed — the export said
+`reviewed: null`, so a reviewer trusting the counter lost those expenses.
+⚠️ **It was INVISIBLE where it did damage.** `prefillFor` returns `needsSheet`/`noMatch`
+under their correct keys, so those flags survived; a row that should have been pre-filled
+got `initialAmbiguousSheet: false` and no type, and `rowBadge` fell through to **"Pending"**,
+not "Pick a type". Only genuinely ambiguous rows were ever flagged.
+**Guard: `TestTemplateUsesTypeVocabularyNotSheet`** (`template_vocabulary_test.go`) fails on
+a bare `sheet` used as a data key (`\bsheet\s*:` or `\.sheet\b`), with a sub-test proving
+it discriminates. Mutation-verified: restoring `sheet: pre.type` turns it red.
+It is a VOCABULARY check, not a behavioural one — it cannot prove the page works. The
+behavioural gap is still T-61's, and `render_test.go`'s JSON-key guard did NOT help here
+because the Go side was correct all along. Manual fixture + procedure:
+`.claude/fixtures/review-page-audit/`.
+
+**The keyboard legend is a toggled panel, not a footer (s77).** It had always existed, in
+flow at the BOTTOM of the list — past 200+ rows, so nobody ever saw it. Same markup, now
+`position: fixed`, hidden until opened by the toolbar `?` button or the `?` key, closed by
+`Escape` or an outside click. `setLegend()` is the ONLY writer of `.open` and of the
+button's `aria-expanded`, so the two cannot drift; it measures the header at open time
+rather than using a constant top offset, because the toolbar wraps at narrow widths and a
+hardcoded value sat on top of the Export button. There is exactly ONE copy of the bindings
+in the document — do not duplicate them into an overlay.
+
 **Gotcha:** edit only `internal/review/template/review.html` (60KB). The rendered
 `review*.html` files at repo root are large — don't read them into context; use a Haiku
 subagent with targeted questions if you must inspect one.
