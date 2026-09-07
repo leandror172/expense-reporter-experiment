@@ -25,8 +25,18 @@ type QueueEntry struct {
 	// model's answer so the reviewer can see a second opinion; nothing selects it
 	// automatically, and it is deliberately NOT carried back out through
 	// exportReviewed(). It is input to the human, not part of their decision.
-	KeywordHint string    `json:"keywordHint,omitempty"`
-	Predicted   Predicted `json:"predicted"`
+	KeywordHint string `json:"keywordHint,omitempty"`
+	// AlreadyLogged says why this row's id is already in the expense log — empty when it is
+	// not. Two values, because they ask the reviewer DIFFERENT questions: a fully-logged row
+	// needs a ruling on whether this is a genuinely separate purchase (same-day duplicates
+	// hash alike by construction), while a partially-logged series is the only one of the two
+	// that can be legitimately completed. A bool could not tell them apart.
+	//
+	// ADVISORY, exactly like KeywordHint above: the page renders it as a badge, nothing acts
+	// on it automatically, and it is deliberately NOT carried back out through
+	// exportReviewed(). It is input to the human, not part of their decision.
+	AlreadyLogged string    `json:"alreadyLogged,omitempty"`
+	Predicted     Predicted `json:"predicted"`
 }
 
 type Predicted struct {

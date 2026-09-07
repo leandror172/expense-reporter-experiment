@@ -584,7 +584,7 @@ func stripTrailingComment(line string) string {
 func isSpaceOrTab(b byte) bool { return b == ' ' || b == '\t' }
 
 // writeClassifiedCSV writes all classified rows to path.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint;already_logged
 func writeClassifiedCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -594,7 +594,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint", "already_logged"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -608,6 +608,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 			fmt.Sprintf("%v", r.AutoInserted),
 			r.Type,
 			r.KeywordHint,
+			r.AlreadyLogged,
 		})
 	}
 	w.Flush()
@@ -615,7 +616,7 @@ func writeClassifiedCSV(path string, rows []classifiedRow) error {
 }
 
 // writeReviewCSV writes only rows where auto_inserted == false.
-// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint
+// Format: item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint;already_logged
 func writeReviewCSV(path string, rows []classifiedRow) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -625,7 +626,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 
 	w := csv.NewWriter(f)
 	w.Comma = ';'
-	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint"}); err != nil {
+	if err := w.Write([]string{"item", "date", "value", "subcategory", "category", "confidence", "auto_inserted", "type", "keyword_hint", "already_logged"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
@@ -645,6 +646,7 @@ func writeReviewCSV(path string, rows []classifiedRow) error {
 			"false",
 			r.Type,
 			r.KeywordHint,
+			r.AlreadyLogged,
 		})
 	}
 	w.Flush()
