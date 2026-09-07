@@ -10,9 +10,20 @@ is the sole workbook writer (WS-B slice 4). Driven by `cmd/.../apply.go`.
   Subcategory}` (full path; legacy `"sheet"` key read-compat). `action` ∈
   confirmed/corrected/skipped/pending. `reader.go ReadReviewed` decodes + validates.
 - **Flow:** each confirmed/corrected entry looked up in `classifications.jsonl`
-  (`FindLatestEntry` = dedup index). Found → corrected-feedback-only, no append; not
+  (`FindLatestEntry` = dedup index). Found + corrected → corrected-feedback-only, no append;
+  found + confirmed → nothing written, but RECORDED and counted (T-80, s77); not
   found → new row: expense log FIRST, feedback SECOND (best-effort); a log-append
   failure downgrades the row → `failed` + non-zero exit. `dryRun` gates ALL writes.
+- **`Already applied:  N (nothing appended)` (T-80, s77).** found+confirmed used to fall out
+  of `handleActiveEntry` counted by NOTHING — not appended/failed/skipped/pending, and not a
+  correction (those cover only the corrected half) — so the buckets never summed to `total`
+  and the run was silent. That matters because a reviewer ruling "yes, this IS a separate
+  purchase" on a T-80 duplicate badge lands exactly there. Detail block is verbose-gated
+  like Skipped/Pending, NOT unconditional like corrections: a correction WRITES feedback,
+  this changes nothing. ⚠️ **Still open:** such a confirm CANNOT be appended — honouring it
+  needs a new reviewer action crossing the unguarded `exportReviewed()` hop (T-61). This
+  makes the refusal visible, not fixed. The line deliberately carries no unit word and
+  avoids the phrase "no expense-log change" (the corrections block owns it).
 - **Pre-flight (non-dry-run):** both paths probed non-destructively before work
   (expense-log only when newRows>0, NO `O_CREATE`); errors carry `Hint:`.
 

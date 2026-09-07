@@ -145,7 +145,14 @@ when an unambiguous, maximum-specificity keyword match *disagrees* with the mode
 mirror of the agreement gate: the gate auto-inserts on agreement, the hint flags
 disagreement for a human. `review` renders it as an amber badge beside the model's answer.
 
-It is **advisory and never applied**. Measured on the first real monthly close, the hint
+The `already_logged` column (T-80) says why a row's id is already in the expense log —
+`logged` for a full match, `partial` for an installment series with some rows recorded and
+some not, empty otherwise. Such a row is held back from auto-insert whatever the gate
+decided, and `review` renders the two states as distinct amber badges: "already in log"
+(solid rule — confirming it double-counts real money) and "partly logged". Like the hint it
+is advisory and does not round-trip through `exportReviewed()`.
+
+The hint is **advisory and never applied**. Measured on the first real monthly close, it
 fires on 14 of 65 rows and the keyword is right 71.4% of the time — enough to be worth
 showing, not enough to act on: preferring it automatically would introduce errors on roughly
 3 of every 14 rows. Empty means "no second opinion"; there is no placeholder value.

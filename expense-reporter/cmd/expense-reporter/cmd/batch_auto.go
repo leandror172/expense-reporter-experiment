@@ -54,8 +54,10 @@ series across categories. Year note: bare DD/MM dates infer the current year, so
 crossing a year boundary (run started in December, resumed in January) may not match — pass
 DD/MM/YYYY inputs for December batches.
 
-Independently of --resume, an always-on warning is printed to stderr whenever an appended
-entry's id already exists in the log, flagging a likely duplicate append.
+Independently of --resume, a row whose id already exists in the expense log is never
+auto-inserted: it is still classified, so the review page can show you the model's
+suggestion, then held back for you to judge with an "already in log" badge. Appending it a
+second time is undoable only by discarding the whole close, so the call is yours.
 
 Examples:
   expense-reporter batch-auto expenses.csv
