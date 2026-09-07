@@ -163,7 +163,7 @@ func TestClassifiedRowFromPrediction_HintComparesTheKeywordAgainstTheModel(t *te
 	t.Run("the keyword's answer is offered when it differs from the model's", func(t *testing.T) {
 		model := classifier.Result{Subcategory: "Dentista", Category: "Saúde", Type: "Variáveis", Confidence: 0.95}
 
-		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, false)
+		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, false, "")
 
 		assert.Equal(t, "Lilly", row.KeywordHint, "the keyword disagreed, so its answer must be offered")
 		assert.Equal(t, "Dentista", row.Subcategory, "the MODEL's answer stays the prediction of record")
@@ -172,7 +172,7 @@ func TestClassifiedRowFromPrediction_HintComparesTheKeywordAgainstTheModel(t *te
 	t.Run("nothing is offered when the keyword and the model already agree", func(t *testing.T) {
 		model := classifier.Result{Subcategory: "Lilly", Category: "Saúde", Type: "Variáveis", Confidence: 0.95}
 
-		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, true)
+		row := classifiedRowFromPrediction(expense, model, unambiguousLilly, true, "")
 
 		assert.Empty(t, row.KeywordHint, "agreement is the auto-insert case, and it has no second opinion")
 	})

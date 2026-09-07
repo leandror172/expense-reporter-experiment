@@ -70,26 +70,37 @@ func TestEvaluateResumeSkip(t *testing.T) {
 	})
 }
 
-func TestWarnIfDuplicate(t *testing.T) {
-	t.Run("duplicate detected and consumed", func(t *testing.T) {
+// TestRefuseDuplicateAppend pins the append-phase guard T-80 turned from a warning into an
+// error. The behavior change worth pinning is that it does NOT consume the ledger: the
+// classify-phase check owns consumption now, so a count still standing here means that
+// check missed, and spending it would hide the miss instead of reporting it.
+func TestRefuseDuplicateAppend(t *testing.T) {
+	t.Run("a standing ledger count refuses the append without consuming it", func(t *testing.T) {
 		ledger := map[string]int{"X": 1}
-		item := "test item"
 
-		result := warnIfDuplicate(ledger, item, "X")
-		assert.True(t, result)
-		require.Equal(t, 0, ledger["X"])
+		err := refuseDuplicateAppend(ledger, "test item", []string{"X"})
 
-		result = warnIfDuplicate(ledger, item, "X")
-		assert.False(t, result)
-		require.Equal(t, 0, ledger["X"])
+		require.Error(t, err)
+		assert.ErrorIs(t, err, errDuplicateEntry)
+		assert.Contains(t, err.Error(), "X", "the offending id names the log line to look at")
+		assert.Equal(t, 1, ledger["X"], "the guard reports; it must not spend the count it reported on")
 	})
 
-	t.Run("no duplicate in empty ledger", func(t *testing.T) {
+	t.Run("an id the ledger does not hold appends normally", func(t *testing.T) {
 		ledger := map[string]int{}
-		item := "test item"
 
-		result := warnIfDuplicate(ledger, item, "Y")
-		assert.False(t, result)
-		require.Empty(t, ledger)
+		err := refuseDuplicateAppend(ledger, "test item", []string{"Y"})
+
+		require.NoError(t, err)
+		assert.Empty(t, ledger)
+	})
+
+	t.Run("one duplicate among a row's installment ids is enough to refuse", func(t *testing.T) {
+		ledger := map[string]int{"i2": 1}
+
+		err := refuseDuplicateAppend(ledger, "installment purchase", []string{"i1", "i2", "i3"})
+
+		assert.ErrorIs(t, err, errDuplicateEntry,
+			"a partially-logged series must not complete itself by appending the rest")
 	})
 }

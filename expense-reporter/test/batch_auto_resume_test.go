@@ -95,23 +95,33 @@ func TestBatchAutoResume_OnlyNewRowClassifies(t *testing.T) {
 	})
 }
 
-// TestBatchAutoDuplicateWarning_FiresWithoutResume proves the always-on duplicate warning:
-// WITHOUT --resume, a row whose id already exists in the log appends AGAIN (append-only default
-// preserved) and emits exactly one stderr warning. Ollama-gated (the row must gate-pass to
-// reach the append path).
-func TestBatchAutoDuplicateWarning_FiresWithoutResume(t *testing.T) {
+// TestBatchAutoDuplicate_RoutedToReviewInsteadOfAppended proves T-80: WITHOUT --resume, a row
+// whose id already exists in the expense log is still classified — so the reviewer sees the
+// model's suggestion — but is forced OUT of auto-insert and routed to the review queue, leaving
+// the log untouched.
+//
+// It previously appended the row a SECOND time and emitted one stderr warning, and that warning
+// was its only trace: an auto-inserted row never reaches the review page, because the page shows
+// it as already handled. Both logs are append-only, so the duplicate could be undone only by
+// rolling back the whole monthly close — which is why the decision has to be taken here rather
+// than after the human review.
+//
+// Ollama-gated by necessity, not convenience. The seeded item must PASS the auto-insert gate,
+// or the scenario could not tell "the duplicate check overrode a gate PASS" apart from "an
+// ordinary low-confidence row went to review" — and only the former is what T-80 claims.
+func TestBatchAutoDuplicate_RoutedToReviewInsteadOfAppended(t *testing.T) {
 	extern.RequireOllama(t, "")
 
 	fixDir := filepath.Join(fixturesDir(), "batch-auto-dup-warning")
 
 	harness.Run(t, harness.Scenario{
-		Name:    "batch-auto without --resume re-appends a pre-logged row and warns exactly once",
+		Name:    "batch-auto without --resume routes a pre-logged row to review and leaves the log unchanged",
 		Fixture: fixDir,
-		Given:   expenseAlreadyLoggedThenReappended(),
+		Given:   expenseAlreadyLogged(),
 		When:    actions.RunBatchAutoWithFixture(),
 		Then: slices.Concat(
 			commandSucceeded(),
-			rowAppendedAgainWithSingleDuplicateWarning(fixDir),
+			duplicateRoutedToReviewLeavingTheLogUnchanged(fixDir),
 		),
 	})
 }
@@ -184,7 +194,9 @@ func oneRowAlreadyLoggedOtherIsNew() func(*harness.Context) {
 	})
 }
 
-func expenseAlreadyLoggedThenReappended() func(*harness.Context) {
+// expenseAlreadyLogged records the one input row into the expense log before the run, via the
+// real append path — so its predicted ids are the ones batch-auto will itself derive.
+func expenseAlreadyLogged() func(*harness.Context) {
 	return expenseLogSeededWith([]seedRow{
 		{item: "Posto Ipiranga", date: date(2026, 4, 15), value: 35.50, count: 1, expenseType: "Variáveis", category: "Transporte", subcategory: "Combustível"},
 	})
@@ -239,10 +251,15 @@ func newRowAppendedSeededRowSkipped(fixDir string) []func(*harness.Context) {
 	}
 }
 
-func rowAppendedAgainWithSingleDuplicateWarning(fixDir string) []func(*harness.Context) {
+// duplicateRoutedToReviewLeavingTheLogUnchanged pins all four halves of the T-80 outcome. The
+// log assertion is the load-bearing one — the other three would all still hold if the row were
+// routed to review AND appended anyway.
+func duplicateRoutedToReviewLeavingTheLogUnchanged(fixDir string) []func(*harness.Context) {
 	return []func(*harness.Context){
 		expect.DuplicateWarningCount(1),
 		expect.ExpenseLogMatches(filepath.Join(fixDir, "expected-expenses_log.jsonl")),
+		expect.OutputFileHasRows("review.csv", 2),
+		expect.NoneWereAutoInserted("classified.csv"),
 	}
 }
 
