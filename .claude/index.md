@@ -450,6 +450,9 @@ In the live log, `apply` is in fact the dominant producer of both statuses.
 |------|---------|
 | `docs/expense-classifier-vision.md` | End-to-end Layer 5–6+ vision: user scenario, domain boundaries, iterative build plan (Phases 0–5), technical notes on structured output, persistence, queue. **Primary reference for understanding scope and architecture.** |
 | `docs/expense-classifier-data-inventory.md` | Inventory of all auto-category analysis artifacts (feature dict, training data, confusion analysis, etc.) and their priority/role at build time. Also documents expense-reporter architecture as of Layer 5 start. |
+| `.claude/plans/review-page-behavior-audit.md` | Test plan for the review page: expected-behavior spec (pre-fill rule, filters, 12 keyboard bindings, badges, export), the 22-row scenario matrix, and the browser procedure. |
+| `.claude/review-page-audit-report.md` | **Findings of that audit (session 77).** Filters are correct; the Type pre-fill is broken three ways since T-05 (`47a6dff`) and a reload silently downgrades finished rows to skipped while the header still counts them reviewed. |
+| `.claude/fixtures/review-page-audit/` | 22-row `classified.csv` + README covering every pre-fill branch, badge and parse path of the review page, with the run procedure. Manual browser check — the page has no automated test (T-61). |
 
 ---
 

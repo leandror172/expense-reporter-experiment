@@ -1,0 +1,23 @@
+item;date;value;subcategory;category;confidence;auto_inserted;type;keyword_hint;already_logged
+S01 case1 supermercado;05/03/2026;250,00;Supermercado;Alimentação / Limpeza;0.9500;false;Variáveis;;
+S02 case1 aluguel;05/03/2026;1800,00;Aluguel;Habitação;0.9200;false;Fixas;;
+S03 case2a medico so extras;06/03/2026;320,00;Médico;Saúde;0.8800;false;;;
+S04 case2b estacionamento;07/03/2026;25,00;Estacionamento;Transporte;0.7500;false;;;
+S05 case2b pets orion tres;08/03/2026;140,00;Orion;Pets;0.7000;false;;;
+S06 case2c sem correspondencia;09/03/2026;99,00;Inexistente;Nada;0.6000;false;;;
+S07 case1 tipo invalido;10/03/2026;1800,00;Aluguel;Habitação;0.9100;false;Extras;;
+S08 auto inserido um;11/03/2026;45,00;Feira;Alimentação / Limpeza;0.9600;true;Variáveis;;
+S09 auto inserido dois;12/03/2026;60,00;Viagens;Lazer;0.9700;true;Adicionais;;
+S10 conf baixa 30;13/03/2026;10,00;Padaria;Alimentação / Limpeza;0.3000;false;Variáveis;;
+S11 conf media 55;14/03/2026;20,00;Padaria;Alimentação / Limpeza;0.5500;false;Variáveis;;
+S12 conf alta 80;15/03/2026;30,00;Padaria;Alimentação / Limpeza;0.8000;false;Variáveis;;
+S13 conf altissima 99;16/03/2026;40,00;Padaria;Alimentação / Limpeza;0.9900;false;Variáveis;;
+ZZQQ marker item;17/03/2026;12,34;Padaria;Alimentação / Limpeza;0.9000;false;Variáveis;;
+S15 consulta sem palavra chave;18/03/2026;150,00;Médico;Saúde;0.8500;false;Extras;;
+S16 multiplicador quatro;19/03/2026;405,25 x4;Empréstimo;Anita;0.9000;false;Variáveis;;
+S17 divisao dois;20/03/2026;189,12/2;Farmácia;Saúde;0.9000;false;Variáveis;;
+S18 com dica de keyword;21/03/2026;80,00;Padaria;Alimentação / Limpeza;0.8200;false;Variáveis;Variáveis > Alimentação / Limpeza > Supermercado;
+S19 ja no log;22/03/2026;55,00;Padaria;Alimentação / Limpeza;0.9300;false;Variáveis;;logged
+S20 parcialmente no log;23/03/2026;300,00/3;Dentista;Saúde;0.9300;false;Extras;;partial
+S21 linha nao parseavel;;;;;0.0000;false;;;
+S22 milhar brasileiro;24/03/2026;1.234,56;Aluguel;Habitação;0.9400;false;Fixas;;
